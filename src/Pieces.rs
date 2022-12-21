@@ -26,20 +26,21 @@ pub const BLACK: u8 = 128;
  * These values are stored in the constants with the name of the piece. The constants labeled 
  * <piece name>_PTS are used to store values of pieces for the engine to decide how to value pieces
  */
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Piece {
-    current_square: u8,
-    color: Color,
-    piece_name: PieceName,
+    pub current_square: u8,
+    pub color: Color,
+    pub piece_name: PieceName,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Color {
     White,
     Black,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u8)]
 pub enum PieceName {
     King,
@@ -58,12 +59,10 @@ impl Piece {
             piece_name: piece_name,
         }
     }
-
     pub fn can_castle(&self) -> bool {
         todo!();
     }
     pub fn change_square(&mut self, new_idx: u8) {
         self.current_square = new_idx;
     }
-
 }
