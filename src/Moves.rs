@@ -95,7 +95,9 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
         }
     }
     let current_idx = piece.current_square;
-    
+    for direction in Direction.iter() {
+        
+    }
     moves
 }
 
