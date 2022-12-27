@@ -126,7 +126,6 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
         }
     }
     let current_idx = piece.current_square;
-<<<<<<< HEAD
     for direction in Direction::iter() {
         // Function contains a bool determining if direction points to a valid square based off the
         // current square, and if true the usize is the new index being looked at
@@ -158,10 +157,6 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                 castle: Castle::None,
             });
         }
-=======
-    for direction in Direction.iter() {
-        
->>>>>>> a3ed2010a657f0102e32b663cd1d5b711cfb5b2f
     }
     moves
 }
