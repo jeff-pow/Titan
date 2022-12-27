@@ -43,7 +43,7 @@ fn check_index_addition(a: u8, b: i8) -> (usize, bool) {
 
 // Method returns a tuple with a bool stating if a piece is on that square and the color of the
 // piece if there is a piece
-fn check_space_occupancy(board: &Board, piece: &Piece, current_idx: u8, potential_space: u8) -> (bool, Color) {
+fn check_space_occupancy(board: &Board, piece: &Piece, potential_space: u8) -> (bool, Color) {
     match board.board[potential_space as usize] {
         None => return (false, Color::White),
         Some(Piece) => {
@@ -135,7 +135,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
         }
         // Method returns a tuple containing a bool determining if potential square contains a
         // piece of any kind, and if true color contains the color of the new piece
-        let occupancy = check_space_occupancy(board, piece, current_idx, tuple.0 as u8);
+        let occupancy = check_space_occupancy(board, piece, tuple.0 as u8);
         if !occupancy.0 {
             // If position not occupied, add the move
             moves.push(Move {
@@ -169,7 +169,7 @@ fn generate_queen_moves(board: &Board, piece: &Piece) -> Vec<Move> {
             if !square_validity {
                 break;
             }
-            let (occupied, potential_color) = check_space_occupancy(board, piece, piece.current_square, idx as u8);
+            let (occupied, potential_color) = check_space_occupancy(board, piece, idx as u8);
             if !occupied {
                 moves.push(Move {
                     starting_idx: piece.current_square,
@@ -210,7 +210,7 @@ fn generate_rook_moves(board: &Board, piece: &Piece) -> Vec<Move> {
             if !square_validity {
                 break;
             }
-            let (occupied, potential_color) = check_space_occupancy(board, piece, piece.current_square, idx as u8);
+            let (occupied, potential_color) = check_space_occupancy(board, piece, idx as u8);
             if !occupied {
                 moves.push(Move {
                     starting_idx: piece.current_square,
@@ -251,7 +251,7 @@ fn generate_bishop_moves(board: &Board, piece: &Piece) -> Vec<Move> {
             if !square_validity {
                 break;
             }
-            let (occupied, potential_color) = check_space_occupancy(board, piece, piece.current_square, idx as u8);
+            let (occupied, potential_color) = check_space_occupancy(board, piece, idx as u8);
             if !occupied {
                 moves.push(Move {
                     starting_idx: piece.current_square,
@@ -295,7 +295,7 @@ fn generate_knight_moves(board: &Board, piece: &Piece) -> Vec<Move> {
         if !square_validity.1 {
             continue;
         }
-        let (occupied, potential_color) = check_space_occupancy(board, piece, piece.current_square, square_validity.0 as u8);
+        let (occupied, potential_color) = check_space_occupancy(board, piece, square_validity.0 as u8);
         if !occupied {
             moves.push(Move {
                 starting_idx: piece.current_square,
@@ -319,7 +319,86 @@ fn generate_knight_moves(board: &Board, piece: &Piece) -> Vec<Move> {
 
 fn generate_pawn_moves(board: &Board, piece: &Piece) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
-
+    match piece.color {
+        Color::White => {
+            // Determines if one square in front of piece is occupied
+            let (n_occupied, _) = check_space_occupancy(board, piece, piece.current_square + Direction::North as u8);
+            // Determines if two squares in front of piece is occupied
+            let (nn_occupied, _) = check_space_occupancy(board, piece, piece.current_square + 2 * Direction::North as u8);
+            if piece.current_square > 7 && piece.current_square < 15 {
+                if !n_occupied && !nn_occupied {
+                    // Handles moving two spaces forward if pawn has not moved yet
+                    moves.push(Move {
+                        starting_idx: piece.current_square,
+                        end_idx: piece.current_square + 2 * Direction::North as u8,
+                        castle: Castle::None,
+                    });
+                }
+            }
+            if !n_occupied {
+                // Can still move one space forward on the first square
+                moves.push(Move {
+                    starting_idx: piece.current_square,
+                    end_idx: piece.current_square + Direction::North as u8,
+                    castle: Castle::None,
+                });
+            }
+            let (nw_occupied, potential_color) = check_space_occupancy(board, piece, piece.current_square + Direction::NorthWest as u8);
+            if nw_occupied && piece.color != potential_color {
+                // Capturing to the northwest
+                moves.push(Move {
+                    starting_idx: piece.current_square,
+                    end_idx: piece.current_square + Direction::NorthWest as u8,
+                    castle: Castle::None,
+                });
+            }
+            let (ne_occupied, potential_color) = check_space_occupancy(board, piece, piece.current_square + Direction::NorthEast as u8);
+            if ne_occupied && piece.color != potential_color {
+                // Capturing to the northeast
+                moves.push(Move {
+                    starting_idx: piece.current_square,
+                    end_idx: piece.current_square + Direction::NorthEast as u8,
+                    castle: Castle::None,
+                });
+            }
+        }
+        Color::Black => {
+            // First square to the south
+            let (s_occupied, _) = check_space_occupancy(board, piece, piece.current_square + Direction::South as u8);
+            // Second square to the south
+            let (ss_occupied, _) = check_space_occupancy(board, piece, piece.current_square + 2 * Direction::South as u8);
+            if piece.current_square > 47 && piece.current_square < 56 && !s_occupied && !ss_occupied {
+                moves.push(Move {
+                    starting_idx: piece.current_square,
+                    end_idx: piece.current_square + 2 * Direction::South as u8,
+                    castle: Castle::None,
+                });
+            }
+            if !s_occupied {
+                moves.push(Move {
+                    starting_idx: piece.current_square,
+                    end_idx: piece.current_square + Direction::South as u8,
+                    castle: Castle::None,
+                });
+            }
+            let (se_occupied, potential_color) = check_space_occupancy(board, piece, piece.current_square + Direction::SouthEast as u8);
+            if se_occupied && piece.color != potential_color {
+                moves.push(Move {
+                    starting_idx: piece.current_square,
+                    end_idx: piece.current_square + Direction::SouthEast as u8,
+                    castle: Castle::None,
+                });
+            }
+            let (sw_occupied, potential_color) = check_space_occupancy(board, piece, piece.current_square + Direction::SouthWest as u8);
+            if sw_occupied && piece.color != potential_color {
+                moves.push(Move {
+                    starting_idx: piece.current_square,
+                    end_idx: piece.current_square + Direction::SouthWest as u8,
+                    castle: Castle::None,
+                });
+            }
+        }
+    }
     moves
 }
 
