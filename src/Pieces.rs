@@ -59,9 +59,6 @@ impl Piece {
             piece_name: piece_name,
         }
     }
-    pub fn can_castle(&self) -> bool {
-        todo!();
-    }
     pub fn change_square(&mut self, new_idx: u8) {
         self.current_square = new_idx;
     }
