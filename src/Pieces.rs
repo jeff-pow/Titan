@@ -1,5 +1,3 @@
-use std::f32::INFINITY;
-
 pub const KING: u8 = 1;
 pub const KING_PTS: f32 = INFINITY;
 
