@@ -1,7 +1,7 @@
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use crate::{Board::Board, Pieces::Color, Pieces::PieceName, Pieces::Piece};
+use crate::{board::Board, pieces::Color, pieces::PieceName, pieces::Piece};
 
 pub struct Move {
     pub starting_idx: u8,
@@ -11,10 +11,10 @@ pub struct Move {
 
 pub enum Castle {
     None,
-    White_King_Castle,
-    White_Queen_Castle,
-    Black_King_Castle,
-    Black_Queen_Castle,
+    WhiteKingCastle,
+    WhiteQueenCastle,
+    BlackKingCastle,
+    BlackQueenCastle,
 }
 
 // Cardinal directions from the point of view of white side
@@ -46,7 +46,7 @@ fn check_index_addition(a: u8, b: i8) -> (usize, bool) {
 fn check_space_occupancy(board: &Board, piece: &Piece, potential_space: u8) -> (bool, Color) {
     match board.board[potential_space as usize] {
         None => return (false, Color::White),
-        Some(Piece) => {
+        Some(_Piece) => {
             let p = board.board[potential_space as usize].unwrap();
         }
     }
@@ -96,14 +96,14 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     moves.push(Move {
                         starting_idx: 4,
                         end_idx: 2,
-                        castle: Castle::White_Queen_Castle,
+                        castle: Castle::WhiteQueenCastle,
                     });
             }
             if board.white_king_castle && board.board[5] == None && board.board[6] == None {
                 moves.push(Move {
                     starting_idx: 4,
                     end_idx: 6,
-                    castle: Castle::White_King_Castle,
+                    castle: Castle::WhiteKingCastle,
                 });
             }
         }
@@ -113,14 +113,14 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     moves.push(Move {
                         starting_idx: 60,
                         end_idx: 58,
-                        castle: Castle::Black_Queen_Castle,
+                        castle: Castle::BlackQueenCastle,
                     });
             }
             if board.black_king_castle && board.board[61] == None && board.board[62] == None {
                 moves.push(Move {
                     starting_idx: 60, 
                     end_idx: 62,
-                    castle: Castle::Black_King_Castle,
+                    castle: Castle::BlackKingCastle,
                 });
             }
         }
@@ -198,10 +198,10 @@ fn generate_rook_moves(board: &Board, piece: &Piece) -> Vec<Move> {
     for direction in Direction::iter() {
         match direction {
             // Filter out the four main cardinal directions
-            NorthWest => continue,
-            NorthEast => continue,
-            SouthWest => continue,
-            SouthEast => continue,
+            Direction::NorthWest => continue,
+            Direction::NorthEast => continue,
+            Direction::SouthWest => continue,
+            Direction::SouthEast => continue,
             // Continue generating move if move is diagonal
             _ => (),
         }
@@ -239,10 +239,10 @@ fn generate_bishop_moves(board: &Board, piece: &Piece) -> Vec<Move> {
     for direction in Direction::iter() {
         match direction {
             // Filter out the four main cardinal directions
-            North => continue,
-            South => continue,
-            East => continue,
-            West => continue,
+            Direction::North => continue,
+            Direction::South => continue,
+            Direction::East => continue,
+            Direction::West => continue,
             // Continue generating move if move is diagonal
             _ => (),
         }
