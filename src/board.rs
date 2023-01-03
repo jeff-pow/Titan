@@ -1,4 +1,4 @@
-use crate::{Piece, crate::pieces::Color};
+use crate::{Piece, pieces::Color, pieces::PieceName};
 
 pub struct Board {
     pub board: [Option<Piece>; 64],
@@ -20,10 +20,47 @@ impl Board {
             to_move: Color::White,
         }
     }
+    
     pub fn place_piece(&mut self, piece: &mut Piece, new_idx: u8) {
         let piece_old_idx = piece.current_square;
         self.board[piece_old_idx as usize] = None;
         self.board[new_idx as usize] = Some(*piece);
         piece.change_square(new_idx);
+    }
+
+    pub fn print_board(&self) {
+        for (idx, square) in self.board.iter().enumerate() {
+            match square {
+                None => print!("_"),
+                Some(piece) => {
+                    match piece.color {
+                        Color::White => {
+                            match piece.piece_name {
+                                PieceName::King => print!("K"),
+                                PieceName::Queen => print!("Q"),
+                                PieceName::Rook => print!("R"),
+                                PieceName::Bishop => print!("B"),
+                                PieceName::Knight => print!("N"),
+                                PieceName::Pawn => print!("P"),
+                            }
+                        }
+                        Color::Black => {
+                            match piece.piece_name {
+                                PieceName::King => print!("k"),
+                                PieceName::Queen => print!("q"),
+                                PieceName::Rook => print!("r"),
+                                PieceName::Bishop => print!("b"),
+                                PieceName::Knight => print!("n"),
+                                PieceName::Pawn => print!("p"),
+                            }
+                        }
+                    }
+                }
+            }
+            print!(" | ");
+            if idx % 8 == 0  && idx != 0 {
+                println!();
+            }
+        }
     }
 }

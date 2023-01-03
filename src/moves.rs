@@ -46,8 +46,8 @@ fn check_index_addition(a: u8, b: i8) -> (usize, bool) {
 fn check_space_occupancy(board: &Board, piece: &Piece, potential_space: u8) -> (bool, Color) {
     match board.board[potential_space as usize] {
         None => return (false, Color::White),
-        Some(_Piece) => {
-            let p = board.board[potential_space as usize].unwrap();
+        Some(_piece) => {
+            let _p = board.board[potential_space as usize].unwrap();
         }
     }
     if board.board[potential_space as usize] == None {

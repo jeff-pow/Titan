@@ -55,8 +55,8 @@ impl Piece {
     pub fn new(color: Color, piece_name: PieceName, starting_square: u8) -> Self {
         Self { 
             current_square: starting_square,
-            color: color,
-            piece_name: piece_name,
+            color,
+            piece_name,
         }
     }
     pub fn change_square(&mut self, new_idx: u8) {
