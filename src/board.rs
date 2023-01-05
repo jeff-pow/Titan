@@ -29,7 +29,8 @@ impl Board {
     }
 
     pub fn print_board(&self) {
-        for (idx, square) in self.board.iter().enumerate() {
+        for (idx, square) in self.board.iter().rev().enumerate() {
+            print!(" | ");
             match square {
                 None => print!("_"),
                 Some(piece) => {
@@ -57,9 +58,8 @@ impl Board {
                     }
                 }
             }
-            print!(" | ");
-            if idx % 8 == 0  && idx != 0 {
-                println!();
+            if (idx + 1) % 8 == 0  && idx != 0 {
+                println!(" |");
             }
         }
     }
