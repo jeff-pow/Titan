@@ -4,6 +4,8 @@ use crate::board::Board;
 
 pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+pub const TEST_FEN: &str = "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
+
 pub fn build_board(fen_string: &str) -> Board {
     let mut board = Board::new();
     let mut row = 7;
@@ -19,6 +21,7 @@ pub fn build_board(fen_string: &str) -> Board {
         for c in entry.chars() {
             if c.is_ascii_digit() {
                 idx += c.to_digit(10).unwrap() as usize;
+                continue;
             }
             else { match c {
                 'K' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::King, (row * 8 + idx) as u8)),

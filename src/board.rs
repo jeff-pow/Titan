@@ -7,6 +7,7 @@ pub struct Board {
     pub black_queen_castle: bool,
     pub white_king_castle: bool,
     pub white_queen_castle: bool,
+    pub
 }
 
 impl Board {
@@ -29,7 +30,8 @@ impl Board {
     }
 
     pub fn print_board(&self) {
-        for (idx, square) in self.board.iter().rev().enumerate() {
+        let flipped_board = flip_board(&self);
+        for (idx, square) in flipped_board.board.iter().enumerate() {
             print!(" | ");
             match square {
                 None => print!("_"),
@@ -63,4 +65,21 @@ impl Board {
             }
         }
     }
+}
+
+fn flip_board(board: &Board) -> Board {
+    let mut flipped_board = Board::new();
+    let rows_vec: Vec<Vec<Option<Piece>>> = board.board.chunks(8).map(|e| e.into()).collect();
+    let mut white_pov: Vec<Option<Piece>> = Vec::new();
+    for row in rows_vec.iter().rev() {
+        for square in row {
+            white_pov.push(*square);
+        }
+    }
+    let mut white_pov_arr: [Option<Piece>; 64] = [None; 64];
+    for (idx, piece) in white_pov.iter().enumerate() {
+        white_pov_arr[idx] = *piece;
+    }
+    flipped_board.board = white_pov_arr;
+    flipped_board
 }
