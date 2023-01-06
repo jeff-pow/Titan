@@ -1,4 +1,4 @@
-use crate::{Piece, pieces::Color, pieces::PieceName};
+use crate::{Piece, pieces::Color, pieces::PieceName, moves::Move, moves::Castle};
 
 pub struct Board {
     pub board: [Option<Piece>; 64],
@@ -7,7 +7,7 @@ pub struct Board {
     pub black_queen_castle: bool,
     pub white_king_castle: bool,
     pub white_queen_castle: bool,
-    pub
+    pub en_passant_square: u8,
 }
 
 impl Board {
@@ -19,14 +19,43 @@ impl Board {
             white_king_castle: true,
             white_queen_castle: true,
             to_move: Color::White,
+            en_passant_square: 0,
         }
     }
     
-    pub fn place_piece(&mut self, piece: &mut Piece, new_idx: u8) {
+    pub fn make_move(&mut self, chess_move: Move) {
+        let mut piece = &mut self.board[chess_move.starting_idx as usize].unwrap();
+        match chess_move.castle {
+            Castle::WhiteKingCastle => {
+                let mut rook = &mut self.board[7];
+                self.board[5] = self.board[7];
+                self.board[7] = None;
+                piece.current_square = 5;
+            }
+            Castle::WhiteQueenCastle => {
+                let mut rook = &mut self.board[7];
+                self.board[3] = self.board[0];
+                self.board[0] = None;
+                piece.current_square = 3;
+            }
+            Castle::BlackKingCastle => {
+                let mut rook = &mut self.board[63];
+                self.board[61] = self.board[63];
+                self.board[63] = None;
+                piece.current_square = 61;
+            }
+            Castle::BlackQueenCastle => {
+                let mut rook = &mut self.board[56];
+                self.board[59] = self.board[56];
+                self.board[56] = None;
+                piece.current_square = 59;
+            }
+            Castle::None => (),
+        }
         let piece_old_idx = piece.current_square;
-        self.board[piece_old_idx as usize] = None;
-        self.board[new_idx as usize] = Some(*piece);
-        piece.change_square(new_idx);
+        self.board[piece.current_square as usize] = None;
+        self.board[chess_move.end_idx as usize] = Some(*piece);
+        piece.current_square = chess_move.end_idx;
     }
 
     pub fn print_board(&self) {

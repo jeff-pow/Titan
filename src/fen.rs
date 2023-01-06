@@ -64,11 +64,43 @@ pub fn build_board(fen_string: &str) -> Board {
         }
     }
     // En passant square: not yet implemented
-    iter.next();
+    let en_passant_letters: Vec<char> = iter.next().unwrap().chars().collect();
+    let en_passant_idx = find_en_passant_square(en_passant_letters);
+    match en_passant_idx {
+        Some(idx) => board.en_passant_square = idx,
+        None => (),
+    }
     // Half move clock: not yet implemented
     iter.next();
     // Full number of moves in the game: starts from 1 and incremented after black's first move
     iter.next();
     assert_eq!(iter.next(), None);
     board
+}
+
+fn find_en_passant_square(vec: Vec<char>) -> Option<u8> {
+    if vec[0] == '-' {
+        return None;
+    }
+    let column = vec[0].to_digit(20).unwrap() - 10;
+    let row = (vec[1].to_digit(10).unwrap() - 1) * 8 ;
+    Some((row + column) as u8)
+}
+
+#[cfg(test)]
+mod fen_tests {
+    use crate::fen::find_en_passant_square;
+
+    //#[test]
+    fn test_en_passant_square() {
+        assert_eq!(Some(0), find_en_passant_square(vec!['a', '1']));
+        assert_eq!(Some(9), find_en_passant_square(vec!['b', '2']));
+        assert_eq!(Some(18), find_en_passant_square(vec!['c', '3']));
+        assert_eq!(Some(27), find_en_passant_square(vec!['d', '4']));
+        assert_eq!(Some(36), find_en_passant_square(vec!['e', '5']));
+        assert_eq!(Some(45), find_en_passant_square(vec!['f', '6']));
+        assert_eq!(Some(54), find_en_passant_square(vec!['g', '7']));
+        assert_eq!(Some(63), find_en_passant_square(vec!['h', '8']));
+        assert_eq!(Some(62), find_en_passant_square(vec!['g', '8']));
+    }
 }
