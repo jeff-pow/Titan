@@ -1,5 +1,6 @@
 use crate::{Piece, pieces::Color, pieces::PieceName, moves::Move, moves::Castle};
 
+#[derive(Clone)]
 pub struct Board {
     pub board: [Option<Piece>; 64],
     pub to_move: Color,
@@ -23,7 +24,7 @@ impl Board {
         }
     }
     
-    pub fn make_move(&mut self, chess_move: Move) {
+    pub fn make_move(&mut self, chess_move: &Move) {
         let mut piece = &mut self.board[chess_move.starting_idx as usize].unwrap();
         match chess_move.castle {
             Castle::WhiteKingCastle => {
@@ -58,7 +59,7 @@ impl Board {
         piece.current_square = chess_move.end_idx;
     }
 
-    pub fn print_board(&self) {
+    pub fn print(&self) {
         let flipped_board = flip_board(&self);
         for (idx, square) in flipped_board.board.iter().enumerate() {
             print!(" | ");

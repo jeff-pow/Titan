@@ -28,7 +28,7 @@ pub const BLACK: u8 = 128;
  */
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Piece {
-    pub current_square: u8,
+    pub current_square: i8,
     pub color: Color,
     pub piece_name: PieceName,
 }
@@ -52,14 +52,14 @@ pub enum PieceName {
 }
 
 impl Piece {
-    pub fn new(color: Color, piece_name: PieceName, starting_square: u8) -> Self {
+    pub fn new(color: Color, piece_name: PieceName, starting_square: i8) -> Self {
         Self { 
             current_square: starting_square,
             color,
             piece_name,
         }
     }
-    pub fn change_square(&mut self, new_idx: u8) {
+    pub fn change_square(&mut self, new_idx: i8) {
         self.current_square = new_idx;
     }
 }

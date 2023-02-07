@@ -24,18 +24,18 @@ pub fn build_board(fen_string: &str) -> Board {
                 continue;
             }
             else { match c {
-                'K' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::King, (row * 8 + idx) as u8)),
-                'Q' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::Queen, (row * 8 + idx) as u8)),
-                'R' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::Rook, (row * 8 + idx) as u8)),
-                'N' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::Knight, (row * 8 + idx) as u8)),
-                'B' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::Bishop, (row * 8 + idx) as u8)),
-                'P' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::Pawn, (row * 8 + idx) as u8)),
-                'k' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::King, (row * 8 + idx) as u8)),
-                'q' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::Queen, (row * 8 + idx) as u8)),
-                'r' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::Rook, (row * 8 + idx) as u8)),
-                'b' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::Bishop, (row * 8 + idx) as u8)),
-                'n' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::Knight, (row * 8 + idx) as u8)),
-                'p' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::Pawn, (row * 8 + idx) as u8)),
+                'K' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::King, (row * 8 + idx) as i8)),
+                'Q' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::Queen, (row * 8 + idx) as i8)),
+                'R' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::Rook, (row * 8 + idx) as i8)),
+                'N' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::Knight, (row * 8 + idx) as i8)),
+                'B' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::Bishop, (row * 8 + idx) as i8)),
+                'P' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::Pawn, (row * 8 + idx) as i8)),
+                'k' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::King, (row * 8 + idx) as i8)),
+                'q' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::Queen, (row * 8 + idx) as i8)),
+                'r' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::Rook, (row * 8 + idx) as i8)),
+                'b' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::Bishop, (row * 8 + idx) as i8)),
+                'n' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::Knight, (row * 8 + idx) as i8)),
+                'p' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::Pawn, (row * 8 + idx) as i8)),
                 _ => panic!("Unrecognized char {}, board could not be made", c),
             } }
             idx += 1;
