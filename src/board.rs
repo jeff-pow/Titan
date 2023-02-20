@@ -26,37 +26,37 @@ impl Board {
     
     pub fn make_move(&mut self, chess_move: &Move) {
         let mut piece = &mut self.board[chess_move.starting_idx as usize].unwrap();
+        self.board[chess_move.end_idx as usize] = self.board[chess_move.starting_idx as usize];
+        self.board[piece.current_square as usize] = None;
+        piece.current_square = chess_move.end_idx;
+        // Move rooks if a castle is applied
         match chess_move.castle {
             Castle::WhiteKingCastle => {
-                let mut rook = &mut self.board[7];
+                let mut rook = &mut self.board[0].unwrap();
+                rook.current_square = 5;
                 self.board[5] = self.board[7];
                 self.board[7] = None;
-                piece.current_square = 5;
             }
             Castle::WhiteQueenCastle => {
-                let mut rook = &mut self.board[7];
+                let mut rook = &mut self.board[7].unwrap();
+                rook.current_square = 3;
                 self.board[3] = self.board[0];
                 self.board[0] = None;
-                piece.current_square = 3;
             }
             Castle::BlackKingCastle => {
-                let mut rook = &mut self.board[63];
+                let mut rook = &mut self.board[63].unwrap();
+                rook.current_square = 61;
                 self.board[61] = self.board[63];
                 self.board[63] = None;
-                piece.current_square = 61;
             }
             Castle::BlackQueenCastle => {
-                let mut rook = &mut self.board[56];
+                let mut rook = &mut self.board[56].unwrap();
+                rook.current_square = 59;
                 self.board[59] = self.board[56];
                 self.board[56] = None;
-                piece.current_square = 59;
             }
             Castle::None => (),
         }
-        let piece_old_idx = piece.current_square;
-        self.board[piece.current_square as usize] = None;
-        self.board[chess_move.end_idx as usize] = Some(*piece);
-        piece.current_square = chess_move.end_idx;
     }
 
     pub fn print(&self) {

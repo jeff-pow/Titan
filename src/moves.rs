@@ -187,7 +187,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
             }
         }
         Color::Black => {
-            if board.black_queen_castle && piece.current_square == 61 && board.board[57].is_none() && board.board[58].is_none() &&
+            if board.black_queen_castle && piece.current_square == 60 && board.board[57].is_none() && board.board[58].is_none() &&
                 board.board[59].is_none() {
                     moves.push(Move {
                         starting_idx: 60,
