@@ -4,7 +4,7 @@ use crate::board::Board;
 
 pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 pub const TEST_FEN: &str = "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
-pub const ONE_QUEEN: &str = "8/8/8/3B4/8/8/8/8 w KQkq - 0 1";
+pub const ONE_PIECE: &str = "8/8/8/8/8/8/8/R2K3R w KQkq - 0 1";
 
 pub fn build_board(fen_string: &str) -> Board {
     let mut board = Board::new();
@@ -41,9 +41,7 @@ pub fn build_board(fen_string: &str) -> Board {
             idx += 1;
         }
         start += step;
-        if row > 0 {
-            row -= 1;
-        }
+        row = row.saturating_sub(1);
     }
     // 9th iteration: find who's turn it is to move
     let to_move = match iter.next().unwrap().chars().next().unwrap() {
@@ -66,10 +64,7 @@ pub fn build_board(fen_string: &str) -> Board {
     // En passant square: not yet implemented
     let en_passant_letters: Vec<char> = iter.next().unwrap().chars().collect();
     let en_passant_idx = find_en_passant_square(en_passant_letters);
-    match en_passant_idx {
-        Some(idx) => board.en_passant_square = idx,
-        None => (),
-    }
+    if let Some(idx) = en_passant_idx { board.en_passant_square = idx }
     // Half move clock: not yet implemented
     iter.next();
     // Full number of moves in the game: starts from 1 and incremented after black's first move

@@ -9,7 +9,7 @@ mod fen;
 
 fn main() {
     // uci::main_loop();
-    let board = fen::build_board(fen::ONE_QUEEN);
+    let board = fen::build_board(fen::ONE_PIECE);
     board.print();
     let moves = generate_all_moves(&board);
     for m in moves.iter() {

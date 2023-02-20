@@ -60,13 +60,9 @@ impl Board {
     }
 
     pub fn print(&self) {
-        let flipped_board = flip_board(&self);
+        let flipped_board = flip_board(self);
         for (idx, square) in flipped_board.board.iter().enumerate() {
             print!(" | ");
-            if idx == 27 {
-                print!("X");
-                continue;
-            }
             match square {
                 None => print!("_"),
                 Some(piece) => {
