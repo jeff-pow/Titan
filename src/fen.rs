@@ -4,7 +4,7 @@ use crate::board::Board;
 
 pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 pub const TEST_FEN: &str = "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
-pub const ONE_PIECE: &str = "8/8/8/8/8/8/8/R2K3R w KQkq - 0 1";
+pub const ONE_PIECE: &str = "r3k2r/8/8/8/8/8/8/8 b KQkq - 0 1";
 
 pub fn build_board(fen_string: &str) -> Board {
     let mut board = Board::new();
@@ -86,7 +86,7 @@ fn find_en_passant_square(vec: Vec<char>) -> Option<u8> {
 mod fen_tests {
     use crate::fen::find_en_passant_square;
 
-    //#[test]
+    #[test]
     fn test_en_passant_square() {
         assert_eq!(Some(0), find_en_passant_square(vec!['a', '1']));
         assert_eq!(Some(9), find_en_passant_square(vec!['b', '2']));

@@ -276,6 +276,7 @@ fn generate_queen_moves(board: &Board, piece: &Piece) -> Vec<Move> {
 
 fn generate_rook_moves(board: &Board, piece: &Piece) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
+    return moves;
     for direction in Direction::iter() {
         match direction {
             // Filter out the four main cardinal directions
