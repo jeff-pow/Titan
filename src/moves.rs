@@ -47,12 +47,69 @@ enum Direction {
 
 // Method ensures that two indexes can be added together. Bool determines if operation was
 // successful, and i8 contains the added index if boolean is true and nonsense value if false.
-fn check_index_addition(a: i8, b: i8) -> (usize, bool) {
-    if a as i8 + b > 63 || a as i8 + b < 0 {
-        return (0, false);
+// x_sum denotes letters and y_sum denotes number of a square
+fn check_index_addition(a: i8, b: i8, piece: &Piece) -> (usize, bool) {
+    let a_x_component = a / 8;
+    let a_y_component = a % 8;
+    let b_x_component = b / 8;
+    let b_y_component = b % 8;
+    let mut x_sum = a_x_component + b_x_component;
+    let mut y_sum = a_y_component + b_y_component;
+    if y_sum < 0 || y_sum >= 8 {
+        x_sum += y_sum / 8;
+        if y_sum < 0 {
+            y_sum += 7;
+        }
+        y_sum = y_sum % 8;
     }
-    let ret = (a as i8 + b) as usize;
-    (ret, true)
+    return match piece.piece_name {
+        PieceName::King => {
+            if a as i8 + b > 63 || a as i8 + b < 0 || x_sum < 0 || y_sum < 0 || x_sum >= 8 || y_sum >= 8 {
+                return (0, false);
+            }
+            let ret = (a as i8 + b) as usize;
+            (ret, true)
+        }
+        PieceName::Queen => {
+            if a as i8 + b > 63 || a as i8 + b < 0 || x_sum < 0 || y_sum < 0 || x_sum >= 8 || y_sum >= 8 {
+                return (0, false);
+            }
+            let ret = (a as i8 + b) as usize;
+            (ret, true)
+        }
+        PieceName::Rook => {
+            if a as i8 + b > 63 || a as i8 + b < 0 || x_sum < 0 || y_sum < 0 || x_sum >= 8 || y_sum >= 8 {
+                return (0, false);
+            }
+            let ret = (a as i8 + b) as usize;
+            (ret, true)
+        }
+        PieceName::Bishop => {
+            if y_sum >= 8 {
+                x_sum += y_sum / 8;
+                y_sum = y_sum % 8;
+            }
+            if a as i8 + b > 63 || a as i8 + b < 0 || x_sum < 0 || y_sum < 0 || x_sum >= 8 || y_sum >= 8 {
+                return (0, false);
+            }
+            let ret = (a as i8 + b) as usize;
+            (ret, true)
+        }
+        PieceName::Knight => {
+        if a as i8 + b > 63 || a as i8 + b < 0 || x_sum < 0 || y_sum < 0 || x_sum >= 8 || y_sum >= 8 {
+                return (0, false);
+            }
+            let ret = (a as i8 + b) as usize;
+            (ret, true)
+        }
+        PieceName::Pawn => {
+        if a as i8 + b > 63 || a as i8 + b < 0 || x_sum < 0 || y_sum < 0 || x_sum >= 8 || y_sum >= 8 {
+                return (0, false);
+            }
+            let ret = (a as i8 + b) as usize;
+            (ret, true)
+        }
+    }
 }
 
 // Method returns a tuple with a bool stating if a piece is on that square and the color of the
@@ -81,9 +138,6 @@ pub fn generate_all_moves(board: &Board) -> Vec<Move> {
                     let mut vec = generate_moves_for_piece(board, &piece);
                     moves.append(&mut vec);
                 }
-                else {
-                    continue;
-                }
             }
         }
     }
@@ -91,13 +145,13 @@ pub fn generate_all_moves(board: &Board) -> Vec<Move> {
 }
 
 fn generate_moves_for_piece(board: &Board, piece: &Piece) -> Vec<Move> {
-    match piece.piece_name {
-        PieceName::King => return generate_king_moves(board, piece),
-        PieceName::Queen => return generate_queen_moves(board, piece),
-        PieceName::Rook => return generate_rook_moves(board, piece),
-        PieceName::Bishop => return generate_bishop_moves(board, piece),
-        PieceName::Knight => return generate_knight_moves(board, piece),
-        PieceName::Pawn => return generate_pawn_moves(board, piece),
+    return match piece.piece_name {
+        PieceName::King => generate_king_moves(board, piece),
+        PieceName::Queen => generate_queen_moves(board, piece),
+        PieceName::Rook => generate_rook_moves(board, piece),
+        PieceName::Bishop => generate_bishop_moves(board, piece),
+        PieceName::Knight => generate_knight_moves(board, piece),
+        PieceName::Pawn => generate_pawn_moves(board, piece),
     }
 }
 
@@ -144,7 +198,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
     for direction in Direction::iter() {
         // Function contains a bool determining if direction points to a valid square based off the
         // current square, and if true the usize is the new index being looked at
-        let tuple = check_index_addition(current_idx, direction as i8);
+        let tuple = check_index_addition(current_idx, direction as i8, piece);
         if !tuple.1 {
             continue;
         }
@@ -179,8 +233,8 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
 fn generate_queen_moves(board: &Board, piece: &Piece) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
     for direction in Direction::iter() {
-        for i in 0..8 {
-            let (idx, square_validity) = check_index_addition(piece.current_square, direction as i8 * i as i8);
+        for i in 1..8 {
+            let (idx, square_validity) = check_index_addition(piece.current_square, direction as i8 * i as i8, piece);
             if !square_validity {
                 break;
             }
@@ -220,8 +274,8 @@ fn generate_rook_moves(board: &Board, piece: &Piece) -> Vec<Move> {
             // Continue generating move if move is diagonal
             _ => (),
         }
-        for i in 0..8 {
-            let (idx, square_validity) = check_index_addition(piece.current_square, direction as i8 * i as i8);
+        for i in 1..8 {
+            let (idx, square_validity) = check_index_addition(piece.current_square, direction as i8 * i as i8, piece);
             if !square_validity {
                 break;
             }
@@ -261,8 +315,8 @@ fn generate_bishop_moves(board: &Board, piece: &Piece) -> Vec<Move> {
             // Continue generating move if move is diagonal
             _ => (),
         }
-        for i in 0..8 {
-            let (idx, square_validity) = check_index_addition(piece.current_square, direction as i8 * i as i8);
+        for i in 1..8 {
+            let (idx, square_validity) = check_index_addition(piece.current_square, direction as i8 * i as i8, piece);
             if !square_validity {
                 break;
             }
@@ -306,7 +360,7 @@ enum KnightMovements {
 fn generate_knight_moves(board: &Board, piece: &Piece) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
     for direction in KnightMovements::iter() {
-        let square_validity = check_index_addition(piece.current_square, direction as i8);
+        let square_validity = check_index_addition(piece.current_square, direction as i8, piece);
         if !square_validity.1 {
             continue;
         }
