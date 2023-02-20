@@ -44,7 +44,7 @@ pub fn build_board(fen_string: &str) -> Board {
         row = row.saturating_sub(1);
     }
     // 9th iteration: find who's turn it is to move
-    let to_move = match iter.next().unwrap().chars().next().unwrap() {
+    board.to_move = match iter.next().unwrap().chars().next().unwrap() {
         'w' => Color::White,
         'b' => Color::Black,
         _ => panic!("invalid turn"),
