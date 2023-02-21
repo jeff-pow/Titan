@@ -59,7 +59,4 @@ impl Piece {
             piece_name,
         }
     }
-    pub fn change_square(&mut self, new_idx: i8) {
-        self.current_square = new_idx;
-    }
 }

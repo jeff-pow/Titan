@@ -57,6 +57,16 @@ impl Board {
             }
             Castle::None => (),
         }
+        match chess_move.promotion {
+            true => {
+                self.board[chess_move.end_idx as usize] = Some(Piece {
+                    current_square: chess_move.end_idx,
+                    color: piece.color,
+                    piece_name: PieceName::Queen,
+                })
+            }
+            false => {}
+        }
     }
 
     pub fn print(&self) {
