@@ -9,11 +9,12 @@ mod fen;
 use rand::seq::SliceRandom;
 
 fn main() {
-    // uci::main_loop();
+    uci::main_loop();
     let board = fen::build_board(fen::ONE_PIECE);
     board.print();
-    let moves = generate_all_moves(&board);
-    //let m = moves.choose(&mut rand::thread_rng()).unwrap();
+    let m = generate_all_moves(&board)
+        .choose(&mut rand::thread_rng())
+        .unwrap();
     let m = from_lan("f2e3", &board);
     m.print();
     let mut cloned_board = board.clone();
