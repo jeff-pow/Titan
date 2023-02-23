@@ -96,40 +96,22 @@ impl Move {
     }
 }
 
+/// Method converts a lan move provided by UCI framework
 pub fn from_lan(str: &str, board: &Board) -> Move {
     let vec: Vec<char> = str.chars().collect();
-    let start_column = match vec[0] {
-        'a' => 0,
-        'b' => 1,
-        'c' => 2,
-        'd' => 3,
-        'e' => 4,
-        'f' => 5,
-        'g' => 6,
-        'h' => 7,
-        _ => {
-            panic!()
-        }
-    };
-    let start_row = vec[1].to_digit(10).unwrap();
-    let end_column = match vec[2] {
-        'a' => 0,
-        'b' => 1,
-        'c' => 2,
-        'd' => 3,
-        'e' => 4,
-        'f' => 5,
-        'g' => 6,
-        'h' => 7,
-        _ => {
-            panic!()
-        }
-    };
-    let end_row = vec[3].to_digit(10).unwrap();
-    let starting_idx = start_row as i8 * 8 + start_column as i8;
-    let end_idx = end_row as i8 * 8 + end_column as i8;
+
+    // Using base 20 allows program to convert letters directly to numbers instead of matching
+    // against letters or some other workaround
+    let start_column = vec[0].to_digit(20).unwrap() - 10;
+    let start_row = (vec[1].to_digit(10).unwrap() - 1) * 8;
+    let starting_idx = (start_row + start_column) as i8;
+
+    let end_column = vec[2].to_digit(20).unwrap() - 10;
+    let end_row = (vec[3].to_digit(10).unwrap() - 1) * 8;
+    let end_idx = (end_row + end_column) as i8;
+
     let mut promotion = false;
-    if vec.len() > 4 {
+    if board.board[starting_idx as usize].unwrap().piece_name == PieceName::Pawn && start_row == 7 {
         promotion = true;
     }
     Move {

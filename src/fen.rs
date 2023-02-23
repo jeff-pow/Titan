@@ -1,6 +1,6 @@
-/** File takes a string in Forsyth-Edwards notation and constructs a board state */
-use crate::pieces::{Piece, Color, PieceName};
 use crate::board::Board;
+/** File takes a string in Forsyth-Edwards notation and constructs a board state */
+use crate::pieces::{Color, Piece, PieceName};
 
 pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 pub const TEST_FEN: &str = "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
@@ -15,29 +15,103 @@ pub fn build_board(fen_string: &str) -> Board {
     let mut start = 7;
     let end = 0;
     let step: i32 = -1;
-    while start >= end { // Loop handles reading board part of fen string
+    while start >= end {
+        // Loop handles reading board part of fen string
         let entry = iter.next().unwrap();
         let mut idx: usize = 0;
         for c in entry.chars() {
             if c.is_ascii_digit() {
                 idx += c.to_digit(10).unwrap() as usize;
                 continue;
+            } else {
+                match c {
+                    'K' => {
+                        board.board[row * 8 + idx] = Some(Piece::new(
+                            Color::White,
+                            PieceName::King,
+                            (row * 8 + idx) as i8,
+                        ))
+                    }
+                    'Q' => {
+                        board.board[row * 8 + idx] = Some(Piece::new(
+                            Color::White,
+                            PieceName::Queen,
+                            (row * 8 + idx) as i8,
+                        ))
+                    }
+                    'R' => {
+                        board.board[row * 8 + idx] = Some(Piece::new(
+                            Color::White,
+                            PieceName::Rook,
+                            (row * 8 + idx) as i8,
+                        ))
+                    }
+                    'N' => {
+                        board.board[row * 8 + idx] = Some(Piece::new(
+                            Color::White,
+                            PieceName::Knight,
+                            (row * 8 + idx) as i8,
+                        ))
+                    }
+                    'B' => {
+                        board.board[row * 8 + idx] = Some(Piece::new(
+                            Color::White,
+                            PieceName::Bishop,
+                            (row * 8 + idx) as i8,
+                        ))
+                    }
+                    'P' => {
+                        board.board[row * 8 + idx] = Some(Piece::new(
+                            Color::White,
+                            PieceName::Pawn,
+                            (row * 8 + idx) as i8,
+                        ))
+                    }
+                    'k' => {
+                        board.board[row * 8 + idx] = Some(Piece::new(
+                            Color::Black,
+                            PieceName::King,
+                            (row * 8 + idx) as i8,
+                        ))
+                    }
+                    'q' => {
+                        board.board[row * 8 + idx] = Some(Piece::new(
+                            Color::Black,
+                            PieceName::Queen,
+                            (row * 8 + idx) as i8,
+                        ))
+                    }
+                    'r' => {
+                        board.board[row * 8 + idx] = Some(Piece::new(
+                            Color::Black,
+                            PieceName::Rook,
+                            (row * 8 + idx) as i8,
+                        ))
+                    }
+                    'b' => {
+                        board.board[row * 8 + idx] = Some(Piece::new(
+                            Color::Black,
+                            PieceName::Bishop,
+                            (row * 8 + idx) as i8,
+                        ))
+                    }
+                    'n' => {
+                        board.board[row * 8 + idx] = Some(Piece::new(
+                            Color::Black,
+                            PieceName::Knight,
+                            (row * 8 + idx) as i8,
+                        ))
+                    }
+                    'p' => {
+                        board.board[row * 8 + idx] = Some(Piece::new(
+                            Color::Black,
+                            PieceName::Pawn,
+                            (row * 8 + idx) as i8,
+                        ))
+                    }
+                    _ => panic!("Unrecognized char {}, board could not be made", c),
+                }
             }
-            else { match c {
-                'K' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::King, (row * 8 + idx) as i8)),
-                'Q' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::Queen, (row * 8 + idx) as i8)),
-                'R' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::Rook, (row * 8 + idx) as i8)),
-                'N' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::Knight, (row * 8 + idx) as i8)),
-                'B' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::Bishop, (row * 8 + idx) as i8)),
-                'P' => board.board[row * 8 + idx] = Some(Piece::new(Color::White, PieceName::Pawn, (row * 8 + idx) as i8)),
-                'k' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::King, (row * 8 + idx) as i8)),
-                'q' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::Queen, (row * 8 + idx) as i8)),
-                'r' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::Rook, (row * 8 + idx) as i8)),
-                'b' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::Bishop, (row * 8 + idx) as i8)),
-                'n' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::Knight, (row * 8 + idx) as i8)),
-                'p' => board.board[row * 8 + idx] = Some(Piece::new(Color::Black, PieceName::Pawn, (row * 8 + idx) as i8)),
-                _ => panic!("Unrecognized char {}, board could not be made", c),
-            } }
             idx += 1;
         }
         start += step;
@@ -64,7 +138,9 @@ pub fn build_board(fen_string: &str) -> Board {
     // En passant square: not yet implemented
     let en_passant_letters: Vec<char> = iter.next().unwrap().chars().collect();
     let en_passant_idx = find_en_passant_square(en_passant_letters);
-    if let Some(idx) = en_passant_idx { board.en_passant_square = idx }
+    if let Some(idx) = en_passant_idx {
+        board.en_passant_square = idx
+    }
     // Half move clock: not yet implemented
     iter.next();
     // Full number of moves in the game: starts from 1 and incremented after black's first move
@@ -77,8 +153,10 @@ fn find_en_passant_square(vec: Vec<char>) -> Option<u8> {
     if vec[0] == '-' {
         return None;
     }
+    // Using base 20 allows program to convert letters directly to numbers instead of matching
+    // against letters or some other workaround
     let column = vec[0].to_digit(20).unwrap() - 10;
-    let row = (vec[1].to_digit(10).unwrap() - 1) * 8 ;
+    let row = (vec[1].to_digit(10).unwrap() - 1) * 8;
     Some((row + column) as u8)
 }
 

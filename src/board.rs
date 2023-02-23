@@ -1,4 +1,4 @@
-use crate::{Piece, pieces::Color, pieces::PieceName, moves::Move, moves::Castle};
+use crate::{moves::Castle, moves::Move, pieces::Color, pieces::PieceName, Piece};
 
 #[derive(Clone)]
 pub struct Board {
@@ -13,7 +13,7 @@ pub struct Board {
 
 impl Board {
     pub fn new() -> Self {
-        Board { 
+        Board {
             board: [None; 64],
             black_king_castle: true,
             black_queen_castle: true,
@@ -23,7 +23,7 @@ impl Board {
             en_passant_square: 0,
         }
     }
-    
+
     pub fn make_move(&mut self, chess_move: &Move) {
         let mut piece = &mut self.board[chess_move.starting_idx as usize].unwrap();
         self.board[chess_move.end_idx as usize] = self.board[chess_move.starting_idx as usize];
@@ -75,32 +75,26 @@ impl Board {
             print!(" | ");
             match square {
                 None => print!("_"),
-                Some(piece) => {
-                    match piece.color {
-                        Color::White => {
-                            match piece.piece_name {
-                                PieceName::King => print!("K"),
-                                PieceName::Queen => print!("Q"),
-                                PieceName::Rook => print!("R"),
-                                PieceName::Bishop => print!("B"),
-                                PieceName::Knight => print!("N"),
-                                PieceName::Pawn => print!("P"),
-                            }
-                        }
-                        Color::Black => {
-                            match piece.piece_name {
-                                PieceName::King => print!("k"),
-                                PieceName::Queen => print!("q"),
-                                PieceName::Rook => print!("r"),
-                                PieceName::Bishop => print!("b"),
-                                PieceName::Knight => print!("n"),
-                                PieceName::Pawn => print!("p"),
-                            }
-                        }
-                    }
-                }
+                Some(piece) => match piece.color {
+                    Color::White => match piece.piece_name {
+                        PieceName::King => print!("K"),
+                        PieceName::Queen => print!("Q"),
+                        PieceName::Rook => print!("R"),
+                        PieceName::Bishop => print!("B"),
+                        PieceName::Knight => print!("N"),
+                        PieceName::Pawn => print!("P"),
+                    },
+                    Color::Black => match piece.piece_name {
+                        PieceName::King => print!("k"),
+                        PieceName::Queen => print!("q"),
+                        PieceName::Rook => print!("r"),
+                        PieceName::Bishop => print!("b"),
+                        PieceName::Knight => print!("n"),
+                        PieceName::Pawn => print!("p"),
+                    },
+                },
             }
-            if (idx + 1) % 8 == 0  && idx != 0 {
+            if (idx + 1) % 8 == 0 && idx != 0 {
                 println!(" |");
             }
         }
