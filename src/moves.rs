@@ -388,6 +388,7 @@ fn generate_bishop_moves(board: &Board, piece: &Piece) -> Vec<Move> {
 
 /// Movement chords are defined by a combination of three cardinal directions - ex West West North
 #[derive(EnumIter, Copy, Clone, Debug, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
 enum KnightMovement {
     WWN = 6,
     WNN = 15,

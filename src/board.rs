@@ -67,11 +67,19 @@ impl Board {
             }
             false => {}
         }
+        // Method changes the side to move after making a move
+        match self.to_move {
+            Color::White => self.to_move = Color::Black,
+            Color::Black => self.to_move = Color::White,
+        }
     }
 
     pub fn print(&self) {
         let flipped_board = flip_board(self);
         for (idx, square) in flipped_board.board.iter().enumerate() {
+            if idx % 8 == 0 {
+                print!("{} ", 8 - idx / 8);
+            }
             print!(" | ");
             match square {
                 None => print!("_"),
@@ -98,6 +106,7 @@ impl Board {
                 println!(" |");
             }
         }
+        println!("     a   b   c   d   e   f   g   h");
     }
 }
 

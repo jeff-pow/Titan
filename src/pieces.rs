@@ -1,3 +1,4 @@
+/*
 use std::f32::INFINITY;
 
 pub const KING: u8 = 1;
@@ -20,12 +21,8 @@ pub const PAWN_PTS: f32 = 1.;
 
 pub const WHITE: u8 = 64;
 pub const BLACK: u8 = 128;
-/** 
- * Pieces have an index based off of what piece they are. A pieces bits can be read to determine 
- * piece type. Black pieces will always be > 16, and white pieces will always be less than 8.
- * These values are stored in the constants with the name of the piece. The constants labeled 
- * <piece name>_PTS are used to store values of pieces for the engine to decide how to value pieces
- */
+*/
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Piece {
     pub current_square: i8,
@@ -53,7 +50,7 @@ pub enum PieceName {
 
 impl Piece {
     pub fn new(color: Color, piece_name: PieceName, starting_square: i8) -> Self {
-        Self { 
+        Self {
             current_square: starting_square,
             color,
             piece_name,

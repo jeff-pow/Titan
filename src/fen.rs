@@ -10,7 +10,7 @@ pub fn build_board(fen_string: &str) -> Board {
     let mut board = Board::new();
     let mut row = 7;
     let pieces: Vec<&str> = fen_string.split(['/', ' ']).collect();
-    // FEN strings have 13 entries
+    // FEN strings have 13 entries (if each slash and each space delimit an entry)
     let mut iter = pieces.iter();
     let mut start = 7;
     let end = 0;
@@ -158,6 +158,17 @@ fn find_en_passant_square(vec: Vec<char>) -> Option<u8> {
     let column = vec[0].to_digit(20).unwrap() - 10;
     let row = (vec[1].to_digit(10).unwrap() - 1) * 8;
     Some((row + column) as u8)
+}
+
+#[allow(clippy::ptr_arg)]
+pub fn parse_fen_from_buffer(buf: &[&str]) -> String {
+    let mut vec = buf.to_owned();
+    vec.remove(0);
+    vec.remove(0);
+    for _ in 6..vec.len() {
+        vec.pop();
+    }
+    vec.join(" ")
 }
 
 #[cfg(test)]
