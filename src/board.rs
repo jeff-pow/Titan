@@ -25,32 +25,32 @@ impl Board {
     }
 
     pub fn make_move(&mut self, chess_move: &Move) {
-        let mut piece = &mut self.board[chess_move.starting_idx as usize].unwrap();
+        let mut piece = &mut self.board[chess_move.starting_idx as usize].expect("Piece should be here");
         self.board[chess_move.end_idx as usize] = self.board[chess_move.starting_idx as usize];
         self.board[piece.current_square as usize] = None;
         piece.current_square = chess_move.end_idx;
         // Move rooks if a castle is applied
         match chess_move.castle {
             Castle::WhiteKingCastle => {
-                let mut rook = &mut self.board[0].unwrap();
+                let mut rook = &mut self.board[0].expect("Piece should be here");
                 rook.current_square = 5;
                 self.board[5] = self.board[7];
                 self.board[7] = None;
             }
             Castle::WhiteQueenCastle => {
-                let mut rook = &mut self.board[7].unwrap();
+                let mut rook = &mut self.board[7].expect("Piece should be here");
                 rook.current_square = 3;
                 self.board[3] = self.board[0];
                 self.board[0] = None;
             }
             Castle::BlackKingCastle => {
-                let mut rook = &mut self.board[63].unwrap();
+                let mut rook = &mut self.board[63].expect("Piece should be here");
                 rook.current_square = 61;
                 self.board[61] = self.board[63];
                 self.board[63] = None;
             }
             Castle::BlackQueenCastle => {
-                let mut rook = &mut self.board[56].unwrap();
+                let mut rook = &mut self.board[56].expect("Piece should be here");
                 rook.current_square = 59;
                 self.board[59] = self.board[56];
                 self.board[56] = None;

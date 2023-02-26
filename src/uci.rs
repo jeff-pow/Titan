@@ -8,6 +8,7 @@ use std::io;
 pub fn main_loop() -> ! {
     let mut board = Board::new();
     let mut buffer = String::new();
+    let mut debug = false;
 
     loop {
         buffer.clear();
@@ -18,23 +19,32 @@ pub fn main_loop() -> ! {
             println!("uciok");
         } else if buffer.starts_with("isready") {
             println!("readyok");
+        } else if buffer.starts_with("debug on") {
+            debug = true;
         } else if buffer.starts_with("ucinewgame") {
             board = Board::new();
         } else if buffer.starts_with("position") {
             let vec: Vec<&str> = buffer.split_whitespace().collect();
             if buffer.contains("fen") {
                 board = build_board(&parse_fen_from_buffer(&vec));
-                board.print();
-                println!();
-                if vec.len() > 8 {
-                    parse_moves(&vec, &mut board, 8);
+                if debug {
+                    board.print();
+                    println!();
                 }
-                board.print();
+                if vec.len() > 8 {
+                    parse_moves(&vec, &mut board, 8, debug);
+                }
             } else if buffer.contains("startpos") {
                 board = build_board(fen::STARTING_FEN);
-                board.print();
+                if debug {
+                    board.print();
+                }
                 if vec.len() > 2 {
-                    parse_moves(&vec, &mut board, 2);
+                    parse_moves(&vec, &mut board, 2, debug);
+                }
+                if debug {
+                    board.print();
+                    println!();
                 }
             }
         } else if buffer.starts_with("go") {
@@ -45,10 +55,14 @@ pub fn main_loop() -> ! {
     }
 }
 
-fn parse_moves(moves: &[&str], board: &mut Board, skip: usize) {
-    println!("here");
+fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, debug: bool) {
     for str in moves.iter().skip(skip) {
         let m = from_lan(str, board);
         board.make_move(&m);
+        if debug {
+            m.print();
+            board.print();
+            println!("------------------------");
+        }
     }
 }
