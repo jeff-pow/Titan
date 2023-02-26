@@ -3,54 +3,75 @@ use crate::board::Board;
 use crate::fen::{self, build_board, parse_fen_from_buffer};
 use crate::moves::{from_lan, generate_all_moves};
 use rand::seq::SliceRandom;
-use std::io;
+use std::fs::File;
+use std::io::{self, Write};
+
+fn setup() {
+    println!("Current options");
+    println!();
+    println!("id name Jeff's Chess Engine");
+    println!("id author Jeff Powell");
+    println!("uciok");
+}
 
 pub fn main_loop() -> ! {
+    setup();
     let mut board = Board::new();
     let mut buffer = String::new();
+    let mut file = File::create("log.txt").expect("File can't be created");
     let mut debug = false;
 
     loop {
         buffer.clear();
         io::stdin().read_line(&mut buffer).unwrap();
-        if buffer.starts_with("uci") {
-            println!("id name Jeff's Chess Engine");
-            println!("id author Jeff Powell");
-            println!("uciok");
-        } else if buffer.starts_with("isready") {
+        writeln!(file, "UCI said: {}", buffer).expect("File not written to");
+        if buffer.starts_with("isready") {
             println!("readyok");
+            writeln!(file, "readyok").expect("File not written to");
         } else if buffer.starts_with("debug on") {
             debug = true;
+            println!("info string debug on");
         } else if buffer.starts_with("ucinewgame") {
-            board = Board::new();
+            board = build_board(fen::STARTING_FEN);
         } else if buffer.starts_with("position") {
             let vec: Vec<&str> = buffer.split_whitespace().collect();
             if buffer.contains("fen") {
                 board = build_board(&parse_fen_from_buffer(&vec));
-                if debug {
-                    board.print();
-                    println!();
-                }
-                if vec.len() > 8 {
-                    parse_moves(&vec, &mut board, 8, debug);
+                println!("info string {}", board.to_string());
+                if vec.len() > 9 {
+                    parse_moves(&vec, &mut board, 9, debug);
                 }
             } else if buffer.contains("startpos") {
                 board = build_board(fen::STARTING_FEN);
-                if debug {
-                    board.print();
+                println!("info string\n {}", board.to_string());
+                if vec.len() > 3 {
+                    parse_moves(&vec, &mut board, 3, debug);
                 }
-                if vec.len() > 2 {
-                    parse_moves(&vec, &mut board, 2, debug);
-                }
-                if debug {
-                    board.print();
-                    println!();
-                }
+                println!("info string\n {}", board.to_string());
             }
         } else if buffer.starts_with("go") {
             let moves = generate_all_moves(&board);
             let m = moves.choose(&mut rand::thread_rng()).unwrap();
-            println!("{}", m.to_lan());
+            println!("bestmove {}", m.to_lan());
+            board.make_move(m);
+            println!(
+                "info string MOVE CHOSEN: {}\n {}",
+                m.to_string(),
+                board.to_string()
+            );
+            writeln!(file, "{}", m.to_lan()).unwrap();
+        } else if buffer.starts_with("stop") {
+            std::process::exit(0);
+        } else if buffer.starts_with("uci") {
+            println!("id name Jeff's Chess Engine");
+            writeln!(file, "id name Jeff's Chess Engine").expect("File not written to");
+            println!("id author Jeff Powell");
+            writeln!(file, "id author Jeff Powell").expect("File not written to");
+            println!("uciok");
+            writeln!(file, "uciok").expect("File not written to");
+        } else {
+            writeln!(file, "{}", buffer).unwrap();
+            panic!("Command not handled");
         }
     }
 }
@@ -59,10 +80,13 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, debug: bool) {
     for str in moves.iter().skip(skip) {
         let m = from_lan(str, board);
         board.make_move(&m);
-        if debug {
-            m.print();
-            board.print();
-            println!("------------------------");
-        }
+        print!(
+            "info string making move {}\n {}",
+            m.to_string(),
+            board.to_string()
+        );
+        m.print();
+        board.print();
+        println!("------------------------");
     }
 }

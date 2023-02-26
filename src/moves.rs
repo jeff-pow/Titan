@@ -13,6 +13,49 @@ pub struct Move {
 }
 
 impl Move {
+    pub fn to_string(&self) -> String {
+        let mut str = String::new();
+        str += "Start: ";
+        str += &self.starting_idx.to_string();
+        str += "End: ";
+        str += &self.end_idx.to_string();
+        str += " Castle: ";
+        match self.castle {
+            Castle::None => str += "No Castle ",
+            Castle::WhiteKingCastle => str += "White King castle ",
+            Castle::WhiteQueenCastle => str += "white queen castle ",
+            Castle::BlackKingCastle => str += "black king castle ",
+            Castle::BlackQueenCastle => str += "black queen castle ",
+        }
+        match self.promotion {
+            true => str += " Promotion: true ",
+            false => str += " Promotion: false ",
+        }
+        match self.capture {
+            None => {
+                str += " Nothing Captured ";
+            }
+            Some(piece) => match piece.piece_name {
+                PieceName::King => str += " Captured a King  ",
+                PieceName::Queen => str += " Captured a Queen ",
+                PieceName::Rook => str += " Captured a Rook ",
+                PieceName::Bishop => str += " Captured a Bishop ",
+                PieceName::Knight => str += " Captured a Knight ",
+                PieceName::Pawn => str += " Captured a Pawn ",
+            },
+        }
+        match self.piece_moving {
+            PieceName::King => str += " King moving ",
+            PieceName::Queen => str += " Queen moving ",
+            PieceName::Bishop => str += " Bishop moving ",
+            PieceName::Rook => str += " Rook moving ",
+            PieceName::Knight => str += " Knight moving ",
+            PieceName::Pawn => str += " Pawn moving ",
+        }
+        str += &self.to_lan();
+        str
+    }
+
     pub fn print(&self) {
         print!(
             "Start: {}  End: {}  Castle: ",
