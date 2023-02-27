@@ -1,3 +1,6 @@
+use core::fmt;
+use std::fmt::Display;
+
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
@@ -12,8 +15,8 @@ pub struct Move {
     pub capture: Option<Piece>,
 }
 
-impl Move {
-    pub fn to_string(&self) -> String {
+impl Display for Move {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut str = String::new();
         str += "Start: ";
         str += &self.starting_idx.to_string();
@@ -53,9 +56,11 @@ impl Move {
             PieceName::Pawn => str += " Pawn moving ",
         }
         str += &self.to_lan();
-        str
+        write!(f, "{}", str)
     }
+}
 
+impl Move {
     pub fn print(&self) {
         print!(
             "Start: {}  End: {}  Castle: ",

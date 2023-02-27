@@ -1,3 +1,6 @@
+use core::fmt;
+use std::fmt::Display;
+
 use crate::{moves::Castle, moves::Move, pieces::Color, pieces::PieceName, Piece};
 
 #[derive(Clone, Debug)]
@@ -9,6 +12,46 @@ pub struct Board {
     pub white_king_castle: bool,
     pub white_queen_castle: bool,
     pub en_passant_square: u8,
+}
+
+impl Display for Board {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut str = String::new();
+        let flipped_board = flip_board(self);
+        for (idx, square) in flipped_board.board.iter().enumerate() {
+            if idx % 8 == 0 {
+                str += &(8 - idx / 8).to_string();
+                str += " ";
+            }
+            str += " | ";
+            match square {
+                None => str += "_",
+                Some(piece) => match piece.color {
+                    Color::White => match piece.piece_name {
+                        PieceName::King => str += "K",
+                        PieceName::Queen => str += "Q",
+                        PieceName::Rook => str += "R",
+                        PieceName::Bishop => str += "B",
+                        PieceName::Knight => str += "N",
+                        PieceName::Pawn => str += "P",
+                    },
+                    Color::Black => match piece.piece_name {
+                        PieceName::King => str += "k",
+                        PieceName::Queen => str += "q",
+                        PieceName::Rook => str += "r",
+                        PieceName::Bishop => str += "b",
+                        PieceName::Knight => str += "n",
+                        PieceName::Pawn => str += "p",
+                    },
+                },
+            }
+            if (idx + 1) % 8 == 0 && idx != 0 {
+                str += " |\n";
+            }
+        }
+        str += "     a   b   c   d   e   f   g   h\n";
+        write!(f, "{}", str)
+    }
 }
 
 impl Board {
@@ -27,9 +70,10 @@ impl Board {
     pub fn make_move(&mut self, chess_move: &Move) {
         self.board[chess_move.end_idx as usize] = self.board[chess_move.starting_idx as usize];
         self.board[chess_move.starting_idx as usize] = None;
-        self.board[chess_move.end_idx as usize].expect("Piece should be here").current_square = chess_move.end_idx;
-        let mut piece =
-            &mut self.board[chess_move.end_idx as usize].expect("Piece should be here");
+        self.board[chess_move.end_idx as usize]
+            .expect("Piece should be here")
+            .current_square = chess_move.end_idx;
+        let mut piece = &mut self.board[chess_move.end_idx as usize].expect("Piece should be here");
         piece.current_square = chess_move.end_idx;
         // Move rooks if a castle is applied
         match chess_move.castle {
@@ -74,44 +118,6 @@ impl Board {
             Color::White => self.to_move = Color::Black,
             Color::Black => self.to_move = Color::White,
         }
-    }
-
-    pub fn to_string(&self) -> String {
-        let mut str = String::new();
-        let flipped_board = flip_board(self);
-        for (idx, square) in flipped_board.board.iter().enumerate() {
-            if idx % 8 == 0 {
-                str += &(8 - idx / 8).to_string();
-                str += " ";
-            }
-            str += " | ";
-            match square {
-                None => str += "_",
-                Some(piece) => match piece.color {
-                    Color::White => match piece.piece_name {
-                        PieceName::King => str += "K",
-                        PieceName::Queen => str += "Q",
-                        PieceName::Rook => str += "R",
-                        PieceName::Bishop => str += "B",
-                        PieceName::Knight => str += "N",
-                        PieceName::Pawn => str += "P",
-                    },
-                    Color::Black => match piece.piece_name {
-                        PieceName::King => str += "k",
-                        PieceName::Queen => str += "q",
-                        PieceName::Rook => str += "r",
-                        PieceName::Bishop => str += "b",
-                        PieceName::Knight => str += "n",
-                        PieceName::Pawn => str += "p",
-                    },
-                },
-            }
-            if (idx + 1) % 8 == 0 && idx != 0 {
-                str += " |\n";
-            }
-        }
-        str += "     a   b   c   d   e   f   g   h\n";
-        str
     }
 
     pub fn print(&self) {

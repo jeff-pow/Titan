@@ -37,28 +37,24 @@ pub fn main_loop() -> ! {
             let vec: Vec<&str> = buffer.split_whitespace().collect();
             if buffer.contains("fen") {
                 board = build_board(&parse_fen_from_buffer(&vec));
-                println!("info string {}", board.to_string());
+                println!("info string {}", board);
                 if vec.len() > 9 {
                     parse_moves(&vec, &mut board, 9, debug);
                 }
             } else if buffer.contains("startpos") {
                 board = build_board(fen::STARTING_FEN);
-                println!("info string\n {}", board.to_string());
+                println!("info string\n {}", board);
                 if vec.len() > 3 {
                     parse_moves(&vec, &mut board, 3, debug);
                 }
-                println!("info string\n {}", board.to_string());
+                println!("info string\n {}", board);
             }
         } else if buffer.starts_with("go") {
             let moves = generate_all_moves(&board);
             let m = moves.choose(&mut rand::thread_rng()).unwrap();
             println!("bestmove {}", m.to_lan());
             board.make_move(m);
-            println!(
-                "info string MOVE CHOSEN: {}\n {}",
-                m.to_string(),
-                board.to_string()
-            );
+            println!("info string MOVE CHOSEN: {}\n {}", m, board);
             writeln!(file, "{}", m.to_lan()).unwrap();
         } else if buffer.starts_with("stop") {
             std::process::exit(0);
@@ -80,11 +76,7 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, debug: bool) {
     for str in moves.iter().skip(skip) {
         let m = from_lan(str, board);
         board.make_move(&m);
-        print!(
-            "info string making move {}\n {}",
-            m.to_string(),
-            board.to_string()
-        );
+        print!("info string making move {}\n {}", m, board);
         m.print();
         board.print();
         println!("------------------------");
