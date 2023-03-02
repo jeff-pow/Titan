@@ -47,11 +47,12 @@ pub fn main_loop() -> ! {
                 if debug {
                     println!("info string {}", board);
                 }
+
                 if vec.len() > 9 {
                     parse_moves(&vec, &mut board, 9, debug);
                 }
-
-            } else if buffer.contains("startpos") {
+            }
+            else if buffer.contains("startpos") {
                 board = build_board(fen::STARTING_FEN);
 
                 if debug {
@@ -66,8 +67,8 @@ pub fn main_loop() -> ! {
                     println!("info string\n {}", board);
                 }
             }
-
-        } else if buffer.starts_with("go") {
+        }
+        else if buffer.starts_with("go") {
             let moves = generate_all_moves(&board);
             let m = moves.choose(&mut rand::thread_rng()).unwrap();
             println!("bestmove {}", m.to_lan());
@@ -78,11 +79,11 @@ pub fn main_loop() -> ! {
             }
 
             writeln!(file, "{}", m.to_lan()).unwrap();
-
-        } else if buffer.starts_with("stop") {
+        }
+        else if buffer.starts_with("stop") {
             std::process::exit(0);
-
-        } else if buffer.starts_with("uci") {
+        }
+        else if buffer.starts_with("uci") {
             println!("id name Jeff's Chess Engine");
             println!("id author Jeff Powell");
             println!("uciok");
@@ -90,8 +91,8 @@ pub fn main_loop() -> ! {
             writeln!(file, "id name Jeff's Chess Engine").expect("File not written to");
             writeln!(file, "id author Jeff Powell").expect("File not written to");
             writeln!(file, "uciok").expect("File not written to");
-
-        } else {
+        }
+        else {
             writeln!(file, "{}", buffer).unwrap();
             panic!("Command not handled: {}", buffer);
         }
