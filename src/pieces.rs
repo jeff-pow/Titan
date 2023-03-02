@@ -23,7 +23,8 @@ pub const WHITE: u8 = 64;
 pub const BLACK: u8 = 128;
 */
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Piece {
     pub current_square: i8,
     pub color: Color,

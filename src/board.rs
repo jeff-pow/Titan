@@ -68,13 +68,11 @@ impl Board {
     }
 
     pub fn make_move(&mut self, chess_move: &Move) {
-        self.board[chess_move.end_idx as usize] = self.board[chess_move.starting_idx as usize];
-        self.board[chess_move.starting_idx as usize] = None;
-        self.board[chess_move.end_idx as usize]
-            .expect("Piece should be here")
-            .current_square = chess_move.end_idx;
-        let mut piece = &mut self.board[chess_move.end_idx as usize].expect("Piece should be here");
+        let mut piece = &mut self.board[chess_move.starting_idx as usize].
+            expect("There should be a piece here");
         piece.current_square = chess_move.end_idx;
+        self.board[chess_move.end_idx as usize] = Option::from(*piece);
+        self.board[chess_move.starting_idx as usize] = None;
         // Move rooks if a castle is applied
         match chess_move.castle {
             Castle::WhiteKingCastle => {
@@ -118,41 +116,6 @@ impl Board {
             Color::White => self.to_move = Color::Black,
             Color::Black => self.to_move = Color::White,
         }
-    }
-
-    pub fn print(&self) {
-        let flipped_board = flip_board(self);
-        for (idx, square) in flipped_board.board.iter().enumerate() {
-            if idx % 8 == 0 {
-                print!("{} ", 8 - idx / 8);
-            }
-            print!(" | ");
-            match square {
-                None => print!("_"),
-                Some(piece) => match piece.color {
-                    Color::White => match piece.piece_name {
-                        PieceName::King => print!("K"),
-                        PieceName::Queen => print!("Q"),
-                        PieceName::Rook => print!("R"),
-                        PieceName::Bishop => print!("B"),
-                        PieceName::Knight => print!("N"),
-                        PieceName::Pawn => print!("P"),
-                    },
-                    Color::Black => match piece.piece_name {
-                        PieceName::King => print!("k"),
-                        PieceName::Queen => print!("q"),
-                        PieceName::Rook => print!("r"),
-                        PieceName::Bishop => print!("b"),
-                        PieceName::Knight => print!("n"),
-                        PieceName::Pawn => print!("p"),
-                    },
-                },
-            }
-            if (idx + 1) % 8 == 0 && idx != 0 {
-                println!(" |");
-            }
-        }
-        println!("     a   b   c   d   e   f   g   h");
     }
 }
 

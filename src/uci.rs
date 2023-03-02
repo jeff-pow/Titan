@@ -77,8 +77,8 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, debug: bool) {
         let m = from_lan(str, board);
         board.make_move(&m);
         print!("info string making move {}\n {}", m, board);
-        m.print();
-        board.print();
+        println!("{}", m);
+        println!("{}", board);
         println!("------------------------");
     }
 }

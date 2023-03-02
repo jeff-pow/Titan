@@ -11,7 +11,7 @@ fn main() {
 
 fn print_moves(moves: &Vec<moves::Move>, board: &board::Board) {
     for m in moves.iter() {
-        m.print();
+        println!("{}", m);
         let mut cloned_board = board.clone();
         cloned_board.make_move(m);
         println!("{}", cloned_board);

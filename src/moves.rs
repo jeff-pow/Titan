@@ -61,69 +61,6 @@ impl Display for Move {
 }
 
 impl Move {
-    pub fn print(&self) {
-        print!(
-            "Start: {}  End: {}  Castle: ",
-            self.starting_idx, self.end_idx
-        );
-        match self.castle {
-            Castle::None => {
-                print!("No castle ")
-            }
-            Castle::WhiteKingCastle => {
-                print!("White King Castle ")
-            }
-            Castle::WhiteQueenCastle => {
-                print!("White Queen Castle ")
-            }
-            Castle::BlackKingCastle => {
-                print!("Black King Castle ")
-            }
-            Castle::BlackQueenCastle => {
-                print!("Black Queen Castle ")
-            }
-        }
-        match self.promotion {
-            true => print!(" Promotion: true "),
-            false => print!(" Promotion: false "),
-        }
-        match self.capture {
-            None => {
-                print!(" Nothing Captured ")
-            }
-            Some(piece) => match piece.piece_name {
-                PieceName::King => {
-                    print!(" Captured a King  ")
-                }
-                PieceName::Queen => {
-                    print!(" Captured a Queen ")
-                }
-                PieceName::Rook => {
-                    print!(" Captured a Rook ")
-                }
-                PieceName::Bishop => {
-                    print!(" Captured a Bishop ")
-                }
-                PieceName::Knight => {
-                    print!(" Captured a Knight ")
-                }
-                PieceName::Pawn => {
-                    print!(" Captured a Pawn ")
-                }
-            },
-        }
-        match self.piece_moving {
-            PieceName::King => print!(" King moving "),
-            PieceName::Queen => print!(" Queen moving "),
-            PieceName::Bishop => print!(" Bishop moving "),
-            PieceName::Rook => print!(" Rook moving "),
-            PieceName::Knight => print!(" Knight moving "),
-            PieceName::Pawn => print!(" Pawn moving "),
-        }
-        print!("{}", self.to_lan());
-        println!();
-    }
-
     /// To Long Algebraic Notation
     pub fn to_lan(&self) -> String {
         let mut str = String::new();
