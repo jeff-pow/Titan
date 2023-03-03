@@ -20,7 +20,7 @@ impl Display for Move {
         let mut str = String::new();
         str += "Start: ";
         str += &self.starting_idx.to_string();
-        str += "End: ";
+        str += " End: ";
         str += &self.end_idx.to_string();
         str += " Castle: ";
         match self.castle {
@@ -81,7 +81,7 @@ impl Move {
     }
 }
 
-/// Method converts a lan move provided by UCI framework
+/// Method converts a lan move provided by UCI framework into a Move struct
 pub fn from_lan(str: &str, board: &Board) -> Move {
     let vec: Vec<char> = str.chars().collect();
 
@@ -175,6 +175,40 @@ fn check_space_occupancy(board: &Board, potential_space: i8) -> (bool, Color) {
         return (false, Color::White);
     }
     (true, board.board[potential_space as usize].unwrap().color)
+}
+
+/// Method checks the moves the other side could make in response to a move to determine if a check
+/// would result. Removes moves if they are invalid. Checks for check :)
+pub fn check_check(board: &Board, moves: &mut Vec<Move>) {
+    let mut idx: i32 = 0;
+    loop {
+        if idx as usize >= moves.len() {
+            break;
+        }
+        let mut new_board = board.clone();
+        let _q = &moves[idx as usize];
+        new_board.make_move(&moves[idx as usize]);
+        let new_moves = generate_all_moves(&new_board);
+        for new_m in new_moves {
+            match board.to_move {
+                Color::White => {
+                    if new_m.end_idx == new_board.white_king_square {
+                        moves.swap_remove(idx as usize);
+                        idx -= 1;
+                        break;
+                    }
+                }
+                Color::Black => {
+                    if new_m.end_idx == new_board.black_king_square {
+                        moves.swap_remove(idx as usize);
+                        idx -= 1;
+                        break;
+                    }
+                }
+            }
+        }
+        idx += 1;
+    }
 }
 
 pub fn generate_all_moves(board: &Board) -> Vec<Move> {

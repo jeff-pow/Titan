@@ -1,7 +1,7 @@
 use crate::board::Board;
-
 use crate::fen::{self, build_board, parse_fen_from_buffer};
-use crate::moves::{from_lan, generate_all_moves};
+use crate::moves::{from_lan, generate_all_moves, check_check};
+#[allow(unused_imports)]
 use rand::seq::SliceRandom;
 use std::fs::File;
 use std::io::{self, Write};
@@ -30,15 +30,15 @@ pub fn main_loop() -> ! {
         if buffer.starts_with("isready") {
             println!("readyok");
             writeln!(file, "readyok").expect("File not written to");
-
-        } else if buffer.starts_with("debug on") {
+        } 
+        else if buffer.starts_with("debug on") {
             debug = true;
             println!("info string debug on");
-
-        } else if buffer.starts_with("ucinewgame") {
+        } 
+        else if buffer.starts_with("ucinewgame") {
             board = build_board(fen::STARTING_FEN);
-
-        } else if buffer.starts_with("position") {
+        } 
+        else if buffer.starts_with("position") {
             let vec: Vec<&str> = buffer.split_whitespace().collect();
 
             if buffer.contains("fen") {
@@ -69,15 +69,16 @@ pub fn main_loop() -> ! {
             }
         }
         else if buffer.starts_with("go") {
-            let moves = generate_all_moves(&board);
-            let m = moves.choose(&mut rand::thread_rng()).unwrap();
+            let mut moves = generate_all_moves(&board);
+            check_check(&board, &mut moves);
+            // let m = moves.choose(&mut rand::thread_rng()).unwrap();
+            let m = &moves[0];
             println!("bestmove {}", m.to_lan());
             board.make_move(m);
 
             if debug {
                 println!("info string MOVE CHOSEN: {}\n {}", m, board);
             }
-
             writeln!(file, "{}", m.to_lan()).unwrap();
         }
         else if buffer.starts_with("stop") {

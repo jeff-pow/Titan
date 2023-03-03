@@ -12,6 +12,8 @@ pub struct Board {
     pub white_king_castle: bool,
     pub white_queen_castle: bool,
     pub en_passant_square: u8,
+    pub black_king_square: i8,
+    pub white_king_square: i8,
 }
 
 impl Display for Board {
@@ -64,6 +66,8 @@ impl Board {
             white_queen_castle: true,
             to_move: Color::White,
             en_passant_square: 0,
+            white_king_square: 4,
+            black_king_square: 60,
         }
     }
 
@@ -115,6 +119,12 @@ impl Board {
         match self.to_move {
             Color::White => self.to_move = Color::Black,
             Color::Black => self.to_move = Color::White,
+        }
+        if piece.piece_name == PieceName::King {
+            match piece.color {
+                Color::White => self.white_king_square = piece.current_square,
+                Color::Black => self.black_king_square = piece.current_square,
+            }
         }
     }
 }

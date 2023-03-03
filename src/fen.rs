@@ -3,9 +3,8 @@ use crate::board::Board;
 use crate::pieces::{Color, Piece, PieceName};
 
 pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-pub const TEST_FEN: &str = "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
+#[allow(dead_code)]
 pub const ONE_PIECE: &str = "8/8/8/8/8/4p1p1/5P2/8 w KQkq - 0 1";
-pub const bruh: &str = "position startpos moves e2e3 e7e6 b2b4 f8e7 f1c4 f7f6 b1a3 g7g6 c2c3";
 
 pub fn build_board(fen_string: &str) -> Board {
     let mut board = Board::new();
@@ -31,7 +30,8 @@ pub fn build_board(fen_string: &str) -> Board {
                             Color::White,
                             PieceName::King,
                             (row * 8 + idx) as i8,
-                        ))
+                        ));
+                        board.white_king_square = (row * 8 + idx) as i8;
                     }
                     'Q' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
@@ -73,7 +73,8 @@ pub fn build_board(fen_string: &str) -> Board {
                             Color::Black,
                             PieceName::King,
                             (row * 8 + idx) as i8,
-                        ))
+                        ));
+                        board.black_king_square = (row * 8 + idx) as i8;
                     }
                     'q' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
@@ -133,6 +134,7 @@ pub fn build_board(fen_string: &str) -> Board {
             'Q' => castles[1] = true,
             'k' => castles[2] = true,
             'q' => castles[3] = true,
+            '-' => (),
             _ => panic!("Unrecognized castle character: {}", c),
         }
     }

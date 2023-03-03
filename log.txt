@@ -1,4 +1,6 @@
 UCI said: ucinewgame
 
-UCI said: position startpos moves e2e3 e7e6 b2b4 f8e7 f1c4 f7f6 b1a3 g7g6 c2c3
+UCI said: position startpos moves f2f3 g8f6 e1f2 b7b6 d2d4 f6e4 f3e4 e7e6 d1d3 f7f6 d3f3 d8e7 f3f6 c8b7 f6f8
+
+UCI said: go
 
