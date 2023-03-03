@@ -241,13 +241,7 @@ fn generate_moves_for_piece(board: &Board, piece: &Piece) -> Vec<Move> {
 }
 
 fn is_cardinal(direction: Direction) -> bool {
-    match direction {
-        Direction::North => {true}
-        Direction::West => {true}
-        Direction::South => {true}
-        Direction::East => {true}
-        _ => false,
-    }
+    matches!(direction, Direction::North | Direction::West | Direction::South | Direction::East)
 }
 
 fn directional_move(
@@ -276,7 +270,7 @@ fn directional_move(
                 starting_idx: piece.current_square,
                 end_idx: idx as i8,
                 castle: Castle::None,
-                promotion: false,
+                promotion: is_promotion(piece, idx as i8),
                 capture: board.board[idx],
                 piece_moving: piece.piece_name,
             });
@@ -287,7 +281,7 @@ fn directional_move(
                 // If color of other piece is the same as current piece, you can't move there
                 break;
             }
-            if piece.piece_name == PieceName::Pawn && is_cardinal(direction) {
+            if piece.piece_name == PieceName::Pawn && (is_cardinal(direction) || !occupancy.0) {
                 // Can't capture if the piece is a pawn and direction is non-diagonal
                 break;
             }
@@ -296,7 +290,7 @@ fn directional_move(
                 starting_idx: piece.current_square,
                 end_idx: idx as i8,
                 castle: Castle::None,
-                promotion: false,
+                promotion: is_promotion(piece, idx as i8),
                 capture: board.board[idx],
                 piece_moving: piece.piece_name,
             });
@@ -485,10 +479,13 @@ fn generate_knight_moves(board: &Board, piece: &Piece) -> Vec<Move> {
 }
 
 fn is_promotion(piece: &Piece, end_idx: i8) -> bool {
-    match piece.color {
-        Color::White => end_idx > 55 && end_idx < 64,
-        Color::Black => end_idx > -1 && end_idx < 8,
+    if piece.piece_name == PieceName::Pawn {
+        return match piece.color {
+            Color::White => end_idx > 55 && end_idx < 64,
+            Color::Black => end_idx > -1 && end_idx < 8,
+        }
     }
+    false
 }
 
 fn generate_old_pawn_moves(board: &Board, piece: &Piece) -> Vec<Move> {

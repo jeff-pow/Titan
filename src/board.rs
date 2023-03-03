@@ -66,8 +66,8 @@ impl Board {
             white_queen_castle: true,
             to_move: Color::White,
             en_passant_square: 0,
-            white_king_square: 4,
-            black_king_square: 60,
+            white_king_square: -1,
+            black_king_square: -1,
         }
     }
 
