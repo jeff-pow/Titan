@@ -236,7 +236,17 @@ fn generate_moves_for_piece(board: &Board, piece: &Piece) -> Vec<Move> {
         PieceName::Rook => generate_rook_moves(board, piece),
         PieceName::Bishop => generate_bishop_moves(board, piece),
         PieceName::Knight => generate_knight_moves(board, piece),
-        PieceName::Pawn => generate_old_pawn_moves(board, piece),
+        PieceName::Pawn => generate_new_pawn_moves(board, piece),
+    }
+}
+
+fn is_cardinal(direction: Direction) -> bool {
+    match direction {
+        Direction::North => {true}
+        Direction::West => {true}
+        Direction::South => {true}
+        Direction::East => {true}
+        _ => false,
     }
 }
 
@@ -248,6 +258,7 @@ fn directional_move(
     end: usize,
 ) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
+    // Loops multiple times to add moves if provided as a parameter
     for i in start..end {
         // Function contains a bool determining if direction points to a valid square based off the
         // current square, and if true the usize is the new index being looked at
@@ -259,7 +270,7 @@ fn directional_move(
         // Method returns a tuple containing a bool determining if potential square contains a
         // piece of any kind, and if true color contains the color of the new piece
         let occupancy = check_space_occupancy(board, idx as i8);
-        if !occupancy.0 {
+        if !occupancy.0 && (piece.piece_name != PieceName::Pawn || (piece.piece_name == PieceName::Pawn && is_cardinal(direction))) {
             // If position not occupied, add the move
             moves.push(Move {
                 starting_idx: piece.current_square,
@@ -272,8 +283,12 @@ fn directional_move(
         }
         // Otherwise square is occupied
         else {
-            if piece.color == occupancy.1 || piece.piece_name == PieceName::Pawn {
+            if piece.color == occupancy.1 {
                 // If color of other piece is the same as current piece, you can't move there
+                break;
+            }
+            if piece.piece_name == PieceName::Pawn && is_cardinal(direction) {
+                // Can't capture if the piece is a pawn and direction is non-diagonal
                 break;
             }
             // Otherwise you can capture that piece
@@ -606,123 +621,25 @@ fn generate_new_pawn_moves(board: &Board, piece: &Piece) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
     match piece.color {
         Color::White => {
-            // Determines if one square in front of piece is occupied
-            let (n_occupied, _) =
-                check_space_occupancy(board, piece.current_square + Direction::North as i8);
-            // Determines if two squares in front of piece is occupied
             if piece.current_square > 7 && piece.current_square < 16 {
-                let (nn_occupied, _) =
-                    check_space_occupancy(board, piece.current_square + 2 * Direction::North as i8);
-                if !n_occupied && !nn_occupied {
-                    let end_idx = piece.current_square + 2 * Direction::North as i8;
-                    // Handles moving two spaces forward if pawn has not moved yet
-                    moves.push(Move {
-                        starting_idx: piece.current_square,
-                        end_idx,
-                        castle: Castle::None,
-                        promotion: is_promotion(piece, end_idx),
-                        capture: board.board[end_idx as usize],
-                        piece_moving: piece.piece_name,
-                    });
-                }
+                moves.append(&mut directional_move(Direction::North, piece, board, 1, 3));
             }
-            if !n_occupied {
-                // Can still move one space forward on the first square
-                let end_idx = piece.current_square + Direction::North as i8;
-                moves.push(Move {
-                    starting_idx: piece.current_square,
-                    end_idx,
-                    castle: Castle::None,
-                    promotion: is_promotion(piece, end_idx),
-                    capture: board.board[end_idx as usize],
-                    piece_moving: piece.piece_name,
-                });
+            else {
+                moves.append(&mut directional_move(Direction::North, piece, board, 1, 2));
             }
-            let (nw_occupied, potential_color) =
-                check_space_occupancy(board, piece.current_square + Direction::NorthWest as i8);
-            if nw_occupied && piece.color != potential_color {
-                // Capturing to the northwest
-                let end_idx = piece.current_square + Direction::NorthWest as i8;
-                moves.push(Move {
-                    starting_idx: piece.current_square,
-                    end_idx,
-                    castle: Castle::None,
-                    promotion: is_promotion(piece, end_idx),
-                    piece_moving: piece.piece_name,
-                    capture: board.board[end_idx as usize],
-                });
-            }
-            let (ne_occupied, potential_color) =
-                check_space_occupancy(board, piece.current_square + Direction::NorthEast as i8);
-            if ne_occupied && piece.color != potential_color {
-                // Capturing to the northeast
-                let end_idx = piece.current_square + Direction::NorthEast as i8;
-                moves.push(Move {
-                    starting_idx: piece.current_square,
-                    end_idx: piece.current_square + Direction::NorthEast as i8,
-                    castle: Castle::None,
-                    promotion: is_promotion(piece, end_idx),
-                    capture: board.board[end_idx as usize],
-                    piece_moving: piece.piece_name,
-                });
-            }
+            moves.append(&mut directional_move(Direction::NorthEast, piece, board, 1, 2));
+            moves.append(&mut directional_move(Direction::NorthWest, piece, board, 1, 2));
         }
         Color::Black => {
             // First square to the south
-            let (s_occupied, _) =
-                check_space_occupancy(board, piece.current_square + Direction::South as i8);
-            // Second square to the south
-            let (ss_occupied, _) =
-                check_space_occupancy(board, piece.current_square + 2 * Direction::South as i8);
-            if piece.current_square > 47 && piece.current_square < 56 && !s_occupied && !ss_occupied
-            {
-                let end_idx = piece.current_square + 2 * Direction::South as i8;
-                moves.push(Move {
-                    starting_idx: piece.current_square,
-                    end_idx: piece.current_square + 2 * Direction::South as i8,
-                    castle: Castle::None,
-                    promotion: is_promotion(piece, end_idx),
-                    capture: board.board[end_idx as usize],
-                    piece_moving: piece.piece_name,
-                });
+            if piece.current_square > 47 && piece.current_square < 56 {
+                moves.append(&mut directional_move(Direction::South, piece, board, 1, 3));
             }
-            if !s_occupied {
-                let end_idx = piece.current_square + Direction::South as i8;
-                moves.push(Move {
-                    starting_idx: piece.current_square,
-                    end_idx: piece.current_square + Direction::South as i8,
-                    castle: Castle::None,
-                    promotion: is_promotion(piece, end_idx),
-                    capture: board.board[end_idx as usize],
-                    piece_moving: piece.piece_name,
-                });
+            else {
+                moves.append(&mut directional_move(Direction::South, piece, board, 1, 2));
             }
-            let (se_occupied, potential_color) =
-                check_space_occupancy(board, piece.current_square + Direction::SouthEast as i8);
-            if se_occupied && piece.color != potential_color {
-                let end_idx = piece.current_square + Direction::SouthEast as i8;
-                moves.push(Move {
-                    starting_idx: piece.current_square,
-                    end_idx: piece.current_square + Direction::SouthEast as i8,
-                    castle: Castle::None,
-                    promotion: is_promotion(piece, end_idx),
-                    capture: board.board[end_idx as usize],
-                    piece_moving: piece.piece_name,
-                });
-            }
-            let (sw_occupied, potential_color) =
-                check_space_occupancy(board, piece.current_square + Direction::SouthWest as i8);
-            if sw_occupied && piece.color != potential_color {
-                let end_idx = piece.current_square + Direction::SouthWest as i8;
-                moves.push(Move {
-                    starting_idx: piece.current_square,
-                    end_idx: piece.current_square + Direction::SouthWest as i8,
-                    castle: Castle::None,
-                    promotion: is_promotion(piece, end_idx),
-                    capture: board.board[end_idx as usize],
-                    piece_moving: piece.piece_name,
-                });
-            }
+            moves.append(&mut directional_move(Direction::SouthEast, piece, board, 1, 2));
+            moves.append(&mut directional_move(Direction::SouthWest, piece, board, 1, 2));
         }
     }
     moves
