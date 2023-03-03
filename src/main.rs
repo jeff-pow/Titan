@@ -10,18 +10,18 @@ mod board;
 mod fen;
 
 fn main() {
-    print_moves();
+    //print_moves();
     uci::main_loop();
 }
 
 #[allow(dead_code)]
 fn print_moves() {
-    let board = fen::build_board("r1b1k3/pp1pQp2/n7/2p5/4P3/q7/PPPP1PPP/RNB1KBNR b KQq - 0 8");
+    let mut board = fen::build_board("r1b1k3/pp1pQp2/n7/2p5/4P3/q7/PPPP1PPP/RNB1KBNR b KQq - 0 8");
     println!("{}", board);
     //let board = fen::build_board(fen::STARTING_FEN);
     let mut moves = generate_all_moves(&board);
     let i = moves.len();
-    check_check(&board, &mut moves);
+    check_check(&mut board, &mut moves);
     for m in moves.iter() {
         println!("{}", m);
         let mut cloned_board = board.clone();

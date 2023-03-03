@@ -180,15 +180,29 @@ fn check_space_occupancy(board: &Board, potential_space: i8) -> (bool, Color) {
 
 /// Method checks the moves the other side could make in response to a move to determine if a check
 /// would result. Removes moves if they are invalid. Checks for check :)
-pub fn check_check(board: &Board, moves: &mut Vec<Move>) {
+pub fn check_check(board: &mut Board, moves: &mut Vec<Move>) {
     let mut idx: i32 = 0;
     loop {
         if idx as usize >= moves.len() {
             break;
         }
         let mut new_board = board.clone();
-        let _q = &moves[idx as usize];
-        new_board.make_move(&moves[idx as usize]);
+        let possible_move = &moves[idx as usize];
+        match board.to_move {
+            Color::White => {
+                if possible_move.end_idx == board.black_king_square {
+                    board.black_king_castle = false;
+                    board.black_queen_castle = false;
+                }
+            }
+            Color::Black => {
+                if possible_move.end_idx == board.white_king_square {
+                    board.white_king_castle = false;
+                    board.white_queen_castle = false;
+                }
+            }
+        }
+        new_board.make_move(possible_move);
         let new_moves = generate_all_moves(&new_board);
         for new_m in new_moves {
             match board.to_move {
@@ -336,7 +350,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
             }
         }
         Color::Black => {
-            if board.black_queen_castle
+            if board.black_king_castle
                 && piece.current_square == 60
                 && board.board[57].is_none()
                 && board.board[58].is_none()
@@ -351,7 +365,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     piece_moving: piece.piece_name,
                 });
             }
-            if board.black_king_castle
+            if board.black_queen_castle
                 && piece.current_square == 60
                 && board.board[61].is_none()
                 && board.board[62].is_none()

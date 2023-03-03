@@ -60,10 +60,10 @@ impl Board {
     pub fn new() -> Self {
         Board {
             board: [None; 64],
-            black_king_castle: true,
-            black_queen_castle: true,
-            white_king_castle: true,
-            white_queen_castle: true,
+            black_king_castle: false,
+            black_queen_castle: false,
+            white_king_castle: false,
+            white_queen_castle: false,
             to_move: Color::White,
             en_passant_square: 0,
             white_king_square: -1,
@@ -80,28 +80,36 @@ impl Board {
         // Move rooks if a castle is applied
         match chess_move.castle {
             Castle::WhiteKingCastle => {
-                let mut rook = &mut self.board[0].expect("Piece should be here");
+                let mut rook = &mut self.board[0].expect("Piece should be here: 0");
                 rook.current_square = 5;
                 self.board[5] = self.board[7];
                 self.board[7] = None;
+                self.white_queen_castle = false;
+                self.white_king_castle = false;
             }
             Castle::WhiteQueenCastle => {
-                let mut rook = &mut self.board[7].expect("Piece should be here");
+                let mut rook = &mut self.board[7].expect("Piece should be here: 7");
                 rook.current_square = 3;
                 self.board[3] = self.board[0];
                 self.board[0] = None;
+                self.white_queen_castle = false;
+                self.white_king_castle = false;
             }
             Castle::BlackKingCastle => {
-                let mut rook = &mut self.board[63].expect("Piece should be here");
+                let mut rook = &mut self.board[63].expect("Piece should be here: 63");
                 rook.current_square = 61;
                 self.board[61] = self.board[63];
                 self.board[63] = None;
+                self.black_queen_castle = false;
+                self.black_king_castle = false;
             }
             Castle::BlackQueenCastle => {
-                let mut rook = &mut self.board[56].expect("Piece should be here");
+                let mut rook = &mut self.board[56].expect("Piece should be here: 56");
                 rook.current_square = 59;
                 self.board[59] = self.board[56];
                 self.board[56] = None;
+                self.black_queen_castle = false;
+                self.black_king_castle = false;
             }
             Castle::None => (),
         }
@@ -122,8 +130,25 @@ impl Board {
         }
         if piece.piece_name == PieceName::King {
             match piece.color {
-                Color::White => self.white_king_square = piece.current_square,
-                Color::Black => self.black_king_square = piece.current_square,
+                Color::White => {
+                    self.white_king_square = piece.current_square;
+                    self.white_king_castle = false;
+                    self.white_queen_castle = false;
+                }
+                Color::Black => {
+                    self.black_king_square = piece.current_square;
+                    self.black_queen_castle = false;
+                    self.black_king_castle = false;
+                }
+            }
+        }
+        if piece.piece_name == PieceName::Rook {
+            match chess_move.starting_idx {
+                0 => self.white_queen_castle = false,
+                7 => self.white_king_castle = false,
+                56 => self.black_queen_castle = false,
+                63 => self.black_king_castle = false,
+                _ => (),
             }
         }
     }
