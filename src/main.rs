@@ -15,7 +15,7 @@ fn main() {
 
 #[allow(dead_code)]
 fn print_moves() {
-    let board = fen::build_board("8/8/1p2k3/4P3/8/8/8/8 b - - 0 1");
+    let board = fen::build_board("rnb5/3k4/1B1p1K2/2qP1P2/N6p/1P5N/P4PPP/R4B1R b - - 8 26");
     let mut moves = generate_all_moves(&board);
     check_check(&board, &mut moves);
     for m in moves.iter() {
