@@ -566,3 +566,14 @@ fn generate_pawn_moves(board: &Board, piece: &Piece) -> Vec<Move> {
     }
     moves
 }
+
+#[cfg(test)]
+mod moves_tests {
+    use super::check_index_addition;
+
+    #[test]
+    fn test_check_index_addition() {
+        //assert_eq!((23, true), check_index_addition(31, (0, -1)));
+        assert_eq!((0, false), check_index_addition(13, (2, -2)));
+    }
+}
