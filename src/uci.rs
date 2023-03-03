@@ -71,8 +71,8 @@ pub fn main_loop() -> ! {
         else if buffer.starts_with("go") {
             let mut moves = generate_all_moves(&board);
             check_check(&board, &mut moves);
-            // let m = moves.choose(&mut rand::thread_rng()).unwrap();
-            let m = &moves[0];
+            let m = moves.choose(&mut rand::thread_rng()).unwrap();
+            //let m = &moves[0];
             println!("bestmove {}", m.to_lan());
             board.make_move(m);
 
