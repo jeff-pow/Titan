@@ -9,7 +9,7 @@ fn search_helper(board: &mut Board, depth: i32) -> (Move, f32) {
     let mut best_score = 0.;
     let mut best_move = None;
     let mut moves = generate_all_moves(&board);
-    check_check(&mut board, &mut moves);
+    //check_check(&mut board, &mut moves);
     for m in &moves {
         let mut new_b = board.clone();
         new_b.make_move(m);
@@ -22,31 +22,16 @@ fn search_helper(board: &mut Board, depth: i32) -> (Move, f32) {
     (best_move.expect("Best Move was None").to_owned(), best_score)
 }
 
-pub fn generate_depth_moves(a: i32) -> u128 {
-    let mut board = fen::build_board(fen::STARTING_FEN);
-    let mut count = 0;
+pub fn count_moves(a: i32, board: &Board) -> usize {
+    let mut board = board.clone();
+    if depth == 0 {
+        return 1;
+    }
     let mut moves = generate_all_moves(&board);
     check_check(&mut board, &mut moves);
     for m in &moves {
         let mut new_b = board.clone();
         new_b.make_move(m);
-        count += recur_depth_moves(a - 1, &new_b);
-    }
-    count += moves.len() as u128;
-    count
-}
-
-fn recur_depth_moves(a: i32, board: &Board) -> u128 {
-    if a == 0 {
-        return 0;
-    }
-    let mut count = 0;
-    let mut new_b = board.clone();
-    let mut moves = generate_all_moves(&new_b);
-    check_check(&mut new_b, &mut moves);
-    for m in &moves {
-        let mut cloned_board = board.clone();
-        cloned_board.make_move(m);
         count += recur_depth_moves(a - 1, &new_b);
     }
     count += moves.len() as u128;
