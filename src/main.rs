@@ -1,6 +1,7 @@
 mod moves;
 mod pieces;
 mod uci;
+mod search;
 
 use std::process::exit;
 use board::Board;
@@ -11,40 +12,10 @@ mod board;
 mod fen;
 
 fn main() {
+    for i in 1..6 {
+    }
     //print_moves();
-    uci::main_loop();
-}
-
-#[allow(dead_code)]
-fn generate_depth_moves(a: i32) -> u128 {
-    let mut board = fen::build_board(fen::STARTING_FEN);
-    let mut count = 0;
-    let mut moves = generate_all_moves(&board);
-    check_check(&mut board, &mut moves);
-    for m in &moves {
-        let mut new_b = board.clone();
-        new_b.make_move(m);
-        count += recur_depth_moves(a - 1, &new_b);
-    }
-    count += moves.len() as u128;
-    count
-}
-
-fn recur_depth_moves(a: i32, board: &Board) -> u128 {
-    if a == 0 {
-        return 0;
-    }
-    let mut count = 0;
-    let mut new_b = board.clone();
-    let mut moves = generate_all_moves(&new_b);
-    check_check(&mut new_b, &mut moves);
-    for m in &moves {
-        let mut cloned_board = board.clone();
-        cloned_board.make_move(m);
-        count += recur_depth_moves(a - 1, &new_b);
-    }
-    count += moves.len() as u128;
-    count
+    //uci::main_loop();
 }
 
 #[allow(dead_code)]

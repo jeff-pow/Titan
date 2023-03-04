@@ -113,6 +113,7 @@ impl Board {
             }
             Castle::None => (),
         }
+        // If move is a promotion, a pawn is promoted
         match chess_move.promotion {
             true => {
                 self.board[chess_move.end_idx as usize] = Some(Piece {
@@ -128,6 +129,7 @@ impl Board {
             Color::White => self.to_move = Color::Black,
             Color::Black => self.to_move = Color::White,
         }
+        // Update king square if king moves
         if piece.piece_name == PieceName::King {
             match piece.color {
                 Color::White => {
@@ -142,6 +144,7 @@ impl Board {
                 }
             }
         }
+        // If a rook moves, castling to that side is no longer possible
         if piece.piece_name == PieceName::Rook {
             match chess_move.starting_idx {
                 0 => self.white_queen_castle = false,
@@ -149,6 +152,20 @@ impl Board {
                 56 => self.black_queen_castle = false,
                 63 => self.black_king_castle = false,
                 _ => (),
+            }
+        }
+        if piece.piece_name == PieceName::Pawn {
+            match piece.color {
+                Color::White => {
+                    if chess_move.starting_idx == chess_move.end_idx - 16 {
+                        self.en_passant_square = chess_move.end_idx as u8 - 8;
+                    }
+                }
+                Color::Black => {
+                    if chess_move.end_idx + 16 == chess_move.starting_idx {
+                        self.en_passant_square = chess_move.starting_idx as u8 - 8;
+                    }
+                }
             }
         }
     }

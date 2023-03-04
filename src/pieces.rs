@@ -1,27 +1,11 @@
-/*
 use std::f32::INFINITY;
 
-pub const KING: u8 = 1;
 pub const KING_PTS: f32 = INFINITY;
-
-pub const QUEEN: u8 = 2;
 pub const QUEEN_PTS: f32 = 9.;
-
-pub const ROOK: u8 = 4;
 pub const ROOK_PTS: f32 = 5.;
-
-pub const BISHOP: u8 = 8;
 pub const BISHOP_PTS: f32 = 3.;
-
-pub const KNIGHT: u8 = 16;
 pub const KNIGHT_PTS: f32 = 3.;
-
-pub const PAWN: u8 = 32;
 pub const PAWN_PTS: f32 = 1.;
-
-pub const WHITE: u8 = 64;
-pub const BLACK: u8 = 128;
-*/
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -56,5 +40,16 @@ impl Piece {
             color,
             piece_name,
         }
+    }
+}
+
+pub fn get_piece_value(piece: &Piece) -> f32 {
+    match piece.piece_name {
+        PieceName::King => KING_PTS,
+        PieceName::Queen => QUEEN_PTS,
+        PieceName::Rook => ROOK_PTS,
+        PieceName::Bishop => BISHOP_PTS,
+        PieceName::Knight => KNIGHT_PTS,
+        PieceName::Pawn => PAWN_PTS,
     }
 }

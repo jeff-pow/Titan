@@ -4,8 +4,9 @@ use std::fmt::Display;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use crate::{board::Board, pieces::Color, pieces::Piece, pieces::PieceName};
+use crate::{board::Board, pieces::Color, pieces::{Piece, get_piece_value}, pieces::PieceName};
 
+#[derive(Clone, Copy)]
 pub struct Move {
     pub starting_idx: i8,
     pub end_idx: i8,
@@ -13,6 +14,7 @@ pub struct Move {
     pub promotion: bool,
     pub piece_moving: PieceName,
     pub capture: Option<Piece>,
+    pub pts: f32,
 }
 
 impl Display for Move {
@@ -81,6 +83,15 @@ impl Move {
     }
 }
 
+pub fn calculate_points_for_move(board: &Board, end_idx: i8) -> f32 {
+    match board.board[end_idx as usize] {
+        Some(piece) => {
+            get_piece_value(&piece)
+        }
+        None => 0.,
+    }
+}
+
 /// Method converts a lan move provided by UCI framework into a Move struct
 pub fn from_lan(str: &str, board: &Board) -> Move {
     let vec: Vec<char> = str.chars().collect();
@@ -107,9 +118,11 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
         promotion,
         piece_moving: board.board[starting_idx as usize].unwrap().piece_name,
         capture: board.board[end_idx as usize],
+        pts: calculate_points_for_move(board, end_idx),
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
 pub enum Castle {
     None,
     WhiteKingCastle,
@@ -278,6 +291,7 @@ fn directional_move(
         // Method returns a tuple containing a bool determining if potential square contains a
         // piece of any kind, and if true color contains the color of the new piece
         let occupancy = check_space_occupancy(board, idx as i8);
+        // Handle special case of enpassant
         if !occupancy.0 && (piece.piece_name != PieceName::Pawn || (piece.piece_name == PieceName::Pawn && is_cardinal(direction))) {
             // If position not occupied, add the move
             moves.push(Move {
@@ -287,6 +301,7 @@ fn directional_move(
                 promotion: is_promotion(piece, idx as i8),
                 capture: board.board[idx],
                 piece_moving: piece.piece_name,
+                pts: calculate_points_for_move(board, idx as i8),
             });
         }
         // Otherwise square is occupied
@@ -307,6 +322,7 @@ fn directional_move(
                 promotion: is_promotion(piece, idx as i8),
                 capture: board.board[idx],
                 piece_moving: piece.piece_name,
+                pts: calculate_points_for_move(board, idx as i8),
             });
             break;
         }
@@ -332,6 +348,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     promotion: false,
                     capture: board.board[2],
                     piece_moving: piece.piece_name,
+                    pts: calculate_points_for_move(board, 2),
                 });
             }
             if board.white_king_castle
@@ -346,6 +363,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     promotion: false,
                     capture: board.board[4],
                     piece_moving: piece.piece_name,
+                    pts: calculate_points_for_move(board, 6),
                 });
             }
         }
@@ -363,6 +381,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     promotion: false,
                     capture: board.board[58],
                     piece_moving: piece.piece_name,
+                    pts: calculate_points_for_move(board, 58),
                 });
             }
             if board.black_queen_castle
@@ -377,6 +396,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     promotion: false,
                     capture: board.board[62],
                     piece_moving: piece.piece_name,
+                    pts: calculate_points_for_move(board, 62),
                 });
             }
         }
@@ -475,6 +495,7 @@ fn generate_knight_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                 promotion: false,
                 capture: board.board[square_validity.0],
                 piece_moving: piece.piece_name,
+                pts: calculate_points_for_move(board, square_validity.0 as i8),
             });
         }
         else {
@@ -488,6 +509,7 @@ fn generate_knight_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                 promotion: false,
                 capture: board.board[square_validity.0],
                 piece_moving: piece.piece_name,
+                pts: calculate_points_for_move(board, square_validity.0 as i8),
             });
         }
     }
