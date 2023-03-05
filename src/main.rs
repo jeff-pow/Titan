@@ -4,7 +4,7 @@ mod uci;
 mod search;
 
 use std::process::exit;
-use board::Board;
+use fen::build_board;
 use pieces::Piece;
 use crate::moves::{check_check, generate_all_moves};
 
@@ -12,7 +12,9 @@ mod board;
 mod fen;
 
 fn main() {
-    for i in 1..6 {
+    let board = build_board(fen::STARTING_FEN);
+    for i in 1..7 {
+        println!("{}", crate::search::count_moves(i, &board))
     }
     //print_moves();
     //uci::main_loop();

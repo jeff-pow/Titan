@@ -81,6 +81,12 @@ impl Move {
         }
         str
     }
+
+    /// Constructor for new moves - Mostly a placeholder for initializing variables that will
+    /// certainly be changed at some other point during the runtime of the function
+    pub fn new() -> Self {
+        Move { starting_idx: 0, end_idx: 0, castle: Castle::None, promotion: false, piece_moving: PieceName::King, capture: None, pts: 0. }
+    }
 }
 
 pub fn calculate_points_for_move(board: &Board, end_idx: i8) -> f32 {

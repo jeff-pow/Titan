@@ -3,6 +3,7 @@ use std::fmt::Display;
 
 use crate::{moves::Castle, moves::Move, pieces::Color, pieces::PieceName, Piece};
 
+#[repr(C)]
 #[derive(Clone, Debug)]
 pub struct Board {
     pub board: [Option<Piece>; 64],

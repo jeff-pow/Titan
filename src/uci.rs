@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::fen::{self, build_board, parse_fen_from_buffer};
 use crate::moves::{from_lan, generate_all_moves, check_check};
+use crate::search::search_moves;
 #[allow(unused_imports)]
 use rand::seq::SliceRandom;
 use std::fs::File;
@@ -69,12 +70,14 @@ pub fn main_loop() -> ! {
             }
         }
         else if buffer.starts_with("go") {
+            /*
             let mut moves = generate_all_moves(&board);
             check_check(&mut board, &mut moves);
             let m = moves.choose(&mut rand::thread_rng()).unwrap();
-            //let m = &moves[0];
+            */
+            let m = search_moves(&board, 4);
             println!("bestmove {}", m.to_lan());
-            board.make_move(m);
+            board.make_move(&m);
 
             if debug {
                 println!("info string MOVE CHOSEN: {}\n {}", m, board);
