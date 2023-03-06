@@ -156,21 +156,26 @@ impl Board {
             }
         }
         // If the end index of a move is 16 squares from the start, an en passant is possible
+        let mut en_passant = false;
         if piece.piece_name == PieceName::Pawn {
             match piece.color {
                 Color::White => {
                     if chess_move.starting_idx == chess_move.end_idx - 16 {
+                        en_passant = true;
                         self.en_passant_square = chess_move.end_idx - 8;
                     }
                 }
                 Color::Black => {
                     if chess_move.end_idx + 16 == chess_move.starting_idx {
+                        en_passant = true;
                         self.en_passant_square = chess_move.starting_idx - 8;
                     }
                 }
             }
         }
-        self.en_passant_square = -1;
+        if !en_passant {
+            self.en_passant_square = -1;
+        }
     }
 
     pub fn evaluation(&self) -> f64 {

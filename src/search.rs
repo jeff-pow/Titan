@@ -5,11 +5,12 @@ use crate::moves::{generate_all_moves, check_check, Move};
 use crate::pieces::{get_piece_value, Color};
 
 pub fn time_move_search(board: &Board, depth: i32) {
-    for i in 1..depth {
+    for i in 0..depth {
         let start = Instant::now();
         print!("{}", count_moves(i, board));
         let elapsed = start.elapsed();
-        println!(" moves generated in {:?}", elapsed);
+        print!(" moves generated in {:?} ", elapsed);
+        println!("at a depth of {i}");
     }
 }
 
