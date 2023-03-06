@@ -14,7 +14,6 @@ pub struct Move {
     pub promotion: bool,
     pub piece_moving: PieceName,
     pub capture: Option<Piece>,
-    pub pts: f32,
 }
 
 impl Display for Move {
@@ -85,16 +84,7 @@ impl Move {
     /// Constructor for new moves - Mostly a placeholder for initializing variables that will
     /// certainly be changed at some other point during the runtime of the function
     pub fn new() -> Self {
-        Move { starting_idx: 0, end_idx: 0, castle: Castle::None, promotion: false, piece_moving: PieceName::King, capture: None, pts: 0. }
-    }
-}
-
-pub fn calculate_points_for_move(board: &Board, end_idx: i8) -> f32 {
-    match board.board[end_idx as usize] {
-        Some(piece) => {
-            get_piece_value(&piece)
-        }
-        None => 0.,
+        Move { starting_idx: 0, end_idx: 0, castle: Castle::None, promotion: false, piece_moving: PieceName::King, capture: None }
     }
 }
 
@@ -124,7 +114,6 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
         promotion,
         piece_moving: board.board[starting_idx as usize].unwrap().piece_name,
         capture: board.board[end_idx as usize],
-        pts: calculate_points_for_move(board, end_idx),
     }
 }
 
@@ -306,7 +295,6 @@ fn directional_move(
                 promotion: false,
                 piece_moving: piece.piece_name,
                 capture: board.board[idx],
-                pts: calculate_points_for_move(board, idx as i8),
             })
         }
         if !occupancy.0 && (piece.piece_name != PieceName::Pawn || (piece.piece_name == PieceName::Pawn && is_cardinal(direction))) {
@@ -318,7 +306,6 @@ fn directional_move(
                 promotion: is_promotion(piece, idx as i8),
                 piece_moving: piece.piece_name,
                 capture: board.board[idx],
-                pts: calculate_points_for_move(board, idx as i8),
             });
         }
         // Otherwise square is occupied
@@ -339,7 +326,6 @@ fn directional_move(
                 promotion: is_promotion(piece, idx as i8),
                 capture: board.board[idx],
                 piece_moving: piece.piece_name,
-                pts: calculate_points_for_move(board, idx as i8),
             });
             break;
         }
@@ -365,7 +351,6 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     promotion: false,
                     capture: board.board[2],
                     piece_moving: piece.piece_name,
-                    pts: calculate_points_for_move(board, 2),
                 });
             }
             if board.white_king_castle
@@ -380,7 +365,6 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     promotion: false,
                     capture: board.board[4],
                     piece_moving: piece.piece_name,
-                    pts: calculate_points_for_move(board, 6),
                 });
             }
         }
@@ -398,7 +382,6 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     promotion: false,
                     capture: board.board[58],
                     piece_moving: piece.piece_name,
-                    pts: calculate_points_for_move(board, 58),
                 });
             }
             if board.black_queen_castle
@@ -413,7 +396,6 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     promotion: false,
                     capture: board.board[62],
                     piece_moving: piece.piece_name,
-                    pts: calculate_points_for_move(board, 62),
                 });
             }
         }
@@ -512,7 +494,6 @@ fn generate_knight_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                 promotion: false,
                 capture: board.board[square_validity.0],
                 piece_moving: piece.piece_name,
-                pts: calculate_points_for_move(board, square_validity.0 as i8),
             });
         }
         else {
@@ -526,7 +507,6 @@ fn generate_knight_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                 promotion: false,
                 capture: board.board[square_validity.0],
                 piece_moving: piece.piece_name,
-                pts: calculate_points_for_move(board, square_validity.0 as i8),
             });
         }
     }

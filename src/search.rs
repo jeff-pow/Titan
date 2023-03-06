@@ -1,6 +1,8 @@
 use std::time::Instant;
 
-use crate::{fen, moves::{generate_all_moves, check_check, Move}, board::Board};
+use crate::board::Board;
+use crate::moves::{generate_all_moves, check_check, Move};
+use crate::pieces::{get_piece_value, Color};
 
 pub fn time_move_search(board: &Board, depth: i32) {
     for i in 1..depth {
@@ -12,44 +14,44 @@ pub fn time_move_search(board: &Board, depth: i32) {
 }
 
 pub fn search_moves(board: &Board, depth: i32) -> Move {
-    let mut best_score = 0.;
-    let mut best_move = Move::new();
-    let mut new_board = board.clone();
+    let mut best_score = -f64::INFINITY;
+    let mut new_board = *board;
     let mut moves = generate_all_moves(&new_board);
     check_check(&mut new_board, &mut moves);
+    let mut best_move = moves[0];
     for m in &moves {
-        let mut new_b = board.clone();
+        let mut new_b = *board;
         new_b.make_move(m);
-        let pts = search_helper(board, depth - 1);
-        if best_score < m.pts + pts {
-            best_score = m.pts + pts;
+        let pts = -search_helper(board, depth);
+        if pts > best_score {
+            best_score = pts;
             best_move = *m;
         }
     }
     best_move
 }
 
-fn search_helper(board: &Board, depth: i32) -> f32 {
+fn search_helper(board: &Board, depth: i32) -> f64 {
+    let mut best_score = -f64::INFINITY;
     if depth == 0 {
-        return 0.;
+        return board.evaluation();
     }
-    let mut best_score = 0.;
-    let mut new_board = board.clone();
+    let mut new_board = *board;
     let mut moves = generate_all_moves(&new_board);
     check_check(&mut new_board, &mut moves);
+    if moves.is_empty() {
+        return 0.;
+    }
     for m in &moves {
-        let mut new_b = board.clone();
+        let mut new_b = *board;
         new_b.make_move(m);
-        let pts = search_helper(board, depth - 1);
-        if best_score < m.pts + pts {
-            best_score = m.pts + pts;
-        }
+        best_score = f64::max(-search_helper(board, depth - 1), best_score);
     }
     best_score
 }
 
 pub fn count_moves(depth: i32, board: &Board) -> usize {
-    let mut board = board.clone();
+    let mut board = *board;
     if depth == 0 {
         return 1;
     }
@@ -57,7 +59,7 @@ pub fn count_moves(depth: i32, board: &Board) -> usize {
     let mut moves = generate_all_moves(&board);
     check_check(&mut board, &mut moves);
     for m in &moves {
-        let mut new_b = board.clone();
+        let mut new_b = board;
         new_b.make_move(m);
         count += count_moves(depth - 1, &new_b);
     }

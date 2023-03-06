@@ -6,15 +6,18 @@ mod search;
 use std::process::exit;
 use fen::build_board;
 use pieces::Piece;
-use search::time_move_search;
-use crate::moves::{check_check, generate_all_moves};
+use search::{search_moves};
+use crate::{moves::{check_check, generate_all_moves}, search::time_move_search};
 
 mod board;
 mod fen;
 
 fn main() {
-    let board = build_board(fen::STARTING_FEN);
-    time_move_search(&board, 6);
+    let mut board = build_board("4rn2/k7/5p2/8/8/3Q4/1K6/8 w - - 0 1");
+    println!("{}", board);
+    let m = search_moves(&board, 4);
+    board.make_move(&m);
+    println!("{}\n{}", m, board);
     //print_moves();
     //uci::main_loop();
 }

@@ -1,11 +1,11 @@
-use std::f32::INFINITY;
+use std::f64::INFINITY;
 
-pub const KING_PTS: f32 = INFINITY;
-pub const QUEEN_PTS: f32 = 9.;
-pub const ROOK_PTS: f32 = 5.;
-pub const BISHOP_PTS: f32 = 3.;
-pub const KNIGHT_PTS: f32 = 3.;
-pub const PAWN_PTS: f32 = 1.;
+pub const KING_PTS: f64 = INFINITY;
+pub const QUEEN_PTS: f64 = 9.;
+pub const ROOK_PTS: f64 = 5.;
+pub const BISHOP_PTS: f64 = 3.;
+pub const KNIGHT_PTS: f64 = 3.;
+pub const PAWN_PTS: f64 = 1.;
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,7 +43,7 @@ impl Piece {
     }
 }
 
-pub fn get_piece_value(piece: &Piece) -> f32 {
+pub fn get_piece_value(piece: &Piece) -> f64 {
     match piece.piece_name {
         PieceName::King => KING_PTS,
         PieceName::Queen => QUEEN_PTS,
