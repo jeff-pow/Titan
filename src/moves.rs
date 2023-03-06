@@ -349,7 +349,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     end_idx: 2,
                     castle: Castle::WhiteQueenCastle,
                     promotion: false,
-                    capture: board.board[2],
+                    capture: None,
                     piece_moving: piece.piece_name,
                 });
             }
@@ -363,7 +363,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     end_idx: 6,
                     castle: Castle::WhiteKingCastle,
                     promotion: false,
-                    capture: board.board[4],
+                    capture: None,
                     piece_moving: piece.piece_name,
                 });
             }
@@ -380,7 +380,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     end_idx: 58,
                     castle: Castle::BlackQueenCastle,
                     promotion: false,
-                    capture: board.board[58],
+                    capture: None,
                     piece_moving: piece.piece_name,
                 });
             }
@@ -394,7 +394,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     end_idx: 62,
                     castle: Castle::BlackKingCastle,
                     promotion: false,
-                    capture: board.board[62],
+                    capture: None,
                     piece_moving: piece.piece_name,
                 });
             }

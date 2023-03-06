@@ -14,6 +14,36 @@ pub fn time_move_search(board: &Board, depth: i32) {
     }
 }
 
+pub fn perft(board: &Board, depth: i32) {
+    for _ in 1..=depth {
+        let mut board = *board;
+        let mut moves = generate_all_moves(&board);
+        check_check(&mut board, &mut moves);
+        for m in &moves {
+            let mut new_b = board;
+            new_b.make_move(m);
+            let count = count_moves(depth - 1, &new_b);
+            println!("{}: {}", m.to_lan(), count);
+        }
+    }
+}
+
+fn count_moves(depth: i32, board: &Board) -> usize {
+    let mut board = *board;
+    if depth == 0 {
+        return 1;
+    }
+    let mut count = 0;
+    let mut moves = generate_all_moves(&board);
+    check_check(&mut board, &mut moves);
+    for m in &moves {
+        let mut new_b = board;
+        new_b.make_move(m);
+        count += count_moves(depth - 1, &new_b);
+    }
+    count
+}
+
 pub fn search_moves(board: &Board, depth: i32) -> Move {
     let mut best_score = -f64::INFINITY;
     let mut new_board = *board;
@@ -51,18 +81,3 @@ fn search_helper(board: &Board, depth: i32) -> f64 {
     best_score
 }
 
-pub fn count_moves(depth: i32, board: &Board) -> usize {
-    let mut board = *board;
-    if depth == 0 {
-        return 1;
-    }
-    let mut count = 0;
-    let mut moves = generate_all_moves(&board);
-    check_check(&mut board, &mut moves);
-    for m in &moves {
-        let mut new_b = board;
-        new_b.make_move(m);
-        count += count_moves(depth - 1, &new_b);
-    }
-    count
-}

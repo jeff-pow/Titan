@@ -127,13 +127,12 @@ pub fn build_board(fen_string: &str) -> Board {
     };
     // 10th bucket find who can still castle
     // Order of array is white king castle, white queen castle, black king castle, black queen castle
-    let mut castles = [false; 4];
     for c in iter.next().unwrap().chars() {
         match c {
-            'K' => castles[0] = true,
-            'Q' => castles[1] = true,
-            'k' => castles[2] = true,
-            'q' => castles[3] = true,
+            'K' => board.white_king_castle = true,
+            'Q' => board.white_queen_castle = true,
+            'k' => board.black_king_castle = true,
+            'q' => board.black_queen_castle = true,
             '-' => (),
             _ => panic!("Unrecognized castle character: {}", c),
         }
