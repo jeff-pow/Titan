@@ -4,7 +4,7 @@ use std::fmt::Display;
 use crate::{moves::Castle, moves::Move, pieces::Color, pieces::PieceName, Piece};
 
 #[repr(C)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Board {
     pub board: [Option<Piece>; 64],
     pub to_move: Color,
@@ -12,7 +12,7 @@ pub struct Board {
     pub black_queen_castle: bool,
     pub white_king_castle: bool,
     pub white_queen_castle: bool,
-    pub en_passant_square: u8,
+    pub en_passant_square: i8,
     pub black_king_square: i8,
     pub white_king_square: i8,
 }
@@ -66,7 +66,7 @@ impl Board {
             white_king_castle: false,
             white_queen_castle: false,
             to_move: Color::White,
-            en_passant_square: 0,
+            en_passant_square: -1,
             white_king_square: -1,
             black_king_square: -1,
         }
@@ -155,20 +155,22 @@ impl Board {
                 _ => (),
             }
         }
+        // If the end index of a move is 16 squares from the start, an en passant is possible
         if piece.piece_name == PieceName::Pawn {
             match piece.color {
                 Color::White => {
                     if chess_move.starting_idx == chess_move.end_idx - 16 {
-                        self.en_passant_square = chess_move.end_idx as u8 - 8;
+                        self.en_passant_square = chess_move.end_idx - 8;
                     }
                 }
                 Color::Black => {
                     if chess_move.end_idx + 16 == chess_move.starting_idx {
-                        self.en_passant_square = chess_move.starting_idx as u8 - 8;
+                        self.en_passant_square = chess_move.starting_idx - 8;
                     }
                 }
             }
         }
+        self.en_passant_square = -1;
     }
 }
 

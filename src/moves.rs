@@ -298,6 +298,17 @@ fn directional_move(
         // piece of any kind, and if true color contains the color of the new piece
         let occupancy = check_space_occupancy(board, idx as i8);
         // Handle special case of enpassant
+        if piece.piece_name == PieceName::Pawn && idx as i8 == board.en_passant_square {
+            moves.push( Move {
+                starting_idx: piece.current_square,
+                end_idx: idx as i8,
+                castle: Castle::None,
+                promotion: false,
+                piece_moving: piece.piece_name,
+                capture: board.board[idx],
+                pts: calculate_points_for_move(board, idx as i8),
+            })
+        }
         if !occupancy.0 && (piece.piece_name != PieceName::Pawn || (piece.piece_name == PieceName::Pawn && is_cardinal(direction))) {
             // If position not occupied, add the move
             moves.push(Move {
@@ -305,8 +316,8 @@ fn directional_move(
                 end_idx: idx as i8,
                 castle: Castle::None,
                 promotion: is_promotion(piece, idx as i8),
-                capture: board.board[idx],
                 piece_moving: piece.piece_name,
+                capture: board.board[idx],
                 pts: calculate_points_for_move(board, idx as i8),
             });
         }

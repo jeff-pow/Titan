@@ -142,7 +142,7 @@ pub fn build_board(fen_string: &str) -> Board {
     let en_passant_letters: Vec<char> = iter.next().unwrap().chars().collect();
     let en_passant_idx = find_en_passant_square(en_passant_letters);
     if let Some(idx) = en_passant_idx {
-        board.en_passant_square = idx
+        board.en_passant_square = idx as i8
     }
     // Half move clock: not yet implemented
     iter.next();

@@ -1,4 +1,15 @@
+use std::time::Instant;
+
 use crate::{fen, moves::{generate_all_moves, check_check, Move}, board::Board};
+
+pub fn time_move_search(board: &Board, depth: i32) {
+    for i in 1..depth {
+        let start = Instant::now();
+        print!("{}", count_moves(i, board));
+        let elapsed = start.elapsed();
+        println!(" moves generated in {:?}", elapsed);
+    }
+}
 
 pub fn search_moves(board: &Board, depth: i32) -> Move {
     let mut best_score = 0.;
@@ -12,7 +23,7 @@ pub fn search_moves(board: &Board, depth: i32) -> Move {
         let pts = search_helper(board, depth - 1);
         if best_score < m.pts + pts {
             best_score = m.pts + pts;
-            best_move = m.clone();
+            best_move = *m;
         }
     }
     best_move
