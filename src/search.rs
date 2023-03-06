@@ -15,16 +15,14 @@ pub fn time_move_search(board: &Board, depth: i32) {
 }
 
 pub fn perft(board: &Board, depth: i32) {
-    for _ in 1..=depth {
-        let mut board = *board;
-        let mut moves = generate_all_moves(&board);
-        check_check(&mut board, &mut moves);
-        for m in &moves {
-            let mut new_b = board;
-            new_b.make_move(m);
-            let count = count_moves(depth - 1, &new_b);
-            println!("{}: {}", m.to_lan(), count);
-        }
+    let mut board = *board;
+    let mut moves = generate_all_moves(&board);
+    check_check(&mut board, &mut moves);
+    for m in &moves {
+        let mut new_b = board;
+        new_b.make_move(m);
+        let count = count_moves(depth - 1, &new_b);
+        println!("{}: {}", m.to_lan(), count);
     }
 }
 
