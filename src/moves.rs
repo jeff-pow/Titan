@@ -11,7 +11,7 @@ pub struct Move {
     pub starting_idx: i8,
     pub end_idx: i8,
     pub castle: Castle,
-    pub promotion: bool,
+    pub promotion: Promotion,
     pub piece_moving: PieceName,
     pub capture: Option<Piece>,
 }
@@ -31,9 +31,13 @@ impl Display for Move {
             Castle::BlackKingCastle => str += "black king castle ",
             Castle::BlackQueenCastle => str += "black queen castle ",
         }
+        str += " Promotion: ";
         match self.promotion {
-            true => str += " Promotion: true ",
-            false => str += " Promotion: false ",
+            Promotion::Queen => str += "Queen ",
+            Promotion::Rook => str += "Rook ",
+            Promotion::Bishop => str += "Bishop ",
+            Promotion::Knight => str += "Knight ",
+            Promotion::None => str += "None ",
         }
         match self.capture {
             None => {
@@ -75,8 +79,11 @@ impl Move {
         str += arr[x_end as usize];
         str += &y_end.to_string();
         match self.promotion {
-            true => str += "q",
-            false => {}
+            Promotion::Queen => str += "q",
+            Promotion::Rook => str += "r",
+            Promotion::Bishop => str += "b",
+            Promotion::Knight => str += "k",
+            Promotion::None => (),
         }
         str
     }
@@ -84,7 +91,7 @@ impl Move {
     /// Constructor for new moves - Mostly a placeholder for initializing variables that will
     /// certainly be changed at some other point during the runtime of the function
     pub fn new() -> Self {
-        Move { starting_idx: 0, end_idx: 0, castle: Castle::None, promotion: false, piece_moving: PieceName::King, capture: None }
+        Move { starting_idx: 0, end_idx: 0, castle: Castle::None, promotion: Promotion::None, piece_moving: PieceName::King, capture: None }
     }
 }
 
@@ -102,10 +109,15 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
     let end_row = (vec[3].to_digit(10).unwrap() - 1) * 8;
     let end_idx = (end_row + end_column) as i8;
 
-    let mut promotion = false;
-    let piece = board.board[starting_idx as usize].expect("Piece should be here");
-    if piece.piece_name == PieceName::Pawn && is_promotion(&piece, end_idx) {
-        promotion = true;
+    let mut promotion = Promotion::None;
+    if vec.len() > 4 {
+        promotion = match vec[4] {
+            'q' => Promotion::Queen,
+            'r' => Promotion::Rook,
+            'b' => Promotion::Bishop,
+            'n' => Promotion::Knight,
+            _ => panic!(),
+        };
     }
     Move {
         starting_idx,
@@ -115,6 +127,15 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
         piece_moving: board.board[starting_idx as usize].unwrap().piece_name,
         capture: board.board[end_idx as usize],
     }
+}
+
+#[derive(Clone, Copy, EnumIter, PartialEq)]
+pub enum Promotion {
+    Queen,
+    Rook,
+    Bishop,
+    Knight,
+    None
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -292,21 +313,36 @@ fn directional_move(
                 starting_idx: piece.current_square,
                 end_idx: idx as i8,
                 castle: Castle::None,
-                promotion: false,
+                promotion: Promotion::None,
                 piece_moving: piece.piece_name,
                 capture: board.board[idx],
             })
         }
         if !occupancy.0 && (piece.piece_name != PieceName::Pawn || (piece.piece_name == PieceName::Pawn && is_cardinal(direction))) {
             // If position not occupied, add the move
-            moves.push(Move {
-                starting_idx: piece.current_square,
-                end_idx: idx as i8,
-                castle: Castle::None,
-                promotion: is_promotion(piece, idx as i8),
-                piece_moving: piece.piece_name,
-                capture: board.board[idx],
-            });
+            if !is_promotion(piece, idx as i8) {
+                moves.push(Move { starting_idx: piece.current_square,
+                    end_idx: idx as i8,
+                    castle: Castle::None,
+                    promotion: Promotion::None,
+                    piece_moving: piece.piece_name,
+                    capture: board.board[idx],
+                });
+            }
+            else {
+                for p in Promotion::iter() {
+                    if p == Promotion::None {
+                        continue;
+                    }
+                    moves.push(Move { starting_idx: piece.current_square,
+                        end_idx: idx as i8,
+                        castle: Castle::None,
+                        promotion: p,
+                        piece_moving: piece.piece_name,
+                        capture: board.board[idx],
+                    });
+                }
+            }
         }
         // Otherwise square is occupied
         else {
@@ -319,14 +355,30 @@ fn directional_move(
                 break;
             }
             // Otherwise you can capture that piece
-            moves.push(Move {
-                starting_idx: piece.current_square,
-                end_idx: idx as i8,
-                castle: Castle::None,
-                promotion: is_promotion(piece, idx as i8),
-                capture: board.board[idx],
-                piece_moving: piece.piece_name,
-            });
+            if !is_promotion(piece, idx as i8) {
+                moves.push(Move {
+                    starting_idx: piece.current_square,
+                    end_idx: idx as i8,
+                    castle: Castle::None,
+                    promotion: Promotion::None,
+                    capture: board.board[idx],
+                    piece_moving: piece.piece_name,
+                });
+            }
+            else {
+                for p in Promotion::iter() {
+                    if p == Promotion::None {
+                        continue;
+                    }
+                    moves.push(Move { starting_idx: piece.current_square,
+                        end_idx: idx as i8,
+                        castle: Castle::None,
+                        promotion: p,
+                        piece_moving: piece.piece_name,
+                        capture: board.board[idx],
+                    });
+                }
+            }
             break;
         }
     }
@@ -348,7 +400,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     starting_idx: 4,
                     end_idx: 2,
                     castle: Castle::WhiteQueenCastle,
-                    promotion: false,
+                    promotion: Promotion::None,
                     capture: None,
                     piece_moving: piece.piece_name,
                 });
@@ -362,7 +414,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     starting_idx: 4,
                     end_idx: 6,
                     castle: Castle::WhiteKingCastle,
-                    promotion: false,
+                    promotion: Promotion::None,
                     capture: None,
                     piece_moving: piece.piece_name,
                 });
@@ -379,7 +431,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     starting_idx: 60,
                     end_idx: 58,
                     castle: Castle::BlackQueenCastle,
-                    promotion: false,
+                    promotion: Promotion::None,
                     capture: None,
                     piece_moving: piece.piece_name,
                 });
@@ -393,7 +445,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     starting_idx: 60,
                     end_idx: 62,
                     castle: Castle::BlackKingCastle,
-                    promotion: false,
+                    promotion: Promotion::None,
                     capture: None,
                     piece_moving: piece.piece_name,
                 });
@@ -491,7 +543,7 @@ fn generate_knight_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                 starting_idx: piece.current_square,
                 end_idx: square_validity.0 as i8,
                 castle: Castle::None,
-                promotion: false,
+                promotion: Promotion::None,
                 capture: board.board[square_validity.0],
                 piece_moving: piece.piece_name,
             });
@@ -504,7 +556,7 @@ fn generate_knight_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                 starting_idx: piece.current_square,
                 end_idx: square_validity.0 as i8,
                 castle: Castle::None,
-                promotion: false,
+                promotion: Promotion::None,
                 capture: board.board[square_validity.0],
                 piece_moving: piece.piece_name,
             });

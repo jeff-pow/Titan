@@ -5,7 +5,7 @@ use crate::moves::{generate_all_moves, check_check, Move};
 use crate::pieces::{get_piece_value, Color};
 
 pub fn time_move_search(board: &Board, depth: i32) {
-    for i in 0..depth {
+    for i in 1..depth {
         let start = Instant::now();
         print!("{}", count_moves(i, board));
         let elapsed = start.elapsed();
@@ -43,7 +43,7 @@ fn count_moves(depth: i32, board: &Board) -> usize {
 }
 
 pub fn search_moves(board: &Board, depth: i32) -> Move {
-    let mut best_score = -f64::INFINITY;
+    let mut best_score = i32::MIN;
     let mut new_board = *board;
     let mut moves = generate_all_moves(&new_board);
     check_check(&mut new_board, &mut moves);
@@ -60,8 +60,8 @@ pub fn search_moves(board: &Board, depth: i32) -> Move {
     best_move
 }
 
-fn search_helper(board: &Board, depth: i32) -> f64 {
-    let mut best_score = -f64::INFINITY;
+fn search_helper(board: &Board, depth: i32) -> i32 {
+    let mut best_score = i32::MIN;
     if depth == 0 {
         return board.evaluation();
     }
@@ -69,12 +69,12 @@ fn search_helper(board: &Board, depth: i32) -> f64 {
     let mut moves = generate_all_moves(&new_board);
     check_check(&mut new_board, &mut moves);
     if moves.is_empty() {
-        return 0.;
+        return 0;
     }
     for m in &moves {
         let mut new_b = *board;
         new_b.make_move(m);
-        best_score = f64::max(-search_helper(board, depth - 1), best_score);
+        best_score = i32::max(-search_helper(board, depth - 1), best_score);
     }
     best_score
 }

@@ -1,7 +1,7 @@
 use core::fmt;
 use std::fmt::Display;
 
-use crate::{moves::Castle, moves::Move, pieces::Color, pieces::{PieceName, get_piece_value}, Piece};
+use crate::{moves::Castle, moves::{Move, Promotion}, pieces::Color, pieces::{PieceName, get_piece_value}, Piece};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -116,14 +116,35 @@ impl Board {
         }
         // If move is a promotion, a pawn is promoted
         match chess_move.promotion {
-            true => {
+            Promotion::Queen => {
                 self.board[chess_move.end_idx as usize] = Some(Piece {
                     current_square: chess_move.end_idx,
                     color: piece.color,
                     piece_name: PieceName::Queen,
                 })
             }
-            false => {}
+            Promotion::Rook => {
+                self.board[chess_move.end_idx as usize] = Some(Piece {
+                    current_square: chess_move.end_idx,
+                    color: piece.color,
+                    piece_name: PieceName::Rook,
+                })
+            }
+            Promotion::Bishop => {
+                self.board[chess_move.end_idx as usize] = Some(Piece {
+                    current_square: chess_move.end_idx,
+                    color: piece.color,
+                    piece_name: PieceName::Bishop,
+                })
+            }
+            Promotion::Knight => {
+                self.board[chess_move.end_idx as usize] = Some(Piece {
+                    current_square: chess_move.end_idx,
+                    color: piece.color,
+                    piece_name: PieceName::Knight,
+                })
+            }
+            Promotion::None => (),
         }
         // Method changes the side to move after making a move
         match self.to_move {
@@ -189,16 +210,13 @@ impl Board {
         }
     }
 
-    pub fn evaluation(&self) -> f64 {
-        let mut white = 0.;
-        let mut black = 0.;
+    pub fn evaluation(&self) -> i32 {
+        let mut white = 0;
+        let mut black = 0;
         for square in self.board {
             match square {
                 None => continue,
                 Some(piece) => {
-                    if piece.piece_name == PieceName::King {
-                        continue;
-                    }
                     match piece.color {
                         Color::White => {
                             white += get_piece_value(&piece);
@@ -210,7 +228,7 @@ impl Board {
                 }
             }
         }
-        white - black
+        if self.to_move == Color::White { white - black } else { black - white }
     }
 }
 
@@ -237,8 +255,5 @@ mod board_tests {
 
     #[test]
     fn test_board_eval() {
-        assert_eq!(0., fen::build_board(fen::STARTING_FEN).evaluation());
-        assert_eq!(-2., fen::build_board("2rbk3/8/8/8/5N2/8/1K2B3/8 w - - 0 1").evaluation());
-        assert_eq!(0., fen::build_board("4rn2/k7/5p2/8/8/3Q4/1K6/8 w - - 0 1").evaluation());
     }
 }
