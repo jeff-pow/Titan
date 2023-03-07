@@ -80,18 +80,18 @@ impl Board {
         self.board[chess_move.starting_idx as usize] = None;
         // Move rooks if a castle is applied
         match chess_move.castle {
-            Castle::WhiteKingCastle => {
+            Castle::WhiteQueenCastle => {
                 let mut rook = &mut self.board[0].expect("Piece should be here: 0");
                 rook.current_square = 5;
-                self.board[5] = self.board[7];
+                self.board[5] = Option::from(*rook);
                 self.board[7] = None;
                 self.white_queen_castle = false;
                 self.white_king_castle = false;
             }
-            Castle::WhiteQueenCastle => {
+            Castle::WhiteKingCastle => {
                 let mut rook = &mut self.board[7].expect("Piece should be here: 7");
                 rook.current_square = 3;
-                self.board[3] = self.board[0];
+                self.board[3] = Option::from(*rook);
                 self.board[0] = None;
                 self.white_queen_castle = false;
                 self.white_king_castle = false;
@@ -99,7 +99,7 @@ impl Board {
             Castle::BlackKingCastle => {
                 let mut rook = &mut self.board[63].expect("Piece should be here: 63");
                 rook.current_square = 61;
-                self.board[61] = self.board[63];
+                self.board[61] = Option::from(*rook);
                 self.board[63] = None;
                 self.black_queen_castle = false;
                 self.black_king_castle = false;
@@ -107,7 +107,7 @@ impl Board {
             Castle::BlackQueenCastle => {
                 let mut rook = &mut self.board[56].expect("Piece should be here: 56");
                 rook.current_square = 59;
-                self.board[59] = self.board[56];
+                self.board[59] = Option::from(*rook);
                 self.board[56] = None;
                 self.black_queen_castle = false;
                 self.black_king_castle = false;
@@ -175,6 +175,17 @@ impl Board {
         }
         if !en_passant {
             self.en_passant_square = -1;
+        }
+        if let Some(cap) = chess_move.capture {
+            if cap.piece_name == PieceName::Rook {
+                match cap.current_square {
+                    0 => self.white_queen_castle = false,
+                    7 => self.white_king_castle = false,
+                    56 => self.black_queen_castle = false,
+                    63 => self.black_king_castle = false,
+                    _ => (),
+                }
+            }
         }
     }
 
