@@ -1,8 +1,0 @@
-UCI said: position fen r3k2r/Pppp1Npp/5nb1/bP6/B1P1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1 moves f7d6
-
-UCI said: perft 1
-
-UCI said: position fen r3k2r/Pppp2pp/3N1nb1/bP6/B1P1P3/q4N2/Pp1P2PP/R2Q1RK1 b kq - 0 1
-
-UCI said: perft 1
-
