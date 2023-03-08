@@ -73,9 +73,6 @@ impl Board {
     }
 
     pub fn make_move(&mut self, chess_move: &Move) {
-        if chess_move.piece_moving == PieceName::Pawn && chess_move.end_idx == 22 {
-            let i = ":)";
-        }
         // Special case if the move is an en_passant
         if chess_move.piece_moving == PieceName::Pawn && chess_move.end_idx == self.en_passant_square {
             let end_idx = chess_move.end_idx as usize;

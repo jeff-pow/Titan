@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::fen::{self, build_board, parse_fen_from_buffer};
-use crate::moves::{from_lan, generate_all_moves, check_check};
+use crate::moves::{from_lan, generate_all_moves, check_check, Move};
 use crate::search::{search_moves, perft};
 #[allow(unused_imports)]
 use rand::seq::SliceRandom;
@@ -115,6 +115,8 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, debug: bool) {
     for str in moves.iter().skip(skip) {
         let m = from_lan(str, board);
         board.make_move(&m);
+        let mut vec: Vec<Move> = Vec::new();
+        check_check(board, &mut vec);
         if debug {
             print!("info string making move {}\n {}", m, board);
             println!("{}", m);

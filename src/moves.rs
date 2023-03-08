@@ -215,7 +215,7 @@ pub fn check_check(board: &mut Board, moves: &mut Vec<Move>) {
         if idx as usize >= moves.len() {
             break;
         }
-        let mut new_board = board.clone();
+        let mut new_board = *board;
         let possible_move = &moves[idx as usize];
         match board.to_move {
             Color::White => {
@@ -239,6 +239,8 @@ pub fn check_check(board: &mut Board, moves: &mut Vec<Move>) {
                     if new_m.end_idx == new_board.white_king_square {
                         moves.swap_remove(idx as usize);
                         idx -= 1;
+                        board.white_king_castle = false;
+                        board.white_queen_castle = false;
                         break;
                     }
                 }
@@ -246,6 +248,8 @@ pub fn check_check(board: &mut Board, moves: &mut Vec<Move>) {
                     if new_m.end_idx == new_board.black_king_square {
                         moves.swap_remove(idx as usize);
                         idx -= 1;
+                        board.black_king_castle = false;
+                        board.black_queen_castle = false;
                         break;
                     }
                 }
