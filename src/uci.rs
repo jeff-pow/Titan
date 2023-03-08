@@ -1,7 +1,7 @@
 use crate::board::Board;
 use crate::fen::{self, build_board, parse_fen_from_buffer};
 use crate::moves::{from_lan, generate_all_moves, check_check};
-use crate::search::search_moves;
+use crate::search::{search_moves, perft};
 #[allow(unused_imports)]
 use rand::seq::SliceRandom;
 use std::fs::File;
@@ -68,6 +68,14 @@ pub fn main_loop() -> ! {
                     println!("info string\n {}", board);
                 }
             }
+        }
+        else if buffer.starts_with("perft") {
+            let vec: Vec<char> = buffer.chars().collect();
+            let depth = vec[6].to_digit(10).unwrap();
+            perft(&board, depth as i32);
+        }
+        else if buffer.eq("d") {
+            println!("{}\n", board);
         }
         else if buffer.starts_with("go") {
             /*

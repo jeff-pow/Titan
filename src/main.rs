@@ -14,8 +14,9 @@ mod board;
 mod fen;
 
 fn main() {
-    let board = build_board("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
-    time_move_search(&board, 6);
+    let board = build_board("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -");
+    //uci::main_loop();
+    time_move_search(&build_board(fen::STARTING_FEN), 7);
 }
 
 #[allow(dead_code)]
@@ -35,4 +36,14 @@ fn print_moves(board: &Board) {
     println!("{} moves possible pre check", i);
     println!("{} moves possible post check", moves.len());
     exit(0);
+}
+
+#[cfg(test)]
+mod move_number_tests {
+    use crate::{search::perft, fen::build_board};
+
+    fn test_position_3() {
+        let board = build_board("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -");
+        assert_eq!(1235554, perft(&board, 5));
+    }
 }

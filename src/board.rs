@@ -73,6 +73,33 @@ impl Board {
     }
 
     pub fn make_move(&mut self, chess_move: &Move) {
+        if chess_move.piece_moving == PieceName::Pawn && chess_move.end_idx == 22 {
+            let i = ":)";
+        }
+        // Special case if the move is an en_passant
+        if chess_move.piece_moving == PieceName::Pawn && chess_move.end_idx == self.en_passant_square {
+            let end_idx = chess_move.end_idx as usize;
+            match self.to_move {
+                Color::White => {
+                    if self.board[end_idx].is_none()
+                        && self.board[end_idx + 8].is_none()
+                        && self.board[end_idx - 8].is_some()
+                        && self.board[end_idx - 8].unwrap().piece_name == PieceName::Pawn {
+
+                        self.board[end_idx - 8] = None;
+                    }
+                }
+                Color::Black => {
+                    if self.board[end_idx].is_none()
+                        && self.board[end_idx - 8].is_none()
+                        && self.board[end_idx + 8].is_some()
+                        && self.board[end_idx + 8].unwrap().piece_name == PieceName::Pawn {
+
+                        self.board[end_idx + 8] = None;
+                    }
+                }
+            }
+        }
         let mut piece = &mut self.board[chess_move.starting_idx as usize].
             expect("There should be a piece here");
         piece.current_square = chess_move.end_idx;
