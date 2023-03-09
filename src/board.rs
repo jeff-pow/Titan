@@ -1,10 +1,10 @@
 use core::fmt;
-use std::fmt::Display;
+use std::{fmt::Display, cell::{RefCell, Cell}};
 
 use crate::{moves::Castle, moves::{Move, Promotion}, pieces::Color, pieces::{PieceName, get_piece_value}, Piece};
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Board {
     pub board: [Option<Piece>; 64],
     pub to_move: Color,
@@ -15,6 +15,10 @@ pub struct Board {
     pub en_passant_square: i8,
     pub black_king_square: i8,
     pub white_king_square: i8,
+    pub white_pieces: RefCell<Vec<Piece>>,
+    pub black_pieces: RefCell<Vec<Piece>>,
+    pub attacked_squares: RefCell<Vec<i8>>,
+    pub pinned_squares: RefCell<Vec<i8>>,
 }
 
 impl Display for Board {
@@ -69,6 +73,10 @@ impl Board {
             en_passant_square: -1,
             white_king_square: -1,
             black_king_square: -1,
+            white_pieces: RefCell::new(Vec::with_capacity(16)),
+            black_pieces: RefCell::new(Vec::with_capacity(16)),
+            attacked_squares: RefCell::new(Vec::with_capacity(50)),
+            pinned_squares: RefCell::new(Vec::with_capacity(50)), 
         }
     }
 
@@ -83,6 +91,8 @@ impl Board {
                         && self.board[end_idx - 8].is_some()
                         && self.board[end_idx - 8].unwrap().piece_name == PieceName::Pawn {
 
+                        let p = &self.board[end_idx - 8].unwrap();
+                        self.black_pieces.borrow_mut().retain(|piece| piece.current_square != p.current_square);
                         self.board[end_idx - 8] = None;
                     }
                 }
@@ -92,16 +102,45 @@ impl Board {
                         && self.board[end_idx + 8].is_some()
                         && self.board[end_idx + 8].unwrap().piece_name == PieceName::Pawn {
 
+                        let p = &self.board[end_idx + 8].unwrap();
+                        self.white_pieces.borrow_mut().retain(|piece| piece.current_square != p.current_square);
                         self.board[end_idx + 8] = None;
                     }
                 }
             }
         }
+
+        // If the end idx of the board contains a piece, remove that piece from the vector that
+        // stores piece positions
+        if let Some(p) = &self.board[chess_move.end_idx as usize] {
+            match self.to_move {
+                Color::White => {
+                    self.black_pieces.borrow_mut().retain(|piece| piece.current_square != p.current_square)
+                }
+                Color::Black => {
+                    self.white_pieces.borrow_mut().retain(|piece| piece.current_square != p.current_square);
+                }
+            }
+        }
+
         let mut piece = &mut self.board[chess_move.starting_idx as usize].
             expect("There should be a piece here");
         piece.current_square = chess_move.end_idx;
         self.board[chess_move.end_idx as usize] = Option::from(*piece);
         self.board[chess_move.starting_idx as usize] = None;
+        match self.to_move {
+            Color::White => {
+                if let Some(mut p) = self.white_pieces.borrow_mut().iter_mut().find(|x| x.current_square == chess_move.starting_idx) {
+                    p.current_square = chess_move.end_idx;
+                }
+            }
+            Color::Black => {
+                if let Some(mut p) = self.black_pieces.borrow_mut().iter_mut().find(|x| x.current_square == chess_move.starting_idx) {
+                    p.current_square = chess_move.end_idx;
+                }
+            }
+        }
+
         // Move rooks if a castle is applied
         match chess_move.castle {
             Castle::WhiteQueenCastle => {
@@ -141,36 +180,76 @@ impl Board {
         // If move is a promotion, a pawn is promoted
         match chess_move.promotion {
             Promotion::Queen => {
+                match self.to_move {
+                    Color::White => {
+                        self.white_pieces.borrow_mut().retain(|piece| piece.current_square != chess_move.end_idx);
+                        self.white_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Queen, chess_move.end_idx));
+                    }
+                    Color::Black => {
+                        self.black_pieces.borrow_mut().retain(|piece| piece.current_square != chess_move.end_idx);
+                        self.black_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Queen, chess_move.end_idx));
+                    }
+                }
                 self.board[chess_move.end_idx as usize] = Some(Piece {
                     current_square: chess_move.end_idx,
                     color: piece.color,
                     piece_name: PieceName::Queen,
-                })
+                });
             }
             Promotion::Rook => {
+                match self.to_move {
+                    Color::White => {
+                        self.white_pieces.borrow_mut().retain(|piece| piece.current_square != chess_move.end_idx);
+                        self.white_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Rook, chess_move.end_idx));
+                    }
+                    Color::Black => {
+                        self.black_pieces.borrow_mut().retain(|piece| piece.current_square != chess_move.end_idx);
+                        self.black_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Rook, chess_move.end_idx));
+                    }
+                }
                 self.board[chess_move.end_idx as usize] = Some(Piece {
                     current_square: chess_move.end_idx,
                     color: piece.color,
                     piece_name: PieceName::Rook,
-                })
+                });
             }
             Promotion::Bishop => {
+                match self.to_move {
+                    Color::White => {
+                        self.white_pieces.borrow_mut().retain(|piece| piece.current_square != chess_move.end_idx);
+                        self.white_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Bishop, chess_move.end_idx));
+                    }
+                    Color::Black => {
+                        self.black_pieces.borrow_mut().retain(|piece| piece.current_square != chess_move.end_idx);
+                        self.black_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Bishop, chess_move.end_idx));
+                    }
+                }
                 self.board[chess_move.end_idx as usize] = Some(Piece {
                     current_square: chess_move.end_idx,
                     color: piece.color,
                     piece_name: PieceName::Bishop,
-                })
+                });
             }
             Promotion::Knight => {
+                match self.to_move {
+                    Color::White => {
+                        self.white_pieces.borrow_mut().retain(|piece| piece.current_square != chess_move.end_idx);
+                        self.white_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Knight, chess_move.end_idx));
+                    }
+                    Color::Black => {
+                        self.black_pieces.borrow_mut().retain(|piece| piece.current_square != chess_move.end_idx);
+                        self.black_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Knight, chess_move.end_idx));
+                    }
+                }
                 self.board[chess_move.end_idx as usize] = Some(Piece {
                     current_square: chess_move.end_idx,
                     color: piece.color,
                     piece_name: PieceName::Knight,
-                })
+                });
             }
             Promotion::None => (),
         }
-        // Method changes the side to move after making a move
+        // Change the side to move after making a move
         match self.to_move {
             Color::White => self.to_move = Color::Black,
             Color::Black => self.to_move = Color::White,
@@ -221,6 +300,7 @@ impl Board {
         if !en_passant {
             self.en_passant_square = -1;
         }
+        // If a rook is captured, en_passant is no longer possible
         if let Some(cap) = chess_move.capture {
             if cap.piece_name == PieceName::Rook {
                 match cap.current_square {

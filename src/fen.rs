@@ -32,41 +32,47 @@ pub fn build_board(fen_string: &str) -> Board {
                             (row * 8 + idx) as i8,
                         ));
                         board.white_king_square = (row * 8 + idx) as i8;
+                        board.white_pieces.borrow_mut().push(board.board[row * 8 + idx].unwrap());
                     }
                     'Q' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
                             Color::White,
                             PieceName::Queen,
                             (row * 8 + idx) as i8,
-                        ))
+                        ));
+                        board.white_pieces.borrow_mut().push(board.board[row * 8 + idx].unwrap());
                     }
                     'R' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
                             Color::White,
                             PieceName::Rook,
                             (row * 8 + idx) as i8,
-                        ))
+                        ));
+                        board.white_pieces.borrow_mut().push(board.board[row * 8 + idx].unwrap());
                     }
                     'N' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
                             Color::White,
                             PieceName::Knight,
                             (row * 8 + idx) as i8,
-                        ))
+                        ));
+                        board.white_pieces.borrow_mut().push(board.board[row * 8 + idx].unwrap());
                     }
                     'B' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
                             Color::White,
                             PieceName::Bishop,
                             (row * 8 + idx) as i8,
-                        ))
+                        ));
+                        board.white_pieces.borrow_mut().push(board.board[row * 8 + idx].unwrap());
                     }
                     'P' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
                             Color::White,
                             PieceName::Pawn,
                             (row * 8 + idx) as i8,
-                        ))
+                        ));
+                        board.white_pieces.borrow_mut().push(board.board[row * 8 + idx].unwrap());
                     }
                     'k' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
@@ -75,41 +81,47 @@ pub fn build_board(fen_string: &str) -> Board {
                             (row * 8 + idx) as i8,
                         ));
                         board.black_king_square = (row * 8 + idx) as i8;
+                        board.black_pieces.borrow_mut().push(board.board[row * 8 + idx].unwrap());
                     }
                     'q' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
                             Color::Black,
                             PieceName::Queen,
                             (row * 8 + idx) as i8,
-                        ))
+                        ));
+                        board.black_pieces.borrow_mut().push(board.board[row * 8 + idx].unwrap());
                     }
                     'r' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
                             Color::Black,
                             PieceName::Rook,
                             (row * 8 + idx) as i8,
-                        ))
+                        ));
+                        board.black_pieces.borrow_mut().push(board.board[row * 8 + idx].unwrap());
                     }
                     'b' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
                             Color::Black,
                             PieceName::Bishop,
                             (row * 8 + idx) as i8,
-                        ))
+                        ));
+                        board.black_pieces.borrow_mut().push(board.board[row * 8 + idx].unwrap());
                     }
                     'n' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
                             Color::Black,
                             PieceName::Knight,
                             (row * 8 + idx) as i8,
-                        ))
+                        ));
+                        board.black_pieces.borrow_mut().push(board.board[row * 8 + idx].unwrap());
                     }
                     'p' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
                             Color::Black,
                             PieceName::Pawn,
                             (row * 8 + idx) as i8,
-                        ))
+                        ));
+                        board.black_pieces.borrow_mut().push(board.board[row * 8 + idx].unwrap());
                     }
                     _ => panic!("Unrecognized char {}, board could not be made", c),
                 }

@@ -1,0 +1,6 @@
+UCI said: ucinewgame
+
+UCI said: perft 5
+
+UCI said: perft 6
+

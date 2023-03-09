@@ -72,7 +72,7 @@ pub fn main_loop() -> ! {
         else if buffer.starts_with("perft") {
             let vec: Vec<char> = buffer.chars().collect();
             let depth = vec[6].to_digit(10).unwrap();
-            perft(&board, depth as i32);
+            perft(&mut board, depth as i32);
         }
         else if buffer.eq("d") {
             println!("{}\n", board);
@@ -83,7 +83,7 @@ pub fn main_loop() -> ! {
             check_check(&mut board, &mut moves);
             let m = moves.choose(&mut rand::thread_rng()).unwrap();
             */
-            let m = search_moves(&board, 4);
+            let m = search_moves(&mut board, 4);
             println!("bestmove {}", m.to_lan());
             board.make_move(&m);
 

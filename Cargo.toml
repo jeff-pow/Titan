@@ -10,3 +10,6 @@ edition = "2021"
 strum = { version = "0.24", features = ["derive"] }
 strum_macros = "0.24"
 rand = "0.8.5"
+smallvec = "1.10.0"
+arrayvec = "0.7.2"
+tinyvec = "1.6.0"
