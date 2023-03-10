@@ -1,11 +1,9 @@
 use core::fmt;
 use std::fmt::Display;
 
-use smallvec::SmallVec;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use tinyvec::ArrayVec;
 
 use crate::{board::Board, pieces::Color, pieces::{Piece, get_piece_value}, pieces::PieceName};
 
@@ -208,59 +206,176 @@ fn check_space_occupancy(board: &Board, potential_space: i8) -> Option<Color> {
     Option::from(board.board[potential_space as usize].expect("There should be a piece here").color)
 }
 
-/// Method checks the moves the other side could make in response to a move to determine if a check
-/// would result. Removes moves if they are invalid. Checks for check :)
-pub fn check_check(board: &mut Board, moves: &mut Vec<Move>) {
-    let mut idx: i32 = 0;
-    loop {
-        if idx as usize >= moves.len() {
-            break;
+fn check_diagonal_squares(board: &Board, d: Direction, c: Color) -> bool {
+    let king_square = match c {
+        Color::White => board.white_king_square,
+        Color::Black => board.black_king_square,
+    };
+    // Color and other color
+    let oc = match c {
+        Color::White => Color::Black,
+        Color::Black => Color::White,
+    };
+    for i in 1..8 {
+        let square = check_index_addition(king_square, convert_idx_to_tuple(d, i));
+        if square.is_none() {
+            // Edge of the board has been reached, no further squares to search in that direction
+            return false;
         }
-        let mut new_board = board.clone();
-        let possible_move = &moves[idx as usize];
-        match board.to_move {
-            Color::White => {
-                if possible_move.end_idx == board.black_king_square {
-                    board.black_king_castle = false;
-                    board.black_queen_castle = false;
+        let square = square.unwrap();
+        match board.board[square as usize] {
+            // Check further squares if there is no piece at the square
+            None => continue,
+            Some(piece) => {
+                // King is not in check from a friendly piece, who also blocks further pieces from
+                // placing king in check
+                if piece.color == c {
+                    return false;
                 }
-            }
-            Color::Black => {
-                if possible_move.end_idx == board.white_king_square {
-                    board.white_king_castle = false;
-                    board.white_queen_castle = false;
-                }
-            }
-        }
-        new_board.make_move(possible_move);
-        let new_moves = generate_all_moves(&new_board);
-        for new_m in new_moves {
-            match board.to_move {
-                Color::White => {
-                    if new_m.end_idx == new_board.white_king_square {
-                        moves.swap_remove(idx as usize);
-                        idx -= 1;
-                        board.white_king_castle = false;
-                        board.white_queen_castle = false;
-                        break;
-                    }
-                }
-                Color::Black => {
-                    if new_m.end_idx == new_board.black_king_square {
-                        moves.swap_remove(idx as usize);
-                        idx -= 1;
-                        board.black_king_castle = false;
-                        board.black_queen_castle = false;
-                        break;
-                    }
+                return match piece.piece_name {
+                    PieceName::King => true,
+                    PieceName::Queen => true,
+                    PieceName::Rook => true,
+                    PieceName::Bishop => false,
+                    PieceName::Knight => false,
+                    PieceName::Pawn => check_pawn_attack(board, d, i, c),
                 }
             }
         }
-        idx += 1;
+    }
+    unreachable!()
+}
+
+fn check_cardinal_squares(board: &Board, d: Direction, c: Color) -> bool {
+    let king_square = match c {
+        Color::White => board.white_king_square,
+        Color::Black => board.black_king_square,
+    };
+    // Color and other color
+    let oc = match c {
+        Color::White => Color::Black,
+        Color::Black => Color::White,
+    };
+    for i in 1..8 {
+        let square = check_index_addition(king_square, convert_idx_to_tuple(d, i));
+        if square.is_none() {
+            // Edge of the board has been reached, no further squares to search in that direction
+            return false;
+        }
+        let square = square.unwrap();
+        match board.board[square as usize] {
+            // Check further squares if there is no piece at the square
+            None => continue,
+            Some(piece) => {
+                // King is not in check from a friendly piece, who also blocks further pieces from
+                // placing king in check
+                if piece.color == c {
+                    return false;
+                }
+                return match piece.piece_name {
+                    PieceName::King => true,
+                    PieceName::Queen => true,
+                    PieceName::Rook => false,
+                    PieceName::Bishop => true,
+                    PieceName::Knight => false,
+                    PieceName::Pawn => check_pawn_attack(board, d, i, c),
+                }
+            }
+        }
+    }
+    unreachable!()
+}
+
+fn check_pawn_attack(board: &Board, d: Direction, repetitions: i8, c: Color) -> bool {
+    if repetitions != 1 {
+        return false;
+    }
+    let oc = match c {
+        Color::White => Color::Black,
+        Color::Black => Color::White,
+    };
+    match oc {
+        Color::White => {
+            if d == Direction::NorthWest || d == Direction::NorthEast {
+                return true;
+            }
+            false
+        }
+        Color::Black => {
+            if d == Direction::SouthWest || d == Direction::SouthEast {
+                return true;
+            }
+            false
+        }
     }
 }
 
-pub fn generate_all_moves(board: &Board) -> Vec<Move> {
+fn check_knight_moves(board: &Board, c: Color) -> bool {
+    let king_square = match c {
+        Color::White => board.white_king_square,
+        Color::Black => board.black_king_square,
+    };
+    let oc = match c {
+        Color::White => Color::Black,
+        Color::Black => Color::White,
+    };
+    for m in KnightMovement::iter() {
+        if let Some(square) = check_index_addition(king_square, knight_move_to_tuple(m)) {
+            if let Some(piece) = board.board[square as usize] {
+                if piece.piece_name == PieceName::Knight && piece.color == oc {
+                    return true; 
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Returns true if the color provided in the parameter is in check and false otherwise
+pub fn in_check(board: &Board, color: Color) -> bool {
+    let king_square = match board.to_move {
+        Color::White => board.white_king_square,
+        Color::Black => board.black_king_square,
+    };
+    let mut in_check = false;
+    // Generate the squares the other side is attacking
+    for d in Direction::iter() {
+        if is_cardinal(d) {
+            in_check = check_cardinal_squares(board, d, color);
+            if in_check {
+                // Don't have to keep looking if a check has already been found
+                return in_check;
+            }
+        }
+        else {
+            in_check = check_diagonal_squares(board, d, color);
+            if in_check {
+                // Don't have to keep looking if a check has already been found
+                return in_check;
+            }
+        }
+    }
+    in_check = check_knight_moves(board, color);
+    if in_check {
+        // Don't have to keep looking if a check has already been found
+        return in_check;
+    }
+    in_check
+}
+
+/// Method checks the moves the other side could make in response to a move to determine if a check
+/// would result. Removes moves if they are invalid. Checks for check :)
+fn check_for_check(board: &mut Board, moves: &mut Vec<Move>) {
+    moves.retain(|m| {
+        let mut new_b = board.clone();
+        new_b.make_move(m);
+        !in_check(&new_b, board.to_move)
+    })
+}
+
+/// Generates a list of moves available to a size at any given time. Filters out moves that would
+/// place that side in check as well
+pub fn generate_all_moves(board: &mut Board) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
     match board.to_move {
         Color::White => {
@@ -274,6 +389,7 @@ pub fn generate_all_moves(board: &Board) -> Vec<Move> {
             }
         }
     }
+    check_for_check(board, &mut moves);
     moves
 }
 

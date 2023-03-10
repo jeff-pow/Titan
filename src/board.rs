@@ -17,8 +17,6 @@ pub struct Board {
     pub white_king_square: i8,
     pub white_pieces: RefCell<Vec<Piece>>,
     pub black_pieces: RefCell<Vec<Piece>>,
-    pub attacked_squares: RefCell<Vec<i8>>,
-    pub pinned_squares: RefCell<Vec<i8>>,
 }
 
 impl Display for Board {
@@ -75,8 +73,6 @@ impl Board {
             black_king_square: -1,
             white_pieces: RefCell::new(Vec::with_capacity(16)),
             black_pieces: RefCell::new(Vec::with_capacity(16)),
-            attacked_squares: RefCell::new(Vec::with_capacity(50)),
-            pinned_squares: RefCell::new(Vec::with_capacity(50)), 
         }
     }
 
