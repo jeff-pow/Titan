@@ -39,15 +39,14 @@ impl Piece {
             piece_name,
         }
     }
-}
-
-pub fn get_piece_value(piece: &Piece) -> i32 {
-    match piece.piece_name {
-        PieceName::King => KING_PTS,
-        PieceName::Queen => QUEEN_PTS,
-        PieceName::Rook => ROOK_PTS,
-        PieceName::Bishop => BISHOP_PTS,
-        PieceName::Knight => KNIGHT_PTS,
-        PieceName::Pawn => PAWN_PTS,
+    pub fn value(&self) -> i32 {
+        match self.piece_name {
+            PieceName::King => KING_PTS,
+            PieceName::Queen => QUEEN_PTS,
+            PieceName::Rook => ROOK_PTS,
+            PieceName::Bishop => BISHOP_PTS,
+            PieceName::Knight => KNIGHT_PTS,
+            PieceName::Pawn => PAWN_PTS,
+        }
     }
 }

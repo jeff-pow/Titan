@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::fen::{self, build_board, parse_fen_from_buffer};
-use crate::moves::{from_lan, Move, in_check};
+use crate::moves::{from_lan, in_check, generate_all_moves};
 use crate::pieces::Color;
 use crate::search::{search_moves, perft};
 #[allow(unused_imports)]
@@ -70,28 +70,26 @@ pub fn main_loop() -> ! {
                 }
             }
         }
-        else if buffer.starts_with("perft") {
-            let vec: Vec<char> = buffer.chars().collect();
-            let depth = vec[6].to_digit(10).unwrap();
-            perft(&mut board, depth as i32);
-        }
-        else if buffer.eq("d") {
+        else if buffer.eq("d\n") {
             println!("{}\n", board);
         }
         else if buffer.starts_with("go") {
-            /*
-            let mut moves = generate_all_moves(&board);
-            check_check(&mut board, &mut moves);
-            let m = moves.choose(&mut rand::thread_rng()).unwrap();
-            */
-            let m = search_moves(&mut board, 4);
-            println!("bestmove {}", m.to_lan());
-            board.make_move(&m);
-
-            if debug {
-                println!("info string MOVE CHOSEN: {}\n {}", m, board);
+            if buffer.contains("perft") {
+                let vec: Vec<char> = buffer.chars().collect();
+                let depth = vec[9].to_digit(10).unwrap();
+                perft(&board, depth as i32);
             }
-            writeln!(file, "{}", m.to_lan()).unwrap();
+            else {
+                let moves = generate_all_moves(&mut board);
+                let m = moves.choose(&mut rand::thread_rng()).unwrap();
+                println!("bestmove {}", m.to_lan());
+                board.make_move(m);
+
+                if debug {
+                    println!("info string MOVE CHOSEN: {}\n {}", m, board);
+                }
+                writeln!(file, "{}", m.to_lan()).unwrap();
+            }
         }
         else if buffer.starts_with("stop") {
             std::process::exit(0);
@@ -107,18 +105,16 @@ pub fn main_loop() -> ! {
         }
         else {
             writeln!(file, "{}", buffer).unwrap();
-            panic!("Command not handled: {}", buffer);
+            println!("Command not handled: {}", buffer);
         }
     }
 }
 
 fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, debug: bool) {
     for str in moves.iter().skip(skip) {
-        let c = board.to_move;
         let m = from_lan(str, board);
         board.make_move(&m);
-        let mut vec: Vec<Move> = Vec::new();
-        if in_check(board, c) {
+        if in_check(board, board.to_move) {
             match board.to_move {
                 Color::White => {
                     board.white_king_castle = false;

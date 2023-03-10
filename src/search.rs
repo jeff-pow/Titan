@@ -2,7 +2,6 @@ use std::time::Instant;
 
 use crate::board::Board;
 use crate::moves::{generate_all_moves, Move};
-use crate::pieces::{get_piece_value, Color};
 
 pub fn time_move_search(board: &Board, depth: i32) {
     for i in 1..depth {
@@ -17,7 +16,7 @@ pub fn time_move_search(board: &Board, depth: i32) {
 pub fn perft(board: &Board, depth: i32) -> usize {
     let mut board = board.clone();
     let mut total = 0;
-    let mut moves = generate_all_moves(&mut board);
+    let moves = generate_all_moves(&mut board);
     for m in &moves {
         let mut new_b = board.clone();
         new_b.make_move(m);
@@ -35,7 +34,7 @@ fn count_moves(depth: i32, board: &Board) -> usize {
         return 1;
     }
     let mut count = 0;
-    let mut moves = generate_all_moves(&mut board);
+    let moves = generate_all_moves(&mut board);
     for m in &moves {
         let mut new_b = board.clone();
         new_b.make_move(m);
@@ -47,7 +46,7 @@ fn count_moves(depth: i32, board: &Board) -> usize {
 pub fn search_moves(board: &Board, depth: i32) -> Move {
     let mut best_score = i32::MIN;
     let mut new_board = board.clone();
-    let mut moves = generate_all_moves(&mut new_board);
+    let moves = generate_all_moves(&mut new_board);
     let mut best_move = moves[0];
     for m in &moves {
         let mut new_b = board.clone();
@@ -67,7 +66,7 @@ fn search_helper(board: &Board, depth: i32) -> i32 {
         return board.evaluation();
     }
     let mut new_board = board.clone();
-    let mut moves = generate_all_moves(&mut new_board);
+    let moves = generate_all_moves(&mut new_board);
     if moves.is_empty() {
         return 0;
     }

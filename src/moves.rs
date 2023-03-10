@@ -5,7 +5,7 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 
-use crate::{board::Board, pieces::Color, pieces::{Piece, get_piece_value}, pieces::PieceName};
+use crate::{board::Board, pieces::Color, pieces::Piece, pieces::PieceName};
 
 #[derive(Clone, Copy)]
 pub struct Move {
@@ -68,7 +68,7 @@ impl Display for Move {
 
 impl Move {
     /// To Long Algebraic Notation
-    pub fn to_lan(&self) -> String {
+    pub fn to_lan(self) -> String {
         let mut str = String::new();
         let arr = ["a", "b", "c", "d", "e", "f", "g", "h"];
         let y_origin = self.starting_idx / 8 + 1;
@@ -211,10 +211,45 @@ fn check_diagonal_squares(board: &Board, d: Direction, c: Color) -> bool {
         Color::White => board.white_king_square,
         Color::Black => board.black_king_square,
     };
-    // Color and other color
-    let oc = match c {
-        Color::White => Color::Black,
-        Color::Black => Color::White,
+    for i in 1..8 {
+        let square = check_index_addition(king_square, convert_idx_to_tuple(d, i));
+        if square.is_none() {
+            // Edge of the board has been reached, no further squares to search in that direction
+            return false;
+        }
+        let square = square.unwrap();
+        match board.board[square as usize] {
+            // Check further squares if there is no piece at the square
+            None => continue,
+            Some(piece) => {
+                // King is not in check from a friendly piece, who also blocks further pieces from
+                // placing king in check
+                if piece.color == c {
+                    return false;
+                }
+                return match piece.piece_name {
+                    PieceName::King => true,
+                    PieceName::Queen => true,
+                    PieceName::Rook => false,
+                    PieceName::Bishop => true,
+                    PieceName::Knight => false,
+                    PieceName::Pawn => {
+                        if i == 1 {
+                            return check_pawn_attack(d, c)
+                        }
+                        false
+                    },
+                }
+            }
+        }
+    }
+    unreachable!()
+}
+
+fn check_cardinal_squares(board: &Board, d: Direction, c: Color) -> bool {
+    let king_square = match c {
+        Color::White => board.white_king_square,
+        Color::Black => board.black_king_square,
     };
     for i in 1..8 {
         let square = check_index_addition(king_square, convert_idx_to_tuple(d, i));
@@ -238,7 +273,12 @@ fn check_diagonal_squares(board: &Board, d: Direction, c: Color) -> bool {
                     PieceName::Rook => true,
                     PieceName::Bishop => false,
                     PieceName::Knight => false,
-                    PieceName::Pawn => check_pawn_attack(board, d, i, c),
+                    PieceName::Pawn => {
+                        if i == 1 {
+                            return check_pawn_attack(d, c)
+                        }
+                        false
+                    },
                 }
             }
         }
@@ -246,50 +286,7 @@ fn check_diagonal_squares(board: &Board, d: Direction, c: Color) -> bool {
     unreachable!()
 }
 
-fn check_cardinal_squares(board: &Board, d: Direction, c: Color) -> bool {
-    let king_square = match c {
-        Color::White => board.white_king_square,
-        Color::Black => board.black_king_square,
-    };
-    // Color and other color
-    let oc = match c {
-        Color::White => Color::Black,
-        Color::Black => Color::White,
-    };
-    for i in 1..8 {
-        let square = check_index_addition(king_square, convert_idx_to_tuple(d, i));
-        if square.is_none() {
-            // Edge of the board has been reached, no further squares to search in that direction
-            return false;
-        }
-        let square = square.unwrap();
-        match board.board[square as usize] {
-            // Check further squares if there is no piece at the square
-            None => continue,
-            Some(piece) => {
-                // King is not in check from a friendly piece, who also blocks further pieces from
-                // placing king in check
-                if piece.color == c {
-                    return false;
-                }
-                return match piece.piece_name {
-                    PieceName::King => true,
-                    PieceName::Queen => true,
-                    PieceName::Rook => false,
-                    PieceName::Bishop => true,
-                    PieceName::Knight => false,
-                    PieceName::Pawn => check_pawn_attack(board, d, i, c),
-                }
-            }
-        }
-    }
-    unreachable!()
-}
-
-fn check_pawn_attack(board: &Board, d: Direction, repetitions: i8, c: Color) -> bool {
-    if repetitions != 1 {
-        return false;
-    }
+fn check_pawn_attack(d: Direction, c: Color) -> bool {
     let oc = match c {
         Color::White => Color::Black,
         Color::Black => Color::White,
@@ -344,6 +341,7 @@ pub fn in_check(board: &Board, color: Color) -> bool {
             return true;
         }
     }
+    // Only need to check knight moves once
     if check_knight_moves(board, color) {
         return true;
     }
@@ -356,6 +354,9 @@ fn check_for_check(board: &mut Board, moves: &mut Vec<Move>) {
     moves.retain(|m| {
         let mut new_b = board.clone();
         new_b.make_move(m);
+        if m.piece_moving == PieceName::King {
+            let i = 0;
+        }
         !in_check(&new_b, board.to_move)
     })
 }
@@ -643,7 +644,10 @@ fn generate_knight_moves(board: &Board, piece: &Piece) -> Vec<Move> {
         }
         let idx = idx.unwrap();
         let occupancy = check_space_occupancy(board, idx);
-        if occupancy.is_none() {
+        if let Some(color) = occupancy {
+            if piece.color == color {
+                continue;
+            }
             moves.push(Move {
                 starting_idx: piece.current_square,
                 end_idx: idx,
@@ -654,9 +658,6 @@ fn generate_knight_moves(board: &Board, piece: &Piece) -> Vec<Move> {
             });
         }
         else {
-            if piece.color == occupancy.unwrap() {
-                continue;
-            }
             moves.push(Move {
                 starting_idx: piece.current_square,
                 end_idx: idx,

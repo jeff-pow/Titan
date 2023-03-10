@@ -1,7 +1,7 @@
 use core::fmt;
-use std::{fmt::Display, cell::{RefCell, Cell}};
+use std::{fmt::Display, cell::RefCell};
 
-use crate::{moves::Castle, moves::{Move, Promotion}, pieces::Color, pieces::{PieceName, get_piece_value}, Piece};
+use crate::{moves::Castle, moves::{Move, Promotion}, pieces::Color, pieces::PieceName, Piece};
 
 #[repr(C)]
 #[derive(Clone, Debug)]
@@ -319,10 +319,10 @@ impl Board {
                 Some(piece) => {
                     match piece.color {
                         Color::White => {
-                            white += get_piece_value(&piece);
+                            white += piece.value();
                         }
                         Color::Black => {
-                            black += get_piece_value(&piece);
+                            black += piece.value();
                         }
                     }
                 }
