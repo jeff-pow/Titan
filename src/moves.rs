@@ -333,34 +333,21 @@ fn check_knight_moves(board: &Board, c: Color) -> bool {
 
 /// Returns true if the color provided in the parameter is in check and false otherwise
 pub fn in_check(board: &Board, color: Color) -> bool {
-    let king_square = match board.to_move {
-        Color::White => board.white_king_square,
-        Color::Black => board.black_king_square,
-    };
-    let mut in_check = false;
     // Generate the squares the other side is attacking
     for d in Direction::iter() {
         if is_cardinal(d) {
-            in_check = check_cardinal_squares(board, d, color);
-            if in_check {
-                // Don't have to keep looking if a check has already been found
-                return in_check;
+            if check_cardinal_squares(board, d, color) {
+                return true;
             }
         }
-        else {
-            in_check = check_diagonal_squares(board, d, color);
-            if in_check {
-                // Don't have to keep looking if a check has already been found
-                return in_check;
-            }
+        else if check_diagonal_squares(board, d, color) {
+            return true;
         }
     }
-    in_check = check_knight_moves(board, color);
-    if in_check {
-        // Don't have to keep looking if a check has already been found
-        return in_check;
+    if check_knight_moves(board, color) {
+        return true;
     }
-    in_check
+    false
 }
 
 /// Method checks the moves the other side could make in response to a move to determine if a check
@@ -374,7 +361,7 @@ fn check_for_check(board: &mut Board, moves: &mut Vec<Move>) {
 }
 
 /// Generates a list of moves available to a size at any given time. Filters out moves that would
-/// place that side in check as well
+/// place that side in check as well (illegal moves). Returns only fully legal moves for a position
 pub fn generate_all_moves(board: &mut Board) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
     match board.to_move {
