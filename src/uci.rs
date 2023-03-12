@@ -7,6 +7,8 @@ use crate::search::{search_moves, perft};
 use rand::seq::SliceRandom;
 use std::fs::File;
 use std::io::{self, Write};
+use std::thread::{sleep };
+use std::time::Duration;
 
 fn setup() {
     println!("Current options");
@@ -81,6 +83,8 @@ pub fn main_loop() -> ! {
             }
             else {
                 let moves = generate_all_moves(&mut board);
+                let duration = Duration::from_millis(333);
+                sleep(duration);
                 let m = moves.choose(&mut rand::thread_rng()).unwrap();
                 println!("bestmove {}", m.to_lan());
                 board.make_move(m);
