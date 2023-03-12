@@ -18,7 +18,7 @@ mod fen;
 
 fn main() {
     let board = build_board(fen::STARTING_FEN);
-    time_move_search(&board, 8);
+    main_loop();
 }
 
 #[allow(dead_code)]

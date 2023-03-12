@@ -228,7 +228,8 @@ fn check_diagonal_squares(board: &Board, d: Direction, c: Color) -> bool {
                     return false;
                 }
                 return match piece.piece_name {
-                    PieceName::King => true,
+                    // King can only attack one square away
+                    PieceName::King => i == 1,
                     PieceName::Queen => true,
                     PieceName::Rook => false,
                     PieceName::Bishop => true,
@@ -243,7 +244,7 @@ fn check_diagonal_squares(board: &Board, d: Direction, c: Color) -> bool {
             }
         }
     }
-    unreachable!()
+    false
 }
 
 fn check_cardinal_squares(board: &Board, d: Direction, c: Color) -> bool {
@@ -251,6 +252,7 @@ fn check_cardinal_squares(board: &Board, d: Direction, c: Color) -> bool {
         Color::White => board.white_king_square,
         Color::Black => board.black_king_square,
     };
+
     for i in 1..8 {
         let square = check_index_addition(king_square, convert_idx_to_tuple(d, i));
         if square.is_none() {
@@ -268,22 +270,18 @@ fn check_cardinal_squares(board: &Board, d: Direction, c: Color) -> bool {
                     return false;
                 }
                 return match piece.piece_name {
-                    PieceName::King => true,
+                    // King can only attack one square away
+                    PieceName::King => i == 1,
                     PieceName::Queen => true,
                     PieceName::Rook => true,
                     PieceName::Bishop => false,
                     PieceName::Knight => false,
-                    PieceName::Pawn => {
-                        if i == 1 {
-                            return check_pawn_attack(d, c)
-                        }
-                        false
-                    },
+                    PieceName::Pawn => false,
                 }
             }
         }
     }
-    unreachable!()
+    false
 }
 
 fn check_pawn_attack(d: Direction, c: Color) -> bool {
@@ -293,13 +291,13 @@ fn check_pawn_attack(d: Direction, c: Color) -> bool {
     };
     match oc {
         Color::White => {
-            if d == Direction::NorthWest || d == Direction::NorthEast {
+            if d == Direction::SouthEast || d == Direction::SouthWest {
                 return true;
             }
             false
         }
         Color::Black => {
-            if d == Direction::SouthWest || d == Direction::SouthEast {
+            if d == Direction::NorthWest || d == Direction::NorthEast {
                 return true;
             }
             false
@@ -354,7 +352,7 @@ fn check_for_check(board: &mut Board, moves: &mut Vec<Move>) {
     moves.retain(|m| {
         let mut new_b = board.clone();
         new_b.make_move(m);
-        if m.piece_moving == PieceName::King {
+        if m.piece_moving == PieceName::King && m.end_idx == 13 {
             let i = 0;
         }
         !in_check(&new_b, board.to_move)

@@ -1,7 +1,7 @@
 use core::fmt;
 use std::{fmt::Display, cell::RefCell};
 
-use crate::{moves::Castle, moves::{Move, Promotion}, pieces::Color, pieces::PieceName, Piece};
+use crate::{moves::Castle, moves::{Move, Promotion, in_check}, pieces::Color, pieces::PieceName, Piece};
 
 #[repr(C)]
 #[derive(Clone, Debug)]
@@ -146,6 +146,9 @@ impl Board {
                 self.board[7] = None;
                 self.white_queen_castle = false;
                 self.white_king_castle = false;
+                if let Some(mut p) = self.white_pieces.borrow_mut().iter_mut().find(|x| x.current_square == 7) {
+                    p.current_square = 5;
+                }
             }
             Castle::WhiteKingCastle => {
                 let mut rook = &mut self.board[7].expect("Piece should be here: 7");
@@ -154,6 +157,9 @@ impl Board {
                 self.board[0] = None;
                 self.white_queen_castle = false;
                 self.white_king_castle = false;
+                if let Some(mut p) = self.white_pieces.borrow_mut().iter_mut().find(|x| x.current_square == 0) {
+                    p.current_square = 3;
+                }
             }
             Castle::BlackKingCastle => {
                 let mut rook = &mut self.board[63].expect("Piece should be here: 63");
@@ -162,6 +168,9 @@ impl Board {
                 self.board[63] = None;
                 self.black_queen_castle = false;
                 self.black_king_castle = false;
+                if let Some(mut p) = self.black_pieces.borrow_mut().iter_mut().find(|x| x.current_square == 63) {
+                    p.current_square = 61;
+                }
             }
             Castle::BlackQueenCastle => {
                 let mut rook = &mut self.board[56].expect("Piece should be here: 56");
@@ -170,6 +179,9 @@ impl Board {
                 self.board[56] = None;
                 self.black_queen_castle = false;
                 self.black_king_castle = false;
+                if let Some(mut p) = self.black_pieces.borrow_mut().iter_mut().find(|x| x.current_square == 56) {
+                    p.current_square = 59;
+                }
             }
             Castle::None => (),
         }
@@ -245,11 +257,6 @@ impl Board {
             }
             Promotion::None => (),
         }
-        // Change the side to move after making a move
-        match self.to_move {
-            Color::White => self.to_move = Color::Black,
-            Color::Black => self.to_move = Color::White,
-        }
         // Update king square if king moves
         if piece.piece_name == PieceName::King {
             match piece.color {
@@ -293,6 +300,7 @@ impl Board {
                 }
             }
         }
+        // If en passant was not performed that move, the ability to do it goes away
         if !en_passant {
             self.en_passant_square = -1;
         }
@@ -307,6 +315,26 @@ impl Board {
                     _ => (),
                 }
             }
+        }
+        // Update castling ability based on check
+        match self.to_move {
+            Color::White => {
+                if in_check(self, Color::White) {
+                    self.white_king_castle = false;
+                    self.white_queen_castle = false;
+                }
+            }
+            Color::Black => {
+                if in_check(self, Color::Black) {
+                    self.black_king_castle = false;
+                    self.black_queen_castle = false;
+                }
+            }
+        }
+        // Change the side to move after making a move
+        match self.to_move {
+            Color::White => self.to_move = Color::Black,
+            Color::Black => self.to_move = Color::White,
         }
     }
 
