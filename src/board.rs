@@ -15,8 +15,6 @@ pub struct Board {
     pub en_passant_square: i8,
     pub black_king_square: i8,
     pub white_king_square: i8,
-    pub white_pieces: RefCell<Vec<Piece>>,
-    pub black_pieces: RefCell<Vec<Piece>>,
 }
 
 impl Display for Board {
@@ -71,8 +69,6 @@ impl Board {
             en_passant_square: -1,
             white_king_square: -1,
             black_king_square: -1,
-            white_pieces: RefCell::new(Vec::with_capacity(16)),
-            black_pieces: RefCell::new(Vec::with_capacity(16)),
         }
     }
 
@@ -88,7 +84,6 @@ impl Board {
                         && self.board[end_idx - 8].unwrap().piece_name == PieceName::Pawn {
 
                         let p = &self.board[end_idx - 8].unwrap();
-                        self.black_pieces.borrow_mut().retain(|piece| piece.current_square != p.current_square);
                         self.board[end_idx - 8] = None;
                     }
                 }
@@ -99,43 +94,18 @@ impl Board {
                         && self.board[end_idx + 8].unwrap().piece_name == PieceName::Pawn {
 
                         let p = &self.board[end_idx + 8].unwrap();
-                        self.white_pieces.borrow_mut().retain(|piece| piece.current_square != p.current_square);
                         self.board[end_idx + 8] = None;
                     }
                 }
             }
         }
 
-        // If the end idx of the board contains a piece, remove that piece from the vector that
-        // stores piece positions
-        if let Some(p) = &self.board[m.end_idx as usize] {
-            match self.to_move {
-                Color::White => {
-                    self.black_pieces.borrow_mut().retain(|piece| piece.current_square != p.current_square)
-                }
-                Color::Black => {
-                    self.white_pieces.borrow_mut().retain(|piece| piece.current_square != p.current_square);
-                }
-            }
-        }
 
         let mut piece = &mut self.board[m.starting_idx as usize].
             expect("There should be a piece here");
         piece.current_square = m.end_idx;
         self.board[m.end_idx as usize] = Option::from(*piece);
         self.board[m.starting_idx as usize] = None;
-        match self.to_move {
-            Color::White => {
-                if let Some(mut p) = self.white_pieces.borrow_mut().iter_mut().find(|x| x.current_square == m.starting_idx) {
-                    p.current_square = m.end_idx;
-                }
-            }
-            Color::Black => {
-                if let Some(mut p) = self.black_pieces.borrow_mut().iter_mut().find(|x| x.current_square == m.starting_idx) {
-                    p.current_square = m.end_idx;
-                }
-            }
-        }
 
         // Move rooks if a castle is applied
         match m.castle {
@@ -146,9 +116,6 @@ impl Board {
                 self.board[0] = None;
                 self.white_queen_castle = false;
                 self.white_king_castle = false;
-                if let Some(mut p) = self.white_pieces.borrow_mut().iter_mut().find(|x| x.current_square == 0) {
-                    p.current_square = 3;
-                }
             }
             Castle::WhiteKingCastle => {
                 let mut rook = &mut self.board[7].expect("Piece should be here: 7");
@@ -157,9 +124,6 @@ impl Board {
                 self.board[7] = None;
                 self.white_queen_castle = false;
                 self.white_king_castle = false;
-                if let Some(mut p) = self.white_pieces.borrow_mut().iter_mut().find(|x| x.current_square == 7) {
-                    p.current_square = 5;
-                }
             }
             Castle::BlackKingCastle => {
                 let mut rook = &mut self.board[63].expect("Piece should be here: 63");
@@ -168,9 +132,6 @@ impl Board {
                 self.board[63] = None;
                 self.black_queen_castle = false;
                 self.black_king_castle = false;
-                if let Some(mut p) = self.black_pieces.borrow_mut().iter_mut().find(|x| x.current_square == 63) {
-                    p.current_square = 61;
-                }
             }
             Castle::BlackQueenCastle => {
                 let mut rook = &mut self.board[56].expect("Piece should be here: 56");
@@ -179,25 +140,12 @@ impl Board {
                 self.board[56] = None;
                 self.black_queen_castle = false;
                 self.black_king_castle = false;
-                if let Some(mut p) = self.black_pieces.borrow_mut().iter_mut().find(|x| x.current_square == 56) {
-                    p.current_square = 59;
-                }
             }
             Castle::None => (),
         }
         // If move is a promotion, a pawn is promoted
         match m.promotion {
             Promotion::Queen => {
-                match self.to_move {
-                    Color::White => {
-                        self.white_pieces.borrow_mut().retain(|piece| piece.current_square != m.end_idx);
-                        self.white_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Queen, m.end_idx));
-                    }
-                    Color::Black => {
-                        self.black_pieces.borrow_mut().retain(|piece| piece.current_square != m.end_idx);
-                        self.black_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Queen, m.end_idx));
-                    }
-                }
                 self.board[m.end_idx as usize] = Some(Piece {
                     current_square: m.end_idx,
                     color: piece.color,
@@ -205,16 +153,6 @@ impl Board {
                 });
             }
             Promotion::Rook => {
-                match self.to_move {
-                    Color::White => {
-                        self.white_pieces.borrow_mut().retain(|piece| piece.current_square != m.end_idx);
-                        self.white_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Rook, m.end_idx));
-                    }
-                    Color::Black => {
-                        self.black_pieces.borrow_mut().retain(|piece| piece.current_square != m.end_idx);
-                        self.black_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Rook, m.end_idx));
-                    }
-                }
                 self.board[m.end_idx as usize] = Some(Piece {
                     current_square: m.end_idx,
                     color: piece.color,
@@ -222,16 +160,6 @@ impl Board {
                 });
             }
             Promotion::Bishop => {
-                match self.to_move {
-                    Color::White => {
-                        self.white_pieces.borrow_mut().retain(|piece| piece.current_square != m.end_idx);
-                        self.white_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Bishop, m.end_idx));
-                    }
-                    Color::Black => {
-                        self.black_pieces.borrow_mut().retain(|piece| piece.current_square != m.end_idx);
-                        self.black_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Bishop, m.end_idx));
-                    }
-                }
                 self.board[m.end_idx as usize] = Some(Piece {
                     current_square: m.end_idx,
                     color: piece.color,
@@ -239,16 +167,6 @@ impl Board {
                 });
             }
             Promotion::Knight => {
-                match self.to_move {
-                    Color::White => {
-                        self.white_pieces.borrow_mut().retain(|piece| piece.current_square != m.end_idx);
-                        self.white_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Knight, m.end_idx));
-                    }
-                    Color::Black => {
-                        self.black_pieces.borrow_mut().retain(|piece| piece.current_square != m.end_idx);
-                        self.black_pieces.borrow_mut().push(Piece::new(piece.color, PieceName::Knight, m.end_idx));
-                    }
-                }
                 self.board[m.end_idx as usize] = Some(Piece {
                     current_square: m.end_idx,
                     color: piece.color,
@@ -357,6 +275,12 @@ impl Board {
             }
         }
         if self.to_move == Color::White { white - black } else { black - white }
+    }
+
+    pub fn unmake_move(&mut self, m: &Move) {
+        if m.piece_moving == PieceName::Pawn {
+
+        }
     }
 }
 

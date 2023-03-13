@@ -12,14 +12,13 @@ use search::*;
 use uci::main_loop;
 use crate::{moves::generate_all_moves, search::time_move_search};
 
-
 mod board;
 mod fen;
 
 fn main() {
     let board = build_board(fen::STARTING_FEN);
     // r1bqkb1r/pppppppp/8/4P2Q/1nPN1P2/2N5/P1P3PP/R1B1K2R b KQk - 0 13
-    main_loop();
+    time_move_search(&board, 7);
 }
 
 #[allow(dead_code)]
