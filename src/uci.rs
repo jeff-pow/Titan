@@ -92,7 +92,7 @@ pub fn main_loop() -> ! {
                 writeln!(file, "{}", m.to_lan()).unwrap();
             }
         }
-        else if buffer.starts_with("stop") {
+        else if buffer.starts_with("stop") || buffer.starts_with("quit") {
             std::process::exit(0);
         }
         else if buffer.starts_with("uci") {
