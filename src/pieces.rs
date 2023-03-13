@@ -1,4 +1,5 @@
-pub const KING_PTS: i32 = i32::MAX;
+pub const INFINITY: i32 = 100000000;
+pub const KING_PTS: i32 = INFINITY;
 pub const QUEEN_PTS: i32 = 900;
 pub const ROOK_PTS: i32 = 500;
 pub const BISHOP_PTS: i32 = 300;
@@ -41,7 +42,7 @@ impl Piece {
     }
     pub fn value(&self) -> i32 {
         match self.piece_name {
-            PieceName::King => KING_PTS,
+            PieceName::King => KING_PTS as i32,
             PieceName::Queen => QUEEN_PTS,
             PieceName::Rook => ROOK_PTS,
             PieceName::Bishop => BISHOP_PTS,

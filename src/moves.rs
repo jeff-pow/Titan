@@ -91,8 +91,8 @@ impl Move {
 
     /// Constructor for new moves - Mostly a placeholder for initializing variables that will
     /// certainly be changed at some other point during the runtime of the function
-    pub fn new() -> Self {
-        Move { starting_idx: 0, end_idx: 0, castle: Castle::None, promotion: Promotion::None, piece_moving: PieceName::King, capture: None }
+    pub fn invalid() -> Self {
+        Move { starting_idx: -1, end_idx: -1, castle: Castle::None, promotion: Promotion::None, piece_moving: PieceName::King, capture: None }
     }
 }
 
@@ -330,7 +330,7 @@ fn check_knight_moves(board: &Board, c: Color) -> bool {
 pub fn in_check(board: &Board, color: Color) -> bool {
     // Generate the squares the other side is attacking
     for d in Direction::iter() {
-        if is_cardinal(d) && check_cardinal_squares(board, d, color) {
+        if is_cardinal(d) {
             if check_cardinal_squares(board, d, color) {
                 return true;
             }
@@ -340,7 +340,10 @@ pub fn in_check(board: &Board, color: Color) -> bool {
         }
     }
     // Only need to check knight moves once
-    check_knight_moves(board, color)
+    if check_knight_moves(board, color) {
+        return true;
+    }
+    false
 }
 
 /// Method checks the moves the other side could make in response to a move to determine if a check
@@ -349,6 +352,9 @@ fn check_for_check(board: &mut Board, moves: &mut Vec<Move>) {
     moves.retain(|m| {
         let mut new_b = board.clone();
         new_b.make_move(m);
+        if m.piece_moving == PieceName::King && m.end_idx == 13 {
+            let i = 0;
+        }
         !in_check(&new_b, board.to_move)
     })
 }

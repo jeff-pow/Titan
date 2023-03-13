@@ -1,10 +1,14 @@
+use std::sync::Mutex;
 use std::time::Instant;
 
 use crate::board::Board;
-use crate::moves::{generate_all_moves, Move};
+use crate::moves::{generate_all_moves, Move, in_check, Castle, Promotion};
+use crate::pieces::{INFINITY, PieceName};
+
+pub const IN_CHECK_MATE: i32 = 10000000;
 
 pub fn time_move_search(board: &Board, depth: i32) {
-    for i in 1..depth {
+    for i in 1..=depth {
         let start = Instant::now();
         print!("{}", count_moves(i, board));
         let elapsed = start.elapsed();
@@ -43,38 +47,53 @@ fn count_moves(depth: i32, board: &Board) -> usize {
     count
 }
 
-pub fn search_moves(board: &Board, depth: i32) -> Move {
-    let mut best_score = i32::MIN;
-    let mut new_board = board.clone();
-    let moves = generate_all_moves(&mut new_board);
-    let mut best_move = moves[0];
-    for m in &moves {
-        let mut new_b = board.clone();
-        new_b.make_move(m);
-        let pts = -search_helper(board, depth);
-        if pts > best_score {
-            best_score = pts;
-            best_move = *m;
-        }
+static mut BEST_MOVE: Move = Move {
+    starting_idx: -1,
+    end_idx: -1,
+    castle: Castle::None,
+    promotion: Promotion::None,
+    piece_moving: PieceName::Pawn,
+    capture: None,
+};
+
+pub fn search(board: &Board, depth: i32) -> Move {
+    for i in 1..=depth {
+        let start = Instant::now();
+        search_helper(board, i, 0, -INFINITY, INFINITY);
+        let elapsed_time = start.elapsed().as_millis();
+        println!("info time {} depth {}", elapsed_time, i);
     }
-    best_move
+    unsafe { BEST_MOVE }
 }
 
-fn search_helper(board: &Board, depth: i32) -> i32 {
-    let mut best_score = i32::MIN;
+fn search_helper(board: &Board, depth: i32, dist_from_root: i32, mut alpha: i32, beta: i32) -> i32 {
     if depth == 0 {
         return board.evaluation();
     }
-    let mut new_board = board.clone();
-    let moves = generate_all_moves(&mut new_board);
+    let mut board = board.clone();
+    let moves = generate_all_moves(&mut board);
     if moves.is_empty() {
+        // Determine if empty moves means stalemate or checkmate
+        if in_check(&board, board.to_move) {
+            return -IN_CHECK_MATE;
+        }
         return 0;
     }
+    let mut best_move_for_pos = Move::invalid();
     for m in &moves {
         let mut new_b = board.clone();
         new_b.make_move(m);
-        best_score = i32::max(-search_helper(board, depth - 1), best_score);
+        let eval = -search_helper(&new_b, depth - 1, dist_from_root + 1, -beta, -alpha);
+        if eval >= beta {
+            return beta;
+        }
+        if eval > alpha {
+            best_move_for_pos = *m;
+            alpha = eval;
+            if dist_from_root == 0 {
+                unsafe {BEST_MOVE = best_move_for_pos; }
+            }
+        }
     }
-    best_score
+    alpha
 }
-
