@@ -289,78 +289,16 @@ impl Board {
         self.num_moves += 1;
     }
 
-    pub fn evaluation(&self) -> i32 {
-        let mut score = 0;
-        score += self.position_eval();
-        match self.to_move {
-            Color::White => {
-                if self.num_black_pieces <= 4 {
-                    score += self.king_position_eval();
-                    if in_check(self, Color::Black) {
-                        score += 10000
-                    }
-                    if in_check(self, Color::White) {
-                        score -= 10000
-                    }
-                }
-            }
-            Color::Black => {
-                if self.num_white_pieces <= 4 {
-                    score += self.king_position_eval();
-                    if in_check(self, Color::White) {
-                        score += 10000
-                    }
-                    if in_check(self, Color::Black) {
-                        score -= 10000
-                    }
-                }
-            }
-        }
-        score
-    }
-
-    fn king_position_eval(&self) -> i32 {
-        // If you are towards the end of the game, reward the engine for pushing the enemy king
-        // towards the edge of the board
-        match self.to_move {
-            Color::White => KING_ENDGAME[self.black_king_square as usize],
-            Color::Black => KING_ENDGAME[self.white_king_square as usize],
-        }
-    }
-
-    fn position_eval(&self) -> i32 {
-        let mut white = 0;
-        let mut black = 0;
-        for square in self.board {
-            match square {
-                None => continue,
-                Some(piece) => match piece.color {
-                    Color::White => {
-                        white += piece.value();
-                    }
-                    Color::Black => {
-                        black += piece.value();
-                    }
-                },
-            }
-        }
-        if self.to_move == Color::White {
-            white - black
-        } else {
-            black - white
-        }
-    }
-
     pub fn unmake_move(&mut self, m: &Move) {
         if m.en_passant != EnPassant::None {
             let end_idx = m.end_idx as usize;
             match self.to_move {
                 Color::White => {
-                    self.board[end_idx - 8] = m.capture;
+                    self.board[end_idx + 8] = m.capture;
                     self.en_passant_square = m.end_idx;
                 }
                 Color::Black => {
-                    self.board[end_idx + 8] = m.capture;
+                    self.board[end_idx - 8] = m.capture;
                     self.en_passant_square = m.end_idx;
                 }
             }
@@ -370,7 +308,12 @@ impl Board {
         let mut piece = &mut self.board[m.end_idx as usize].expect("There should be a piece here");
         piece.current_square = m.starting_idx;
         self.board[m.starting_idx as usize] = Option::from(*piece);
-        self.board[m.end_idx as usize] = m.capture;
+        if m.en_passant == EnPassant::None {
+            self.board[m.end_idx as usize] = m.capture;
+        }
+        else {
+            self.board[m.end_idx as usize] = None;
+        }
         match m.castle {
             Castle::WhiteQueenCastle => {
                 let mut rook = &mut self.board[3].expect("Piece should be here: 0");
@@ -416,10 +359,10 @@ impl Board {
             }
         }
         match m.promotion {
-            Promotion::Queen => self.board[m.end_idx as usize] = None,
-            Promotion::Rook => self.board[m.end_idx as usize] = None,
-            Promotion::Bishop => self.board[m.end_idx as usize] = None,
-            Promotion::Knight => self.board[m.end_idx as usize] = None,
+            Promotion::Queen | Promotion::Rook | Promotion::Bishop | Promotion::Knight => {
+                let color = self.board[m.starting_idx as usize].unwrap().color;
+                self.board[m.starting_idx as usize] = Some(Piece::new(color, PieceName::Pawn, m.starting_idx));
+            }
             Promotion::None => (),
         }
         if piece.piece_name == PieceName::King {
@@ -507,7 +450,6 @@ fn flip_board(board: &Board) -> Board {
 
 #[cfg(test)]
 mod board_tests {
-    use crate::moves::EnPassant;
     use crate::{fen, moves::generate_all_moves};
 
     #[test]
