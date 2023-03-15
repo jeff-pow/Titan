@@ -1,10 +1,17 @@
 use core::fmt;
-use std::{fmt::Display, cell::RefCell};
+use std::fmt::Display;
 
-use crate::{moves::Castle, moves::{Move, Promotion, in_check}, pieces::Color, pieces::PieceName, Piece};
+use crate::{
+    heatmaps::KING_ENDGAME,
+    moves::Castle,
+    moves::{in_check, EnPassant, Move, Promotion},
+    pieces::Color,
+    pieces::PieceName,
+    Piece,
+};
 
 #[repr(C)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Board {
     pub board: [Option<Piece>; 64],
     pub to_move: Color,
@@ -15,6 +22,9 @@ pub struct Board {
     pub en_passant_square: i8,
     pub black_king_square: i8,
     pub white_king_square: i8,
+    pub num_moves: i32,
+    pub num_white_pieces: i8,
+    pub num_black_pieces: i8,
 }
 
 impl Display for Board {
@@ -69,11 +79,15 @@ impl Board {
             en_passant_square: -1,
             white_king_square: -1,
             black_king_square: -1,
+            num_moves: 0,
+            num_white_pieces: 0,
+            num_black_pieces: 0,
         }
     }
 
     pub fn make_move(&mut self, m: &Move) {
         // Special case if the move is an en_passant
+        /*
         if m.piece_moving == PieceName::Pawn && m.end_idx == self.en_passant_square {
             let end_idx = m.end_idx as usize;
             match self.to_move {
@@ -83,7 +97,6 @@ impl Board {
                         && self.board[end_idx - 8].is_some()
                         && self.board[end_idx - 8].unwrap().piece_name == PieceName::Pawn {
 
-                        let p = &self.board[end_idx - 8].unwrap();
                         self.board[end_idx - 8] = None;
                     }
                 }
@@ -93,16 +106,26 @@ impl Board {
                         && self.board[end_idx + 8].is_some()
                         && self.board[end_idx + 8].unwrap().piece_name == PieceName::Pawn {
 
-                        let p = &self.board[end_idx + 8].unwrap();
                         self.board[end_idx + 8] = None;
                     }
                 }
             }
         }
+        */
+        if m.en_passant != EnPassant::None {
+            let end_idx = m.end_idx as usize;
+            match self.to_move {
+                Color::White => {
+                    self.board[end_idx - 8] = None;
+                }
+                Color::Black => {
+                    self.board[end_idx + 8] = None;
+                }
+            }
+        }
 
-
-        let mut piece = &mut self.board[m.starting_idx as usize].
-            expect("There should be a piece here");
+        let mut piece =
+            &mut self.board[m.starting_idx as usize].expect("There should be a piece here");
         piece.current_square = m.end_idx;
         self.board[m.end_idx as usize] = Option::from(*piece);
         self.board[m.starting_idx as usize] = None;
@@ -142,6 +165,15 @@ impl Board {
                 self.black_king_castle = false;
             }
             Castle::None => (),
+        }
+        if let Some(capture) = m.capture {
+            match capture.piece_name {
+                PieceName::King | PieceName::Pawn => (),
+                _ => match self.to_move {
+                    Color::White => self.num_black_pieces -= 1,
+                    Color::Black => self.num_white_pieces -= 1,
+                },
+            }
         }
         // If move is a promotion, a pawn is promoted
         match m.promotion {
@@ -200,6 +232,18 @@ impl Board {
                 _ => (),
             }
         }
+        // If a rook is captured, castling is no longer possible
+        if let Some(cap) = m.capture {
+            if cap.piece_name == PieceName::Rook {
+                match cap.current_square {
+                    0 => self.white_queen_castle = false,
+                    7 => self.white_king_castle = false,
+                    56 => self.black_queen_castle = false,
+                    63 => self.black_king_castle = false,
+                    _ => (),
+                }
+            }
+        }
         // If the end index of a move is 16 squares from the start, an en passant is possible
         let mut en_passant = false;
         if piece.piece_name == PieceName::Pawn {
@@ -222,18 +266,6 @@ impl Board {
         if !en_passant {
             self.en_passant_square = -1;
         }
-        // If a rook is captured, en_passant is no longer possible
-        if let Some(cap) = m.capture {
-            if cap.piece_name == PieceName::Rook {
-                match cap.current_square {
-                    0 => self.white_queen_castle = false,
-                    7 => self.white_king_castle = false,
-                    56 => self.black_queen_castle = false,
-                    63 => self.black_king_castle = false,
-                    _ => (),
-                }
-            }
-        }
         // Update castling ability based on check
         match self.to_move {
             Color::White => {
@@ -254,33 +286,205 @@ impl Board {
             Color::White => self.to_move = Color::Black,
             Color::Black => self.to_move = Color::White,
         }
+        self.num_moves += 1;
     }
 
     pub fn evaluation(&self) -> i32 {
+        let mut score = 0;
+        score += self.position_eval();
+        match self.to_move {
+            Color::White => {
+                if self.num_black_pieces <= 4 {
+                    score += self.king_position_eval();
+                    if in_check(self, Color::Black) {
+                        score += 10000
+                    }
+                    if in_check(self, Color::White) {
+                        score -= 10000
+                    }
+                }
+            }
+            Color::Black => {
+                if self.num_white_pieces <= 4 {
+                    score += self.king_position_eval();
+                    if in_check(self, Color::White) {
+                        score += 10000
+                    }
+                    if in_check(self, Color::Black) {
+                        score -= 10000
+                    }
+                }
+            }
+        }
+        score
+    }
+
+    fn king_position_eval(&self) -> i32 {
+        // If you are towards the end of the game, reward the engine for pushing the enemy king
+        // towards the edge of the board
+        match self.to_move {
+            Color::White => KING_ENDGAME[self.black_king_square as usize],
+            Color::Black => KING_ENDGAME[self.white_king_square as usize],
+        }
+    }
+
+    fn position_eval(&self) -> i32 {
         let mut white = 0;
         let mut black = 0;
         for square in self.board {
             match square {
                 None => continue,
-                Some(piece) => {
-                    match piece.color {
-                        Color::White => {
-                            white += piece.value();
-                        }
-                        Color::Black => {
-                            black += piece.value();
-                        }
+                Some(piece) => match piece.color {
+                    Color::White => {
+                        white += piece.value();
                     }
-                }
+                    Color::Black => {
+                        black += piece.value();
+                    }
+                },
             }
         }
-        if self.to_move == Color::White { white - black } else { black - white }
+        if self.to_move == Color::White {
+            white - black
+        } else {
+            black - white
+        }
     }
 
     pub fn unmake_move(&mut self, m: &Move) {
-        if m.piece_moving == PieceName::Pawn {
-
+        if m.en_passant != EnPassant::None {
+            let end_idx = m.end_idx as usize;
+            match self.to_move {
+                Color::White => {
+                    self.board[end_idx - 8] = m.capture;
+                    self.en_passant_square = m.end_idx;
+                }
+                Color::Black => {
+                    self.board[end_idx + 8] = m.capture;
+                    self.en_passant_square = m.end_idx;
+                }
+            }
+        } else {
+            self.en_passant_square = -1;
         }
+        let mut piece = &mut self.board[m.end_idx as usize].expect("There should be a piece here");
+        piece.current_square = m.starting_idx;
+        self.board[m.starting_idx as usize] = Option::from(*piece);
+        self.board[m.end_idx as usize] = m.capture;
+        match m.castle {
+            Castle::WhiteQueenCastle => {
+                let mut rook = &mut self.board[3].expect("Piece should be here: 0");
+                rook.current_square = 0;
+                self.board[0] = Option::from(*rook);
+                self.board[3] = None;
+                self.white_queen_castle = true;
+                self.white_king_castle = true;
+            }
+            Castle::WhiteKingCastle => {
+                let mut rook = &mut self.board[5].expect("Piece should be here: 7");
+                rook.current_square = 7;
+                self.board[7] = Option::from(*rook);
+                self.board[5] = None;
+                self.white_queen_castle = true;
+                self.white_king_castle = true;
+            }
+            Castle::BlackKingCastle => {
+                let mut rook = &mut self.board[61].expect("Piece should be here: 63");
+                rook.current_square = 63;
+                self.board[63] = Option::from(*rook);
+                self.board[61] = None;
+                self.black_queen_castle = true;
+                self.black_king_castle = true;
+            }
+            Castle::BlackQueenCastle => {
+                let mut rook = &mut self.board[59].expect("Piece should be here: 56");
+                rook.current_square = 56;
+                self.board[56] = Option::from(*rook);
+                self.board[59] = None;
+                self.black_queen_castle = true;
+                self.black_king_castle = true;
+            }
+            Castle::None => (),
+        }
+        if let Some(capture) = m.capture {
+            match capture.piece_name {
+                PieceName::King | PieceName::Pawn => (),
+                _ => match self.to_move {
+                    Color::White => self.num_black_pieces += 1,
+                    Color::Black => self.num_white_pieces += 1,
+                },
+            }
+        }
+        match m.promotion {
+            Promotion::Queen => self.board[m.end_idx as usize] = None,
+            Promotion::Rook => self.board[m.end_idx as usize] = None,
+            Promotion::Bishop => self.board[m.end_idx as usize] = None,
+            Promotion::Knight => self.board[m.end_idx as usize] = None,
+            Promotion::None => (),
+        }
+        if piece.piece_name == PieceName::King {
+            match piece.color {
+                Color::White => {
+                    self.white_king_square = piece.current_square;
+                    self.white_king_castle = true;
+                    self.white_queen_castle = true;
+                }
+                Color::Black => {
+                    self.black_king_square = piece.current_square;
+                    self.black_queen_castle = true;
+                    self.black_king_castle = true;
+                }
+            }
+        }
+        if piece.piece_name == PieceName::Rook {
+            match m.starting_idx {
+                0 => self.white_queen_castle = true,
+                7 => self.white_king_castle = true,
+                56 => self.black_queen_castle = true,
+                63 => self.black_king_castle = true,
+                _ => (),
+            }
+        }
+        // If a rook is captured, castling is no longer possible
+        if let Some(cap) = m.capture {
+            if cap.piece_name == PieceName::Rook {
+                match cap.current_square {
+                    0 => self.white_queen_castle = true,
+                    7 => self.white_king_castle = true,
+                    56 => self.black_queen_castle = true,
+                    63 => self.black_king_castle = true,
+                    _ => (),
+                }
+            }
+        }
+        // Change the side to move after making a move
+        match self.to_move {
+            Color::White => self.to_move = Color::Black,
+            Color::Black => self.to_move = Color::White,
+        }
+        self.num_moves += 1;
+    }
+
+    pub fn eq(&self, board: &Board) -> bool {
+        for i in 0..63 {
+            let s1 = self.board[i];
+            let s2 = board.board[i];
+            if s1.is_none() && s2.is_some() || s1.is_some() && s2.is_none() {
+                return false;
+            }
+            if s1.is_none() && s2.is_none() {
+                continue;
+            }
+            let s1 = s1.unwrap();
+            let s2 = s2.unwrap();
+            if s1.piece_name != s2.piece_name
+                || s1.color != s2.color
+                || s1.current_square != s2.current_square
+            {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -303,9 +507,30 @@ fn flip_board(board: &Board) -> Board {
 
 #[cfg(test)]
 mod board_tests {
-    use crate::fen;
+    use crate::moves::EnPassant;
+    use crate::{fen, moves::generate_all_moves};
 
     #[test]
-    fn test_board_eval() {
+    fn test_undo() {
+        let mut board = fen::build_board("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -");
+        //let mut board = fen::build_board("8/8/8/8/8/4p1p1/5P2/8 w - - 0 1");
+        //let mut board = fen::build_board("8/8/8/8/8/4r1r1/5P2/8 w - - 0 1");
+        println!("{}", board);
+        let cloned_board = board;
+        assert!(board.eq(&cloned_board));
+        let moves = generate_all_moves(&board);
+        for m in moves {
+            board.make_move(&m);
+            println!("{}", board);
+            let second_moves = generate_all_moves(&board);
+            for s_m in second_moves {
+                board.make_move(&s_m);
+                println!("{}", board);
+                board.unmake_move(&s_m);
+            }
+            board.unmake_move(&m);
+            println!("----------------------------");
+        }
+        assert!(board.eq(&cloned_board));
     }
 }

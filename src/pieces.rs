@@ -1,4 +1,5 @@
-pub const INFINITY: i32 = 100000000;
+use crate::search::INFINITY;
+
 pub const KING_PTS: i32 = INFINITY;
 pub const QUEEN_PTS: i32 = 900;
 pub const ROOK_PTS: i32 = 500;
@@ -42,7 +43,7 @@ impl Piece {
     }
     pub fn value(&self) -> i32 {
         match self.piece_name {
-            PieceName::King => KING_PTS as i32,
+            PieceName::King => KING_PTS,
             PieceName::Queen => QUEEN_PTS,
             PieceName::Rook => ROOK_PTS,
             PieceName::Bishop => BISHOP_PTS,

@@ -4,7 +4,6 @@ use std::fmt::Display;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-
 use crate::{board::Board, pieces::Color, pieces::Piece, pieces::PieceName};
 
 #[derive(Clone, Copy)]
@@ -15,6 +14,7 @@ pub struct Move {
     pub promotion: Promotion,
     pub piece_moving: PieceName,
     pub capture: Option<Piece>,
+    pub en_passant: EnPassant,
 }
 
 impl Display for Move {
@@ -92,7 +92,15 @@ impl Move {
     /// Constructor for new moves - Mostly a placeholder for initializing variables that will
     /// certainly be changed at some other point during the runtime of the function
     pub fn invalid() -> Self {
-        Move { starting_idx: -1, end_idx: -1, castle: Castle::None, promotion: Promotion::None, piece_moving: PieceName::King, capture: None }
+        Move {
+            starting_idx: -1,
+            end_idx: -1,
+            castle: Castle::None,
+            promotion: Promotion::None,
+            piece_moving: PieceName::King,
+            capture: None,
+            en_passant: EnPassant::None,
+        }
     }
 }
 
@@ -127,6 +135,7 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
         promotion,
         piece_moving: board.board[starting_idx as usize].unwrap().piece_name,
         capture: board.board[end_idx as usize],
+        en_passant: EnPassant::None,
     }
 }
 
@@ -136,7 +145,16 @@ pub enum Promotion {
     Rook,
     Bishop,
     Knight,
-    None
+    None,
+}
+
+#[derive(Clone, Copy, EnumIter, PartialEq)]
+pub enum EnPassant {
+    NW,
+    NE,
+    SW,
+    SE,
+    None,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -203,7 +221,11 @@ fn check_space_occupancy(board: &Board, potential_space: i8) -> Option<Color> {
         }
     }
     board.board[potential_space as usize]?;
-    Option::from(board.board[potential_space as usize].expect("There should be a piece here").color)
+    Option::from(
+        board.board[potential_space as usize]
+            .expect("There should be a piece here")
+            .color,
+    )
 }
 
 fn check_diagonal_squares(board: &Board, d: Direction, c: Color) -> bool {
@@ -236,11 +258,11 @@ fn check_diagonal_squares(board: &Board, d: Direction, c: Color) -> bool {
                     PieceName::Knight => false,
                     PieceName::Pawn => {
                         if i == 1 {
-                            return check_pawn_attack(d, c)
+                            return check_pawn_attack(d, c);
                         }
                         false
-                    },
-                }
+                    }
+                };
             }
         }
     }
@@ -277,7 +299,7 @@ fn check_cardinal_squares(board: &Board, d: Direction, c: Color) -> bool {
                     PieceName::Bishop => false,
                     PieceName::Knight => false,
                     PieceName::Pawn => false,
-                }
+                };
             }
         }
     }
@@ -318,7 +340,7 @@ fn check_knight_moves(board: &Board, c: Color) -> bool {
         if let Some(square) = check_index_addition(king_square, knight_move_to_tuple(m)) {
             if let Some(piece) = board.board[square as usize] {
                 if piece.piece_name == PieceName::Knight && piece.color == oc {
-                    return true; 
+                    return true;
                 }
             }
         }
@@ -334,8 +356,7 @@ pub fn in_check(board: &Board, color: Color) -> bool {
             if check_cardinal_squares(board, d, color) {
                 return true;
             }
-        }
-        else if check_diagonal_squares(board, d, color) {
+        } else if check_diagonal_squares(board, d, color) {
             return true;
         }
     }
@@ -348,27 +369,24 @@ pub fn in_check(board: &Board, color: Color) -> bool {
 
 /// Method checks the moves the other side could make in response to a move to determine if a check
 /// would result. Removes moves if they are invalid. Checks for check :)
-fn check_for_check(board: &mut Board, moves: &mut Vec<Move>) {
+fn check_for_check(board: &Board, moves: &mut Vec<Move>) {
     moves.retain(|m| {
-        let mut new_b = board.clone();
+        let mut new_b = *board;
         new_b.make_move(m);
-        if m.piece_moving == PieceName::King && m.end_idx == 13 {
-            let i = 0;
-        }
         !in_check(&new_b, board.to_move)
     })
 }
 
 /// Generates a list of moves available to a size at any given time. Filters out moves that would
 /// place that side in check as well (illegal moves). Returns only fully legal moves for a position
-pub fn generate_all_moves(board: &mut Board) -> Vec<Move> {
+pub fn generate_all_moves(board: &Board) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
     for piece in board.board {
         match piece {
             None => continue,
             Some(piece) => {
                 if piece.color == board.to_move {
-                    moves.append(&mut generate_moves_for_piece(&board, &piece));
+                    moves.append(&mut generate_moves_for_piece(board, &piece));
                 }
             }
         }
@@ -389,10 +407,19 @@ fn generate_moves_for_piece(board: &Board, piece: &Piece) -> Vec<Move> {
 }
 
 fn is_cardinal(direction: Direction) -> bool {
-    matches!(direction, Direction::North | Direction::West | Direction::South | Direction::East)
+    matches!(
+        direction,
+        Direction::North | Direction::West | Direction::South | Direction::East
+    )
 }
 
-fn directional_move(direction: Direction, piece: &Piece, board: &Board, start: usize, end: usize) -> Vec<Move> {
+fn directional_move(
+    direction: Direction,
+    piece: &Piece,
+    board: &Board,
+    start: usize,
+    end: usize,
+) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
     // Loops multiple times to add moves if provided as a parameter
     for i in start..end {
@@ -408,38 +435,58 @@ fn directional_move(direction: Direction, piece: &Piece, board: &Board, start: u
         // piece of any kind, and if true color contains the color of the new piece
         let occupancy = check_space_occupancy(board, idx);
         // Handle special case of enpassant
-        if piece.piece_name == PieceName::Pawn && idx == board.en_passant_square {
-            moves.push( Move {
+        if piece.piece_name == PieceName::Pawn && idx == board.en_passant_square && i == 1 {
+            let en_passant = match direction {
+                Direction::NorthWest => EnPassant::NW,
+                Direction::SouthWest => EnPassant::SW,
+                Direction::SouthEast => EnPassant::SE,
+                Direction::NorthEast => EnPassant::NE,
+                _ => panic!(),
+            };
+            moves.push(Move {
                 starting_idx: piece.current_square,
                 end_idx: idx,
                 castle: Castle::None,
                 promotion: Promotion::None,
                 piece_moving: piece.piece_name,
-                capture: board.board[idx as usize],
+                en_passant,
+                capture: match en_passant {
+                    EnPassant::NW => board.board[idx as usize - 8],
+                    EnPassant::NE => board.board[idx as usize - 8],
+                    EnPassant::SW => board.board[idx as usize + 8],
+                    EnPassant::SE => board.board[idx as usize + 8],
+                    EnPassant::None => panic!(),
+                }
             });
         }
-        if occupancy.is_none() && (piece.piece_name != PieceName::Pawn || (piece.piece_name == PieceName::Pawn && is_cardinal(direction))) {
+        if occupancy.is_none()
+            && (piece.piece_name != PieceName::Pawn
+                || (piece.piece_name == PieceName::Pawn && is_cardinal(direction)))
+        {
             // If position not occupied, add the move
             if !is_promotion(piece, idx) {
-                moves.push(Move { starting_idx: piece.current_square,
+                moves.push(Move {
+                    starting_idx: piece.current_square,
                     end_idx: idx,
                     castle: Castle::None,
                     promotion: Promotion::None,
                     piece_moving: piece.piece_name,
                     capture: board.board[idx as usize],
+                    en_passant: EnPassant::None,
                 });
-            }
-            else {
+            } else {
                 for p in Promotion::iter() {
                     if p == Promotion::None {
                         continue;
                     }
-                    moves.push(Move { starting_idx: piece.current_square,
+                    moves.push(Move {
+                        starting_idx: piece.current_square,
                         end_idx: idx,
                         castle: Castle::None,
                         promotion: p,
                         piece_moving: piece.piece_name,
                         capture: board.board[idx as usize],
+                        en_passant: EnPassant::None,
                     });
                 }
             }
@@ -450,7 +497,9 @@ fn directional_move(direction: Direction, piece: &Piece, board: &Board, start: u
                 // If color of other piece is the same as current piece, you can't move there
                 break;
             }
-            if piece.piece_name == PieceName::Pawn && (is_cardinal(direction) || occupancy.is_none()) {
+            if piece.piece_name == PieceName::Pawn
+                && (is_cardinal(direction) || occupancy.is_none())
+            {
                 // Can't capture if the piece is a pawn and direction is non-diagonal
                 break;
             }
@@ -463,9 +512,9 @@ fn directional_move(direction: Direction, piece: &Piece, board: &Board, start: u
                     promotion: Promotion::None,
                     capture: board.board[idx as usize],
                     piece_moving: piece.piece_name,
+                    en_passant: EnPassant::None,
                 });
-            }
-            else {
+            } else {
                 for p in Promotion::iter() {
                     if p == Promotion::None {
                         continue;
@@ -477,6 +526,7 @@ fn directional_move(direction: Direction, piece: &Piece, board: &Board, start: u
                         promotion: p,
                         piece_moving: piece.piece_name,
                         capture: board.board[idx as usize],
+                        en_passant: EnPassant::None,
                     });
                 }
             }
@@ -504,6 +554,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     promotion: Promotion::None,
                     capture: None,
                     piece_moving: piece.piece_name,
+                    en_passant: EnPassant::None,
                 });
             }
             if board.white_king_castle
@@ -518,6 +569,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     promotion: Promotion::None,
                     capture: None,
                     piece_moving: piece.piece_name,
+                    en_passant: EnPassant::None,
                 });
             }
         }
@@ -535,6 +587,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     promotion: Promotion::None,
                     capture: None,
                     piece_moving: piece.piece_name,
+                    en_passant: EnPassant::None,
                 });
             }
             if board.black_king_castle
@@ -549,6 +602,7 @@ fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                     promotion: Promotion::None,
                     capture: None,
                     piece_moving: piece.piece_name,
+                    en_passant: EnPassant::None,
                 });
             }
         }
@@ -651,9 +705,9 @@ fn generate_knight_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                 promotion: Promotion::None,
                 capture: board.board[idx as usize],
                 piece_moving: piece.piece_name,
+                en_passant: EnPassant::None,
             });
-        }
-        else {
+        } else {
             moves.push(Move {
                 starting_idx: piece.current_square,
                 end_idx: idx,
@@ -661,6 +715,7 @@ fn generate_knight_moves(board: &Board, piece: &Piece) -> Vec<Move> {
                 promotion: Promotion::None,
                 capture: board.board[idx as usize],
                 piece_moving: piece.piece_name,
+                en_passant: EnPassant::None,
             });
         }
     }
@@ -672,7 +727,7 @@ fn is_promotion(piece: &Piece, end_idx: i8) -> bool {
         return match piece.color {
             Color::White => end_idx > 55 && end_idx < 64,
             Color::Black => end_idx > -1 && end_idx < 8,
-        }
+        };
     }
     false
 }
@@ -683,23 +738,45 @@ fn generate_new_pawn_moves(board: &Board, piece: &Piece) -> Vec<Move> {
         Color::White => {
             if piece.current_square > 7 && piece.current_square < 16 {
                 moves.append(&mut directional_move(Direction::North, piece, board, 1, 3));
-            }
-            else {
+            } else {
                 moves.append(&mut directional_move(Direction::North, piece, board, 1, 2));
             }
-            moves.append(&mut directional_move(Direction::NorthEast, piece, board, 1, 2));
-            moves.append(&mut directional_move(Direction::NorthWest, piece, board, 1, 2));
+            moves.append(&mut directional_move(
+                Direction::NorthEast,
+                piece,
+                board,
+                1,
+                2,
+            ));
+            moves.append(&mut directional_move(
+                Direction::NorthWest,
+                piece,
+                board,
+                1,
+                2,
+            ));
         }
         Color::Black => {
             // First square to the south
             if piece.current_square > 47 && piece.current_square < 56 {
                 moves.append(&mut directional_move(Direction::South, piece, board, 1, 3));
-            }
-            else {
+            } else {
                 moves.append(&mut directional_move(Direction::South, piece, board, 1, 2));
             }
-            moves.append(&mut directional_move(Direction::SouthEast, piece, board, 1, 2));
-            moves.append(&mut directional_move(Direction::SouthWest, piece, board, 1, 2));
+            moves.append(&mut directional_move(
+                Direction::SouthEast,
+                piece,
+                board,
+                1,
+                2,
+            ));
+            moves.append(&mut directional_move(
+                Direction::SouthWest,
+                piece,
+                board,
+                1,
+                2,
+            ));
         }
     }
     moves
@@ -707,13 +784,16 @@ fn generate_new_pawn_moves(board: &Board, piece: &Piece) -> Vec<Move> {
 
 #[cfg(test)]
 mod moves_tests {
-    use crate::moves::{convert_idx_to_tuple, Direction};
     use super::check_index_addition;
+    use crate::moves::{convert_idx_to_tuple, Direction};
 
     #[test]
     fn test_check_index_addition() {
         assert_eq!(Some(23), check_index_addition(31, (0, -1)));
-        assert_eq!(Some(23), check_index_addition(31, convert_idx_to_tuple(Direction::South, 1)));
+        assert_eq!(
+            Some(23),
+            check_index_addition(31, convert_idx_to_tuple(Direction::South, 1))
+        );
         assert_eq!(None, check_index_addition(13, (2, -2)));
     }
 }

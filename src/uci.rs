@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::fen::{self, build_board, parse_fen_from_buffer};
-use crate::moves::{from_lan, in_check, generate_all_moves};
+use crate::moves::{from_lan, in_check};
 use crate::pieces::Color;
 use crate::search::*;
 #[allow(unused_imports)]
@@ -17,7 +17,7 @@ fn setup() {
 }
 
 pub fn main_loop() -> ! {
-    setup();
+    //setup();
     let mut board = Board::new();
     let mut buffer = String::new();
     let mut file = File::create("log.txt").expect("File can't be created");
@@ -80,8 +80,6 @@ pub fn main_loop() -> ! {
                 perft(&board, depth as i32);
             }
             else {
-                let moves = generate_all_moves(&mut board);
-                // let m = moves.choose(&mut rand::thread_rng()).unwrap();
                 let m = search(&board, 6);
                 println!("bestmove {}", m.to_lan());
                 board.make_move(&m);
