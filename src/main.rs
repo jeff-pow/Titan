@@ -1,5 +1,4 @@
 mod eval;
-mod heatmaps;
 mod moves;
 mod pieces;
 mod search;
@@ -20,7 +19,6 @@ mod fen;
 
 fn main() {
     let _board = build_board("5k1K/8/6r1/8/8/8/8/8 b - - 0 1");
-    //println!("bestmove: {}", search(&_board, 2));
     let board = build_board(fen::STARTING_FEN);
     main_loop();
     // r1bqkb1r/pppppppp/8/4P2Q/1nPN1P2/2N5/P1P3PP/R1B1K2R b KQk - 0 13
@@ -31,12 +29,11 @@ fn main() {
 #[allow(dead_code)]
 fn print_moves(board: &Board) {
     println!("{}", board);
-    let mut board = *board;
     let moves = generate_all_moves(&board);
     let i = moves.len();
     for m in moves.iter() {
         println!("{}", m);
-        let mut cloned_board = board;
+        let mut cloned_board = *board;
         cloned_board.make_move(m);
         println!("{}", cloned_board);
         println!("---------------------------------------------------------");

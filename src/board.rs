@@ -2,7 +2,6 @@ use core::fmt;
 use std::fmt::Display;
 
 use crate::{
-    heatmaps::KING_ENDGAME,
     moves::Castle,
     moves::{in_check, EnPassant, Move, Promotion},
     pieces::Color,
@@ -289,6 +288,7 @@ impl Board {
         self.num_moves += 1;
     }
 
+    #[allow(dead_code)]
     pub fn unmake_move(&mut self, m: &Move) {
         if m.en_passant != EnPassant::None {
             let end_idx = m.end_idx as usize;
@@ -310,8 +310,7 @@ impl Board {
         self.board[m.starting_idx as usize] = Option::from(*piece);
         if m.en_passant == EnPassant::None {
             self.board[m.end_idx as usize] = m.capture;
-        }
-        else {
+        } else {
             self.board[m.end_idx as usize] = None;
         }
         match m.castle {
@@ -361,7 +360,8 @@ impl Board {
         match m.promotion {
             Promotion::Queen | Promotion::Rook | Promotion::Bishop | Promotion::Knight => {
                 let color = self.board[m.starting_idx as usize].unwrap().color;
-                self.board[m.starting_idx as usize] = Some(Piece::new(color, PieceName::Pawn, m.starting_idx));
+                self.board[m.starting_idx as usize] =
+                    Some(Piece::new(color, PieceName::Pawn, m.starting_idx));
             }
             Promotion::None => (),
         }
@@ -408,6 +408,7 @@ impl Board {
         self.num_moves += 1;
     }
 
+    #[allow(dead_code)]
     pub fn eq(&self, board: &Board) -> bool {
         for i in 0..63 {
             let s1 = self.board[i];

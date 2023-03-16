@@ -8,14 +8,6 @@ use rand::seq::SliceRandom;
 use std::fs::File;
 use std::io::{self, Write};
 
-fn setup() {
-    println!("Current options");
-    println!();
-    println!("id name Jeff's Chess Engine");
-    println!("id author Jeff Powell");
-    println!("uciok");
-}
-
 pub fn main_loop() -> ! {
     //setup();
     let mut board = Board::new();
@@ -32,15 +24,12 @@ pub fn main_loop() -> ! {
         if buffer.starts_with("isready") {
             println!("readyok");
             writeln!(file, "readyok").expect("File not written to");
-        } 
-        else if buffer.starts_with("debug on") {
+        } else if buffer.starts_with("debug on") {
             debug = true;
             println!("info string debug on");
-        } 
-        else if buffer.starts_with("ucinewgame") {
+        } else if buffer.starts_with("ucinewgame") {
             board = build_board(fen::STARTING_FEN);
-        } 
-        else if buffer.starts_with("position") {
+        } else if buffer.starts_with("position") {
             let vec: Vec<&str> = buffer.split_whitespace().collect();
 
             if buffer.contains("fen") {
@@ -53,8 +42,7 @@ pub fn main_loop() -> ! {
                 if vec.len() > 9 {
                     parse_moves(&vec, &mut board, 9, debug);
                 }
-            }
-            else if buffer.contains("startpos") {
+            } else if buffer.contains("startpos") {
                 board = build_board(fen::STARTING_FEN);
 
                 if debug {
@@ -69,17 +57,14 @@ pub fn main_loop() -> ! {
                     println!("info string\n {}", board);
                 }
             }
-        }
-        else if buffer.eq("d\n") {
+        } else if buffer.eq("d\n") {
             println!("{}\n", board);
-        }
-        else if buffer.starts_with("go") {
+        } else if buffer.starts_with("go") {
             if buffer.contains("perft") {
                 let vec: Vec<char> = buffer.chars().collect();
                 let depth = vec[9].to_digit(10).unwrap();
                 perft(&board, depth as i32);
-            }
-            else {
+            } else {
                 let m = search(&board, 6);
                 println!("bestmove {}", m.to_lan());
                 board.make_move(&m);
@@ -89,11 +74,9 @@ pub fn main_loop() -> ! {
                 }
                 writeln!(file, "{}", m.to_lan()).unwrap();
             }
-        }
-        else if buffer.starts_with("stop") || buffer.starts_with("quit") {
+        } else if buffer.starts_with("stop") || buffer.starts_with("quit") {
             std::process::exit(0);
-        }
-        else if buffer.starts_with("uci") {
+        } else if buffer.starts_with("uci") {
             println!("id name Jeff's Chess Engine");
             println!("id author Jeff Powell");
             println!("uciok");
@@ -101,8 +84,7 @@ pub fn main_loop() -> ! {
             writeln!(file, "id name Jeff's Chess Engine").expect("File not written to");
             writeln!(file, "id author Jeff Powell").expect("File not written to");
             writeln!(file, "uciok").expect("File not written to");
-        }
-        else {
+        } else {
             writeln!(file, "{}", buffer).unwrap();
             println!("Command not handled: {}", buffer);
         }

@@ -1,11 +1,8 @@
-use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use lazy_static::lazy_static;
 
 use crate::board::Board;
 use crate::eval::eval;
-use crate::moves::{generate_all_moves, Move, in_check, Castle, Promotion, EnPassant};
-use crate::pieces::PieceName;
+use crate::moves::{generate_all_moves, in_check, Move};
 use std::cmp::{max, min};
 
 pub const IN_CHECK_MATE: i32 = 100000;
@@ -87,7 +84,13 @@ pub fn search(board: &Board, depth: i32) -> Move {
     best_move
 }
 
-fn search_helper(board: &Board, depth: i32, dist_from_root: i32, mut alpha: i32, mut beta: i32) -> i32 {
+fn search_helper(
+    board: &Board,
+    depth: i32,
+    dist_from_root: i32,
+    mut alpha: i32,
+    mut beta: i32,
+) -> i32 {
     if depth == 0 {
         return eval(board);
     }
