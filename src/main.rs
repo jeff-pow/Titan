@@ -1,9 +1,9 @@
+mod eval;
 mod heatmaps;
 mod moves;
 mod pieces;
 mod search;
 mod uci;
-mod eval;
 
 #[allow(unused_imports)]
 use crate::{moves::generate_all_moves, search::time_move_search};
@@ -22,7 +22,6 @@ fn main() {
     let _board = build_board("5k1K/8/6r1/8/8/8/8/8 b - - 0 1");
     //println!("bestmove: {}", search(&_board, 2));
     let board = build_board(fen::STARTING_FEN);
-    time_move_search(&board, 6);
     main_loop();
     // r1bqkb1r/pppppppp/8/4P2Q/1nPN1P2/2N5/P1P3PP/R1B1K2R b KQk - 0 13
     // rnb1k1nr/2pp1ppp/1p6/2bP4/p2NqP2/8/PPP3PP/RNBQ1BKR b kq - 5 10

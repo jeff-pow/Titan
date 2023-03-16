@@ -22,11 +22,10 @@ pub fn time_move_search(board: &Board, depth: i32) {
 }
 
 pub fn perft(board: &Board, depth: i32) -> usize {
-    let mut board = *board;
     let mut total = 0;
-    let moves = generate_all_moves(&mut board);
+    let moves = generate_all_moves(board);
     for m in &moves {
-        let mut new_b = board;
+        let mut new_b = *board;
         new_b.make_move(m);
         let count = count_moves(depth - 1, &new_b);
         total += count;
@@ -36,15 +35,28 @@ pub fn perft(board: &Board, depth: i32) -> usize {
     total
 }
 
-fn count_moves(depth: i32, board: &Board) -> usize {
-    let mut board = *board;
+fn count_moves_with_undo(depth: i32, board: &mut Board) -> usize {
     if depth == 0 {
         return 1;
     }
     let mut count = 0;
-    let moves = generate_all_moves(&mut board);
+    let moves = generate_all_moves(board);
     for m in &moves {
-        let mut new_b = board;
+        board.make_move(m);
+        count += count_moves(depth - 1, board);
+        board.unmake_move(m);
+    }
+    count
+}
+
+fn count_moves(depth: i32, board: &Board) -> usize {
+    if depth == 0 {
+        return 1;
+    }
+    let mut count = 0;
+    let moves = generate_all_moves(board);
+    for m in &moves {
+        let mut new_b = *board;
         new_b.make_move(m);
         count += count_moves(depth - 1, &new_b);
     }

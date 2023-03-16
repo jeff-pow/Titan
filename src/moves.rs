@@ -456,7 +456,7 @@ fn directional_move(
                     EnPassant::SW => board.board[idx as usize + 8],
                     EnPassant::SE => board.board[idx as usize + 8],
                     EnPassant::None => panic!(),
-                }
+                },
             });
         }
         if occupancy.is_none()
