@@ -2,7 +2,8 @@ use std::time::Instant;
 
 use crate::board::Board;
 use crate::eval::eval;
-use crate::moves::{generate_all_moves, in_check, Move};
+use crate::moves::{generate_all_moves, in_check, Castle, EnPassant, Move, Promotion};
+use crate::pieces::PieceName;
 use std::cmp::{max, min};
 
 pub const IN_CHECK_MATE: i32 = 100000;
@@ -60,6 +61,67 @@ fn count_moves(depth: i32, board: &Board) -> usize {
     count
 }
 
+static mut BEST_MOVE: Move = Move {
+    starting_idx: -1,
+    end_idx: -1,
+    castle: Castle::None,
+    promotion: Promotion::None,
+    piece_moving: PieceName::Pawn,
+    capture: None,
+    en_passant: EnPassant::None,
+};
+
+pub fn old_search(board: &Board, depth: i32) -> Move {
+    for i in 1..=depth {
+        let start = Instant::now();
+        old_search_helper(board, i, 0, -INFINITY, INFINITY);
+        let elapsed_time = start.elapsed().as_millis();
+        println!("info time {} depth {}", elapsed_time, i);
+    }
+    unsafe { BEST_MOVE }
+}
+
+fn old_search_helper(
+    board: &Board,
+    depth: i32,
+    dist_from_root: i32,
+    mut alpha: i32,
+    beta: i32,
+) -> i32 {
+    if depth == 0 {
+        //return board.position_eval();
+        return eval(board);
+    }
+    let mut board = board.clone();
+    let moves = generate_all_moves(&mut board);
+    if moves.is_empty() {
+        // Determine if empty moves means stalemate or checkmate
+        if in_check(&board, board.to_move) {
+            return -IN_CHECK_MATE;
+        }
+        return 0;
+    }
+    let mut best_move_for_pos = Move::invalid();
+    for m in &moves {
+        let mut new_b = board.clone();
+        new_b.make_move(m);
+        let eval = -search_helper(&new_b, depth - 1, dist_from_root + 1, -beta, -alpha);
+        if eval >= beta {
+            return beta;
+        }
+        if eval > alpha {
+            best_move_for_pos = *m;
+            alpha = eval;
+            if dist_from_root == 0 {
+                unsafe {
+                    BEST_MOVE = best_move_for_pos;
+                }
+            }
+        }
+    }
+    alpha
+}
+
 pub fn search(board: &Board, depth: i32) -> Move {
     let mut best_move = Move::invalid();
 
@@ -77,11 +139,45 @@ pub fn search(board: &Board, depth: i32) -> Move {
                 best_move = *m;
             }
         }
-        search_helper(board, i, 0, -INFINITY, INFINITY);
         let elapsed_time = start.elapsed().as_millis();
         println!("info time {} depth {}", elapsed_time, i);
     }
     best_move
+}
+
+fn basic_search_helper(
+    board: &Board,
+    depth: i32,
+    dist_from_root: i32,
+    mut alpha: i32,
+    mut beta: i32,
+) -> i32 {
+    if depth == 0 {
+        return eval(board);
+    }
+    let moves = generate_all_moves(board);
+    if moves.is_empty() {
+        // Checkmate
+        if in_check(board, board.to_move) {
+            // Distance from root is returned in order for other recursive calls to determine
+            // shortest viable checkmate path
+            return -IN_CHECK_MATE;
+        }
+        // Stalemate
+        return 0;
+    }
+    let mut max_value = -INFINITY;
+    for m in &moves {
+        let mut new_b = *board;
+        new_b.make_move(m);
+        let eval = -search_helper(&new_b, depth - 1, dist_from_root + 1, -beta, -alpha);
+        max_value = max(max_value, eval);
+        alpha = max(alpha, eval);
+        if alpha >= beta {
+            break;
+        }
+    }
+    max_value
 }
 
 fn search_helper(

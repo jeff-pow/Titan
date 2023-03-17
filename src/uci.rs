@@ -65,7 +65,7 @@ pub fn main_loop() -> ! {
                 let depth = vec[9].to_digit(10).unwrap();
                 perft(&board, depth as i32);
             } else {
-                let m = search(&board, 6);
+                let m = old_search(&board, 6);
                 println!("bestmove {}", m.to_lan());
                 board.make_move(&m);
 

@@ -86,31 +86,6 @@ impl Board {
 
     pub fn make_move(&mut self, m: &Move) {
         // Special case if the move is an en_passant
-        /*
-        if m.piece_moving == PieceName::Pawn && m.end_idx == self.en_passant_square {
-            let end_idx = m.end_idx as usize;
-            match self.to_move {
-                Color::White => {
-                    if self.board[end_idx].is_none()
-                        && self.board[end_idx + 8].is_none()
-                        && self.board[end_idx - 8].is_some()
-                        && self.board[end_idx - 8].unwrap().piece_name == PieceName::Pawn {
-
-                        self.board[end_idx - 8] = None;
-                    }
-                }
-                Color::Black => {
-                    if self.board[end_idx].is_none()
-                        && self.board[end_idx - 8].is_none()
-                        && self.board[end_idx + 8].is_some()
-                        && self.board[end_idx + 8].unwrap().piece_name == PieceName::Pawn {
-
-                        self.board[end_idx + 8] = None;
-                    }
-                }
-            }
-        }
-        */
         if m.en_passant != EnPassant::None {
             let end_idx = m.end_idx as usize;
             match self.to_move {
@@ -429,6 +404,30 @@ impl Board {
             }
         }
         true
+    }
+
+    #[allow(dead_code)]
+    pub fn position_eval(&self) -> i32 {
+        let mut white = 0;
+        let mut black = 0;
+        for square in self.board {
+            match square {
+                None => continue,
+                Some(piece) => match piece.color {
+                    Color::White => {
+                        white += piece.value();
+                    }
+                    Color::Black => {
+                        black += piece.value();
+                    }
+                },
+            }
+        }
+        if self.to_move == Color::White {
+            white - black
+        } else {
+            black - white
+        }
     }
 }
 

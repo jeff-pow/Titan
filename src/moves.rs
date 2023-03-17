@@ -128,12 +128,31 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
             _ => panic!(),
         };
     }
+    let piece_moving = board.board[starting_idx as usize].unwrap().piece_name;
+    let castle = match piece_moving {
+        PieceName::King => {
+            if i8::abs_diff(starting_idx, end_idx) != 2 {
+                Castle::None
+            } else if end_idx == 2 {
+                Castle::WhiteQueenCastle
+            } else if end_idx == 6 {
+                Castle::WhiteKingCastle
+            } else if end_idx == 58 {
+                Castle::BlackQueenCastle
+            } else if end_idx == 62 {
+                Castle::BlackKingCastle
+            } else {
+                unreachable!()
+            }
+        }
+        _ => Castle::None,
+    };
     Move {
         starting_idx,
         end_idx,
-        castle: Castle::None,
+        castle,
         promotion,
-        piece_moving: board.board[starting_idx as usize].unwrap().piece_name,
+        piece_moving,
         capture: board.board[end_idx as usize],
         en_passant: EnPassant::None,
     }
