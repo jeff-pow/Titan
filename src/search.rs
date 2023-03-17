@@ -132,7 +132,7 @@ pub fn search(board: &Board, depth: i32) -> Move {
         let beta = INFINITY;
         let mut moves = generate_all_moves(board);
         moves.sort_by_key(|m| score_move(board, m));
-        //moves.reverse();
+        moves.reverse();
         for m in &moves {
             let mut new_b = *board;
             new_b.make_move(m);
@@ -168,10 +168,6 @@ fn search_helper(
         return alpha;
     }
     let mut moves = generate_all_moves(board);
-    /*
-    moves.sort_by(|m1, m2| score_move(board, m1).cmp(&score_move(board, m2)));
-    moves.reverse();
-    */
     moves.sort_by_key(|m| score_move(board, m));
     moves.reverse();
     if moves.is_empty() {
