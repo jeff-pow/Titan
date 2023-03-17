@@ -9,11 +9,9 @@ use std::fs::File;
 use std::io::{self, Write};
 
 pub fn main_loop() -> ! {
-    //setup();
     let mut board = Board::new();
     let mut buffer = String::new();
     let mut file = File::create("log.txt").expect("File can't be created");
-    let mut debug = false;
 
     loop {
         buffer.clear();
@@ -25,7 +23,6 @@ pub fn main_loop() -> ! {
             println!("readyok");
             writeln!(file, "readyok").expect("File not written to");
         } else if buffer.starts_with("debug on") {
-            debug = true;
             println!("info string debug on");
         } else if buffer.starts_with("ucinewgame") {
             board = build_board(fen::STARTING_FEN);
@@ -35,26 +32,14 @@ pub fn main_loop() -> ! {
             if buffer.contains("fen") {
                 board = build_board(&parse_fen_from_buffer(&vec));
 
-                if debug {
-                    println!("info string {}", board);
-                }
-
                 if vec.len() > 9 {
-                    parse_moves(&vec, &mut board, 9, debug);
+                    parse_moves(&vec, &mut board, 9);
                 }
             } else if buffer.contains("startpos") {
                 board = build_board(fen::STARTING_FEN);
 
-                if debug {
-                    println!("info string\n {}", board);
-                }
-
                 if vec.len() > 3 {
-                    parse_moves(&vec, &mut board, 3, debug);
-                }
-
-                if debug {
-                    println!("info string\n {}", board);
+                    parse_moves(&vec, &mut board, 3);
                 }
             }
         } else if buffer.eq("d\n") {
@@ -64,14 +49,13 @@ pub fn main_loop() -> ! {
                 let vec: Vec<char> = buffer.chars().collect();
                 let depth = vec[9].to_digit(10).unwrap();
                 perft(&board, depth as i32);
-            } else {
+            } else if buffer.contains("old") {
                 let m = old_search(&board, 6);
                 println!("bestmove {}", m.to_lan());
+            } else {
+                let m = search(&board, 6);
+                println!("bestmove {}", m.to_lan());
                 board.make_move(&m);
-
-                if debug {
-                    println!("info string MOVE CHOSEN: {}\n {}", m, board);
-                }
                 writeln!(file, "{}", m.to_lan()).unwrap();
             }
         } else if buffer.starts_with("stop") || buffer.starts_with("quit") {
@@ -91,7 +75,7 @@ pub fn main_loop() -> ! {
     }
 }
 
-fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, debug: bool) {
+fn parse_moves(moves: &[&str], board: &mut Board, skip: usize) {
     for str in moves.iter().skip(skip) {
         let m = from_lan(str, board);
         board.make_move(&m);
@@ -106,12 +90,6 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, debug: bool) {
                     board.black_queen_castle = false;
                 }
             }
-        }
-        if debug {
-            print!("info string making move {}\n {}", m, board);
-            println!("{}", m);
-            println!("{}", board);
-            println!("------------------------");
         }
     }
 }

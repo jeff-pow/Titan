@@ -101,6 +101,7 @@ fn old_search_helper(
         }
         return 0;
     }
+    #[allow(unused_assignments)]
     let mut best_move_for_pos = Move::invalid();
     for m in &moves {
         let mut new_b = board.clone();
@@ -133,7 +134,10 @@ pub fn search(board: &Board, depth: i32) -> Move {
         for m in &moves {
             let mut new_b = *board;
             new_b.make_move(m);
-            let eval = -search_helper(board, i - 1, 1, -beta, -alpha);
+            let eval = -search_helper(&new_b, i - 1, 1, -beta, -alpha);
+            if eval >= beta {
+                continue;
+            }
             if eval > alpha {
                 alpha = eval;
                 best_move = *m;
@@ -143,41 +147,6 @@ pub fn search(board: &Board, depth: i32) -> Move {
         println!("info time {} depth {}", elapsed_time, i);
     }
     best_move
-}
-
-fn basic_search_helper(
-    board: &Board,
-    depth: i32,
-    dist_from_root: i32,
-    mut alpha: i32,
-    mut beta: i32,
-) -> i32 {
-    if depth == 0 {
-        return eval(board);
-    }
-    let moves = generate_all_moves(board);
-    if moves.is_empty() {
-        // Checkmate
-        if in_check(board, board.to_move) {
-            // Distance from root is returned in order for other recursive calls to determine
-            // shortest viable checkmate path
-            return -IN_CHECK_MATE;
-        }
-        // Stalemate
-        return 0;
-    }
-    let mut max_value = -INFINITY;
-    for m in &moves {
-        let mut new_b = *board;
-        new_b.make_move(m);
-        let eval = -search_helper(&new_b, depth - 1, dist_from_root + 1, -beta, -alpha);
-        max_value = max(max_value, eval);
-        alpha = max(alpha, eval);
-        if alpha >= beta {
-            break;
-        }
-    }
-    max_value
 }
 
 fn search_helper(
@@ -211,9 +180,10 @@ fn search_helper(
         let mut new_b = *board;
         new_b.make_move(m);
         let eval = -search_helper(&new_b, depth - 1, dist_from_root + 1, -beta, -alpha);
-        if eval > alpha {
-            alpha = eval;
+        if eval >= beta {
+            return beta;
         }
+        alpha = max(alpha, eval);
     }
     alpha
 }
