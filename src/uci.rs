@@ -3,8 +3,10 @@ use crate::fen::{self, build_board, parse_fen_from_buffer};
 use crate::moves::{from_lan, in_check};
 use crate::pieces::Color;
 use crate::search::*;
+use crate::zobrist::{add_to_map, hash_board};
 #[allow(unused_imports)]
 use rand::seq::SliceRandom;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, Write};
 
@@ -12,6 +14,7 @@ pub fn main_loop() -> ! {
     let mut board = Board::new();
     let mut buffer = String::new();
     let mut file = File::create("log.txt").expect("File can't be created");
+    let mut zobrist_map: HashMap<u64, u8> = HashMap::new();
 
     loop {
         buffer.clear();
@@ -33,13 +36,13 @@ pub fn main_loop() -> ! {
                 board = build_board(&parse_fen_from_buffer(&vec));
 
                 if vec.len() > 9 {
-                    parse_moves(&vec, &mut board, 9);
+                    parse_moves(&vec, &mut board, 9, &mut zobrist_map);
                 }
             } else if buffer.contains("startpos") {
                 board = build_board(fen::STARTING_FEN);
 
                 if vec.len() > 3 {
-                    parse_moves(&vec, &mut board, 3);
+                    parse_moves(&vec, &mut board, 3, &mut zobrist_map);
                 }
             }
         } else if buffer.eq("d\n") {
@@ -49,11 +52,8 @@ pub fn main_loop() -> ! {
                 let vec: Vec<char> = buffer.chars().collect();
                 let depth = vec[9].to_digit(10).unwrap();
                 perft(&board, depth as i32);
-            } else if buffer.contains("old") {
-                let m = old_search(&board, 6);
-                println!("bestmove {}", m.to_lan());
             } else {
-                let m = search(&board, 8);
+                let m = search(&board, 8, &mut zobrist_map);
                 println!("bestmove {}", m.to_lan());
                 board.make_move(&m);
                 writeln!(file, "{}", m.to_lan()).unwrap();
@@ -69,13 +69,13 @@ pub fn main_loop() -> ! {
             writeln!(file, "id author Jeff Powell").expect("File not written to");
             writeln!(file, "uciok").expect("File not written to");
         } else {
-            writeln!(file, "{}", buffer).unwrap();
+            writeln!(file, "Command not handled: {}", buffer).unwrap();
             println!("Command not handled: {}", buffer);
         }
     }
 }
 
-fn parse_moves(moves: &[&str], board: &mut Board, skip: usize) {
+fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, zobrist_map: &mut HashMap<u64, u8>) {
     for str in moves.iter().skip(skip) {
         let m = from_lan(str, board);
         board.make_move(&m);
@@ -91,5 +91,6 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize) {
                 }
             }
         }
+        add_to_map(&board, zobrist_map);
     }
 }

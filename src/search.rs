@@ -1,9 +1,11 @@
+use std::collections::HashMap;
 use std::time::Instant;
 
 use crate::board::Board;
 use crate::eval::eval;
 use crate::moves::{generate_all_moves, in_check, Castle, EnPassant, Move, Promotion};
 use crate::pieces::PieceName;
+use crate::zobrist::{add_to_map, check_for_3x_repetition, remove_from_map};
 use std::cmp::{max, min};
 
 pub const IN_CHECK_MATE: i32 = 100000;
@@ -106,7 +108,7 @@ fn old_search_helper(
     for m in &moves {
         let mut new_b = board.clone();
         new_b.make_move(m);
-        let eval = -search_helper(&new_b, depth - 1, dist_from_root + 1, -beta, -alpha);
+        let eval = -old_search_helper(&new_b, depth - 1, dist_from_root + 1, -beta, -alpha);
         if eval >= beta {
             return beta;
         }
@@ -123,7 +125,7 @@ fn old_search_helper(
     alpha
 }
 
-pub fn search(board: &Board, depth: i32) -> Move {
+pub fn search(board: &Board, depth: i32, zobrist_map: &mut HashMap<u64, u8>) -> Move {
     let mut best_move = Move::invalid();
 
     for i in 1..=depth {
@@ -136,7 +138,9 @@ pub fn search(board: &Board, depth: i32) -> Move {
         for m in &moves {
             let mut new_b = *board;
             new_b.make_move(m);
-            let eval = -search_helper(&new_b, i - 1, 1, -beta, -alpha);
+            add_to_map(&new_b, zobrist_map);
+            let eval = -search_helper(&new_b, i - 1, 1, -beta, -alpha, zobrist_map);
+            remove_from_map(&new_b, zobrist_map);
             if eval >= beta {
                 continue;
             }
@@ -157,9 +161,13 @@ fn search_helper(
     dist_from_root: i32,
     mut alpha: i32,
     mut beta: i32,
+    zobrist_map: &mut HashMap<u64, u8>,
 ) -> i32 {
     if depth == 0 {
         return eval(board);
+    }
+    if check_for_3x_repetition(board, zobrist_map) {
+        return 0;
     }
     // Skip move if a path to checkmate has already been found in this path
     alpha = max(alpha, -IN_CHECK_MATE + dist_from_root);
@@ -183,7 +191,16 @@ fn search_helper(
     for m in &moves {
         let mut new_b = *board;
         new_b.make_move(m);
-        let eval = -search_helper(&new_b, depth - 1, dist_from_root + 1, -beta, -alpha);
+        add_to_map(&new_b, zobrist_map);
+        let eval = -search_helper(
+            &new_b,
+            depth - 1,
+            dist_from_root + 1,
+            -beta,
+            -alpha,
+            zobrist_map,
+        );
+        remove_from_map(&new_b, zobrist_map);
         if eval >= beta {
             return beta;
         }
