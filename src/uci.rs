@@ -53,7 +53,7 @@ pub fn main_loop() -> ! {
                 let m = old_search(&board, 6);
                 println!("bestmove {}", m.to_lan());
             } else {
-                let m = search(&board, 6);
+                let m = search(&board, 8);
                 println!("bestmove {}", m.to_lan());
                 board.make_move(&m);
                 writeln!(file, "{}", m.to_lan()).unwrap();

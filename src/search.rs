@@ -130,7 +130,9 @@ pub fn search(board: &Board, depth: i32) -> Move {
         let start = Instant::now();
         let mut alpha = -INFINITY;
         let beta = INFINITY;
-        let moves = generate_all_moves(board);
+        let mut moves = generate_all_moves(board);
+        moves.sort_by_key(|m| score_move(board, m));
+        //moves.reverse();
         for m in &moves {
             let mut new_b = *board;
             new_b.make_move(m);
@@ -165,7 +167,13 @@ fn search_helper(
     if alpha >= beta {
         return alpha;
     }
-    let moves = generate_all_moves(board);
+    let mut moves = generate_all_moves(board);
+    /*
+    moves.sort_by(|m1, m2| score_move(board, m1).cmp(&score_move(board, m2)));
+    moves.reverse();
+    */
+    moves.sort_by_key(|m| score_move(board, m));
+    moves.reverse();
     if moves.is_empty() {
         // Checkmate
         if in_check(board, board.to_move) {
@@ -186,4 +194,20 @@ fn search_helper(
         alpha = max(alpha, eval);
     }
     alpha
+}
+
+fn score_move(board: &Board, m: &Move) -> i32 {
+    let mut score = 0;
+    let moving_piece = board.board[m.starting_idx as usize].unwrap();
+    if !m.capture.is_none() {
+        score += 10 * m.capture.unwrap().value() - moving_piece.value();
+    }
+    score += match m.promotion {
+        Promotion::Queen => 900,
+        Promotion::Rook => 500,
+        Promotion::Bishop => 300,
+        Promotion::Knight => 300,
+        Promotion::None => 0,
+    };
+    score
 }
