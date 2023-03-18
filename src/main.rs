@@ -8,26 +8,17 @@ mod zobrist;
 #[allow(unused_imports)]
 use crate::{moves::generate_all_moves, search::time_move_search};
 use board::Board;
-use fen::build_board;
 use pieces::Piece;
-use rand::Rng;
 #[allow(unused_imports)]
 use search::*;
-use std::{collections::HashMap, process::exit, time::Instant};
+use std::process::exit;
 use uci::main_loop;
-use zobrist::*;
 
 mod board;
 mod fen;
 
 fn main() {
-    let _board = build_board("5k1K/8/6r1/8/8/8/8/8 b - - 0 1");
-    let board = build_board(fen::STARTING_FEN);
-    let mut map = HashMap::new();
-    //println!("{}", search(&board, 8, &mut map).to_lan());
-    map = HashMap::new();
-    println!("{}", new_search(&board, 8, &mut map).to_lan());
-    // main_loop();
+    main_loop();
     // position fen r3k2r/pp3p2/2p2pp1/4p3/2P5/3R1P2/PP3P1P/2K3NR b kq - 0 15 moves h8h4 g1e2 h4c4 c1d2 c4a4 d3a3 a4a3 b2a3 e8c8 d2c2 c8c7 h1d1
     // r1bqkb1r/pppppppp/8/4P2Q/1nPN1P2/2N5/P1P3PP/R1B1K2R b KQk - 0 13
     // rnb1k1nr/2pp1ppp/1p6/2bP4/p2NqP2/8/PPP3PP/RNBQ1BKR b kq - 5 10
@@ -37,7 +28,7 @@ fn main() {
 #[allow(dead_code)]
 fn print_moves(board: &Board) {
     println!("{}", board);
-    let moves = generate_all_moves(&board);
+    let moves = generate_all_moves(board);
     let i = moves.len();
     for m in moves.iter() {
         println!("{}", m);

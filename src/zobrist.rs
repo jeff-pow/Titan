@@ -1,7 +1,6 @@
-use std::{collections::HashMap, hash::Hasher};
+use std::collections::HashMap;
 
 use crate::{board::Board, pieces::Color, eval::eval};
-use crate::search::IN_CHECK_MATE;
 
 #[rustfmt::skip]
 const PIECE_HASHES: [u64; 64] = [
@@ -14,61 +13,6 @@ const PIECE_HASHES: [u64; 64] = [
 0x053e510d8699a8ea, 0xbff7984370d780ce, 0x82dcfcd33d03e404, 0x4045f49923b1d7cc, 0xf7491819dcd5a68d, 0x93a2a8e29efe0679, 0x37dd5a91e3e83b3c, 0xc605e9f68fc5b333,
 0x344057a0d3bc89af, 0x383c647f42f417b7, 0x58d163ba5c76fb69, 0xe18b6540a36fff7d, 0x3dc554a23ac08ac7, 0xc5d5edffdead807d, 0x71c6a53448e3a35d, 0xd628f30ca0a6a2e4
 ];
-
-const DEPTH_HASHES: [u64; 12] = [
-    0xe1cdf95730e6d147, 0xaf8178c6a9aac919, 0x806514c8c42cae1d, 0x574e46b99dd612c2, 0xb42131d22f80671c, 0x34adc1c0a1eedaa2, 0xd1bda26897e9c301, 0x4de223d667b2859a, 0x8aa9718c3054950c, 0x93685e3eb0e1e3dc, 0xab7d6f6ec8b75186, 0xfdb16b38b7bfe671
-];
-
-pub const EXACT: i32 = 0;
-pub const LOWER_BOUND: i32 = 1;
-pub const UPPER_BOUND: i32 = 2;
-
-pub struct TableEntry {
-    pub depth: i32,
-    pub eval: i32,
-    pub node_type: i32,
-}
-
-pub fn hash_entry(board: &Board, depth: i32) -> u64 {
-    let mut hash = hash_board(board);
-    hash ^= DEPTH_HASHES[depth as usize];
-    hash
-}
-
-pub fn get_node_eval(hash: &u64, ply: i32, depth: i32, map: &mut HashMap<u64, TableEntry>, alpha: i32, beta: i32) -> Option<i32> {
-    if let Some(entry) = map.get(hash) {
-        if entry.depth >= depth {
-            let corrected_score = fix_score(entry.eval, ply);
-            if entry.node_type == EXACT {
-                return Some(corrected_score);
-            }
-            if entry.node_type == UPPER_BOUND && corrected_score <= alpha {
-                return Some(corrected_score);
-            }
-            if entry.node_type == LOWER_BOUND && corrected_score >= beta {
-                return Some(corrected_score);
-            }
-        }
-    }
-    None
-}
-
-fn fix_score(score: i32, ply: i32) -> i32 {
-    if score.abs() == IN_CHECK_MATE {
-        let sign = score.signum();
-        return (score * sign - ply) * sign;
-    }
-    score
-}
-
-pub fn place_entry(hash: &u64, depth: i32, eval: i32, map: &mut HashMap<u64, TableEntry>, node_type: i32) {
-    map.insert(*hash, TableEntry{
-        depth,
-        eval,
-        node_type,
-    });
-}
-
 
 /// Function checks for the presence of the board in the game. If the board position will have occured three times,
 /// returns true indicating the position would be a stalemate due to the threefold repetition rule

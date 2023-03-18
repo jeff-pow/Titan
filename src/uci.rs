@@ -3,28 +3,23 @@ use crate::fen::{self, build_board, parse_fen_from_buffer};
 use crate::moves::{from_lan, in_check};
 use crate::pieces::Color;
 use crate::search::*;
-use crate::zobrist::{add_to_map, hash_board};
+use crate::zobrist::add_to_map;
 #[allow(unused_imports)]
 use rand::seq::SliceRandom;
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::{self, Write};
+use std::io;
 
 pub fn main_loop() -> ! {
     let mut board = Board::new();
     let mut buffer = String::new();
-    let mut file = File::create("log.txt").expect("File can't be created");
     let mut triple_repetitions: HashMap<u64, u8> = HashMap::new();
 
     loop {
         buffer.clear();
         io::stdin().read_line(&mut buffer).unwrap();
 
-        writeln!(file, "UCI said: {}", buffer).expect("File not written to");
-
         if buffer.starts_with("isready") {
             println!("readyok");
-            writeln!(file, "readyok").expect("File not written to");
         } else if buffer.starts_with("debug on") {
             println!("info string debug on");
         } else if buffer.starts_with("ucinewgame") {
@@ -56,7 +51,6 @@ pub fn main_loop() -> ! {
                 let m = search(&board, 7, &mut triple_repetitions);
                 println!("bestmove {}", m.to_lan());
                 board.make_move(&m);
-                writeln!(file, "{}", m.to_lan()).unwrap();
             }
         } else if buffer.starts_with("stop") || buffer.starts_with("quit") {
             std::process::exit(0);
@@ -64,12 +58,7 @@ pub fn main_loop() -> ! {
             println!("id name Jeff's Chess Engine");
             println!("id author Jeff Powell");
             println!("uciok");
-
-            writeln!(file, "id name Jeff's Chess Engine").expect("File not written to");
-            writeln!(file, "id author Jeff Powell").expect("File not written to");
-            writeln!(file, "uciok").expect("File not written to");
         } else {
-            writeln!(file, "Command not handled: {}", buffer).unwrap();
             println!("Command not handled: {}", buffer);
         }
     }
@@ -91,6 +80,6 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, zobrist_map: &mut
                 }
             }
         }
-        add_to_map(&board, zobrist_map);
+        add_to_map(board, zobrist_map);
     }
 }
