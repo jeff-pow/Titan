@@ -1,3 +1,5 @@
+use std::cmp::min;
+
 use crate::{
     board::Board,
     pieces::{Color, Piece, PieceName},
@@ -187,19 +189,17 @@ pub fn eval(board: &Board) -> i32 {
     let mut black_eg = 0;
     let mut game_phase = 0;
 
-    for square in board.board {
-        if let Some(piece) = square {
-            game_phase += game_phase_value(&piece);
-            let curr_sq = piece.current_square as usize;
-            match piece.color {
-                Color::White => {
-                    white_mg += get_mg_table(&piece)[curr_sq ^ 56] + piece.value();
-                    white_eg += get_eg_table(&piece)[curr_sq ^ 56] + piece.value();
-                }
-                Color::Black => {
-                    black_mg += get_mg_table(&piece)[curr_sq] + piece.value();
-                    black_eg += get_mg_table(&piece)[curr_sq] + piece.value();
-                }
+    for piece in board.board.into_iter().flatten() {
+        game_phase += game_phase_value(&piece);
+        let square = piece.current_square as usize;
+        match piece.color {
+            Color::White => {
+                white_mg += get_mg_table(&piece)[square ^ 56] + piece.value();
+                white_eg += get_eg_table(&piece)[square ^ 56] + piece.value();
+            }
+            Color::Black => {
+                black_mg += get_mg_table(&piece)[square] + piece.value();
+                black_eg += get_mg_table(&piece)[square] + piece.value();
             }
         }
     }
@@ -219,10 +219,11 @@ pub fn eval(board: &Board) -> i32 {
 
     // 24 represents the highest normal value a user will have unless there are promotions before
     // captures
-    let mg_phase = game_phase.min(24);
+    let mg_phase = min(game_phase, 24);
     let eg_phase = 24 - mg_phase;
     (mg_pts * mg_phase + eg_pts * eg_phase) / 24
 }
+
 
 #[cfg(test)]
 mod eval_test {

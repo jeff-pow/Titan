@@ -5,7 +5,7 @@ use crate::board::Board;
 use crate::eval::eval;
 use crate::moves::{generate_all_moves, in_check, Castle, EnPassant, Move, Promotion};
 use crate::pieces::PieceName;
-use crate::zobrist::{add_to_map, check_for_3x_repetition, remove_from_map, get_transposition};
+use crate::zobrist::{add_to_map, check_for_3x_repetition, remove_from_map, get_transposition, TableEntry, get_node_eval, hash_entry, place_entry, UPPER_BOUND, LOWER_BOUND, EXACT};
 use std::cmp::{max, min, Reverse};
 
 pub const IN_CHECK_MATE: i32 = 100000;
@@ -81,7 +81,7 @@ pub fn search(board: &Board, depth: i32, triple_repetitions: &mut HashMap<u64, u
             let eval = -search_helper(&new_b, i - 1, 1, -beta, -alpha, triple_repetitions, &mut transpos_table);
             remove_from_map(&new_b, triple_repetitions);
             if eval >= beta {
-                continue;
+                break;
             }
             if eval > alpha {
                 alpha = eval;
@@ -165,3 +165,120 @@ fn score_move(board: &Board, m: &Move) -> i32 {
     };
     score
 }
+
+pub fn new_search(board: &Board, depth: i32, triple_repetitions: &mut HashMap<u64, u8>) -> Move {
+    let mut best_move = Move::invalid();
+    let mut transpos_table = HashMap::new();
+
+    for i in 1..=depth {
+        let start = Instant::now();
+        let mut alpha = -INFINITY;
+        let beta = INFINITY;
+        let mut moves = generate_all_moves(board);
+        moves.sort_by_key(|m| score_move(board, m));
+        moves.reverse();
+        for m in &moves {
+            let mut new_b = *board;
+            new_b.make_move(m);
+            add_to_map(&new_b, triple_repetitions);
+            let eval = -new_search_helper(&new_b, i - 1, 1, -beta, -alpha, triple_repetitions, &mut transpos_table);
+            remove_from_map(&new_b, triple_repetitions);
+            if eval >= beta {
+                continue;
+            }
+            if eval > alpha {
+                alpha = eval;
+                best_move = *m;
+            }
+        }
+        let elapsed_time = start.elapsed().as_millis();
+        println!("info time {} depth {}", elapsed_time, i);
+    }
+    best_move
+}
+
+fn new_search_helper(
+    board: &Board,
+    depth: i32,
+    dist_from_root: i32,
+    mut alpha: i32,
+    mut beta: i32,
+    triple_repetitions: &mut HashMap<u64, u8>,
+    transpos_table: &mut HashMap<u64, TableEntry>,
+) -> i32 {
+    if check_for_3x_repetition(board, triple_repetitions) {
+        return 0;
+    }
+    // Skip move if a path to checkmate has already been found in this path
+    alpha = max(alpha, -IN_CHECK_MATE + dist_from_root);
+    beta = min(beta, IN_CHECK_MATE - dist_from_root);
+    if alpha >= beta {
+        return alpha;
+    }
+
+    let hash = hash_entry(board, depth);
+    let tranpos_eval = get_node_eval(&hash, dist_from_root, depth, transpos_table, alpha, beta);
+    if let Some(eval) = tranpos_eval {
+        return eval;
+    }
+    if depth == 0 {
+        let ret = get_node_eval(&hash, dist_from_root, depth, transpos_table, alpha, beta);
+        if let Some(eval) = ret {
+            return eval;
+        }
+        return eval(board);
+    }
+
+
+    let mut moves = generate_all_moves(board);
+    moves.sort_unstable_by_key(|m| (score_move(board, m)));
+    moves.reverse();
+    if moves.is_empty() {
+        // Checkmate
+        if in_check(board, board.to_move) {
+            // Distance from root is returned in order for other recursive calls to determine
+            // shortest viable checkmate path
+            return -IN_CHECK_MATE + dist_from_root;
+        }
+        // Stalemate
+        return 0;
+    }
+
+    let mut best_board = Board::new();
+    let mut eval_type = UPPER_BOUND;
+    let mut board = *board;
+    for m in &moves {
+        /*
+        let mut new_b = *board;
+        new_b.make_move(m);
+
+         */
+        board.make_move(m);
+        add_to_map(&board, triple_repetitions);
+        let eval = -new_search_helper(
+            &board,
+            depth - 1,
+            dist_from_root + 1,
+            -beta,
+            -alpha,
+            triple_repetitions,
+            transpos_table,
+        );
+        remove_from_map(&board, triple_repetitions);
+        let hash = hash_entry(&board, depth);
+        if eval >= beta {
+            place_entry(&hash, depth, eval, transpos_table, LOWER_BOUND);
+            return beta;
+        }
+        if eval > alpha {
+            alpha = eval;
+            eval_type = EXACT;
+            best_board = board;
+        }
+        board.unmake_move(m);
+    }
+    let hash = hash_entry(&best_board, depth);
+    place_entry(&hash, depth, alpha, transpos_table, eval_type);
+    alpha
+}
+

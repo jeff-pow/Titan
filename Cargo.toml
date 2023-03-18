@@ -15,6 +15,6 @@ threadpool = "1.8.1"
 
 [profile.release]
 opt-level = 3
-debug = false
+debug = true
 lto = true
 codegen-units = 1
