@@ -247,6 +247,8 @@ fn check_space_occupancy(board: &Board, potential_space: i8) -> Option<Color> {
     )
 }
 
+/// Checks diagonal squares from a kings point of view to determine if any pieces put the king in
+/// check
 fn check_diagonal_squares(board: &Board, d: Direction, c: Color) -> bool {
     let king_square = match c {
         Color::White => board.white_king_square,
@@ -288,6 +290,7 @@ fn check_diagonal_squares(board: &Board, d: Direction, c: Color) -> bool {
     false
 }
 
+/// Checks cardinal squares to see if any pieces put the king in check
 fn check_cardinal_squares(board: &Board, d: Direction, c: Color) -> bool {
     let king_square = match c {
         Color::White => board.white_king_square,
@@ -325,6 +328,7 @@ fn check_cardinal_squares(board: &Board, d: Direction, c: Color) -> bool {
     false
 }
 
+/// Checks to see if a pawn found on a diagonal square puts a king in check
 fn check_pawn_attack(d: Direction, c: Color) -> bool {
     let oc = match c {
         Color::White => Color::Black,
@@ -346,6 +350,7 @@ fn check_pawn_attack(d: Direction, c: Color) -> bool {
     }
 }
 
+/// Determines if any knight square moves put a king in check
 fn check_knight_moves(board: &Board, c: Color) -> bool {
     let king_square = match c {
         Color::White => board.white_king_square,
@@ -367,7 +372,7 @@ fn check_knight_moves(board: &Board, c: Color) -> bool {
     false
 }
 
-/// Returns true if the color provided in the parameter is in check and false otherwise
+/// Returns true if the side provided in the parameter is currently in check and false otherwise
 pub fn in_check(board: &Board, color: Color) -> bool {
     // Generate the squares the other side is attacking
     for d in Direction::iter() {
@@ -387,7 +392,7 @@ pub fn in_check(board: &Board, color: Color) -> bool {
 }
 
 /// Method checks the moves the other side could make in response to a move to determine if a check
-/// would result. Removes moves if they are invalid. Checks for check :)
+/// would result. Removes moves if they are illegal. Checks for check :)
 fn check_for_check(board: &Board, moves: &mut Vec<Move>) {
     moves.retain(|m| {
         let mut new_b = *board;
@@ -432,6 +437,8 @@ fn is_cardinal(direction: Direction) -> bool {
     )
 }
 
+/// Function is too large for its own good but finds all the possible moves in a single direction
+/// that a piece can take, and pushes them to the returned vec
 fn directional_move(
     direction: Direction,
     piece: &Piece,
@@ -555,6 +562,7 @@ fn directional_move(
     moves
 }
 
+/// King moves have special checks to determine if castling is possible
 fn generate_king_moves(board: &Board, piece: &Piece) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
     // Generate moves for castling
@@ -662,7 +670,7 @@ fn generate_bishop_moves(board: &Board, piece: &Piece) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
     for direction in Direction::iter() {
         match direction {
-            // Filter out the four main cardinal directions
+            // Filter out the four cardinal directions
             Direction::North => continue,
             Direction::South => continue,
             Direction::East => continue,
@@ -741,6 +749,8 @@ fn generate_knight_moves(board: &Board, piece: &Piece) -> Vec<Move> {
     moves
 }
 
+/// Returns true if the piece moving is a pawn and the final square of the move is in the first or
+/// last row of the board, depending on color of the piece
 fn is_promotion(piece: &Piece, end_idx: i8) -> bool {
     if piece.piece_name == PieceName::Pawn {
         return match piece.color {

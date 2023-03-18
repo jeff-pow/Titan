@@ -5,6 +5,8 @@ use crate::{
     pieces::{Color, Piece, PieceName},
 };
 
+/// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
+
 #[rustfmt::skip]
 const MG_PAWN_TABLE: [i32; 64] = [
      0,   0,   0,   0,   0,   0,  0,   0,
@@ -182,6 +184,7 @@ fn game_phase_value(piece: &Piece) -> i32 {
     }
 }
 
+/// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 pub fn eval(board: &Board) -> i32 {
     let mut white_mg = 0;
     let mut white_eg = 0;

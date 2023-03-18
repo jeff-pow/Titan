@@ -84,6 +84,7 @@ impl Board {
         }
     }
 
+    /// Function makes a move and modifies board state to reflect the move that just happened
     pub fn make_move(&mut self, m: &Move) {
         // Special case if the move is an en_passant
         if m.en_passant != EnPassant::None {
@@ -104,7 +105,7 @@ impl Board {
         self.board[m.end_idx as usize] = Option::from(*piece);
         self.board[m.starting_idx as usize] = None;
 
-        // Move rooks if a castle is applied
+        // Move rooks if a castle move is applied
         match m.castle {
             Castle::WhiteQueenCastle => {
                 let mut rook = &mut self.board[0].expect("Piece should be here: 0");
@@ -140,6 +141,7 @@ impl Board {
             }
             Castle::None => (),
         }
+        // Modify the number of non-pawn pieces on the board if a key piece is captured
         if let Some(capture) = m.capture {
             match capture.piece_name {
                 PieceName::King | PieceName::Pawn => (),
@@ -149,7 +151,8 @@ impl Board {
                 },
             }
         }
-        // If move is a promotion, a pawn is promoted
+        // If move is a promotion, a pawn is removed from the board and replaced with a higher
+        // value piece
         match m.promotion {
             Promotion::Queen => {
                 self.board[m.end_idx as usize] = Some(Piece {
@@ -181,7 +184,7 @@ impl Board {
             }
             Promotion::None => (),
         }
-        // Update king square if king moves
+        // Update board's king square if king moves
         if piece.piece_name == PieceName::King {
             match piece.color {
                 Color::White => {
@@ -236,7 +239,7 @@ impl Board {
                 }
             }
         }
-        // If en passant was not performed that move, the ability to do it goes away
+        // If en passant was not performed this move, the ability to do it on future moves goes away
         if !en_passant {
             self.en_passant_square = -1;
         }
@@ -264,6 +267,8 @@ impl Board {
     }
 
     #[allow(dead_code)]
+    /// Function to unmake a move. I found it did not provide a noticeable speed increase, and it
+    /// is easier to simply copy board states
     pub fn unmake_move(&mut self, m: &Move) {
         if m.en_passant != EnPassant::None {
             let end_idx = m.end_idx as usize;
@@ -405,32 +410,9 @@ impl Board {
         }
         true
     }
-
-    #[allow(dead_code)]
-    pub fn position_eval(&self) -> i32 {
-        let mut white = 0;
-        let mut black = 0;
-        for square in self.board {
-            match square {
-                None => continue,
-                Some(piece) => match piece.color {
-                    Color::White => {
-                        white += piece.value();
-                    }
-                    Color::Black => {
-                        black += piece.value();
-                    }
-                },
-            }
-        }
-        if self.to_move == Color::White {
-            white - black
-        } else {
-            black - white
-        }
-    }
 }
 
+/// Flips a board for use in printing to stdout if engine used from command line instead of a GUI
 fn flip_board(board: &Board) -> Board {
     let mut flipped_board = Board::new();
     let rows_vec: Vec<Vec<Option<Piece>>> = board.board.chunks(8).map(|e| e.into()).collect();
@@ -455,8 +437,6 @@ mod board_tests {
     #[test]
     fn test_undo() {
         let mut board = fen::build_board("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -");
-        //let mut board = fen::build_board("8/8/8/8/8/4p1p1/5P2/8 w - - 0 1");
-        //let mut board = fen::build_board("8/8/8/8/8/4r1r1/5P2/8 w - - 0 1");
         println!("{}", board);
         let cloned_board = board;
         assert!(board.eq(&cloned_board));

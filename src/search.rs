@@ -3,13 +3,14 @@ use std::time::Instant;
 
 use crate::board::Board;
 use crate::moves::{generate_all_moves, in_check, Move, Promotion};
-use crate::zobrist::{add_to_map, check_for_3x_repetition, remove_from_map, get_transposition};
+use crate::zobrist::{add_to_triple_repetition_map, check_for_3x_repetition, remove_from_triple_repetition_map, get_transposition};
 use std::cmp::{max, min};
 
 pub const IN_CHECK_MATE: i32 = 100000;
 pub const INFINITY: i32 = 9999999;
 
 #[allow(dead_code)]
+/// Counts and times the action of generating moves to a certain depth. Prints this information
 pub fn time_move_search(board: &Board, depth: i32) {
     for i in 1..=depth {
         let start = Instant::now();
@@ -20,6 +21,7 @@ pub fn time_move_search(board: &Board, depth: i32) {
     }
 }
 
+/// https://www.chessprogramming.org/Perft
 pub fn perft(board: &Board, depth: i32) -> usize {
     let mut total = 0;
     let moves = generate_all_moves(board);
@@ -34,6 +36,7 @@ pub fn perft(board: &Board, depth: i32) -> usize {
     total
 }
 
+/// Recursively counts the number of moves down to a certain depth
 fn count_moves(depth: i32, board: &Board) -> usize {
     if depth == 0 {
         return 1;
@@ -48,6 +51,7 @@ fn count_moves(depth: i32, board: &Board) -> usize {
     count
 }
 
+/// Generates the optimal move for a given position using alpha beta pruning and basic transposition tables. 
 pub fn search(board: &Board, depth: i32, triple_repetitions: &mut HashMap<u64, u8>) -> Move {
     let mut best_move = Move::invalid();
     let mut transpos_table = HashMap::new();
@@ -56,15 +60,20 @@ pub fn search(board: &Board, depth: i32, triple_repetitions: &mut HashMap<u64, u
         let start = Instant::now();
         let mut alpha = -INFINITY;
         let beta = INFINITY;
+
         let mut moves = generate_all_moves(board);
         moves.sort_by_key(|m| score_move(board, m));
         moves.reverse();
+
         for m in &moves {
             let mut new_b = *board;
             new_b.make_move(m);
-            add_to_map(&new_b, triple_repetitions);
+            add_to_triple_repetition_map(&new_b, triple_repetitions);
+
             let eval = -search_helper(&new_b, i - 1, 1, -beta, -alpha, triple_repetitions, &mut transpos_table);
-            remove_from_map(&new_b, triple_repetitions);
+
+            remove_from_triple_repetition_map(&new_b, triple_repetitions);
+
             if eval >= beta {
                 break;
             }
@@ -79,6 +88,12 @@ pub fn search(board: &Board, depth: i32, triple_repetitions: &mut HashMap<u64, u
     best_move
 }
 
+/// Helper function for search. My implementation does not record a queue of optimal moves, simply
+/// the best one for a current position. Because of this, we only care about the score of each move
+/// at the surface level. Which moves lead to this optimial position do not matter, so we just
+/// return the evaluation of the best possible position *eventually* down a tree from the first
+/// level of moves. The search function is responsible for keeping track of which move is the best
+/// based off of these values.
 fn search_helper(
     board: &Board,
     depth: i32,
@@ -88,9 +103,11 @@ fn search_helper(
     triple_repetitions: &mut HashMap<u64, u8>,
     transpos_table: &mut HashMap<u64, i32>,
 ) -> i32 {
+    // Return an evaluation of the board if maximum depth has been reached.
     if depth == 0 {
         return get_transposition(board, transpos_table);
     }
+    // Stalemate if a board position has appeared three times
     if check_for_3x_repetition(board, triple_repetitions) {
         return 0;
     }
@@ -100,9 +117,11 @@ fn search_helper(
     if alpha >= beta {
         return alpha;
     }
+
     let mut moves = generate_all_moves(board);
     moves.sort_unstable_by_key(|m| (score_move(board, m)));
     moves.reverse();
+
     if moves.is_empty() {
         // Checkmate
         if in_check(board, board.to_move) {
@@ -113,10 +132,12 @@ fn search_helper(
         // Stalemate
         return 0;
     }
+
     for m in &moves {
         let mut new_b = *board;
         new_b.make_move(m);
-        add_to_map(&new_b, triple_repetitions);
+        add_to_triple_repetition_map(&new_b, triple_repetitions);
+
         let eval = -search_helper(
             &new_b,
             depth - 1,
@@ -126,7 +147,9 @@ fn search_helper(
             triple_repetitions,
             transpos_table,
         );
-        remove_from_map(&new_b, triple_repetitions);
+
+        remove_from_triple_repetition_map(&new_b, triple_repetitions);
+
         if eval >= beta {
             return beta;
         }

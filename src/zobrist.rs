@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use crate::{board::Board, pieces::Color, eval::eval};
 
 #[rustfmt::skip]
+/// Randomly generated values to hash boards. Far from perfect, but *probably* good enough to avoid
+/// any collisions that will majorly affect decision making
 const PIECE_HASHES: [u64; 64] = [
 0x987019bc8b603aac, 0xdb4ecbbe7286bf41, 0xdd4011ba06a01ec3, 0x3bd9d3c4f88f773d, 0xc8e369bb8754b32d, 0xd8d00026f0249be1, 0x6868cf1aac89168c, 0x8653b94c8e20b9c1,
 0x799f7f18f2139f18, 0x50639d1ce6d4c90e, 0xab097ce82c5c3182, 0x9e3bc31bbd6e4f34, 0x024e76b495682123, 0xaa81c5a550552336, 0xbc40ec5434582311, 0xda86ca687b0933a2,
@@ -26,6 +28,7 @@ pub fn check_for_3x_repetition(board: &Board, triple_repetitions: &mut HashMap<u
     false
 }
 
+/// Provides a hash for the board eval to be placed into a hashmap
 pub fn hash_board(board: &Board) -> u64 {
     let mut hash = 0;
     for square in 0..64 {
@@ -42,6 +45,8 @@ pub fn hash_board(board: &Board) -> u64 {
     hash
 }
 
+/// Attempts to look up a board state in the transposition table. If found, returns the eval, and
+/// if not found, places eval in the table before returning eval.
 pub fn get_transposition(board: &Board, transpos_table: &mut HashMap<u64, i32>) -> i32 {
     let hash = hash_board(board);
     let found = transpos_table.get(&hash);
@@ -57,7 +62,7 @@ pub fn get_transposition(board: &Board, transpos_table: &mut HashMap<u64, i32>) 
     }
 }
 
-pub fn add_to_map(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) {
+pub fn add_to_triple_repetition_map(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) {
     let hash = hash_board(board);
     let found = triple_repetitions.get(&hash);
     match found {
@@ -72,7 +77,7 @@ pub fn add_to_map(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) {
     }
 }
 
-pub fn remove_from_map(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) {
+pub fn remove_from_triple_repetition_map(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) {
     let hash = hash_board(board);
     let found = triple_repetitions.get(&hash);
     if let Some(count) = found {
