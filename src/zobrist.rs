@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash::Hasher};
 
-use crate::{board::Board, pieces::Color};
+use crate::{board::Board, pieces::Color, eval::eval};
 
 #[rustfmt::skip]
 const PIECE_HASHES: [u64; 64] = [
@@ -16,9 +16,9 @@ const PIECE_HASHES: [u64; 64] = [
 
 /// Function checks for the presence of the board in the game. If the board position will have occured three times,
 /// returns true indicating the position would be a stalemate due to the threefold repetition rule
-pub fn check_for_3x_repetition(board: &Board, zobrist_map: &mut HashMap<u64, u8>) -> bool {
+pub fn check_for_3x_repetition(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) -> bool {
     let hash = hash_board(board);
-    if let Some(num) = zobrist_map.get(&hash) {
+    if let Some(num) = triple_repetitions.get(&hash) {
         if num >= &2 {
             return true;
         }
@@ -42,26 +42,41 @@ pub fn hash_board(board: &Board) -> u64 {
     hash
 }
 
-pub fn add_to_map(board: &Board, zobrist_map: &mut HashMap<u64, u8>) {
+pub fn get_transposition(board: &Board, transpos_table: &mut HashMap<u64, i32>) -> i32 {
     let hash = hash_board(board);
-    let found = zobrist_map.get(&hash);
+    let found = transpos_table.get(&hash);
     match found {
-        // If the board state has already been found, add one to the number of times that location has been found
-        Some(count) => {
-            zobrist_map.insert(hash, *count + 1);
+        Some(val) => {
+            *val
         }
-        // Otherwise this is the first occurrence to the map
         None => {
-            zobrist_map.insert(hash, 1);
+            let val = eval(board);
+            transpos_table.insert(hash, val);
+            val
         }
     }
 }
 
-pub fn remove_from_map(board: &Board, zobrist_map: &mut HashMap<u64, u8>) {
+pub fn add_to_map(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) {
     let hash = hash_board(board);
-    let found = zobrist_map.get(&hash);
+    let found = triple_repetitions.get(&hash);
+    match found {
+        // If the board state has already been found, add one to the number of times that location has been found
+        Some(count) => {
+            triple_repetitions.insert(hash, *count + 1);
+        }
+        // Otherwise this is the first occurrence to the map
+        None => {
+            triple_repetitions.insert(hash, 1);
+        }
+    }
+}
+
+pub fn remove_from_map(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) {
+    let hash = hash_board(board);
+    let found = triple_repetitions.get(&hash);
     if let Some(count) = found {
-        zobrist_map.insert(hash, *count - 1);
+        triple_repetitions.insert(hash, *count - 1);
     }
 }
 

@@ -5,8 +5,8 @@ use crate::board::Board;
 use crate::eval::eval;
 use crate::moves::{generate_all_moves, in_check, Castle, EnPassant, Move, Promotion};
 use crate::pieces::PieceName;
-use crate::zobrist::{add_to_map, check_for_3x_repetition, remove_from_map};
-use std::cmp::{max, min};
+use crate::zobrist::{add_to_map, check_for_3x_repetition, remove_from_map, get_transposition};
+use std::cmp::{max, min, Reverse};
 
 pub const IN_CHECK_MATE: i32 = 100000;
 pub const INFINITY: i32 = 9999999;
@@ -63,70 +63,9 @@ fn count_moves(depth: i32, board: &Board) -> usize {
     count
 }
 
-static mut BEST_MOVE: Move = Move {
-    starting_idx: -1,
-    end_idx: -1,
-    castle: Castle::None,
-    promotion: Promotion::None,
-    piece_moving: PieceName::Pawn,
-    capture: None,
-    en_passant: EnPassant::None,
-};
-
-pub fn old_search(board: &Board, depth: i32) -> Move {
-    for i in 1..=depth {
-        let start = Instant::now();
-        old_search_helper(board, i, 0, -INFINITY, INFINITY);
-        let elapsed_time = start.elapsed().as_millis();
-        println!("info time {} depth {}", elapsed_time, i);
-    }
-    unsafe { BEST_MOVE }
-}
-
-fn old_search_helper(
-    board: &Board,
-    depth: i32,
-    dist_from_root: i32,
-    mut alpha: i32,
-    beta: i32,
-) -> i32 {
-    if depth == 0 {
-        //return board.position_eval();
-        return eval(board);
-    }
-    let mut board = board.clone();
-    let moves = generate_all_moves(&mut board);
-    if moves.is_empty() {
-        // Determine if empty moves means stalemate or checkmate
-        if in_check(&board, board.to_move) {
-            return -IN_CHECK_MATE;
-        }
-        return 0;
-    }
-    #[allow(unused_assignments)]
-    let mut best_move_for_pos = Move::invalid();
-    for m in &moves {
-        let mut new_b = board.clone();
-        new_b.make_move(m);
-        let eval = -old_search_helper(&new_b, depth - 1, dist_from_root + 1, -beta, -alpha);
-        if eval >= beta {
-            return beta;
-        }
-        if eval > alpha {
-            best_move_for_pos = *m;
-            alpha = eval;
-            if dist_from_root == 0 {
-                unsafe {
-                    BEST_MOVE = best_move_for_pos;
-                }
-            }
-        }
-    }
-    alpha
-}
-
-pub fn search(board: &Board, depth: i32, zobrist_map: &mut HashMap<u64, u8>) -> Move {
+pub fn search(board: &Board, depth: i32, triple_repetitions: &mut HashMap<u64, u8>) -> Move {
     let mut best_move = Move::invalid();
+    let mut transpos_table = HashMap::new();
 
     for i in 1..=depth {
         let start = Instant::now();
@@ -138,9 +77,9 @@ pub fn search(board: &Board, depth: i32, zobrist_map: &mut HashMap<u64, u8>) -> 
         for m in &moves {
             let mut new_b = *board;
             new_b.make_move(m);
-            add_to_map(&new_b, zobrist_map);
-            let eval = -search_helper(&new_b, i - 1, 1, -beta, -alpha, zobrist_map);
-            remove_from_map(&new_b, zobrist_map);
+            add_to_map(&new_b, triple_repetitions);
+            let eval = -search_helper(&new_b, i - 1, 1, -beta, -alpha, triple_repetitions, &mut transpos_table);
+            remove_from_map(&new_b, triple_repetitions);
             if eval >= beta {
                 continue;
             }
@@ -161,12 +100,13 @@ fn search_helper(
     dist_from_root: i32,
     mut alpha: i32,
     mut beta: i32,
-    zobrist_map: &mut HashMap<u64, u8>,
+    triple_repetitions: &mut HashMap<u64, u8>,
+    transpos_table: &mut HashMap<u64, i32>,
 ) -> i32 {
     if depth == 0 {
-        return eval(board);
+        return get_transposition(board, transpos_table);
     }
-    if check_for_3x_repetition(board, zobrist_map) {
+    if check_for_3x_repetition(board, triple_repetitions) {
         return 0;
     }
     // Skip move if a path to checkmate has already been found in this path
@@ -176,7 +116,7 @@ fn search_helper(
         return alpha;
     }
     let mut moves = generate_all_moves(board);
-    moves.sort_by_key(|m| score_move(board, m));
+    moves.sort_unstable_by_key(|m| (score_move(board, m)));
     moves.reverse();
     if moves.is_empty() {
         // Checkmate
@@ -191,16 +131,17 @@ fn search_helper(
     for m in &moves {
         let mut new_b = *board;
         new_b.make_move(m);
-        add_to_map(&new_b, zobrist_map);
+        add_to_map(&new_b, triple_repetitions);
         let eval = -search_helper(
             &new_b,
             depth - 1,
             dist_from_root + 1,
             -beta,
             -alpha,
-            zobrist_map,
+            triple_repetitions,
+            transpos_table,
         );
-        remove_from_map(&new_b, zobrist_map);
+        remove_from_map(&new_b, triple_repetitions);
         if eval >= beta {
             return beta;
         }
@@ -212,7 +153,7 @@ fn search_helper(
 fn score_move(board: &Board, m: &Move) -> i32 {
     let mut score = 0;
     let moving_piece = board.board[m.starting_idx as usize].unwrap();
-    if !m.capture.is_none() {
+    if m.capture.is_some() {
         score += 10 * m.capture.unwrap().value() - moving_piece.value();
     }
     score += match m.promotion {

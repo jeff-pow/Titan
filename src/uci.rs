@@ -14,7 +14,7 @@ pub fn main_loop() -> ! {
     let mut board = Board::new();
     let mut buffer = String::new();
     let mut file = File::create("log.txt").expect("File can't be created");
-    let mut zobrist_map: HashMap<u64, u8> = HashMap::new();
+    let mut triple_repetitions: HashMap<u64, u8> = HashMap::new();
 
     loop {
         buffer.clear();
@@ -36,13 +36,13 @@ pub fn main_loop() -> ! {
                 board = build_board(&parse_fen_from_buffer(&vec));
 
                 if vec.len() > 9 {
-                    parse_moves(&vec, &mut board, 9, &mut zobrist_map);
+                    parse_moves(&vec, &mut board, 9, &mut triple_repetitions);
                 }
             } else if buffer.contains("startpos") {
                 board = build_board(fen::STARTING_FEN);
 
                 if vec.len() > 3 {
-                    parse_moves(&vec, &mut board, 3, &mut zobrist_map);
+                    parse_moves(&vec, &mut board, 3, &mut triple_repetitions);
                 }
             }
         } else if buffer.eq("d\n") {
@@ -53,7 +53,7 @@ pub fn main_loop() -> ! {
                 let depth = vec[9].to_digit(10).unwrap();
                 perft(&board, depth as i32);
             } else {
-                let m = search(&board, 8, &mut zobrist_map);
+                let m = search(&board, 7, &mut triple_repetitions);
                 println!("bestmove {}", m.to_lan());
                 board.make_move(&m);
                 writeln!(file, "{}", m.to_lan()).unwrap();
