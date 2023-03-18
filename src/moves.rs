@@ -405,14 +405,9 @@ fn check_for_check(board: &Board, moves: &mut Vec<Move>) {
 /// place that side in check as well (illegal moves). Returns only fully legal moves for a position
 pub fn generate_all_moves(board: &Board) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
-    for piece in board.board {
-        match piece {
-            None => continue,
-            Some(piece) => {
-                if piece.color == board.to_move {
-                    moves.append(&mut generate_moves_for_piece(board, &piece));
-                }
-            }
+    for piece in board.board.iter().flatten() {
+        if piece.color == board.to_move {
+            moves.append(&mut generate_moves_for_piece(board, &piece));
         }
     }
     check_for_check(board, &mut moves);
