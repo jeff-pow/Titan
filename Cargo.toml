@@ -10,11 +10,3 @@ edition = "2021"
 strum = { version = "0.24", features = ["derive"] }
 strum_macros = "0.24"
 rand = "0.8.5"
-rayon = "1.7.0"
-threadpool = "1.8.1"
-
-[profile.release]
-opt-level = 3
-debug = true
-lto = true
-codegen-units = 1
