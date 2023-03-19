@@ -11,7 +11,7 @@ pub const INFINITY: i32 = 9999999;
 
 #[allow(dead_code)]
 /// Counts and times the action of generating moves to a certain depth. Prints this information
-pub fn time_move_search(board: &Board, depth: i32) {
+pub fn time_move_generation(board: &Board, depth: i32) {
     for i in 1..=depth {
         let start = Instant::now();
         print!("{}", count_moves(i, board));
@@ -54,7 +54,7 @@ fn count_moves(depth: i32, board: &Board) -> usize {
 /// Generates the optimal move for a given position using alpha beta pruning and basic transposition tables. 
 pub fn search(board: &Board, depth: i32, triple_repetitions: &mut HashMap<u64, u8>) -> Move {
     let mut best_move = Move::invalid();
-    let mut transpos_table = HashMap::new();
+        let mut transpos_table = HashMap::new();
 
     for i in 1..=depth {
         let start = Instant::now();

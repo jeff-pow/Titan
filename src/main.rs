@@ -6,19 +6,22 @@ mod uci;
 mod zobrist;
 
 #[allow(unused_imports)]
-use crate::{moves::generate_all_moves, search::time_move_search};
+use crate::{moves::generate_all_moves, search::time_move_generation};
 use board::Board;
 use pieces::Piece;
 #[allow(unused_imports)]
 use search::*;
-use std::process::exit;
+use std::{process::exit, collections::HashMap};
 use uci::main_loop;
 
 mod board;
 mod fen;
 
 fn main() {
-    main_loop();
+    let mut map = HashMap::new();
+    let board = fen::build_board(fen::STARTING_FEN);
+    search(&board, 8, &mut map);
+    //main_loop();
 }
 
 #[allow(dead_code)]

@@ -49,17 +49,7 @@ pub fn hash_board(board: &Board) -> u64 {
 /// if not found, places eval in the table before returning eval.
 pub fn get_transposition(board: &Board, transpos_table: &mut HashMap<u64, i32>) -> i32 {
     let hash = hash_board(board);
-    let found = transpos_table.get(&hash);
-    match found {
-        Some(val) => {
-            *val
-        }
-        None => {
-            let val = eval(board);
-            transpos_table.insert(hash, val);
-            val
-        }
-    }
+    *transpos_table.entry(hash).or_insert_with(|| eval(board))
 }
 
 pub fn add_to_triple_repetition_map(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) {
