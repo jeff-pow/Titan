@@ -28,7 +28,7 @@ pub fn check_for_3x_repetition(board: &Board, triple_repetitions: &mut HashMap<u
     false
 }
 
-/// Provides a hash for the board eval to be placed into a hashmap
+/// Provides a hash for the board eval to be placed into a transposition table
 pub fn hash_board(board: &Board) -> u64 {
     let mut hash = 0;
     for square in 0..64 {
@@ -54,25 +54,12 @@ pub fn get_transposition(board: &Board, transpos_table: &mut HashMap<u64, i32>) 
 
 pub fn add_to_triple_repetition_map(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) {
     let hash = hash_board(board);
-    let found = triple_repetitions.get(&hash);
-    match found {
-        // If the board state has already been found, add one to the number of times that location has been found
-        Some(count) => {
-            triple_repetitions.insert(hash, *count + 1);
-        }
-        // Otherwise this is the first occurrence to the map
-        None => {
-            triple_repetitions.insert(hash, 1);
-        }
-    }
+    triple_repetitions.entry(hash).and_modify(|i| *i += 1).or_insert(1);
 }
 
 pub fn remove_from_triple_repetition_map(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) {
     let hash = hash_board(board);
-    let found = triple_repetitions.get(&hash);
-    if let Some(count) = found {
-        triple_repetitions.insert(hash, *count - 1);
-    }
+    triple_repetitions.entry(hash).and_modify(|e| *e -= 1);
 }
 
 #[cfg(test)]

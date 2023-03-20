@@ -1,10 +1,10 @@
 use crate::search::INFINITY;
 
 pub const KING_PTS: i32 = INFINITY;
-pub const QUEEN_PTS: i32 = 900;
-pub const ROOK_PTS: i32 = 500;
-pub const BISHOP_PTS: i32 = 300;
-pub const KNIGHT_PTS: i32 = 300;
+pub const QUEEN_PTS: i32 = 1000;
+pub const ROOK_PTS: i32 = 525;
+pub const BISHOP_PTS: i32 = 350;
+pub const KNIGHT_PTS: i32 = 350;
 pub const PAWN_PTS: i32 = 100;
 
 
