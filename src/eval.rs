@@ -201,8 +201,8 @@ pub fn eval(board: &Board) -> i32 {
                 white_eg += get_eg_table(&piece)[square ^ 56] + piece.value();
             }
             Color::Black => {
-                black_mg += get_mg_table(&piece)[square] + piece.value();
-                black_eg += get_mg_table(&piece)[square] + piece.value();
+                black_mg += get_mg_table(&piece)[square ^ 56] + piece.value();
+                black_eg += get_mg_table(&piece)[square ^ 56] + piece.value();
             }
         }
     }
@@ -226,7 +226,6 @@ pub fn eval(board: &Board) -> i32 {
     let eg_phase = 24 - mg_phase;
     (mg_pts * mg_phase + eg_pts * eg_phase) / 24
 }
-
 
 #[cfg(test)]
 mod eval_test {

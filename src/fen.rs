@@ -39,7 +39,6 @@ pub fn build_board(fen_string: &str) -> Board {
                             PieceName::Queen,
                             (row * 8 + idx) as i8,
                         ));
-                        board.num_white_pieces += 1;
                     }
                     'R' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
@@ -47,7 +46,6 @@ pub fn build_board(fen_string: &str) -> Board {
                             PieceName::Rook,
                             (row * 8 + idx) as i8,
                         ));
-                        board.num_white_pieces += 1;
                     }
                     'N' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
@@ -55,7 +53,6 @@ pub fn build_board(fen_string: &str) -> Board {
                             PieceName::Knight,
                             (row * 8 + idx) as i8,
                         ));
-                        board.num_white_pieces += 1;
                     }
                     'B' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
@@ -63,7 +60,6 @@ pub fn build_board(fen_string: &str) -> Board {
                             PieceName::Bishop,
                             (row * 8 + idx) as i8,
                         ));
-                        board.num_white_pieces += 1;
                     }
                     'P' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
@@ -86,7 +82,6 @@ pub fn build_board(fen_string: &str) -> Board {
                             PieceName::Queen,
                             (row * 8 + idx) as i8,
                         ));
-                        board.num_black_pieces += 1;
                     }
                     'r' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
@@ -94,7 +89,6 @@ pub fn build_board(fen_string: &str) -> Board {
                             PieceName::Rook,
                             (row * 8 + idx) as i8,
                         ));
-                        board.num_black_pieces += 1;
                     }
                     'b' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
@@ -102,7 +96,6 @@ pub fn build_board(fen_string: &str) -> Board {
                             PieceName::Bishop,
                             (row * 8 + idx) as i8,
                         ));
-                        board.num_black_pieces += 1;
                     }
                     'n' => {
                         board.board[row * 8 + idx] = Some(Piece::new(
@@ -110,7 +103,6 @@ pub fn build_board(fen_string: &str) -> Board {
                             PieceName::Knight,
                             (row * 8 + idx) as i8,
                         ));
-                        board.num_black_pieces += 1;
                     }
                     'p' => {
                         board.board[row * 8 + idx] = Some(Piece::new(

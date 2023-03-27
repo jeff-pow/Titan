@@ -6,7 +6,7 @@ use strum_macros::EnumIter;
 
 use crate::{board::Board, pieces::Color, pieces::Piece, pieces::PieceName};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Move {
     pub starting_idx: i8,
     pub end_idx: i8,
@@ -158,7 +158,7 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
     }
 }
 
-#[derive(Clone, Copy, EnumIter, PartialEq)]
+#[derive(Clone, Copy, Debug, EnumIter, PartialEq)]
 pub enum Promotion {
     Queen,
     Rook,
@@ -167,7 +167,7 @@ pub enum Promotion {
     None,
 }
 
-#[derive(Clone, Copy, EnumIter, PartialEq)]
+#[derive(Clone, Copy, Debug, EnumIter, PartialEq)]
 pub enum EnPassant {
     NW,
     NE,
@@ -176,7 +176,7 @@ pub enum EnPassant {
     None,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Castle {
     None,
     WhiteKingCastle,
@@ -407,7 +407,7 @@ pub fn generate_all_moves(board: &Board) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
     for piece in board.board.iter().flatten() {
         if piece.color == board.to_move {
-            moves.append(&mut generate_moves_for_piece(board, &piece));
+            moves.append(&mut generate_moves_for_piece(board, piece));
         }
     }
     check_for_check(board, &mut moves);

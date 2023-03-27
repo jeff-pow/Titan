@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Board {
     pub board: [Option<Piece>; 64],
     pub to_move: Color,
@@ -22,8 +22,6 @@ pub struct Board {
     pub black_king_square: i8,
     pub white_king_square: i8,
     pub num_moves: i32,
-    pub num_white_pieces: i8,
-    pub num_black_pieces: i8,
 }
 
 impl Display for Board {
@@ -66,6 +64,34 @@ impl Display for Board {
     }
 }
 
+impl fmt::Debug for Board {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut str = String::new();
+        str += match self.to_move {
+            Color::White => "White to move\n",
+            Color::Black => "Black to move\n",
+        };
+        str += &self.to_string();
+        str += "Castles available: ";
+        if self.white_king_castle {
+            str += "K"
+        };
+        if self.white_queen_castle {
+            str += "Q"
+        };
+        if self.black_king_castle {
+            str += "k"
+        };
+        if self.black_queen_castle {
+            str += "q"
+        };
+        str += "\n";
+        str += "Num moves made: ";
+        str += &self.num_moves.to_string();
+        write!(f, "{}", str)
+    }
+}
+
 impl Board {
     pub fn new() -> Self {
         Board {
@@ -79,8 +105,6 @@ impl Board {
             white_king_square: -1,
             black_king_square: -1,
             num_moves: 0,
-            num_white_pieces: 0,
-            num_black_pieces: 0,
         }
     }
 
@@ -140,16 +164,6 @@ impl Board {
                 self.black_king_castle = false;
             }
             Castle::None => (),
-        }
-        // Modify the number of non-pawn pieces on the board if a key piece is captured
-        if let Some(capture) = m.capture {
-            match capture.piece_name {
-                PieceName::King | PieceName::Pawn => (),
-                _ => match self.to_move {
-                    Color::White => self.num_black_pieces -= 1,
-                    Color::Black => self.num_white_pieces -= 1,
-                },
-            }
         }
         // If move is a promotion, a pawn is removed from the board and replaced with a higher
         // value piece
@@ -327,15 +341,6 @@ impl Board {
                 self.black_king_castle = true;
             }
             Castle::None => (),
-        }
-        if let Some(capture) = m.capture {
-            match capture.piece_name {
-                PieceName::King | PieceName::Pawn => (),
-                _ => match self.to_move {
-                    Color::White => self.num_black_pieces += 1,
-                    Color::Black => self.num_white_pieces += 1,
-                },
-            }
         }
         match m.promotion {
             Promotion::Queen | Promotion::Rook | Promotion::Bishop | Promotion::Knight => {
