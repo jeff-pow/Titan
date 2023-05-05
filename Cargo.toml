@@ -10,3 +10,10 @@ edition = "2021"
 strum = { version = "0.24", features = ["derive"] }
 strum_macros = "0.24"
 rand = "0.8.5"
+
+[profile.release]
+debug = false
+codegen-units = 1
+opt-level = "3"
+lto = "fat"
+panic = "abort"
