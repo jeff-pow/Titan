@@ -11,7 +11,7 @@ use board::Board;
 use pieces::Piece;
 #[allow(unused_imports)]
 use search::*;
-use std::{collections::HashMap, process::exit};
+use std::process::exit;
 use uci::main_loop;
 
 mod board;

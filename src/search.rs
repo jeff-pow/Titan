@@ -3,7 +3,10 @@ use std::time::Instant;
 
 use crate::board::Board;
 use crate::moves::{generate_all_moves, in_check, Move, Promotion};
-use crate::zobrist::{add_to_triple_repetition_map, check_for_3x_repetition, remove_from_triple_repetition_map, get_transposition};
+use crate::zobrist::{
+    add_to_triple_repetition_map, check_for_3x_repetition, get_transposition,
+    remove_from_triple_repetition_map,
+};
 use std::cmp::{max, min};
 
 pub const IN_CHECK_MATE: i32 = 100000;
@@ -51,10 +54,10 @@ fn count_moves(depth: i32, board: &Board) -> usize {
     count
 }
 
-/// Generates the optimal move for a given position using alpha beta pruning and basic transposition tables. 
+/// Generates the optimal move for a given position using alpha beta pruning and basic transposition tables.
 pub fn search(board: &Board, depth: i32, triple_repetitions: &mut HashMap<u64, u8>) -> Move {
     let mut best_move = Move::invalid();
-        let mut transpos_table = HashMap::new();
+    let mut transpos_table = HashMap::new();
 
     for i in 1..=depth {
         let start = Instant::now();
@@ -70,7 +73,15 @@ pub fn search(board: &Board, depth: i32, triple_repetitions: &mut HashMap<u64, u
             new_b.make_move(m);
             add_to_triple_repetition_map(&new_b, triple_repetitions);
 
-            let eval = -search_helper(&new_b, i - 1, 1, -beta, -alpha, triple_repetitions, &mut transpos_table);
+            let eval = -search_helper(
+                &new_b,
+                i - 1,
+                1,
+                -beta,
+                -alpha,
+                triple_repetitions,
+                &mut transpos_table,
+            );
 
             remove_from_triple_repetition_map(&new_b, triple_repetitions);
 

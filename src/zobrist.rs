@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{board::Board, pieces::Color, eval::eval};
+use crate::{board::Board, eval::eval, pieces::Color};
 
 #[rustfmt::skip]
 /// Randomly generated values to hash boards. Far from perfect, but *probably* good enough to avoid
@@ -54,7 +54,10 @@ pub fn get_transposition(board: &Board, transpos_table: &mut HashMap<u64, i32>) 
 
 pub fn add_to_triple_repetition_map(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) {
     let hash = hash_board(board);
-    triple_repetitions.entry(hash).and_modify(|i| *i += 1).or_insert(1);
+    triple_repetitions
+        .entry(hash)
+        .and_modify(|i| *i += 1)
+        .or_insert(1);
 }
 
 pub fn remove_from_triple_repetition_map(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) {

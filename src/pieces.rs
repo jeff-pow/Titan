@@ -7,7 +7,6 @@ pub const BISHOP_PTS: i32 = 350;
 pub const KNIGHT_PTS: i32 = 350;
 pub const PAWN_PTS: i32 = 100;
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Piece {
     pub current_square: i8,
