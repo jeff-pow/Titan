@@ -1,8 +1,11 @@
 # chess-engine
 
 A reasonably capable chess engine that was written as a personal project and learning experience. 
-Utilizes the UCI framework as well as several chess programming concepts such as alpha-beta pruning and transposition tables 
-to speed up move evaluation. 
+
+### Features
+- Utilizes the UCI framework
+- Alpha-beta pruning to make searching the game tree more efficient
+- Zobrist hashing to store the scoring of previously found board states in a transposition table
 
 Can be built by entering the chess-engine directory and running `cargo b --release`. A binary will be generated that can be used in 
 any UCI compliant chess GUI.
