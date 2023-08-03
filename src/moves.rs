@@ -216,67 +216,9 @@ enum Direction {
     NorthEast = 9,
 }
 
-/// Movement chords are defined by a combination of three cardinal directions - ex West West North
-#[derive(EnumIter, Copy, Clone, Debug, PartialEq, Eq)]
-#[allow(clippy::upper_case_acronyms)]
-enum KnightMovement {
-    WWN = 6,
-    WNN = 15,
-    ENN = 17,
-    EEN = 10,
-    EES = -6,
-    ESS = -15,
-    WSS = -17,
-    WWS = -10,
-}
-
-pub struct AttackBoards {
-    pub king: [u64; 64],
-    pub knight: [u64; 64],
-}
-
-impl AttackBoards {
-    pub fn new() -> Self {
-        AttackBoards {
-            king: gen_king_attack_boards(),
-            knight: gen_knight_attack_boards(),
-        }
-    }
-}
-#[rustfmt::skip]
-fn gen_king_attack_boards() -> [u64; 64] {
-    let mut arr = [0; 64];
-    for square in 0..64 {
-        let moves = 
-        (square & !7 & !6 & !0) << 15
-        | (square & !7 & !6 & !7) << 17
-        | (square & !0 & !1 & !7) << 6
-        | (square & !6 & !7 & !7) << 10
-        | (square & !0 & !1 & !0) >> 17
-        | (square & !0 & !1 & !7) >> 15
-        | (square & !0 & !1 & !0) >> 10
-        | (square & !6 & !7 & !0) >> 6;
-        arr[square] = moves as u64;
-    }
-    arr
-}
-
-#[rustfmt::skip]
-fn gen_knight_attack_boards() -> [u64; 64] {
-    let mut arr = [0; 64];
-    for square in 0..64 {
-        let moves = 
-        (square & !7 & !6 & !0) << 15
-        | (square & !7 & !6 & !7) << 17
-        | (square & !0 & !1 & !7) << 6
-        | (square & !6 & !7 & !7) << 10
-        | (square & !0 & !1 & !0) >> 17
-        | (square & !0 & !1 & !7) >> 15
-        | (square & !0 & !1 & !0) >> 10
-        | (square & !6 & !7 & !0) >> 6;
-        arr[square] = moves as u64;
-    }
-    arr
+#[inline]
+pub fn coordinates(idx: usize) -> (usize, usize) {
+    (idx / 8, idx % 8)
 }
 
 pub fn in_check(board: &Board, color: Color) -> bool {

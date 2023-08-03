@@ -1,3 +1,4 @@
+mod attack_boards;
 mod eval;
 mod moves;
 mod pieces;
@@ -19,8 +20,8 @@ mod fen;
 
 fn main() {
     let mut board = fen::build_board(fen::STARTING_FEN);
-    let b = moves::AttackBoards::new();
-    dbg!(b.knight[0]);
+    let b = attack_boards::AttackBoards::new();
+    dbg!(b.knight[3]);
     //main_loop();
 }
 
