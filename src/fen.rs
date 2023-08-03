@@ -24,93 +24,20 @@ pub fn build_board(fen_string: &str) -> Board {
                 idx += c.to_digit(10).unwrap() as usize;
                 continue;
             } else {
+                let square = row * 8 + idx;
                 match c {
-                    'K' => {
-                        board.board[row * 8 + idx] = Some(Piece::new(
-                            Color::White,
-                            PieceName::King,
-                            (row * 8 + idx) as i8,
-                        ));
-                        board.white_king_square = (row * 8 + idx) as i8;
-                    }
-                    'Q' => {
-                        board.board[row * 8 + idx] = Some(Piece::new(
-                            Color::White,
-                            PieceName::Queen,
-                            (row * 8 + idx) as i8,
-                        ));
-                    }
-                    'R' => {
-                        board.board[row * 8 + idx] = Some(Piece::new(
-                            Color::White,
-                            PieceName::Rook,
-                            (row * 8 + idx) as i8,
-                        ));
-                    }
-                    'N' => {
-                        board.board[row * 8 + idx] = Some(Piece::new(
-                            Color::White,
-                            PieceName::Knight,
-                            (row * 8 + idx) as i8,
-                        ));
-                    }
-                    'B' => {
-                        board.board[row * 8 + idx] = Some(Piece::new(
-                            Color::White,
-                            PieceName::Bishop,
-                            (row * 8 + idx) as i8,
-                        ));
-                    }
-                    'P' => {
-                        board.board[row * 8 + idx] = Some(Piece::new(
-                            Color::White,
-                            PieceName::Pawn,
-                            (row * 8 + idx) as i8,
-                        ));
-                    }
-                    'k' => {
-                        board.board[row * 8 + idx] = Some(Piece::new(
-                            Color::Black,
-                            PieceName::King,
-                            (row * 8 + idx) as i8,
-                        ));
-                        board.black_king_square = (row * 8 + idx) as i8;
-                    }
-                    'q' => {
-                        board.board[row * 8 + idx] = Some(Piece::new(
-                            Color::Black,
-                            PieceName::Queen,
-                            (row * 8 + idx) as i8,
-                        ));
-                    }
-                    'r' => {
-                        board.board[row * 8 + idx] = Some(Piece::new(
-                            Color::Black,
-                            PieceName::Rook,
-                            (row * 8 + idx) as i8,
-                        ));
-                    }
-                    'b' => {
-                        board.board[row * 8 + idx] = Some(Piece::new(
-                            Color::Black,
-                            PieceName::Bishop,
-                            (row * 8 + idx) as i8,
-                        ));
-                    }
-                    'n' => {
-                        board.board[row * 8 + idx] = Some(Piece::new(
-                            Color::Black,
-                            PieceName::Knight,
-                            (row * 8 + idx) as i8,
-                        ));
-                    }
-                    'p' => {
-                        board.board[row * 8 + idx] = Some(Piece::new(
-                            Color::Black,
-                            PieceName::Pawn,
-                            (row * 8 + idx) as i8,
-                        ));
-                    }
+                    'K' => board.place_piece(PieceName::King, Color::White, square),
+                    'Q' => board.place_piece(PieceName::Queen, Color::White, square),
+                    'R' => board.place_piece(PieceName::Rook, Color::White, square),
+                    'N' => board.place_piece(PieceName::Knight, Color::White, square),
+                    'B' => board.place_piece(PieceName::Bishop, Color::White, square),
+                    'P' => board.place_piece(PieceName::Pawn, Color::White, square),
+                    'k' => board.place_piece(PieceName::King, Color::Black, square),
+                    'q' => board.place_piece(PieceName::Queen, Color::Black, square),
+                    'r' => board.place_piece(PieceName::Rook, Color::Black, square),
+                    'b' => board.place_piece(PieceName::Bishop, Color::Black, square),
+                    'n' => board.place_piece(PieceName::Knight, Color::Black, square),
+                    'p' => board.place_piece(PieceName::Pawn, Color::Black, square),
                     _ => panic!("Unrecognized char {}, board could not be made", c),
                 }
             }
@@ -137,7 +64,6 @@ pub fn build_board(fen_string: &str) -> Board {
             _ => panic!("Unrecognized castle character: {}", c),
         }
     }
-    // En passant square: not yet implemented
     let en_passant_letters: Vec<char> = iter.next().unwrap().chars().collect();
     let en_passant_idx = find_en_passant_square(en_passant_letters);
     if let Some(idx) = en_passant_idx {

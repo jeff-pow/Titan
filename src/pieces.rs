@@ -6,6 +6,7 @@ pub const ROOK_PTS: i32 = 525;
 pub const BISHOP_PTS: i32 = 350;
 pub const KNIGHT_PTS: i32 = 350;
 pub const PAWN_PTS: i32 = 100;
+pub const NUM_PIECES: usize = 6;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Piece {
@@ -15,21 +16,39 @@ pub struct Piece {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(u8)]
+#[repr(usize)]
 pub enum Color {
-    White,
-    Black,
+    White = 0,
+    Black = 1,
+}
+
+pub fn opposite_color(color: Color) -> Color {
+    match color {
+        Color::White => Color::Black,
+        Color::Black => Color::White,
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(u8)]
+#[repr(usize)]
 pub enum PieceName {
-    King,
-    Queen,
-    Rook,
-    Bishop,
-    Knight,
-    Pawn,
+    King = 0,
+    Queen = 1,
+    Rook = 2,
+    Bishop = 3,
+    Knight = 4,
+    Pawn = 5,
+}
+
+pub fn piece_value(piece_name: PieceName) -> i32 {
+    match piece_name {
+        PieceName::King => KING_PTS,
+        PieceName::Queen => QUEEN_PTS,
+        PieceName::Rook => ROOK_PTS,
+        PieceName::Bishop => BISHOP_PTS,
+        PieceName::Knight => KNIGHT_PTS,
+        PieceName::Pawn => PAWN_PTS,
+    }
 }
 
 impl Piece {
@@ -38,16 +57,6 @@ impl Piece {
             current_square: starting_square,
             color,
             piece_name,
-        }
-    }
-    pub fn value(&self) -> i32 {
-        match self.piece_name {
-            PieceName::King => KING_PTS,
-            PieceName::Queen => QUEEN_PTS,
-            PieceName::Rook => ROOK_PTS,
-            PieceName::Bishop => BISHOP_PTS,
-            PieceName::Knight => KNIGHT_PTS,
-            PieceName::Pawn => PAWN_PTS,
         }
     }
 }

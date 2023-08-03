@@ -3,6 +3,7 @@ use std::time::Instant;
 
 use crate::board::Board;
 use crate::moves::{generate_all_moves, in_check, Move, Promotion};
+use crate::pieces::piece_value;
 use crate::zobrist::{
     add_to_triple_repetition_map, check_for_3x_repetition, get_transposition,
     remove_from_triple_repetition_map,
@@ -52,6 +53,11 @@ fn count_moves(depth: i32, board: &Board) -> usize {
         count += count_moves(depth - 1, &new_b);
     }
     count
+}
+
+pub struct Search {
+    best_moves: Vec<Move>,
+    transpos_table: HashMap<u64, i32>,
 }
 
 /// Generates the optimal move for a given position using alpha beta pruning and basic transposition tables.
@@ -171,9 +177,12 @@ fn search_helper(
 
 fn score_move(board: &Board, m: &Move) -> i32 {
     let mut score = 0;
-    let moving_piece = board.board[m.starting_idx as usize].unwrap();
+    let moving_piece = m.piece_moving;
     if m.capture.is_some() {
-        score += 10 * m.capture.unwrap().value() - moving_piece.value();
+        score += 10 * piece_value(m.capture.unwrap()) - piece_value(m.piece_moving);
+    }
+    if let Some(capture) = m.capture {
+        score += 10 * piece_value(capture) - piece_value(m.piece_moving);
     }
     score += match m.promotion {
         Promotion::Queen => 900,
@@ -182,5 +191,6 @@ fn score_move(board: &Board, m: &Move) -> i32 {
         Promotion::Knight => 300,
         Promotion::None => 0,
     };
+    score += score;
     score
 }
