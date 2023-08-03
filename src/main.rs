@@ -6,7 +6,7 @@ mod uci;
 mod zobrist;
 
 #[allow(unused_imports)]
-use crate::{moves::generate_all_moves, search::time_move_generation};
+// use crate::{moves::generate_all_moves, search::time_move_generation};
 use board::Board;
 use pieces::Piece;
 #[allow(unused_imports)]
@@ -18,26 +18,28 @@ mod board;
 mod fen;
 
 fn main() {
-    //let mut map = HashMap::new();
-    main_loop();
+    let mut board = fen::build_board(fen::STARTING_FEN);
+    let b = moves::AttackBoards::new();
+    dbg!(b.knight[0]);
+    //main_loop();
 }
 
-#[allow(dead_code)]
-fn print_moves(board: &Board) {
-    println!("{}", board);
-    let moves = generate_all_moves(board);
-    let i = moves.len();
-    for m in moves.iter() {
-        println!("{}", m);
-        let mut cloned_board = *board;
-        cloned_board.make_move(m);
-        println!("{}", cloned_board);
-        println!("---------------------------------------------------------");
-    }
-    println!("{} moves possible pre check", i);
-    println!("{} moves possible post check", moves.len());
-    exit(0);
-}
+// #[allow(dead_code)]
+// fn print_moves(board: &Board) {
+//     println!("{}", board);
+//     let moves = generate_all_moves(board);
+//     let i = moves.len();
+//     for m in moves.iter() {
+//         println!("{}", m);
+//         let mut cloned_board = *board;
+//         cloned_board.make_move(m);
+//         println!("{}", cloned_board);
+//         println!("---------------------------------------------------------");
+//     }
+//     println!("{} moves possible pre check", i);
+//     println!("{} moves possible post check", moves.len());
+//     exit(0);
+// }
 
 #[cfg(test)]
 mod move_number_tests {

@@ -32,9 +32,8 @@ pub fn check_for_3x_repetition(board: &Board, triple_repetitions: &mut HashMap<u
 pub fn hash_board(board: &Board) -> u64 {
     let mut hash = 0;
     for square in 0..64 {
-        if let Some(piece) = board.board[square] {
-            let idx = piece.current_square;
-            hash ^= PIECE_HASHES[idx as usize];
+        if let Some(piece) = board.piece_on_square(square) {
+            hash ^= PIECE_HASHES[square as usize];
         }
     }
 

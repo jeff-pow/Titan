@@ -2,7 +2,7 @@ use std::cmp::min;
 
 use crate::{
     board::Board,
-    pieces::{Color, Piece, PieceName},
+    pieces::{piece_value, Color, Piece, PieceName},
 };
 
 /// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
@@ -151,8 +151,8 @@ const EG_KING_TABLE: [i32; 64] = [
    -53, -34, -21, -11, -28, -14, -24, -43
 ];
 
-fn get_mg_table(piece: &Piece) -> &'static [i32; 64] {
-    match piece.piece_name {
+fn get_mg_table(piece: PieceName) -> &'static [i32; 64] {
+    match piece {
         PieceName::King => &MG_KING_TABLE,
         PieceName::Queen => &MG_QUEEN_TABLE,
         PieceName::Rook => &MG_ROOK_TABLE,
@@ -162,8 +162,8 @@ fn get_mg_table(piece: &Piece) -> &'static [i32; 64] {
     }
 }
 
-fn get_eg_table(piece: &Piece) -> &'static [i32; 64] {
-    match piece.piece_name {
+fn get_eg_table(piece: PieceName) -> &'static [i32; 64] {
+    match piece {
         PieceName::King => &EG_KING_TABLE,
         PieceName::Queen => &EG_QUEEN_TABLE,
         PieceName::Rook => &EG_ROOK_TABLE,
@@ -173,8 +173,8 @@ fn get_eg_table(piece: &Piece) -> &'static [i32; 64] {
     }
 }
 
-fn game_phase_value(piece: &Piece) -> i32 {
-    match piece.piece_name {
+fn game_phase_value(piece: PieceName) -> i32 {
+    match piece {
         PieceName::King => 0,
         PieceName::Queen => 4,
         PieceName::Rook => 2,
@@ -192,17 +192,23 @@ pub fn eval(board: &Board) -> i32 {
     let mut black_eg = 0;
     let mut game_phase = 0;
 
-    for piece in board.board.into_iter().flatten() {
-        game_phase += game_phase_value(&piece);
-        let square = piece.current_square as usize;
-        match piece.color {
-            Color::White => {
-                white_mg += get_mg_table(&piece)[square ^ 56] + piece.value();
-                white_eg += get_eg_table(&piece)[square ^ 56] + piece.value();
-            }
-            Color::Black => {
-                black_mg += get_mg_table(&piece)[square ^ 56] + piece.value();
-                black_eg += get_mg_table(&piece)[square ^ 56] + piece.value();
+    for square in 0..64 {
+        if board.piece_on_square(square).is_none() {
+            continue;
+        }
+        let piece_name = board.piece_on_square(square).unwrap();
+        game_phase += game_phase_value(piece_name);
+        if let Some(piece) = board.piece_on_square(square) {
+            match board.color_on_square(square) {
+                Some(Color::White) => {
+                    white_mg += get_mg_table(piece)[square ^ 56] + piece_value(piece);
+                    white_eg += get_eg_table(piece)[square ^ 56] + piece_value(piece);
+                }
+                Some(Color::Black) => {
+                    black_mg += get_mg_table(piece)[square ^ 56] + piece_value(piece);
+                    black_eg += get_mg_table(piece)[square ^ 56] + piece_value(piece);
+                }
+                None => todo!(),
             }
         }
     }
