@@ -1,6 +1,6 @@
 use crate::board::Board;
 /** File takes a string in Forsyth-Edwards notation and constructs a board state */
-use crate::pieces::{Color, Piece, PieceName};
+use crate::pieces::{Color, PieceName};
 
 pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 #[allow(dead_code)]

@@ -10,7 +10,7 @@ mod zobrist;
 #[allow(unused_imports)]
 // use crate::{moves::generate_all_moves, search::time_move_generation};
 use board::Board;
-use pieces::Piece;
+
 #[allow(unused_imports)]
 use search::*;
 use std::process::exit;

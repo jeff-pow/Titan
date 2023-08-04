@@ -1,13 +1,11 @@
 use core::fmt;
-use std::fmt::Display;
+
 
 use crate::{
     attack_boards::AttackBoards,
-    board,
     moves::{Castle, EnPassant, Move, Promotion},
     pieces::Color,
     pieces::{opposite_color, PieceName, NUM_PIECES},
-    Piece,
 };
 
 #[repr(C)]
@@ -349,7 +347,7 @@ impl Board {
         self.board[color as usize][piece_type as usize] &= !(1 << idx);
     }
 
-    pub fn under_attack(&self, bb: &AttackBoards, to_move: Color) -> bool {
+    pub fn under_attack(&self, _bb: &AttackBoards, _to_move: Color) -> bool {
         false
     }
 }

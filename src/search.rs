@@ -184,9 +184,9 @@ fn search_helper(
     alpha
 }
 
-fn score_move(board: &Board, m: &Move) -> i32 {
+fn score_move(_board: &Board, m: &Move) -> i32 {
     let mut score = 0;
-    let moving_piece = m.piece_moving;
+    let _moving_piece = m.piece_moving;
     if m.capture.is_some() {
         score += 10 * piece_value(m.capture.unwrap()) - piece_value(m.piece_moving);
     }

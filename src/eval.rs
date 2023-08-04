@@ -2,7 +2,7 @@ use std::cmp::min;
 
 use crate::{
     board::Board,
-    pieces::{piece_value, Color, Piece, PieceName},
+    pieces::{piece_value, Color, PieceName},
 };
 
 /// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function

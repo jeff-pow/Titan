@@ -6,7 +6,7 @@ use strum_macros::EnumIter;
 
 use crate::attack_boards::{gen_pawn_attack_board, AttackBoards, RANK2, RANK7};
 use crate::pieces::PieceName::Pawn;
-use crate::{board::Board, pieces::Color, pieces::Piece, pieces::PieceName};
+use crate::{board::Board, pieces::Color, pieces::PieceName};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Move {
@@ -329,15 +329,15 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
                 }
             }
 
-            let captures = pawn_attacks & !board.color_occupancy(board.to_move);
+            let _captures = pawn_attacks & !board.color_occupancy(board.to_move);
         }
         Color::Black => {
             // Bitwise and the pawns with the second to last row
-            let double_push = ((pawns & 0xff000000000000) >> 16) & !board.occupancy();
+            let _double_push = ((pawns & 0xff000000000000) >> 16) & !board.occupancy();
 
-            let single_push = (pawns >> 8) & !board.occupancy();
+            let _single_push = (pawns >> 8) & !board.occupancy();
 
-            let captures = pawn_attacks & !board.color_occupancy(board.to_move);
+            let _captures = pawn_attacks & !board.color_occupancy(board.to_move);
         }
     }
     moves
