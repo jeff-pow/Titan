@@ -4,10 +4,12 @@ use std::fmt::Display;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use crate::attack_boards::{gen_pawn_attack_board, AttackBoards, RANK2, RANK7};
+use crate::attack_boards::{gen_pawn_attack_board, AttackBoards, RANK2, RANK3, RANK6, RANK7};
+use crate::bit_hacks::*;
 // use crate::pieces::PieceName::{Bishop, King, Knight, Pawn, Queen, Rook};
+use crate::pieces::opposite_color;
+use crate::pieces::PieceName::Pawn;
 use crate::{board::Board, pieces::Color, pieces::PieceName};
-
 
 #[derive(Clone, Copy, Debug)]
 pub struct Move(u16);
@@ -29,6 +31,20 @@ fn get_move_type(promotion: bool, en_passant: bool, castle: bool) -> MoveType {
     } else {
         MoveType::Normal
     }
+}
+
+/// Cardinal directions from the point of view of white side
+#[derive(EnumIter, Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(i8)]
+pub enum Direction {
+    North = 8,
+    NorthWest = 7,
+    West = -1,
+    SouthWest = -9,
+    South = -8,
+    SouthEast = -7,
+    East = 1,
+    NorthEast = 9,
 }
 
 impl Move {
@@ -221,7 +237,7 @@ pub fn generate_psuedolegal_moves(board: &Board, bb: &AttackBoards) -> Vec<Move>
     let mut moves = Vec::new();
     moves.append(&mut generate_bitboard_moves(board, bb, PieceName::Knight));
     moves.append(&mut generate_bitboard_moves(board, bb, PieceName::King));
-    moves.append(&mut generate_pawn_moves(board));
+    moves.append(&mut gen_pawn_moves(board));
     moves
 }
 
@@ -320,6 +336,115 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
     moves
 }
 
+fn gen_pawn_moves(board: &Board) -> Vec<Move> {
+    let mut moves = Vec::new();
+    let pawns = board.board[board.to_move as usize][Pawn as usize];
+    let vacancies = !board.occupancy();
+    let non_promotions = match board.to_move {
+        Color::White => pawns & !RANK7,
+        Color::Black => pawns & !RANK2,
+    };
+    let promotions = match board.to_move {
+        Color::White => pawns & RANK7,
+        Color::Black => pawns & RANK2,
+    };
+    let forward = match board.to_move {
+        Color::White => Direction::North,
+        Color::Black => Direction::South,
+    };
+    let up_left = match board.to_move {
+        Color::White => Direction::NorthWest,
+        Color::Black => Direction::SouthEast,
+    };
+    let up_right = match board.to_move {
+        Color::White => Direction::NorthEast,
+        Color::Black => Direction::SouthWest,
+    };
+    let Rank3BB = match board.to_move {
+        Color::White => RANK3,
+        Color::Black => RANK6,
+    };
+    let enemies = board.color_occupancy(opposite_color(board.to_move));
+    let mut b1 = push_pawns(non_promotions, board.to_move, vacancies.to_owned());
+    let mut b2 = push_pawns(b1.to_owned() & Rank3BB, board.to_move, vacancies.to_owned());
+    while b1 > 0 {
+        let dest = pop_lsb(&mut b1);
+        moves.push(Move::new(
+            (dest as i32 - forward as i32) as u8,
+            dest as u8,
+            None,
+            MoveType::Normal,
+        ));
+    }
+    while b2 > 0 {
+        let dest = pop_lsb(&mut b2);
+        moves.push(Move::new(
+            (dest as i32 - forward as i32 - forward as i32) as u8,
+            dest as u8,
+            None,
+            MoveType::Normal,
+        ));
+    }
+
+    // Promotions, captures and straight pushes
+    match board.to_move {
+        Color::White => {
+            let mut b1 = shift_northwest(promotions) & enemies;
+            let mut b2 = shift_northeast(promotions) & enemies;
+            let mut b3 = shift_north(promotions) & vacancies;
+            while b1 > 0 {
+                generate_promotions(pop_lsb(&mut b1), Direction::NorthWest, &mut moves);
+            }
+            while b2 > 0 {
+                generate_promotions(pop_lsb(&mut b2), Direction::NorthEast, &mut moves);
+            }
+            while b3 > 0 {
+                generate_promotions(pop_lsb(&mut b3), Direction::North, &mut moves);
+            }
+        }
+        Color::Black => {
+            let mut b1 = shift_southeast(promotions) & enemies;
+            let mut b2 = shift_southwest(promotions) & enemies;
+            let mut b3 = shift_south(promotions) & vacancies;
+            while b1 > 0 {
+                generate_promotions(pop_lsb(&mut b1), Direction::SouthEast, &mut moves);
+            }
+            while b2 > 0 {
+                generate_promotions(pop_lsb(&mut b2), Direction::SouthWest, &mut moves);
+            }
+            while b3 > 0 {
+                generate_promotions(pop_lsb(&mut b3), Direction::South, &mut moves);
+            }
+        }
+    };
+
+    moves
+}
+
+fn generate_promotions(dest: u64, d: Direction, moves: &mut Vec<Move>) {
+    for p in Promotion::iter() {
+        moves.push(Move::new(
+            (dest - d as u64) as u8,
+            dest as u8,
+            Some(p),
+            MoveType::Promotion,
+        ));
+    }
+}
+
+fn pop_lsb(bb: &mut u64) -> u64 {
+    let idx = bb.trailing_zeros() as u64;
+    *bb &= idx - 1;
+    idx
+}
+
+fn push_pawns(pawns: u64, color: Color, vacancies: u64) -> u64 {
+    match color {
+        Color::White => (pawns << 8) & vacancies,
+        Color::Black => (pawns >> 8) & vacancies,
+    }
+}
+
 fn generate_bitboard_moves(board: &Board, bb: &AttackBoards, piece_name: PieceName) -> Vec<Move> {
     if board.board[board.to_move as usize][piece_name as usize] == 0 {
         return Vec::new();
@@ -352,16 +477,17 @@ fn generate_bitboard_moves(board: &Board, bb: &AttackBoards, piece_name: PieceNa
 
 fn push_moves(
     board: &Board,
-    _piece_name: PieceName,
-    _moves: &mut Vec<Move>,
+    piece_name: PieceName,
+    moves: &mut Vec<Move>,
     mut attacks: u64,
-    _square: usize,
-    _en_passant: EnPassant,
+    square: usize,
+    en_passant: EnPassant,
 ) {
     let mut idx = 0;
     while attacks != 0 {
         if attacks & 1 != 0 {
-            let _capture = board.piece_on_square(idx as usize);
+            let move_type = get_move_type(false, false, false);
+            moves.push(Move::new(square as u8, idx, None, move_type));
         }
         attacks >>= 1;
         idx += 1;
@@ -370,6 +496,14 @@ fn push_moves(
 
 fn bit_is_on(bb: u64, idx: usize) -> bool {
     bb & (1 << idx) != 0
+}
+
+pub fn generate_quiet_moves(board: &Board, bb: &AttackBoards) -> Vec<Move> {
+    let legal_moves = generate_legal_moves(board, bb);
+    // legal_moves.into_iter().filter(|m| {
+    //     let mut
+    // })
+    legal_moves
 }
 
 pub fn generate_legal_moves(board: &Board, bb: &AttackBoards) -> Vec<Move> {

@@ -204,7 +204,7 @@ pub enum Castle {
 /// Cardinal directions from the point of view of white side
 #[derive(EnumIter, Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(i8)]
-enum Direction {
+pub enum Direction {
     North = 8,
     NorthWest = 7,
     West = -1,

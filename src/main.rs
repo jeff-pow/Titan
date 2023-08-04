@@ -1,4 +1,5 @@
 mod attack_boards;
+mod bit_hacks;
 mod eval;
 mod magics;
 mod moves;
@@ -22,6 +23,9 @@ mod fen;
 
 fn main() {
     let board = fen::build_board("8/6P1/3r4/3P4/2P5/6b1/1P4P1/8 w - - 0 1");
+    dbg!(board.occupancy());
+    let board = fen::build_board(fen::STARTING_FEN);
+    dbg!(board.occupancy());
     let _b = attack_boards::AttackBoards::new();
     print_moves(&board);
     uci::main_loop();

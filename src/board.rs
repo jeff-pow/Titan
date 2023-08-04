@@ -22,86 +22,6 @@ pub struct Board {
     pub num_moves: i32,
 }
 
-impl fmt::Display for Board {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut str = String::new();
-
-        for row in (0..8).rev() {
-            str.push_str(&(row + 1).to_string());
-            str.push_str(" | ");
-
-            for col in 0..8 {
-                let idx = row * 8 + col;
-
-                // Append piece characters for white pieces
-                if self.square_contains_piece(PieceName::King, Color::White, idx) {
-                    str += "K"
-                } else if self.square_contains_piece(PieceName::Queen, Color::White, idx) {
-                    str += "Q"
-                } else if self.square_contains_piece(PieceName::Rook, Color::White, idx) {
-                    str += "R"
-                } else if self.square_contains_piece(PieceName::Bishop, Color::White, idx) {
-                    str += "B"
-                } else if self.square_contains_piece(PieceName::Knight, Color::White, idx) {
-                    str += "N"
-                } else if self.square_contains_piece(PieceName::Pawn, Color::White, idx) {
-                    str += "P"
-                } else if self.square_contains_piece(PieceName::King, Color::Black, idx) {
-                    str += "k"
-                } else if self.square_contains_piece(PieceName::Queen, Color::Black, idx) {
-                    str += "q"
-                } else if self.square_contains_piece(PieceName::Rook, Color::Black, idx) {
-                    str += "r"
-                } else if self.square_contains_piece(PieceName::Bishop, Color::Black, idx) {
-                    str += "b"
-                } else if self.square_contains_piece(PieceName::Knight, Color::Black, idx) {
-                    str += "n"
-                } else if self.square_contains_piece(PieceName::Pawn, Color::Black, idx) {
-                    str += "p"
-                } else {
-                    str += "_"
-                }
-
-                str.push_str(" | ");
-            }
-
-            str.push('\n');
-        }
-
-        str.push_str("    a   b   c   d   e   f   g   h\n");
-
-        write!(f, "{}", str)
-    }
-}
-
-impl fmt::Debug for Board {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut str = String::new();
-        str += match self.to_move {
-            Color::White => "White to move\n",
-            Color::Black => "Black to move\n",
-        };
-        str += &self.to_string();
-        str += "Castles available: ";
-        if self.white_king_castle {
-            str += "K"
-        };
-        if self.white_queen_castle {
-            str += "Q"
-        };
-        if self.black_king_castle {
-            str += "k"
-        };
-        if self.black_queen_castle {
-            str += "q"
-        };
-        str += "\n";
-        str += "Num moves made: ";
-        str += &self.num_moves.to_string();
-        write!(f, "{}", str)
-    }
-}
-
 impl Board {
     pub fn new() -> Self {
         Board {
@@ -116,6 +36,76 @@ impl Board {
             black_king_square: -1,
             num_moves: 0,
         }
+    }
+
+    #[inline]
+    pub fn square_contains_piece(&self, piece_type: PieceName, color: Color, idx: usize) -> bool {
+        self.board[color as usize][piece_type as usize] & (1 << idx) != 0
+    }
+
+    #[inline]
+    pub fn color_occupancy(&self, color: Color) -> u64 {
+        // It's odd to me that xor and bitwise or both seem to work here, only one piece should
+        // be on a square at a time though so ¯\_(ツ)_/¯
+        self.board[color as usize].iter().fold(0, |a, b| a ^ b)
+    }
+
+    #[inline]
+    pub fn occupancy(&self) -> u64 {
+        self.board.iter().flatten().fold(0, |a, b| a ^ b)
+    }
+
+    #[inline]
+    pub fn color_on_square(&self, idx: usize) -> Option<Color> {
+        let white_occ = self.color_occupancy(Color::White);
+        let black_occ = self.color_occupancy(Color::Black);
+        if white_occ & (1 << idx) != 0 {
+            return Some(Color::White);
+        }
+        if black_occ & (1 << idx) != 0 {
+            return Some(Color::Black);
+        }
+        None
+    }
+
+    #[inline]
+    pub fn piece_on_square(&self, idx: usize) -> Option<PieceName> {
+        let piece_names = [
+            PieceName::King,
+            PieceName::Queen,
+            PieceName::Rook,
+            PieceName::Bishop,
+            PieceName::Knight,
+            PieceName::Pawn,
+        ];
+
+        for color in &[Color::White, Color::Black] {
+            for &piece_name in &piece_names {
+                if self.square_contains_piece(piece_name, *color, idx) {
+                    return Some(piece_name);
+                }
+            }
+        }
+
+        None
+    }
+
+    pub fn place_piece(&mut self, piece_type: PieceName, color: Color, idx: usize) {
+        self.board[color as usize][piece_type as usize] |= 1 << idx;
+        if piece_type == PieceName::King {
+            match color {
+                Color::White => self.white_king_square = idx as i8,
+                Color::Black => self.black_king_square = idx as i8,
+            }
+        }
+    }
+
+    fn remove_piece(&mut self, piece_type: PieceName, color: Color, idx: usize) {
+        self.board[color as usize][piece_type as usize] &= !(1 << idx);
+    }
+
+    pub fn under_attack(&self, _bb: &AttackBoards, _to_move: Color) -> bool {
+        false
     }
 
     /// Function makes a move and modifies board state to reflect the move that just happened
@@ -138,10 +128,12 @@ impl Board {
             .expect("There should be a piece here");
         let capture = self.piece_on_square(m.dest_square().into());
         self.place_piece(piece_moving, self.to_move, m.dest_square() as usize);
-        self.remove_piece(piece_moving, self.to_move, m.dest_square() as usize);
+        self.remove_piece(piece_moving, self.to_move, m.origin_square() as usize);
 
         // Move rooks if a castle move is applied
         if m.is_castle() {
+            // Determine which kind of castle, no reason for this besides I haven't changed it to
+            // something nicer yet...
             let castle = match piece_moving {
                 PieceName::King => {
                     if u8::abs_diff(m.origin_square(), m.dest_square()) != 2 {
@@ -240,7 +232,7 @@ impl Board {
                 }
             }
         }
-        // If the end index of a move is 16 squares from the start, an en passant is possible
+        // If the end index of a move is 16 squares from the start (and a pawn moved), an en passant is possible
         let mut en_passant = false;
         if piece_moving == PieceName::Pawn {
             match self.to_move {
@@ -284,72 +276,84 @@ impl Board {
         }
         self.num_moves += 1;
     }
+}
 
-    #[inline]
-    pub fn square_contains_piece(&self, piece_type: PieceName, color: Color, idx: usize) -> bool {
-        self.board[color as usize][piece_type as usize] & (1 << idx) != 0
-    }
+impl fmt::Display for Board {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut str = String::new();
 
-    #[inline]
-    pub fn color_occupancy(&self, color: Color) -> u64 {
-        self.board[color as usize].iter().fold(0, |a, b| a ^ b)
-    }
+        for row in (0..8).rev() {
+            str.push_str(&(row + 1).to_string());
+            str.push_str(" | ");
 
-    #[inline]
-    pub fn occupancy(&self) -> u64 {
-        self.board.iter().flatten().fold(0, |a, b| a ^ b)
-    }
+            for col in 0..8 {
+                let idx = row * 8 + col;
 
-    #[inline]
-    pub fn color_on_square(&self, idx: usize) -> Option<Color> {
-        let white_occ = self.color_occupancy(Color::White);
-        let black_occ = self.color_occupancy(Color::Black);
-        if white_occ & (1 << idx) != 0 {
-            return Some(Color::White);
-        }
-        if black_occ & (1 << idx) != 0 {
-            return Some(Color::Black);
-        }
-        None
-    }
-
-    #[inline]
-    pub fn piece_on_square(&self, idx: usize) -> Option<PieceName> {
-        let piece_names = [
-            PieceName::King,
-            PieceName::Queen,
-            PieceName::Rook,
-            PieceName::Bishop,
-            PieceName::Knight,
-            PieceName::Pawn,
-        ];
-
-        for color in &[Color::White, Color::Black] {
-            for &piece_name in &piece_names {
-                if self.square_contains_piece(piece_name, *color, idx) {
-                    return Some(piece_name);
+                // Append piece characters for white pieces
+                if self.square_contains_piece(PieceName::King, Color::White, idx) {
+                    str += "K"
+                } else if self.square_contains_piece(PieceName::Queen, Color::White, idx) {
+                    str += "Q"
+                } else if self.square_contains_piece(PieceName::Rook, Color::White, idx) {
+                    str += "R"
+                } else if self.square_contains_piece(PieceName::Bishop, Color::White, idx) {
+                    str += "B"
+                } else if self.square_contains_piece(PieceName::Knight, Color::White, idx) {
+                    str += "N"
+                } else if self.square_contains_piece(PieceName::Pawn, Color::White, idx) {
+                    str += "P"
+                } else if self.square_contains_piece(PieceName::King, Color::Black, idx) {
+                    str += "k"
+                } else if self.square_contains_piece(PieceName::Queen, Color::Black, idx) {
+                    str += "q"
+                } else if self.square_contains_piece(PieceName::Rook, Color::Black, idx) {
+                    str += "r"
+                } else if self.square_contains_piece(PieceName::Bishop, Color::Black, idx) {
+                    str += "b"
+                } else if self.square_contains_piece(PieceName::Knight, Color::Black, idx) {
+                    str += "n"
+                } else if self.square_contains_piece(PieceName::Pawn, Color::Black, idx) {
+                    str += "p"
+                } else {
+                    str += "_"
                 }
+
+                str.push_str(" | ");
             }
+
+            str.push('\n');
         }
 
-        None
-    }
+        str.push_str("    a   b   c   d   e   f   g   h\n");
 
-    pub fn place_piece(&mut self, piece_type: PieceName, color: Color, idx: usize) {
-        self.board[color as usize][piece_type as usize] |= 1 << idx;
-        if piece_type == PieceName::King {
-            match color {
-                Color::White => self.white_king_square = idx as i8,
-                Color::Black => self.black_king_square = idx as i8,
-            }
-        }
+        write!(f, "{}", str)
     }
+}
 
-    fn remove_piece(&mut self, piece_type: PieceName, color: Color, idx: usize) {
-        self.board[color as usize][piece_type as usize] &= !(1 << idx);
-    }
-
-    pub fn under_attack(&self, _bb: &AttackBoards, _to_move: Color) -> bool {
-        false
+impl fmt::Debug for Board {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut str = String::new();
+        str += match self.to_move {
+            Color::White => "White to move\n",
+            Color::Black => "Black to move\n",
+        };
+        str += &self.to_string();
+        str += "Castles available: ";
+        if self.white_king_castle {
+            str += "K"
+        };
+        if self.white_queen_castle {
+            str += "Q"
+        };
+        if self.black_king_castle {
+            str += "k"
+        };
+        if self.black_queen_castle {
+            str += "q"
+        };
+        str += "\n";
+        str += "Num moves made: ";
+        str += &self.num_moves.to_string();
+        write!(f, "{}", str)
     }
 }
