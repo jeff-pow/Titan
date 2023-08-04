@@ -184,21 +184,21 @@ fn search_helper(
     alpha
 }
 
-fn score_move(_board: &Board, m: &Move) -> i32 {
+fn score_move(board: &Board, m: &Move) -> i32 {
     let mut score = 0;
-    let _moving_piece = m.piece_moving;
-    if m.capture.is_some() {
-        score += 10 * piece_value(m.capture.unwrap()) - piece_value(m.piece_moving);
+    let piece_moving = board
+        .piece_on_square(m.origin_square().into())
+        .expect("There should be a piece here");
+    let capture = board.piece_on_square(m.dest_square().into());
+    if let Some(capture) = capture {
+        score += 10 * piece_value(capture) - piece_value(piece_moving);
     }
-    if let Some(capture) = m.capture {
-        score += 10 * piece_value(capture) - piece_value(m.piece_moving);
-    }
-    score += match m.promotion {
-        Promotion::Queen => 900,
-        Promotion::Rook => 500,
-        Promotion::Bishop => 300,
-        Promotion::Knight => 300,
-        Promotion::None => 0,
+    score += match m.promotion() {
+        Some(Promotion::Queen) => 900,
+        Some(Promotion::Rook) => 500,
+        Some(Promotion::Bishop) => 300,
+        Some(Promotion::Knight) => 300,
+        None => 0,
     };
     score += score;
     score

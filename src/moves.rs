@@ -5,64 +5,123 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use crate::attack_boards::{gen_pawn_attack_board, AttackBoards, RANK2, RANK7};
-use crate::pieces::PieceName::Pawn;
+// use crate::pieces::PieceName::{Bishop, King, Knight, Pawn, Queen, Rook};
 use crate::{board::Board, pieces::Color, pieces::PieceName};
 
+
 #[derive(Clone, Copy, Debug)]
-pub struct Move {
-    pub starting_idx: i8,
-    pub end_idx: i8,
-    pub castle: Castle,
-    pub promotion: Promotion,
-    pub piece_moving: PieceName,
-    pub capture: Option<PieceName>,
-    pub en_passant: EnPassant,
+pub struct Move(u16);
+
+enum MoveType {
+    Normal,
+    Promotion,
+    EnPassant,
+    Castle,
+}
+
+fn get_move_type(promotion: bool, en_passant: bool, castle: bool) -> MoveType {
+    if promotion {
+        MoveType::Promotion
+    } else if en_passant {
+        return MoveType::EnPassant;
+    } else if castle {
+        return MoveType::Castle;
+    } else {
+        MoveType::Normal
+    }
 }
 
 impl Move {
-    pub fn new(
-        starting_idx: i8,
-        end_idx: i8,
-        castle: Castle,
-        promotion: Promotion,
-        piece_moving: PieceName,
-        capture: Option<PieceName>,
-        en_passant: EnPassant,
-    ) -> Self {
-        Move {
-            starting_idx,
-            end_idx,
-            castle,
-            promotion,
-            piece_moving,
-            capture,
-            en_passant,
+    /// A move needs 16 bits to be stored
+    ///
+    /// bit  0- 5: origin square (from 0 to 63)
+    /// bit  6-11: destination square (from 0 to 63)
+    /// bit 12-13: promotion piece
+    /// bit 14-15: special move flag: promotion (1), en passant (2), castling (3)
+    /// NOTE: en passant bit is set only when a pawn can be captured
+
+    fn new(origin: u8, destination: u8, promotion: Option<Promotion>, move_type: MoveType) -> Self {
+        debug_assert!(origin < 64);
+        debug_assert!(destination < 64);
+        let promotion = match promotion {
+            Some(Promotion::Queen) => 3,
+            Some(Promotion::Rook) => 2,
+            Some(Promotion::Bishop) => 1,
+            Some(Promotion::Knight) => 0,
+            None => 0,
+        };
+        let move_type = match move_type {
+            MoveType::Normal => 0,
+            MoveType::Promotion => 1,
+            MoveType::EnPassant => 2,
+            MoveType::Castle => 3,
+        };
+        let m = origin as u16 | ((destination as u16) << 6) | (promotion << 12) | (move_type << 14);
+        Move(m)
+    }
+
+    #[inline]
+    pub fn is_castle(&self) -> bool {
+        let castle_flag = (self.0 >> 14) & 0b11;
+        castle_flag == 3
+    }
+
+    #[inline]
+    pub fn is_en_passant(&self) -> bool {
+        let en_passant_flag = (self.0 >> 14) & 0b11;
+        en_passant_flag == 2
+    }
+
+    #[inline]
+    pub fn promotion(&self) -> Option<Promotion> {
+        let promotion_flag = (self.0 >> 14) & 0b11;
+        if promotion_flag != 1 {
+            return None;
+        }
+        match (self.0 >> 12) & 0b11 {
+            0 => Some(Promotion::Knight),
+            1 => Some(Promotion::Bishop),
+            2 => Some(Promotion::Rook),
+            3 => Some(Promotion::Queen),
+            _ => unreachable!(),
         }
     }
 
+    #[inline]
+    pub fn origin_square(&self) -> u8 {
+        (self.0 & 0b111111) as u8
+    }
+
+    #[inline]
+    pub fn dest_square(&self) -> u8 {
+        ((self.0 >> 6) & 0b111111) as u8
+    }
+
+    /// Determines if a move is "quiet" for quiescence search
     #[allow(dead_code)]
-    pub fn is_quiet(&self) -> bool {
-        self.capture.is_some()
+    #[inline]
+    pub fn is_quiet(&self, board: &Board) -> bool {
+        board.piece_on_square(self.dest_square().into()).is_none()
     }
 
     /// To Long Algebraic Notation
     pub fn to_lan(self) -> String {
         let mut str = String::new();
         let arr = ["a", "b", "c", "d", "e", "f", "g", "h"];
-        let y_origin = self.starting_idx / 8 + 1;
-        let x_origin = self.starting_idx % 8;
-        let y_end = self.end_idx / 8 + 1;
-        let x_end = self.end_idx % 8;
+        let y_origin = self.origin_square() / 8 + 1;
+        let x_origin = self.origin_square() % 8;
+        let y_end = self.dest_square() / 8 + 1;
+        let x_end = self.dest_square() % 8;
         str += arr[x_origin as usize];
         str += &y_origin.to_string();
         str += arr[x_end as usize];
         str += &y_end.to_string();
-        match self.promotion {
-            Promotion::Queen => str += "q",
-            Promotion::Rook => str += "r",
-            Promotion::Bishop => str += "b",
-            Promotion::Knight => str += "n",
-            Promotion::None => (),
+        match self.promotion() {
+            Some(Promotion::Queen) => str += "q",
+            Some(Promotion::Rook) => str += "r",
+            Some(Promotion::Bishop) => str += "b",
+            Some(Promotion::Knight) => str += "n",
+            None => (),
         }
         str
     }
@@ -70,15 +129,7 @@ impl Move {
     /// Constructor for new moves - Mostly a placeholder for initializing variables that will
     /// certainly be changed at some other point during the runtime of the function
     pub fn invalid() -> Self {
-        Move {
-            starting_idx: -1,
-            end_idx: -1,
-            castle: Castle::None,
-            promotion: Promotion::None,
-            piece_moving: PieceName::King,
-            capture: None,
-            en_passant: EnPassant::None,
-        }
+        Move::new(0, 0, None, MoveType::Normal)
     }
 }
 
@@ -90,19 +141,19 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
     // against letters or some other workaround
     let start_column = vec[0].to_digit(20).unwrap() - 10;
     let start_row = (vec[1].to_digit(10).unwrap() - 1) * 8;
-    let starting_idx = (start_row + start_column) as i8;
+    let starting_idx = (start_row + start_column) as u8;
 
     let end_column = vec[2].to_digit(20).unwrap() - 10;
     let end_row = (vec[3].to_digit(10).unwrap() - 1) * 8;
-    let end_idx = (end_row + end_column) as i8;
+    let end_idx = (end_row + end_column) as u8;
 
-    let mut promotion = Promotion::None;
+    let mut promotion = None;
     if vec.len() > 4 {
         promotion = match vec[4] {
-            'q' => Promotion::Queen,
-            'r' => Promotion::Rook,
-            'b' => Promotion::Bishop,
-            'n' => Promotion::Knight,
+            'q' => Some(Promotion::Queen),
+            'r' => Some(Promotion::Rook),
+            'b' => Some(Promotion::Bishop),
+            'n' => Some(Promotion::Knight),
             _ => panic!(),
         };
     }
@@ -111,7 +162,7 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
         .expect("There should be a piece here...");
     let castle = match piece_moving {
         PieceName::King => {
-            if i8::abs_diff(starting_idx, end_idx) != 2 {
+            if u8::abs_diff(starting_idx, end_idx) != 2 {
                 Castle::None
             } else if end_idx == 2 {
                 Castle::WhiteQueenCastle
@@ -127,16 +178,12 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
         }
         _ => Castle::None,
     };
-    let capture = board.piece_on_square(end_idx as usize);
-    Move::new(
-        starting_idx,
-        end_idx,
-        castle,
-        promotion,
-        piece_moving,
-        capture,
-        EnPassant::None,
-    )
+    let castle = castle != Castle::None;
+    // TODO: Implement reading en passant...
+    // BUG: Implement reading en passant...
+    let en_passant = false;
+    let move_type = get_move_type(promotion.is_some(), en_passant, castle);
+    Move::new(starting_idx, end_idx, promotion, move_type)
 }
 
 #[derive(Clone, Copy, Debug, EnumIter, PartialEq)]
@@ -145,7 +192,6 @@ pub enum Promotion {
     Rook,
     Bishop,
     Knight,
-    None,
 }
 
 #[derive(Clone, Copy, Debug, EnumIter, PartialEq)]
@@ -182,7 +228,7 @@ pub fn generate_psuedolegal_moves(board: &Board, bb: &AttackBoards) -> Vec<Move>
 // This method uses attacks and calculates starting position from whether or not the move was a double
 // push or not because it knows the calling method filtered out the pawns that couldn't move
 fn push_pawn_moves(
-    moves: &mut Vec<Move>,
+    moves: &mut [Move],
     double_push: bool,
     mut attacks: u64,
     color: Color,
@@ -193,7 +239,7 @@ fn push_pawn_moves(
         Color::White => {
             while attacks != 0 {
                 if attacks & 1 != 0 {
-                    let capture = None;
+                    let capture: Option<PieceName> = None;
                     if double_push && bit_is_on(board.occupancy(), idx as usize - 8) {
                         attacks >>= 1;
                         idx += 1;
@@ -205,15 +251,6 @@ fn push_pawn_moves(
                         } else {
                             idx - 8
                         };
-                    moves.push(Move::new(
-                        starting_idx,
-                        idx,
-                        Castle::None,
-                        Promotion::None,
-                        Pawn,
-                        capture,
-                        EnPassant::None,
-                    ));
                 }
                 attacks >>= 1;
                 idx += 1;
@@ -222,7 +259,7 @@ fn push_pawn_moves(
         Color::Black => {
             while attacks != 0 {
                 if attacks & 1 != 0 {
-                    let capture = None;
+                    let capture: Option<PieceName> = None;
                     if double_push && bit_is_on(board.occupancy(), idx as usize + 8) {
                         attacks >>= 1;
                         idx += 1;
@@ -234,15 +271,6 @@ fn push_pawn_moves(
                         } else {
                             idx + 8
                         };
-                    moves.push(Move {
-                        end_idx: idx,
-                        starting_idx,
-                        castle: Castle::None,
-                        promotion: Promotion::None,
-                        piece_moving: Pawn,
-                        capture,
-                        en_passant: EnPassant::None,
-                    })
                 }
             }
             attacks >>= 1;
@@ -270,21 +298,8 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
                 let mut idx = 0;
                 while quiet_promotions != 0 {
                     if quiet_promotions & 1 != 0 {
-                        let capture = None;
-                        for p in Promotion::iter() {
-                            if p == Promotion::None {
-                                continue;
-                            }
-                            moves.push(Move {
-                                starting_idx: idx - 8,
-                                end_idx: idx,
-                                castle: Castle::None,
-                                promotion: p,
-                                piece_moving: Pawn,
-                                capture,
-                                en_passant: EnPassant::None,
-                            });
-                        }
+                        let capture: core::option::Option<PieceName> = None;
+                        for p in Promotion::iter() {}
                     }
                     quiet_promotions >>= 1;
                     idx += 1;
@@ -347,15 +362,6 @@ fn push_moves(
     while attacks != 0 {
         if attacks & 1 != 0 {
             let capture = board.piece_on_square(idx as usize);
-            moves.push(Move {
-                starting_idx: square as i8,
-                end_idx: idx,
-                castle: Castle::None,
-                promotion: Promotion::None,
-                piece_moving: piece_name,
-                capture,
-                en_passant,
-            })
         }
         attacks >>= 1;
         idx += 1;
@@ -383,47 +389,98 @@ impl Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut str = String::new();
         str += "Start: ";
-        str += &self.starting_idx.to_string();
+        str += &self.origin_square().to_string();
         str += " End: ";
-        str += &self.end_idx.to_string();
+        str += &self.dest_square().to_string();
         str += " Castle: ";
-        match self.castle {
-            Castle::None => str += "No Castle ",
-            Castle::WhiteKingCastle => str += "White King castle ",
-            Castle::WhiteQueenCastle => str += "white queen castle ",
-            Castle::BlackKingCastle => str += "black king castle ",
-            Castle::BlackQueenCastle => str += "black queen castle ",
-        }
+        // match self.castle {
+        //     Castle::None => str += "No Castle ",
+        //     Castle::WhiteKingCastle => str += "White King castle ",
+        //     Castle::WhiteQueenCastle => str += "white queen castle ",
+        //     Castle::BlackKingCastle => str += "black king castle ",
+        //     Castle::BlackQueenCastle => str += "black queen castle ",
+        // }
         str += " Promotion: ";
-        match self.promotion {
-            Promotion::Queen => str += "Queen ",
-            Promotion::Rook => str += "Rook ",
-            Promotion::Bishop => str += "Bishop ",
-            Promotion::Knight => str += "Knight ",
-            Promotion::None => str += "None ",
+        match self.promotion() {
+            Some(Promotion::Queen) => str += "Queen ",
+            Some(Promotion::Rook) => str += "Rook ",
+            Some(Promotion::Bishop) => str += "Bishop ",
+            Some(Promotion::Knight) => str += "Knight ",
+            None => str += "None ",
         }
-        match self.capture {
-            None => {
-                str += " Nothing Captured ";
-            }
-            Some(piece_name) => match piece_name {
-                PieceName::King => str += " Captured a King  ",
-                PieceName::Queen => str += " Captured a Queen ",
-                PieceName::Rook => str += " Captured a Rook ",
-                PieceName::Bishop => str += " Captured a Bishop ",
-                PieceName::Knight => str += " Captured a Knight ",
-                PieceName::Pawn => str += " Captured a Pawn ",
-            },
-        }
-        match self.piece_moving {
-            PieceName::King => str += " King moving ",
-            PieceName::Queen => str += " Queen moving ",
-            PieceName::Bishop => str += " Bishop moving ",
-            PieceName::Rook => str += " Rook moving ",
-            PieceName::Knight => str += " Knight moving ",
-            PieceName::Pawn => str += " Pawn moving ",
-        }
+        // match self.capture {
+        //     None => {
+        //         str += " Nothing Captured ";
+        //     }
+        //     Some(piece_name) => match piece_name {
+        //         PieceName::King => str += " Captured a King  ",
+        //         PieceName::Queen => str += " Captured a Queen ",
+        //         PieceName::Rook => str += " Captured a Rook ",
+        //         PieceName::Bishop => str += " Captured a Bishop ",
+        //         PieceName::Knight => str += " Captured a Knight ",
+        //         PieceName::Pawn => str += " Captured a Pawn ",
+        //     },
+        // }
+        // match self.piece_moving {
+        //     PieceName::King => str += " King moving ",
+        //     PieceName::Queen => str += " Queen moving ",
+        //     PieceName::Bishop => str += " Bishop moving ",
+        //     PieceName::Rook => str += " Rook moving ",
+        //     PieceName::Knight => str += " Knight moving ",
+        //     PieceName::Pawn => str += " Pawn moving ",
+        // }
         str += &self.to_lan();
         write!(f, "{}", str)
+    }
+}
+
+#[cfg(test)]
+mod move_test {
+    use super::*;
+
+    #[test]
+    fn test_move_creation() {
+        let normal_move = Move::new(10, 20, None, MoveType::Normal);
+        assert_eq!(normal_move.origin_square(), 10);
+        assert_eq!(normal_move.dest_square(), 20);
+        assert!(!normal_move.is_castle());
+        assert!(!normal_move.is_en_passant());
+        assert_eq!(normal_move.promotion(), None);
+
+        let promotion_move = Move::new(15, 25, Some(Promotion::Queen), MoveType::Promotion);
+        assert_eq!(promotion_move.origin_square(), 15);
+        assert_eq!(promotion_move.dest_square(), 25);
+        assert!(!promotion_move.is_castle());
+        assert!(!promotion_move.is_en_passant());
+        assert_eq!(promotion_move.promotion(), Some(Promotion::Queen));
+
+        let castle_move = Move::new(4, 2, None, MoveType::Castle);
+        assert_eq!(castle_move.origin_square(), 4);
+        assert_eq!(castle_move.dest_square(), 2);
+        assert!(castle_move.is_castle());
+        assert!(!castle_move.is_en_passant());
+        assert_eq!(castle_move.promotion(), None);
+
+        let en_passant_move = Move::new(7, 5, None, MoveType::EnPassant);
+        assert_eq!(en_passant_move.origin_square(), 7);
+        assert_eq!(en_passant_move.dest_square(), 5);
+        assert!(!en_passant_move.is_castle());
+        assert!(en_passant_move.is_en_passant());
+        assert_eq!(en_passant_move.promotion(), None);
+    }
+
+    #[test]
+    fn test_promotion_conversion() {
+        let knight_promotion = Move::new(0, 7, Some(Promotion::Knight), MoveType::Promotion);
+        assert_eq!(knight_promotion.promotion(), Some(Promotion::Knight));
+
+        let bishop_promotion = Move::new(15, 23, Some(Promotion::Bishop), MoveType::Promotion);
+        assert_eq!(bishop_promotion.promotion(), Some(Promotion::Bishop));
+
+        let rook_promotion = Move::new(28, 31, Some(Promotion::Rook), MoveType::Promotion);
+        assert_eq!(rook_promotion.promotion(), Some(Promotion::Rook));
+
+        let queen_promotion = Move::new(62, 61, Some(Promotion::Queen), MoveType::Promotion);
+        assert_eq!(queen_promotion.promotion(), Some(Promotion::Queen));
     }
 }
