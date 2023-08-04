@@ -1,6 +1,5 @@
 use core::fmt;
 
-
 use crate::{
     attack_boards::AttackBoards,
     moves::{Castle, EnPassant, Move, Promotion},
@@ -21,32 +20,6 @@ pub struct Board {
     pub black_king_square: i8,
     pub white_king_square: i8,
     pub num_moves: i32,
-}
-
-fn flip_board(board: &Board) -> Board {
-    const SECTION_SIZE: u64 = 8;
-    const NUM_SECTIONS: u64 = 8;
-
-    let mut board = *board;
-    for bitboard in board.board.iter_mut().flatten() {
-        for section in 0..NUM_SECTIONS / 2 {
-            let mask = (1 << SECTION_SIZE) - 1;
-
-            let start_idx = section * SECTION_SIZE;
-            let end_idx = (NUM_SECTIONS - section - 1) * SECTION_SIZE;
-
-            let start_section = (*bitboard >> start_idx) & mask;
-            let end_section = (*bitboard >> end_idx) & mask;
-
-            *bitboard &= !(mask << start_idx);
-            *bitboard &= !(mask << end_idx);
-
-            *bitboard |= start_section << end_idx;
-            *bitboard |= end_section << start_idx;
-        }
-    }
-
-    board
 }
 
 impl fmt::Display for Board {

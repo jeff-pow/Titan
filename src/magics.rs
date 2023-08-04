@@ -156,7 +156,7 @@ pub fn magic_index(entry: &MagicEntry, blockers: u64) -> usize {
 }
 
 pub fn get_rook_moves(square: usize, blockers: u64) -> u64 {
-    let magic = &ROOK_MAGICS[square as usize];
+    let magic = &ROOK_MAGICS[square];
     ROOK_MOVES[magic_index(magic, blockers)]
 }
 

@@ -1,6 +1,3 @@
-
-
-
 use crate::{
     board::Board,
     moves::coordinates,

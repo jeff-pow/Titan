@@ -20,6 +20,7 @@ pub struct Move {
 }
 
 impl Move {
+    #[allow(dead_code)]
     pub fn is_quiet(&self) -> bool {
         self.capture.is_some()
     }
@@ -173,61 +174,6 @@ pub fn generate_psuedolegal_moves(board: &Board, bb: &AttackBoards) -> Vec<Move>
     moves
 }
 
-// fn generate_pawn_moves(board: &Board) -> Vec<Move> {
-//     let mut moves = Vec::new();
-//     let pawn_attacks = gen_pawn_attack_board(board);
-//     let pawns = board.board[board.to_move as usize][PieceName::Pawn as usize];
-//     match board.to_move {
-//         Color::White => {
-//             // Bitwise and the pawns with the second row
-//             let double_push = ((pawns & 0xff00) << 16) & !board.occupancy();
-//             let one = pawns & 0xff00;
-//             let two = one << 16;
-//             let three = two & !board.occupancy();
-//             push_moves(
-//                 board,
-//                 PieceName::Pawn,
-//                 &mut moves,
-//                 double_push,
-//                 0,
-//                 EnPassant::None,
-//             );
-//             let single_push = (pawns << 8) & !board.occupancy();
-//             push_moves(
-//                 board,
-//                 PieceName::Pawn,
-//                 &mut moves,
-//                 single_push,
-//                 0,
-//                 EnPassant::None,
-//             );
-//             let captures = pawn_attacks & !board.color_occupancy(board.to_move);
-//         }
-//         Color::Black => {
-//             // Bitwise and the pawns with the second to last row
-//             let double_push = ((pawns & 0xff000000000000) >> 16) & !board.occupancy();
-//             push_moves(
-//                 board,
-//                 PieceName::Pawn,
-//                 &mut moves,
-//                 double_push,
-//                 0,
-//                 EnPassant::None,
-//             );
-//             let single_push = (pawns >> 8) & !board.occupancy();
-//             push_moves(
-//                 board,
-//                 PieceName::Pawn,
-//                 &mut moves,
-//                 single_push,
-//                 0,
-//                 EnPassant::None,
-//             );
-//             let captures = pawn_attacks & !board.color_occupancy(board.to_move);
-//         }
-//     }
-//     moves
-// }
 // This method uses attacks and calculates starting position from whether or not the move was a double
 // push or not because it knows the calling method filtered out the pawns that couldn't move
 fn push_pawn_moves(
@@ -243,17 +189,17 @@ fn push_pawn_moves(
             while attacks != 0 {
                 if attacks & 1 != 0 {
                     let capture = None;
-                    if double_push && (board.occupancy() & 1 << idx - 8) != 0 {
+                    if double_push && bit_is_on(board.occupancy(), idx as usize - 8) {
                         attacks >>= 1;
                         idx += 1;
                         continue;
                     }
-                    let starting_idx = if double_push && (board.occupancy() & (1 << (idx - 8)) == 0)
-                    {
-                        idx - 16
-                    } else {
-                        idx - 8
-                    };
+                    let starting_idx =
+                        if double_push && !bit_is_on(board.occupancy(), idx as usize - 8) {
+                            idx - 16
+                        } else {
+                            idx - 8
+                        };
                     moves.push(Move {
                         end_idx: idx,
                         starting_idx,
@@ -272,15 +218,27 @@ fn push_pawn_moves(
             while attacks != 0 {
                 if attacks & 1 != 0 {
                     let capture = None;
+                    if double_push && bit_is_on(board.occupancy(), idx as usize + 8) {
+                        attacks >>= 1;
+                        idx += 1;
+                        continue;
+                    }
+                    let starting_idx =
+                        if double_push && !bit_is_on(board.occupancy(), idx as usize + 8) {
+                            idx + 16
+                        } else {
+                            idx + 8
+                        };
                     moves.push(Move {
-                        starting_idx: if double_push { idx + 16 } else { idx + 8 },
-                        end_idx: idx as i8,
+                        end_idx: idx,
+                        starting_idx,
                         castle: Castle::None,
                         promotion: Promotion::None,
                         piece_moving: Pawn,
                         capture,
                         en_passant: EnPassant::None,
                     })
+                }
                 }
                 attacks >>= 1;
                 idx += 1;
@@ -329,7 +287,7 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
                 }
             }
 
-            let _captures = pawn_attacks & !board.color_occupancy(board.to_move);
+            let captures = pawn_attacks & !board.color_occupancy(board.to_move);
         }
         Color::Black => {
             // Bitwise and the pawns with the second to last row

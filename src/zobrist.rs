@@ -33,7 +33,7 @@ pub fn hash_board(board: &Board) -> u64 {
     let mut hash = 0;
     for square in 0..64 {
         if let Some(_piece) = board.piece_on_square(square) {
-            hash ^= PIECE_HASHES[square as usize];
+            hash ^= PIECE_HASHES[square];
         }
     }
 
