@@ -228,7 +228,7 @@ pub fn generate_psuedolegal_moves(board: &Board, bb: &AttackBoards) -> Vec<Move>
 // This method uses attacks and calculates starting position from whether or not the move was a double
 // push or not because it knows the calling method filtered out the pawns that couldn't move
 fn push_pawn_moves(
-    moves: &mut [Move],
+    _moves: &mut [Move],
     double_push: bool,
     mut attacks: u64,
     color: Color,
@@ -239,13 +239,13 @@ fn push_pawn_moves(
         Color::White => {
             while attacks != 0 {
                 if attacks & 1 != 0 {
-                    let capture: Option<PieceName> = None;
+                    let _capture: Option<PieceName> = None;
                     if double_push && bit_is_on(board.occupancy(), idx as usize - 8) {
                         attacks >>= 1;
                         idx += 1;
                         continue;
                     }
-                    let starting_idx =
+                    let _starting_idx =
                         if double_push && !bit_is_on(board.occupancy(), idx as usize - 8) {
                             idx - 16
                         } else {
@@ -259,13 +259,13 @@ fn push_pawn_moves(
         Color::Black => {
             while attacks != 0 {
                 if attacks & 1 != 0 {
-                    let capture: Option<PieceName> = None;
+                    let _capture: Option<PieceName> = None;
                     if double_push && bit_is_on(board.occupancy(), idx as usize + 8) {
                         attacks >>= 1;
                         idx += 1;
                         continue;
                     }
-                    let starting_idx =
+                    let _starting_idx =
                         if double_push && !bit_is_on(board.occupancy(), idx as usize + 8) {
                             idx + 16
                         } else {
@@ -298,15 +298,15 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
                 let mut idx = 0;
                 while quiet_promotions != 0 {
                     if quiet_promotions & 1 != 0 {
-                        let capture: core::option::Option<PieceName> = None;
-                        for p in Promotion::iter() {}
+                        let _capture: core::option::Option<PieceName> = None;
+                        for _p in Promotion::iter() {}
                     }
                     quiet_promotions >>= 1;
                     idx += 1;
                 }
             }
 
-            let captures = pawn_attacks & !board.color_occupancy(board.to_move);
+            let _captures = pawn_attacks & !board.color_occupancy(board.to_move);
         }
         Color::Black => {
             // Bitwise and the pawns with the second to last row
@@ -352,16 +352,16 @@ fn generate_bitboard_moves(board: &Board, bb: &AttackBoards, piece_name: PieceNa
 
 fn push_moves(
     board: &Board,
-    piece_name: PieceName,
-    moves: &mut Vec<Move>,
+    _piece_name: PieceName,
+    _moves: &mut Vec<Move>,
     mut attacks: u64,
-    square: usize,
-    en_passant: EnPassant,
+    _square: usize,
+    _en_passant: EnPassant,
 ) {
     let mut idx = 0;
     while attacks != 0 {
         if attacks & 1 != 0 {
-            let capture = board.piece_on_square(idx as usize);
+            let _capture = board.piece_on_square(idx as usize);
         }
         attacks >>= 1;
         idx += 1;

@@ -2,7 +2,7 @@ use core::fmt;
 
 use crate::{
     attack_boards::AttackBoards,
-    moves::{Castle, EnPassant, Move, Promotion},
+    moves::{Castle, Move, Promotion},
     pieces::Color,
     pieces::{opposite_color, PieceName, NUM_PIECES},
 };
