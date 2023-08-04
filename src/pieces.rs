@@ -52,6 +52,7 @@ pub fn piece_value(piece_name: PieceName) -> i32 {
 }
 
 impl Piece {
+    #[allow(dead_code)]
     pub fn new(color: Color, piece_name: PieceName, starting_square: i8) -> Self {
         Self {
             current_square: starting_square,

@@ -20,6 +20,26 @@ pub struct Move {
 }
 
 impl Move {
+    pub fn new(
+        starting_idx: i8,
+        end_idx: i8,
+        castle: Castle,
+        promotion: Promotion,
+        piece_moving: PieceName,
+        capture: Option<PieceName>,
+        en_passant: EnPassant,
+    ) -> Self {
+        Move {
+            starting_idx,
+            end_idx,
+            castle,
+            promotion,
+            piece_moving,
+            capture,
+            en_passant,
+        }
+    }
+
     #[allow(dead_code)]
     pub fn is_quiet(&self) -> bool {
         self.capture.is_some()
@@ -108,16 +128,15 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
         _ => Castle::None,
     };
     let capture = board.piece_on_square(end_idx as usize);
-    Move {
+    Move::new(
         starting_idx,
         end_idx,
         castle,
         promotion,
         piece_moving,
         capture,
-        en_passant: EnPassant::None,
-        // BUG: WHAT WAS I THINKING HERE
-    }
+        EnPassant::None,
+    )
 }
 
 #[derive(Clone, Copy, Debug, EnumIter, PartialEq)]
@@ -145,20 +164,6 @@ pub enum Castle {
     WhiteQueenCastle,
     BlackKingCastle,
     BlackQueenCastle,
-}
-
-/// Cardinal directions from the point of view of white side
-#[derive(EnumIter, Copy, Clone, Debug, PartialEq, Eq)]
-#[repr(i8)]
-enum Direction {
-    North = 8,
-    NorthWest = 7,
-    West = -1,
-    SouthWest = -9,
-    South = -8,
-    SouthEast = -7,
-    East = 1,
-    NorthEast = 9,
 }
 
 #[inline]
@@ -200,15 +205,15 @@ fn push_pawn_moves(
                         } else {
                             idx - 8
                         };
-                    moves.push(Move {
-                        end_idx: idx,
+                    moves.push(Move::new(
                         starting_idx,
-                        castle: Castle::None,
-                        promotion: Promotion::None,
-                        piece_moving: Pawn,
+                        idx,
+                        Castle::None,
+                        Promotion::None,
+                        Pawn,
                         capture,
-                        en_passant: EnPassant::None,
-                    })
+                        EnPassant::None,
+                    ));
                 }
                 attacks >>= 1;
                 idx += 1;
@@ -239,10 +244,9 @@ fn push_pawn_moves(
                         en_passant: EnPassant::None,
                     })
                 }
-                }
-                attacks >>= 1;
-                idx += 1;
             }
+            attacks >>= 1;
+            idx += 1;
         }
     }
 }
@@ -262,10 +266,10 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
 
             // Don't do promotions if there aren't any pawns in the seventh column...
             if pawns & RANK7 != 0 {
-                let mut straight_promotions = ((pawns & RANK7) << 8) & !board.occupancy();
+                let mut quiet_promotions = ((pawns & RANK7) << 8) & !board.occupancy();
                 let mut idx = 0;
-                while straight_promotions != 0 {
-                    if straight_promotions & 1 != 0 {
+                while quiet_promotions != 0 {
+                    if quiet_promotions & 1 != 0 {
                         let capture = None;
                         for p in Promotion::iter() {
                             if p == Promotion::None {
@@ -282,7 +286,7 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
                             });
                         }
                     }
-                    straight_promotions >>= 1;
+                    quiet_promotions >>= 1;
                     idx += 1;
                 }
             }
