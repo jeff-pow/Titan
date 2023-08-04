@@ -2,8 +2,9 @@ use core::fmt;
 use std::fmt::Display;
 
 use crate::{
+    attack_boards::AttackBoards,
     board,
-    moves::{in_check, Castle, EnPassant, Move, Promotion},
+    moves::{Castle, EnPassant, Move, Promotion},
     pieces::Color,
     pieces::{opposite_color, PieceName, NUM_PIECES},
     Piece,
@@ -22,16 +23,6 @@ pub struct Board {
     pub black_king_square: i8,
     pub white_king_square: i8,
     pub num_moves: i32,
-}
-
-fn flipt_board(board: &Board) -> Board {
-    let mut flipped_board = *board;
-    flipped_board
-        .board
-        .iter_mut()
-        .flatten()
-        .for_each(|x| *x ^= 56);
-    flipped_board
 }
 
 fn flip_board(board: &Board) -> Board {
@@ -106,7 +97,7 @@ impl fmt::Display for Board {
             str.push('\n');
         }
 
-        str.push_str("   a   b   c   d   e   f   g   h\n");
+        str.push_str("    a   b   c   d   e   f   g   h\n");
 
         write!(f, "{}", str)
     }
@@ -143,7 +134,7 @@ impl fmt::Debug for Board {
 impl Board {
     pub fn new() -> Self {
         Board {
-            board: [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]],
+            board: [[0; 6]; 2],
             black_king_castle: false,
             black_queen_castle: false,
             white_king_castle: false,
@@ -157,7 +148,7 @@ impl Board {
     }
 
     /// Function makes a move and modifies board state to reflect the move that just happened
-    pub fn make_move(&mut self, m: &Move) {
+    pub fn make_move(&mut self, m: &Move, bb: &AttackBoards) {
         // Special case if the move is an en_passant
         if m.en_passant != EnPassant::None {
             let end_idx = m.end_idx as usize;
@@ -279,13 +270,13 @@ impl Board {
         // Update castling ability based on check
         match self.to_move {
             Color::White => {
-                if in_check(self, Color::White) {
+                if self.under_attack(bb, Color::White) {
                     self.white_king_castle = false;
                     self.white_queen_castle = false;
                 }
             }
             Color::Black => {
-                if in_check(self, Color::Black) {
+                if self.under_attack(bb, Color::Black) {
                     self.black_king_castle = false;
                     self.black_queen_castle = false;
                 }
@@ -356,5 +347,9 @@ impl Board {
 
     pub fn remove_piece(&mut self, piece_type: PieceName, color: Color, idx: usize) {
         self.board[color as usize][piece_type as usize] &= !(1 << idx);
+    }
+
+    pub fn under_attack(&self, bb: &AttackBoards, to_move: Color) -> bool {
+        false
     }
 }

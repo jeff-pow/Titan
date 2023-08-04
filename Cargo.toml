@@ -17,3 +17,6 @@ codegen-units = 1
 opt-level = 3
 lto = "fat"
 panic = "abort"
+
+[profile.dev]
+opt-level = 0

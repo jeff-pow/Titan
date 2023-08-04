@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
+use crate::attack_boards::AttackBoards;
 use crate::board::Board;
-use crate::moves::{generate_all_moves, in_check, Move, Promotion};
+use crate::moves::{generate_legal_moves, Move, Promotion};
 use crate::pieces::piece_value;
 use crate::zobrist::{
     add_to_triple_repetition_map, check_for_3x_repetition, get_transposition,
@@ -15,10 +16,10 @@ pub const INFINITY: i32 = 9999999;
 
 #[allow(dead_code)]
 /// Counts and times the action of generating moves to a certain depth. Prints this information
-pub fn time_move_generation(board: &Board, depth: i32) {
+pub fn time_move_generation(board: &Board, bb: &AttackBoards, depth: i32) {
     for i in 1..=depth {
         let start = Instant::now();
-        print!("{}", count_moves(i, board));
+        print!("{}", count_moves(i, board, bb));
         let elapsed = start.elapsed();
         print!(" moves generated in {:?} ", elapsed);
         println!("at a depth of {i}");
@@ -26,13 +27,13 @@ pub fn time_move_generation(board: &Board, depth: i32) {
 }
 
 /// https://www.chessprogramming.org/Perft
-pub fn perft(board: &Board, depth: i32) -> usize {
+pub fn perft(board: &Board, bb: &AttackBoards, depth: i32) -> usize {
     let mut total = 0;
-    let moves = generate_all_moves(board);
+    let moves = generate_legal_moves(board, bb);
     for m in &moves {
         let mut new_b = *board;
-        new_b.make_move(m);
-        let count = count_moves(depth - 1, &new_b);
+        new_b.make_move(m, bb);
+        let count = count_moves(depth - 1, &new_b, bb);
         total += count;
         println!("{}: {}", m.to_lan(), count);
     }
@@ -41,16 +42,16 @@ pub fn perft(board: &Board, depth: i32) -> usize {
 }
 
 /// Recursively counts the number of moves down to a certain depth
-fn count_moves(depth: i32, board: &Board) -> usize {
+fn count_moves(depth: i32, board: &Board, bb: &AttackBoards) -> usize {
     if depth == 0 {
         return 1;
     }
     let mut count = 0;
-    let moves = generate_all_moves(board);
+    let moves = generate_legal_moves(board, bb);
     for m in &moves {
         let mut new_b = *board;
-        new_b.make_move(m);
-        count += count_moves(depth - 1, &new_b);
+        new_b.make_move(m, bb);
+        count += count_moves(depth - 1, &new_b, bb);
     }
     count
 }
@@ -61,7 +62,12 @@ pub struct Search {
 }
 
 /// Generates the optimal move for a given position using alpha beta pruning and basic transposition tables.
-pub fn search(board: &Board, depth: i32, triple_repetitions: &mut HashMap<u64, u8>) -> Move {
+pub fn search(
+    board: &Board,
+    bb: &AttackBoards,
+    depth: i32,
+    triple_repetitions: &mut HashMap<u64, u8>,
+) -> Move {
     let mut best_move = Move::invalid();
     let mut transpos_table = HashMap::new();
 
@@ -70,17 +76,18 @@ pub fn search(board: &Board, depth: i32, triple_repetitions: &mut HashMap<u64, u
         let mut alpha = -INFINITY;
         let beta = INFINITY;
 
-        let mut moves = generate_all_moves(board);
+        let mut moves = generate_legal_moves(board, bb);
         moves.sort_by_key(|m| score_move(board, m));
         moves.reverse();
 
         for m in &moves {
             let mut new_b = *board;
-            new_b.make_move(m);
+            new_b.make_move(m, bb);
             add_to_triple_repetition_map(&new_b, triple_repetitions);
 
             let eval = -search_helper(
                 &new_b,
+                bb,
                 i - 1,
                 1,
                 -beta,
@@ -113,6 +120,7 @@ pub fn search(board: &Board, depth: i32, triple_repetitions: &mut HashMap<u64, u
 /// based off of these values.
 fn search_helper(
     board: &Board,
+    bb: &AttackBoards,
     depth: i32,
     dist_from_root: i32,
     mut alpha: i32,
@@ -135,13 +143,13 @@ fn search_helper(
         return alpha;
     }
 
-    let mut moves = generate_all_moves(board);
+    let mut moves = generate_legal_moves(board, bb);
     moves.sort_unstable_by_key(|m| (score_move(board, m)));
     moves.reverse();
 
     if moves.is_empty() {
         // Checkmate
-        if in_check(board, board.to_move) {
+        if board.under_attack(bb, board.to_move) {
             // Distance from root is returned in order for other recursive calls to determine
             // shortest viable checkmate path
             return -IN_CHECK_MATE + dist_from_root;
@@ -152,11 +160,12 @@ fn search_helper(
 
     for m in &moves {
         let mut new_b = *board;
-        new_b.make_move(m);
+        new_b.make_move(m, bb);
         add_to_triple_repetition_map(&new_b, triple_repetitions);
 
         let eval = -search_helper(
             &new_b,
+            bb,
             depth - 1,
             dist_from_root + 1,
             -beta,
