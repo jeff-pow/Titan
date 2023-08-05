@@ -235,6 +235,8 @@ pub enum Castle {
     BlackQueenCastle,
 }
 
+/// Rank is horizontal, file is vertical
+/// Function returns 0 indexed board, doesn't start at 1
 #[inline]
 pub fn coordinates(idx: usize) -> (usize, usize) {
     (idx % 8, idx / 8)
