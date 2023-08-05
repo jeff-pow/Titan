@@ -1,4 +1,3 @@
-use crate::attack_boards::AttackBoards;
 use crate::board::Board;
 use crate::fen::{self, build_board, parse_fen_from_buffer};
 use crate::moves::from_lan;
@@ -15,7 +14,6 @@ pub fn main_loop() -> ! {
     let mut board = Board::new();
     let mut buffer = String::new();
     let mut triple_repetitions: HashMap<u64, u8> = HashMap::new();
-    let bb = AttackBoards::new();
 
     loop {
         buffer.clear();
@@ -49,11 +47,11 @@ pub fn main_loop() -> ! {
             if buffer.contains("perft") {
                 let vec: Vec<char> = buffer.chars().collect();
                 let depth = vec[9].to_digit(10).unwrap();
-                perft(&board, &bb, depth as i32);
+                perft(&board, depth as i32);
             } else {
-                let m = search(&board, &bb, 7, &mut triple_repetitions);
+                let m = search(&board, 7, &mut triple_repetitions);
                 println!("bestmove {}", m.to_lan());
-                board.make_move(&m, &bb);
+                board.make_move(&m);
             }
         } else if buffer.starts_with("stop") || buffer.starts_with("quit") {
             std::process::exit(0);
@@ -68,11 +66,13 @@ pub fn main_loop() -> ! {
 }
 
 fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, zobrist_map: &mut HashMap<u64, u8>) {
-    let bb = AttackBoards::new();
     for str in moves.iter().skip(skip) {
         let m = from_lan(str, board);
-        board.make_move(&m, &bb);
-        if board.under_attack(&bb, board.to_move) {
+        board.make_move(&m);
+        println!("{m}");
+        println!("{board}");
+        println!();
+        if board.under_attack(board.to_move) {
             match board.to_move {
                 Color::White => {
                     board.white_king_castle = false;

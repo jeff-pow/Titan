@@ -3,6 +3,7 @@ use crate::{
     moves::Direction,
 };
 
+#[inline]
 pub fn shift(bitboard: u64, dir: Direction) -> u64 {
     match dir {
         Direction::North => bitboard << 8,
@@ -14,4 +15,21 @@ pub fn shift(bitboard: u64, dir: Direction) -> u64 {
         Direction::East => (bitboard << 1) & !FILE_A,
         Direction::NorthEast => (bitboard << 9) & !FILE_A,
     }
+}
+
+#[inline]
+pub fn pop_lsb(bb: &mut u64) -> u64 {
+    let lsb = *bb & bb.wrapping_neg();
+    *bb ^= lsb;
+    lsb.trailing_zeros() as u64
+}
+
+#[inline]
+pub fn bit_is_on(bb: u64, idx: usize) -> bool {
+    bb & (1 << idx) != 0
+}
+
+#[inline]
+pub fn bit_is_off(bb: u64, idx: usize) -> bool {
+    bb & (1 << idx) == 0
 }

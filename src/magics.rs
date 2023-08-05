@@ -145,8 +145,8 @@ pub const BISHOP_MAGICS: &[MagicEntry; 64] = &[
 
 pub const BISHOP_TABLE_SIZE: usize = 5248;
 
-const ROOK_MOVES: &[u64] = &[0; 1];
-const BISHOP_MOVES: &[u64] = &[0; 1];
+const ROOK_MOVES: &[u64] = &[0; ROOK_TABLE_SIZE];
+const BISHOP_MOVES: &[u64] = &[0; BISHOP_TABLE_SIZE];
 
 pub fn magic_index(entry: &MagicEntry, blockers: u64) -> usize {
     let blockers = blockers & entry.mask;

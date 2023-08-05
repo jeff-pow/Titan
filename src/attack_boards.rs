@@ -16,47 +16,51 @@ pub const RANK6: u64 = RANK5 << 8;
 pub const RANK7: u64 = RANK6 << 8;
 pub const RANK8: u64 = RANK7 << 8;
 
-pub struct AttackBoards {
-    pub king: [u64; 64],
-    pub knight: [u64; 64],
+static mut KNIGHT_TABLE: [u64; 64] = [0; 64];
+static mut KING_TABLE: [u64; 64] = [0; 64];
+
+pub fn knight_attacks(square: usize) -> u64 {
+    unsafe { KNIGHT_TABLE[square] }
 }
 
-impl AttackBoards {
-    pub fn new() -> Self {
-        AttackBoards {
-            knight: gen_knight_attack_boards(),
-            king: gen_king_attack_boards(),
-        }
+pub fn king_attacks(square: usize) -> u64 {
+    unsafe { KING_TABLE[square] }
+}
+
+/// Non thread safe - this functions callee's have to finish running before the program will
+/// successfully run w/o race conditions
+pub fn init_attack_boards() {
+    gen_king_attack_boards();
+    gen_knight_attack_boards();
+}
+
+#[rustfmt::skip]
+fn gen_king_attack_boards() {
+    unsafe {
+        KING_TABLE.iter_mut().enumerate().for_each(|(square, moves)| {
+            let (x, y) = coordinates(square);
+            if y >= 1 {
+                if x >= 1 { *moves |= 1u64 << (square as u32 - 9); }
+                *moves |= 1u64 << (square as u32 - 8);
+                if x <= 6 { *moves |= 1u64 << (square as u32 - 7); }
+            }
+
+            if x >= 1 { *moves |= 1u64 << (square as u32 - 1); }
+            if x <= 6 { *moves |= 1u64 << (square as u32 + 1); }
+
+            if y <= 6 {
+                if x >= 1 { *moves |= 1u64 << (square as u32 + 7); }
+                *moves |= 1u64 << (square as u32 + 8);
+                if x <= 6 { *moves |= 1u64 << (square as u32 + 9); }
+            }
+        });
     }
 }
 
 #[rustfmt::skip]
-fn gen_king_attack_boards() -> [u64; 64] {
-    let mut arr = [0; 64];
-    arr.iter_mut().enumerate().for_each(|(square, moves)| {
-        let (x, y) = coordinates(square);  
-        if y >= 1 {
-            if x >= 1 { *moves |= 1u64 << (square as u32 - 9); }
-            *moves |= 1u64 << (square as u32 - 8);
-            if x <= 6 { *moves |= 1u64 << (square as u32 - 7); }
-        }
-
-        if x >= 1 { *moves |= 1u64 << (square as u32 - 1); }
-        if x <= 6 { *moves |= 1u64 << (square as u32 + 1); }
-
-        if y <= 6 {
-            if x >= 1 { *moves |= 1u64 << (square as u32 + 7); }
-            *moves |= 1u64 << (square as u32 + 8);
-            if x <= 6 { *moves |= 1u64 << (square as u32 + 9); }
-        }
-    });
-    arr
-}
-
-#[rustfmt::skip]
-fn gen_knight_attack_boards() -> [u64; 64] {
-    let mut arr = [0; 64];
-    arr.iter_mut().enumerate().for_each(|(square, moves)| {
+fn gen_knight_attack_boards() {
+    unsafe {
+    KNIGHT_TABLE.iter_mut().enumerate().for_each(|(square, moves)| {
         let (x, y) = coordinates(square);
         if y >= 2 {
             if x >= 1 { *moves |= 1u64 << (square - 17); }
@@ -75,7 +79,7 @@ fn gen_knight_attack_boards() -> [u64; 64] {
             if x <= 5 && square + 10 < 64 { *moves |= 1u64 << (square + 10); }
         }
     });
-    arr
+}
 }
 
 pub fn gen_pawn_attack_board(board: &Board) -> u64 {

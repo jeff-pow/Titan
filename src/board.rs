@@ -1,7 +1,7 @@
 use core::fmt;
 
+use crate::bit_hacks::bit_is_on;
 use crate::{
-    attack_boards::AttackBoards,
     moves::{Castle, Move, Promotion},
     pieces::Color,
     pieces::{opposite_color, PieceName, NUM_PIECES},
@@ -44,7 +44,7 @@ impl Board {
 
     #[inline]
     pub fn square_contains_piece(&self, piece_type: PieceName, color: Color, idx: usize) -> bool {
-        self.board[color as usize][piece_type as usize] & (1 << idx) != 0
+        bit_is_on(self.board[color as usize][piece_type as usize], idx)
     }
 
     #[inline]
@@ -108,12 +108,12 @@ impl Board {
         self.board[color as usize][piece_type as usize] &= !(1 << idx);
     }
 
-    pub fn under_attack(&self, _bb: &AttackBoards, _to_move: Color) -> bool {
+    pub fn under_attack(&self, _to_move: Color) -> bool {
         false
     }
 
     /// Function makes a move and modifies board state to reflect the move that just happened
-    pub fn make_move(&mut self, m: &Move, bb: &AttackBoards) {
+    pub fn make_move(&mut self, m: &Move) {
         // Special case if the move is an en_passant
         if m.is_en_passant() {
             let end_idx = m.dest_square() as usize;
@@ -261,13 +261,13 @@ impl Board {
         // Update castling ability based on check
         match self.to_move {
             Color::White => {
-                if self.under_attack(bb, Color::White) {
+                if self.under_attack(Color::White) {
                     self.white_king_castle = false;
                     self.white_queen_castle = false;
                 }
             }
             Color::Black => {
-                if self.under_attack(bb, Color::Black) {
+                if self.under_attack(Color::Black) {
                     self.black_king_castle = false;
                     self.black_queen_castle = false;
                 }

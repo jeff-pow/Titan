@@ -206,9 +206,9 @@ pub fn eval(board: &Board) -> i32 {
                 }
                 Some(Color::Black) => {
                     black_mg += get_mg_table(piece)[square ^ 56] + piece_value(piece);
-                    black_eg += get_mg_table(piece)[square ^ 56] + piece_value(piece);
+                    black_eg += get_eg_table(piece)[square ^ 56] + piece_value(piece);
                 }
-                None => todo!(),
+                None => (),
             }
         }
     }

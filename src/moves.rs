@@ -4,8 +4,9 @@ use std::fmt::Display;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use crate::attack_boards::{gen_pawn_attack_board, AttackBoards, RANK2, RANK3, RANK6, RANK7};
+use crate::attack_boards::{king_attacks, knight_attacks, RANK2, RANK3, RANK6, RANK7};
 use crate::bit_hacks::*;
+use crate::magics::{get_bishop_moves, get_rook_moves};
 // use crate::pieces::PieceName::{Bishop, King, Knight, Pawn, Queen, Rook};
 use crate::pieces::opposite_color;
 use crate::pieces::PieceName::Pawn;
@@ -239,10 +240,10 @@ pub fn coordinates(idx: usize) -> (usize, usize) {
     (idx % 8, idx / 8)
 }
 
-pub fn generate_psuedolegal_moves(board: &Board, bb: &AttackBoards) -> Vec<Move> {
+pub fn generate_psuedolegal_moves(board: &Board) -> Vec<Move> {
     let mut moves = Vec::new();
-    moves.append(&mut generate_bitboard_moves(board, bb, PieceName::Knight));
-    moves.append(&mut generate_bitboard_moves(board, bb, PieceName::King));
+    moves.append(&mut generate_bitboard_moves(board, PieceName::Knight));
+    moves.append(&mut generate_bitboard_moves(board, PieceName::King));
     moves.append(&mut gen_pawn_moves(board));
     moves
 }
@@ -355,82 +356,60 @@ fn generate_promotions(dest: u64, d: Direction, moves: &mut Vec<Move>) {
     }
 }
 
-fn pop_lsb(bb: &mut u64) -> u64 {
-    let lsb = *bb & bb.wrapping_neg();
-    *bb ^= lsb;
-    lsb.trailing_zeros() as u64
-}
-
-fn generate_bitboard_moves(board: &Board, bb: &AttackBoards, piece_name: PieceName) -> Vec<Move> {
-    if board.board[board.to_move as usize][piece_name as usize] == 0 {
-        return Vec::new();
-    }
+fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> Vec<Move> {
     let mut moves = Vec::new();
+    if board.board[board.to_move as usize][piece_name as usize] == 0 {
+        return moves;
+    }
     for square in 0..63 {
         if board.square_contains_piece(piece_name, board.to_move, square) {
-            let occupancy = !board.color_occupancies(board.to_move);
+            let enemies = !board.color_occupancies(board.to_move);
             let attack_bitboard = match piece_name {
-                PieceName::King => bb.king[square],
-                PieceName::Queen => panic!(),
-                PieceName::Rook => todo!(),
-                PieceName::Bishop => todo!(),
-                PieceName::Knight => bb.knight[square],
+                PieceName::King => king_attacks(square),
+                PieceName::Queen => {
+                    get_rook_moves(square, enemies) | get_bishop_moves(square, enemies)
+                }
+                PieceName::Rook => get_rook_moves(square, enemies),
+                PieceName::Bishop => get_bishop_moves(square, enemies),
+                PieceName::Knight => knight_attacks(square),
                 Pawn => panic!(),
             };
-            let attacks = attack_bitboard & occupancy;
-            push_moves(
-                board,
-                piece_name,
-                &mut moves,
-                attacks,
-                square,
-                EnPassant::None,
-            );
+            let attacks = attack_bitboard & enemies;
+            push_moves(&mut moves, attacks, square);
         }
     }
     moves
 }
 
-fn push_moves(
-    board: &Board,
-    piece_name: PieceName,
-    moves: &mut Vec<Move>,
-    mut attacks: u64,
-    square: usize,
-    en_passant: EnPassant,
-) {
+fn push_moves(moves: &mut Vec<Move>, mut attacks: u64, square: usize) {
     let mut idx = 0;
     while attacks != 0 {
         if attacks & 1 != 0 {
-            let move_type = get_move_type(false, false, false);
-            moves.push(Move::new(square as u8, idx, None, move_type));
+            moves.push(Move::new(square as u8, idx, None, MoveType::Normal));
         }
         attacks >>= 1;
         idx += 1;
     }
 }
 
-fn bit_is_on(bb: u64, idx: usize) -> bool {
-    bb & (1 << idx) != 0
-}
-
-pub fn generate_quiet_moves(board: &Board, bb: &AttackBoards) -> Vec<Move> {
-    let legal_moves = generate_moves(board, bb);
-    // legal_moves.into_iter().filter(|m| {
-    //     let mut
-    // })
+/// Filters out moves that are captures for quiescence search
+pub fn generate_quiet_moves(board: &Board) -> Vec<Move> {
+    let legal_moves = generate_moves(board);
     legal_moves
+        .into_iter()
+        .filter(|m| bit_is_off(board.occupancies(), m.dest_square().into()))
+        .collect::<Vec<Move>>()
 }
 
-pub fn generate_moves(board: &Board, bb: &AttackBoards) -> Vec<Move> {
-    let psuedolegal = generate_psuedolegal_moves(board, bb);
+pub fn generate_moves(board: &Board) -> Vec<Move> {
+    let psuedolegal = generate_psuedolegal_moves(board);
 
     psuedolegal
         .into_iter()
         .filter(|m| {
             let mut new_b = *board;
-            new_b.make_move(m, bb);
-            !new_b.under_attack(bb, board.to_move)
+            new_b.make_move(m);
+            !new_b.under_attack(board.to_move)
         })
         .collect::<Vec<Move>>()
 }
