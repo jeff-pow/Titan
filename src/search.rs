@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use crate::attack_boards::AttackBoards;
 use crate::board::Board;
-use crate::moves::{generate_legal_moves, Move, Promotion};
+use crate::moves::{generate_moves, Move, Promotion};
 use crate::pieces::piece_value;
 use crate::zobrist::{
     add_to_triple_repetition_map, check_for_3x_repetition, get_transposition,
@@ -29,7 +29,7 @@ pub fn time_move_generation(board: &Board, bb: &AttackBoards, depth: i32) {
 /// https://www.chessprogramming.org/Perft
 pub fn perft(board: &Board, bb: &AttackBoards, depth: i32) -> usize {
     let mut total = 0;
-    let moves = generate_legal_moves(board, bb);
+    let moves = generate_moves(board, bb);
     for m in &moves {
         let mut new_b = *board;
         new_b.make_move(m, bb);
@@ -47,7 +47,7 @@ fn count_moves(depth: i32, board: &Board, bb: &AttackBoards) -> usize {
         return 1;
     }
     let mut count = 0;
-    let moves = generate_legal_moves(board, bb);
+    let moves = generate_moves(board, bb);
     for m in &moves {
         let mut new_b = *board;
         new_b.make_move(m, bb);
@@ -76,7 +76,7 @@ pub fn search(
         let mut alpha = -INFINITY;
         let beta = INFINITY;
 
-        let mut moves = generate_legal_moves(board, bb);
+        let mut moves = generate_moves(board, bb);
         moves.sort_by_key(|m| score_move(board, m));
         moves.reverse();
 
@@ -143,7 +143,7 @@ fn search_helper(
         return alpha;
     }
 
-    let mut moves = generate_legal_moves(board, bb);
+    let mut moves = generate_moves(board, bb);
     moves.sort_unstable_by_key(|m| (score_move(board, m)));
     moves.reverse();
 

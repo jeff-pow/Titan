@@ -38,27 +38,31 @@ impl Board {
         }
     }
 
+    pub fn can_en_passant(&self) -> bool {
+        self.en_passant_square != -1
+    }
+
     #[inline]
     pub fn square_contains_piece(&self, piece_type: PieceName, color: Color, idx: usize) -> bool {
         self.board[color as usize][piece_type as usize] & (1 << idx) != 0
     }
 
     #[inline]
-    pub fn color_occupancy(&self, color: Color) -> u64 {
+    pub fn color_occupancies(&self, color: Color) -> u64 {
         // It's odd to me that xor and bitwise or both seem to work here, only one piece should
         // be on a square at a time though so ¯\_(ツ)_/¯
         self.board[color as usize].iter().fold(0, |a, b| a ^ b)
     }
 
     #[inline]
-    pub fn occupancy(&self) -> u64 {
+    pub fn occupancies(&self) -> u64 {
         self.board.iter().flatten().fold(0, |a, b| a ^ b)
     }
 
     #[inline]
     pub fn color_on_square(&self, idx: usize) -> Option<Color> {
-        let white_occ = self.color_occupancy(Color::White);
-        let black_occ = self.color_occupancy(Color::Black);
+        let white_occ = self.color_occupancies(Color::White);
+        let black_occ = self.color_occupancies(Color::Black);
         if white_occ & (1 << idx) != 0 {
             return Some(Color::White);
         }

@@ -16,16 +16,16 @@ use board::Board;
 use search::*;
 use std::process::exit;
 
-use crate::moves::generate_legal_moves;
+use crate::moves::generate_moves;
 
 mod board;
 mod fen;
 
 fn main() {
     let board = fen::build_board("8/6P1/3r4/3P4/2P5/6b1/1P4P1/8 w - - 0 1");
-    dbg!(board.occupancy());
-    let board = fen::build_board(fen::STARTING_FEN);
-    dbg!(board.occupancy());
+    let mut board = fen::build_board(fen::STARTING_FEN);
+    board.to_move = pieces::Color::Black;
+    //let board = fen::build_board("8/1p4p1/1b6/8/4p3/4RpPp/1p6/8 b - g2 0 1");
     let _b = attack_boards::AttackBoards::new();
     print_moves(&board);
     uci::main_loop();
@@ -35,8 +35,7 @@ fn main() {
 fn print_moves(board: &Board) {
     println!("{}", board);
     let bb = attack_boards::AttackBoards::new();
-    let moves = generate_legal_moves(board, &bb);
-    let i = moves.len();
+    let moves = generate_moves(board, &bb);
     for m in moves.iter() {
         println!("{}", m);
         let mut cloned_board = *board;
@@ -44,8 +43,7 @@ fn print_moves(board: &Board) {
         println!("{}", cloned_board);
         println!("---------------------------------------------------------");
     }
-    println!("{} moves possible pre check", i);
-    println!("{} moves possible post check", moves.len());
+    println!("{} moves found", moves.len());
     exit(0);
 }
 
