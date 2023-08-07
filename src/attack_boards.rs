@@ -1,8 +1,4 @@
-use crate::{
-    board::Board,
-    moves::coordinates,
-    pieces::{Color, PieceName},
-};
+use crate::{board::Board, magics, magics::gen_magics, moves::coordinates, pieces::{Color, PieceName}, pleco_magics};
 
 pub const FILE_A: u64 = 0x101010101010101;
 pub const FILE_B: u64 = FILE_A << 1;
@@ -39,6 +35,8 @@ pub fn king_attacks(square: usize) -> u64 {
 pub fn init_attack_boards() {
     gen_king_attack_boards();
     gen_knight_attack_boards();
+    // pleco_magics::gen_magics();
+    gen_magics();
 }
 
 #[rustfmt::skip]

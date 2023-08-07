@@ -63,7 +63,7 @@ pub struct Search {
 /// Generates the optimal move for a given position using alpha beta pruning and basic transposition tables.
 pub fn search(board: &Board, depth: i32, triple_repetitions: &mut HashMap<u64, u8>) -> Move {
     let mut best_move = Move::invalid();
-    let mut transpos_table = HashMap::new();
+    let mut transpos_table = HashMap::with_capacity(1000000);
 
     for i in 1..=depth {
         let start = Instant::now();

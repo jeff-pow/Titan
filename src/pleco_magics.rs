@@ -4,12 +4,11 @@ use rand::thread_rng;
 
 use crate::{
     attack_boards::{FILE_A, FILE_H, RANK1, RANK8},
-    bit_hacks::{create_square_and_checked_shift, dist, distance, get_file_bitboard, get_rank_bitboard, shift},
+    bit_hacks::{dist, distance, get_file_bitboard, get_rank_bitboard},
     moves::{
         coordinates,
         Direction::{self, *},
     },
-    pieces::PieceName,
 };
 
 #[derive(Clone, Copy)]
@@ -17,6 +16,7 @@ pub struct MagicEntry {
     pub mask: u64,
     pub magic: u64,
     pub shift: u8,
+    pub offset: u32,
 }
 
 impl MagicEntry {
@@ -25,6 +25,7 @@ impl MagicEntry {
             mask: 0,
             magic: 0,
             shift: 0,
+            offset: 0,
         }
     }
 
@@ -43,101 +44,11 @@ const BISHOP_MOVEMENT_DELTAS: [Direction; 4] = [NorthWest, NorthEast, SouthEast,
 static mut BISHOP_MAGICS: [MagicEntry; 64] = MagicEntry::init64();
 static mut BISHOP_MOVES: [u64; BISHOP_TABLE_SIZE] = [0; BISHOP_TABLE_SIZE];
 
-struct Slider {
-    deltas: [Direction; 4],
-    piece: PieceName,
-}
-
-impl Slider {
-    fn moves(&self, square: u8, blockers: u64) -> u64 {
-        let mut moves = 0;
-        for dir in self.deltas {
-            let mut ray = square as u64;
-            while (blockers & ray) == 0 {
-                if let Some(shifted) = create_square_and_checked_shift(ray, dir) {
-                    ray = shifted;
-                    moves |= ray;
-                } else {
-                    break;
-                }
-            }
-        }
-        moves
-    }
-
-
-
-    fn relevant_blockers(&self, square: u8) -> u64 {
-        let mut blockers = 0;
-        for dir in self.deltas {
-            let mut ray = square as u64;
-            while let Some(shifted) = create_square_and_checked_shift(ray, dir) {
-                blockers |= ray;
-                ray = shifted;
-            }
-        }
-        blockers &= !(square as u64);
-        blockers
-    }
-}
-
-fn magic_index(entry: &MagicEntry, blockers: u64) -> usize {
+pub fn magic_index(entry: &MagicEntry, blockers: u64) -> usize {
     let blockers = blockers & entry.mask;
     let hash = blockers.wrapping_mul(entry.magic);
     let index = (hash >> entry.shift) as usize;
-    index
-}
-
-fn find_magic(
-    slider: &Slider,
-    square: u8,
-    index_bits: u8,
-    rng: &mut Rng,
-) -> (MagicEntry, Vec<u64>) {
-    let mask = slider.relevant_blockers(square as u8);
-    let shift = 64 - index_bits;
-    loop {
-        let magic = rng.next_u64() & rng.next_u64() & rng.next_u64();
-        let magic_entry = MagicEntry { mask, magic, shift };
-        if let Ok(table) = try_make_table(slider, square, &magic_entry) {
-            return (magic_entry, table);
-        }
-    }
-}
-
-struct TableFillError;
-
-// Attempt to fill in a hash table using a magic number.
-// Fails if there are any non-constructive collisions.
-fn try_make_table(
-    slider: &Slider,
-    square: u8,
-    magic_entry: &MagicEntry,
-) -> Result<Vec<u64>, TableFillError> {
-    let index_bits = 64 - magic_entry.shift;
-    let mut table = vec![0; 1 << index_bits];
-    // Iterate all configurations of blockers
-    let mut blockers = 0;
-    loop {
-        let moves = slider.moves(square, blockers);
-        let table_entry = &mut table[magic_index(magic_entry, blockers)];
-        if table_entry == &mut 0 {
-            // Write to empty slot
-            *table_entry = moves;
-        } else if *table_entry != moves {
-            // Having two different move sets in the same slot is a hash collision
-            return Err(TableFillError);
-        }
-
-        // Carry-Rippler trick that enumerates all subsets of the mask, getting us all blockers.
-        // https://www.chessprogramming.org/Traversing_Subsets_of_a_Set#All_Subsets_of_any_Set
-        blockers = blockers.wrapping_sub(magic_entry.mask) & magic_entry.mask;
-        if blockers == 0 {
-            // Finished enumerating all blocker configurations
-            break;
-        }
-    }
-    Ok(table)
+    entry.offset as usize + index
 }
 
 pub fn rook_attacks(square: usize, blockers: u64) -> u64 {
@@ -154,44 +65,61 @@ pub fn bishop_attacks(square: usize, blockers: u64) -> u64 {
     }
 }
 
-fn find_all_magics(slider: &Slider, rng: &mut Rng) {
-    let mut vec = Vec::new();
-    let mut size = 0;
-    for sq in 0..64 {
-        dbg!(sq);
-        let index_bits = slider.relevant_blockers(sq).count_ones() as u8;
-        let (entry, mut table) = find_magic(slider, sq, index_bits, rng);
-        vec.append(&mut table);
-        unsafe {
-            match slider.piece {
-                PieceName::Rook => ROOK_MAGICS[sq as usize] = entry,
-                PieceName::Bishop => BISHOP_MAGICS[sq as usize] = entry,
-                _ => panic!(),
-            }
+pub fn gen_magics() {
+    unsafe {
+        gen_magic_board(
+            BISHOP_TABLE_SIZE,
+            &BISHOP_MOVEMENT_DELTAS,
+            BISHOP_MOVES.as_mut_ptr(),
+            BISHOP_MAGICS.as_mut_ptr(),
+        );
+        println!("Done with bishops");
+    };
+    unsafe {
+        gen_magic_board(
+            ROOK_TABLE_SIZE,
+            &ROOK_MOVEMENT_DELTAS,
+            ROOK_MOVES.as_mut_ptr(),
+            ROOK_MAGICS.as_mut_ptr(),
+        );
+        println!("Done with rooks");
+    };
+    unsafe {
+        for i in BISHOP_MOVES {
+            println!("{i}");
         }
-        size += table.len();
-    }
-    match slider.piece {
-        PieceName::Rook => assert_eq!(size, ROOK_TABLE_SIZE),
-        PieceName::Bishop => assert_eq!(size, BISHOP_TABLE_SIZE),
-        _ => panic!(),
     }
 }
 
-pub fn gen_magics() {
-    let mut rng = Rng::default();
-    let bishop = Slider {
-        deltas: BISHOP_MOVEMENT_DELTAS.to_owned(),
-        piece: PieceName::Bishop,
-    };
-    let rook = Slider {
-        deltas: ROOK_MOVEMENT_DELTAS.to_owned(),
-        piece: PieceName::Rook,
-    };
-    find_all_magics(&rook, &mut rng);
-    println!("done rooks");
-    find_all_magics(&bishop, &mut rng);
-    println!("done bishops");
+#[derive(Clone, Copy)]
+struct PreSMagic {
+    start: usize,
+    len: usize,
+    mask: u64,
+    magic: u64,
+    shift: u32,
+}
+
+impl PreSMagic {
+    pub const fn init() -> PreSMagic {
+        PreSMagic {
+            start: 0,
+            len: 0,
+            mask: 0,
+            magic: 0,
+            shift: 0,
+        }
+    }
+
+    // creates an array of PreSMagic
+    pub unsafe fn init64() -> [PreSMagic; 64] {
+        [PreSMagic::init(); 64]
+    }
+
+    // Helper method to compute the next index
+    pub fn next_idx(&self) -> usize {
+        self.start + self.len
+    }
 }
 
 // Simple Pcg64Mcg implementation
@@ -210,6 +138,119 @@ impl Rng {
         let xsl = (self.0 >> 64) as u64 ^ self.0 as u64;
         xsl.rotate_right(rot)
     }
+}
+
+unsafe fn gen_magic_board(
+    table_size: usize,
+    deltas: &[Direction; 4],
+    attacks: *mut u64,
+    static_magics: *mut MagicEntry,
+) {
+    let mut pre_sq_table = PreSMagic::init64();
+
+    let mut occupancy = [0u64; 4096];
+    let mut reference = [0u64; 4096];
+    let mut age = [0i32; 4096];
+
+    let mut size;
+
+    let mut b;
+
+    let mut current = 0;
+    let mut i: usize;
+
+    let mut rng = Rng::default();
+
+    for s in 0..64_u8 {
+        dbg!(s);
+        let mut magic: u64;
+        let edges =
+            ((RANK1 | RANK8) & !get_rank_bitboard(s)) | ((FILE_A | FILE_H) & !get_file_bitboard(s));
+        let mask = sliding_attack(deltas, s, 0) & !edges;
+        let shift = 64 - mask.count_ones();
+        b = 0;
+        size = 0;
+
+        loop {
+            occupancy[size] = b;
+            reference[size] = sliding_attack(deltas, s, b);
+            size += 1;
+            b = b.wrapping_sub(mask) & mask;
+            if b == 0 {
+                break;
+            }
+        }
+
+        pre_sq_table[s as usize].len = size;
+
+        if s < 63 {
+            pre_sq_table[s as usize + 1].start = pre_sq_table[s as usize].next_idx();
+        }
+
+        loop {
+            loop {
+                magic = rng.next_u64() & rng.next_u64() & rng.next_u64();
+                let i = magic.wrapping_mul(mask).wrapping_shr(56);
+                if i.count_ones() >= 6 {
+                    break;
+                }
+            }
+            current += 1;
+            i = 0;
+
+            while i < size {
+                let index = (occupancy[i] & mask)
+                    .wrapping_mul(magic)
+                    .wrapping_shr(shift) as usize;
+
+                if age[index] < current {
+                    age[index] = current;
+                    *attacks.add(pre_sq_table[s as usize].start + index) = reference[i];
+                } else if *attacks.add(pre_sq_table[s as usize].start + index) != reference[i] {
+                    break;
+                }
+                i += 1;
+            }
+            if i >= size {
+                break;
+            }
+        }
+
+        pre_sq_table[s as usize].magic = magic;
+        pre_sq_table[s as usize].mask = mask;
+        pre_sq_table[s as usize].shift = shift;
+    }
+    let mut size = 0;
+    for i in 0..64 {
+        let beginptr = attacks.add(size);
+
+        let staticptr = static_magics.add(i);
+        let table_i = MagicEntry {
+            mask: pre_sq_table[i].mask,
+            magic: pre_sq_table[i].magic,
+            shift: pre_sq_table[i].shift as u8,
+            offset: beginptr as u32,
+        };
+        ptr::copy::<MagicEntry>(&table_i, staticptr, 1);
+        size += pre_sq_table.len();
+    }
+    assert_eq!(size, table_size);
+}
+
+fn sliding_attack(deltas: &[Direction; 4], square: u8, occupied: u64) -> u64 {
+    debug_assert!(square < 64);
+    let mut attack = 0;
+    for dir in deltas.iter() {
+        let mut s = (square as i8 + *dir as i8) as u8;
+        while s < 64 && distance(s, ((s as i8) - (*dir as i8)) as u8) == 1 {
+            attack |= 1_u64.wrapping_shl(s as u32);
+            if occupied & 1u64.wrapping_shl(s as u32) != 0 {
+                break;
+            }
+            s = ((s as i8) + *dir as i8) as u8;
+        }
+    }
+    attack
 }
 
 // #[rustfmt::skip]

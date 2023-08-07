@@ -6,8 +6,7 @@ use strum_macros::EnumIter;
 
 use crate::attack_boards::{king_attacks, knight_attacks, RANK2, RANK3, RANK6, RANK7};
 use crate::bit_hacks::*;
-use crate::magics::{get_bishop_moves, get_rook_moves};
-// use crate::pieces::PieceName::{Bishop, King, Knight, Pawn, Queen, Rook};
+use crate::magics::{bishop_attacks, rook_attacks};
 use crate::pieces::opposite_color;
 use crate::pieces::PieceName::Pawn;
 use crate::{board::Board, pieces::Color, pieces::PieceName};
@@ -242,6 +241,16 @@ pub fn coordinates(idx: usize) -> (usize, usize) {
     (idx % 8, idx / 8)
 }
 
+#[inline]
+pub fn file(square: u8) -> u8 {
+    square & 0b111
+}
+
+#[inline]
+pub fn rank(square: u8) -> u8 {
+    square >> 3
+}
+
 pub fn generate_psuedolegal_moves(board: &Board) -> Vec<Move> {
     let mut moves = Vec::new();
     moves.append(&mut generate_bitboard_moves(board, PieceName::Knight));
@@ -365,14 +374,13 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> Vec<Move> {
     }
     for square in 0..63 {
         if board.square_contains_piece(piece_name, board.to_move, square) {
+            // Possible bug? Or maybe enemies is just an awful name and it should be occupancies...
             let enemies = !board.color_occupancies(board.to_move);
             let attack_bitboard = match piece_name {
                 PieceName::King => king_attacks(square),
-                PieceName::Queen => {
-                    get_rook_moves(square, enemies) | get_bishop_moves(square, enemies)
-                }
-                PieceName::Rook => get_rook_moves(square, enemies),
-                PieceName::Bishop => get_bishop_moves(square, enemies),
+                PieceName::Queen => rook_attacks(square, enemies) | bishop_attacks(square, enemies),
+                PieceName::Rook => rook_attacks(square, enemies),
+                PieceName::Bishop => bishop_attacks(square, enemies),
                 PieceName::Knight => knight_attacks(square),
                 Pawn => panic!(),
             };
