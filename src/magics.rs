@@ -4,7 +4,10 @@ use rand::thread_rng;
 
 use crate::{
     attack_boards::{FILE_A, FILE_H, RANK1, RANK8},
-    bit_hacks::{create_square_and_checked_shift, dist, distance, get_file_bitboard, get_rank_bitboard, shift},
+    bit_hacks::{
+        create_square_and_checked_shift, dist, distance, get_file_bitboard, get_rank_bitboard,
+        shift,
+    },
     moves::{
         coordinates,
         Direction::{self, *},
@@ -64,8 +67,6 @@ impl Slider {
         }
         moves
     }
-
-
 
     fn relevant_blockers(&self, square: u8) -> u64 {
         let mut blockers = 0;

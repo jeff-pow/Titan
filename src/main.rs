@@ -4,12 +4,10 @@ mod eval;
 mod magics;
 mod moves;
 mod pieces;
+mod pleco_magics;
 mod search;
 mod uci;
 mod zobrist;
-mod board;
-mod fen;
-mod pleco_magics;
 
 use attack_boards::init_attack_boards;
 #[allow(unused_imports)]
@@ -21,6 +19,9 @@ use search::*;
 use std::process::exit;
 
 use crate::moves::generate_moves;
+
+mod board;
+mod fen;
 
 fn main() {
     init_attack_boards();
