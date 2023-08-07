@@ -35,8 +35,8 @@ pub fn king_attacks(square: usize) -> u64 {
 pub fn init_attack_boards() {
     gen_king_attack_boards();
     gen_knight_attack_boards();
-    // pleco_magics::gen_magics();
-    gen_magics();
+    pleco_magics::gen_magics();
+    // gen_magics();
 }
 
 #[rustfmt::skip]
