@@ -251,10 +251,13 @@ pub fn rank(square: u8) -> u8 {
     square >> 3
 }
 
-pub fn generate_psuedolegal_moves(board: &Board) -> Vec<Move> {
+fn generate_psuedolegal_moves(board: &Board) -> Vec<Move> {
     let mut moves = Vec::new();
     moves.append(&mut generate_bitboard_moves(board, PieceName::Knight));
     moves.append(&mut generate_bitboard_moves(board, PieceName::King));
+    moves.append(&mut generate_bitboard_moves(board, PieceName::Queen));
+    moves.append(&mut generate_bitboard_moves(board, PieceName::Rook));
+    moves.append(&mut generate_bitboard_moves(board, PieceName::Bishop));
     moves.append(&mut gen_pawn_moves(board));
     moves
 }

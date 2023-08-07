@@ -72,26 +72,26 @@ fn gen_king_attack_boards() {
 #[rustfmt::skip]
 fn gen_knight_attack_boards() {
     unsafe {
-    KNIGHT_TABLE.iter_mut().enumerate().for_each(|(square, moves)| {
-        let (x, y) = coordinates(square);
-        if y >= 2 {
-            if x >= 1 { *moves |= 1u64 << (square - 17); }
-            if x <= 6 { *moves |= 1u64 << (square - 15); }
-        }
-        if y >= 1 {
-            if x >= 2 { *moves |= 1u64 << (square - 10); }
-            if x <= 5 { *moves |= 1u64 << (square - 6); }
-        }
-        if y <= 6 {
-            if x >= 1 && square + 15 < 64 { *moves |= 1u64 << (square + 15); }
-            if x <= 6 && square + 17 < 64 { *moves |= 1u64 << (square + 17); }
-        }
-        if y <= 5 {
-            if x >= 2 && square + 6 < 64 { *moves |= 1u64 << (square + 6); }
-            if x <= 5 && square + 10 < 64 { *moves |= 1u64 << (square + 10); }
-        }
-    });
-}
+        KNIGHT_TABLE.iter_mut().enumerate().for_each(|(square, moves)| {
+            let (x, y) = coordinates(square);
+            if y >= 2 {
+                if x >= 1 { *moves |= 1u64 << (square - 17); }
+                if x <= 6 { *moves |= 1u64 << (square - 15); }
+            }
+            if y >= 1 {
+                if x >= 2 { *moves |= 1u64 << (square - 10); }
+                if x <= 5 { *moves |= 1u64 << (square - 6); }
+            }
+            if y <= 6 {
+                if x >= 1 && square + 15 < 64 { *moves |= 1u64 << (square + 15); }
+                if x <= 6 && square + 17 < 64 { *moves |= 1u64 << (square + 17); }
+            }
+            if y <= 5 {
+                if x >= 2 && square + 6 < 64 { *moves |= 1u64 << (square + 6); }
+                if x <= 5 && square + 10 < 64 { *moves |= 1u64 << (square + 10); }
+            }
+        });
+    }
 }
 
 pub fn gen_pawn_attack_board(board: &Board) -> u64 {
