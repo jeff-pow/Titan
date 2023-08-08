@@ -1,11 +1,13 @@
 mod attack_boards;
 mod bit_hacks;
+mod bitboard;
 mod eval;
 mod magics;
 mod moves;
 mod pieces;
 mod pleco_magics;
 mod search;
+mod square;
 mod uci;
 mod zobrist;
 
@@ -16,6 +18,7 @@ use board::Board;
 
 #[allow(unused_imports)]
 use search::*;
+use square::{Square, SquareIter};
 use std::process::exit;
 
 use crate::moves::generate_moves;
@@ -25,12 +28,7 @@ mod fen;
 
 fn main() {
     init_attack_boards();
-    // let board = fen::build_board("8/6P1/3r4/3P4/2P5/6b1/1P4P1/8 w - - 0 1");
-    let mut board = fen::build_board(fen::STARTING_FEN);
-    // board.to_move = pieces::Color::Black;
-    // //let board = fen::build_board("8/1p4p1/1b6/8/4p3/4RpPp/1p6/8 b - g2 0 1");
-    // let _b = attack_boards::AttackBoards::new();
-    // let board = fen::build_board("8/8/5n1p/4n3/6N1/4n3/5B1B/8 w - - 0 1");
+    let board = fen::build_board(fen::STARTING_FEN);
     // print_moves(&board);
     uci::main_loop();
 }

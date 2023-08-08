@@ -5,6 +5,7 @@ use crate::{
     moves::coordinates,
     pieces::{Color, PieceName},
     pleco_magics,
+    square::Square,
 };
 
 pub const FILE_A: u64 = 0x101010101010101;
@@ -74,21 +75,23 @@ fn gen_knight_attack_boards() {
     unsafe {
         KNIGHT_TABLE.iter_mut().enumerate().for_each(|(square, moves)| {
             let (x, y) = coordinates(square);
-            if y >= 2 {
-                if x >= 1 { *moves |= 1u64 << (square - 17); }
-                if x <= 6 { *moves |= 1u64 << (square - 15); }
+            let x = Square(square as u8).rank();
+            let y = Square(square as u8).file();
+            if x >= 2 {
+                if y >= 1 { *moves |= 1u64 << (square - 17); }
+                if y <= 6 { *moves |= 1u64 << (square - 15); }
             }
-            if y >= 1 {
-                if x >= 2 { *moves |= 1u64 << (square - 10); }
-                if x <= 5 { *moves |= 1u64 << (square - 6); }
+            if x >= 1 {
+                if y >= 2 { *moves |= 1u64 << (square - 10); }
+                if y <= 5 { *moves |= 1u64 << (square - 6); }
             }
-            if y <= 6 {
-                if x >= 1 && square + 15 < 64 { *moves |= 1u64 << (square + 15); }
-                if x <= 6 && square + 17 < 64 { *moves |= 1u64 << (square + 17); }
+            if x <= 6 {
+                if y >= 1 && square + 15 < 64 { *moves |= 1u64 << (square + 15); }
+                if y <= 6 && square + 17 < 64 { *moves |= 1u64 << (square + 17); }
             }
-            if y <= 5 {
-                if x >= 2 && square + 6 < 64 { *moves |= 1u64 << (square + 6); }
-                if x <= 5 && square + 10 < 64 { *moves |= 1u64 << (square + 10); }
+            if x <= 5 {
+                if y >= 2 && square + 6 < 64 { *moves |= 1u64 << (square + 6); }
+                if y <= 5 && square + 10 < 64 { *moves |= 1u64 << (square + 10); }
             }
         });
     }

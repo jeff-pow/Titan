@@ -202,44 +202,47 @@ mod bitboard_tests {
     fn test_checked_shift_valid() {
         let bitboard = 0b1100_0000_0000_0000;
         assert_eq!(
-            checked_shift(bitboard, Direction::North),
+            create_square_and_checked_shift(bitboard, Direction::North),
             Some(0b1100_0000_0000_0000 << 8)
         );
         assert_eq!(
-            checked_shift(bitboard, Direction::South),
+            create_square_and_checked_shift(bitboard, Direction::South),
             Some(0b1100_0000_0000_0000 >> 8)
         );
         assert_eq!(
-            checked_shift(bitboard, Direction::East),
+            create_square_and_checked_shift(bitboard, Direction::East),
             Some((0b1100_0000_0000_0000 << 1) & !FILE_A)
         );
         assert_eq!(
-            checked_shift(bitboard, Direction::West),
+            create_square_and_checked_shift(bitboard, Direction::West),
             Some((0b1100_0000_0000_0000 >> 1) & !FILE_H)
         );
         assert_eq!(
-            checked_shift(bitboard, Direction::NorthEast),
+            create_square_and_checked_shift(bitboard, Direction::NorthEast),
             Some((0b1100_0000_0000_0000 << 9) & !FILE_A)
         );
         assert_eq!(
-            checked_shift(bitboard, Direction::NorthWest),
+            create_square_and_checked_shift(bitboard, Direction::NorthWest),
             Some((0b1100_0000_0000_0000 << 7) & !FILE_H)
         );
         assert_eq!(
-            checked_shift(bitboard, Direction::SouthEast),
+            create_square_and_checked_shift(bitboard, Direction::SouthEast),
             Some((0b1100_0000_0000_0000 >> 7) & !FILE_A)
         );
         assert_eq!(
-            checked_shift(bitboard, Direction::SouthWest),
+            create_square_and_checked_shift(bitboard, Direction::SouthWest),
             Some((0b1100_0000_0000_0000 >> 9) & !FILE_H)
         );
     }
 
     #[test]
-    fn test_shift_checked_shift_equivalence() {
+    fn test_shift_create_square_and_checked_shift_equivalence() {
         let bitboard = 0b1100_0000_0000_0000;
         for dir in Direction::iter() {
-            assert_eq!(shift(bitboard, dir), checked_shift(bitboard, dir).unwrap());
+            assert_eq!(
+                shift(bitboard, dir),
+                create_square_and_checked_shift(bitboard, dir).unwrap()
+            );
         }
     }
 }
