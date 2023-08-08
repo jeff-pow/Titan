@@ -3,6 +3,7 @@ use std::cmp::min;
 use crate::{
     board::Board,
     pieces::{piece_value, Color, PieceName},
+    square::SquareIter,
 };
 
 /// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
@@ -192,7 +193,7 @@ pub fn eval(board: &Board) -> i32 {
     let mut black_eg = 0;
     let mut game_phase = 0;
 
-    for square in 0..64 {
+    for square in SquareIter::new() {
         if board.piece_on_square(square).is_none() {
             continue;
         }
@@ -201,12 +202,12 @@ pub fn eval(board: &Board) -> i32 {
         if let Some(piece) = board.piece_on_square(square) {
             match board.color_on_square(square) {
                 Some(Color::White) => {
-                    white_mg += get_mg_table(piece)[square ^ 56] + piece_value(piece);
-                    white_eg += get_eg_table(piece)[square ^ 56] + piece_value(piece);
+                    white_mg += get_mg_table(piece)[square.0 as usize ^ 56] + piece_value(piece);
+                    white_eg += get_eg_table(piece)[square.0 as usize ^ 56] + piece_value(piece);
                 }
                 Some(Color::Black) => {
-                    black_mg += get_mg_table(piece)[square ^ 56] + piece_value(piece);
-                    black_eg += get_eg_table(piece)[square ^ 56] + piece_value(piece);
+                    black_mg += get_mg_table(piece)[square.0 as usize ^ 56] + piece_value(piece);
+                    black_eg += get_eg_table(piece)[square.0 as usize ^ 56] + piece_value(piece);
                 }
                 None => (),
             }

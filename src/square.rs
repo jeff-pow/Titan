@@ -42,14 +42,14 @@ impl Square {
     pub fn get_rank_bitboard(square: Square) -> Bitboard {
         let x = square.rank();
         match x {
-            0 => Bitboard(RANK1),
-            1 => Bitboard(RANK2),
-            2 => Bitboard(RANK3),
-            3 => Bitboard(RANK4),
-            4 => Bitboard(RANK5),
-            5 => Bitboard(RANK6),
-            6 => Bitboard(RANK7),
-            7 => Bitboard(RANK8),
+            0 => RANK1,
+            1 => RANK2,
+            2 => RANK3,
+            3 => RANK4,
+            4 => RANK5,
+            5 => RANK6,
+            6 => RANK7,
+            7 => RANK8,
             _ => panic!(),
         }
     }
@@ -58,14 +58,14 @@ impl Square {
     pub fn get_file_bitboard(square: Square) -> Bitboard {
         let y = square.file();
         match y {
-            0 => Bitboard(FILE_A),
-            1 => Bitboard(FILE_B),
-            2 => Bitboard(FILE_C),
-            3 => Bitboard(FILE_D),
-            4 => Bitboard(FILE_E),
-            5 => Bitboard(FILE_F),
-            6 => Bitboard(FILE_G),
-            7 => Bitboard(FILE_H),
+            0 => FILE_A,
+            1 => FILE_B,
+            2 => FILE_C,
+            3 => FILE_D,
+            4 => FILE_E,
+            5 => FILE_F,
+            6 => FILE_G,
+            7 => FILE_H,
             _ => panic!(),
         }
     }
@@ -141,5 +141,11 @@ impl ops::BitXor for Square {
 
     fn bitxor(self, rhs: Self) -> Self::Output {
         Square(self.0 ^ rhs.0)
+    }
+}
+
+impl ToString for Square {
+    fn to_string(&self) -> String {
+        self.0.to_string()
     }
 }

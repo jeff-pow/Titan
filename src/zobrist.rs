@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{board::Board, eval::eval, pieces::Color};
+use crate::{board::Board, eval::eval, pieces::Color, square::SquareIter};
 
 #[rustfmt::skip]
 /// Randomly generated values to hash boards. Far from perfect, but *probably* good enough to avoid
@@ -31,9 +31,9 @@ pub fn check_for_3x_repetition(board: &Board, triple_repetitions: &mut HashMap<u
 /// Provides a hash for the board eval to be placed into a transposition table
 pub fn hash_board(board: &Board) -> u64 {
     let mut hash = 0;
-    for square in 0..64 {
+    for square in SquareIter::new() {
         if let Some(_piece) = board.piece_on_square(square) {
-            hash ^= PIECE_HASHES[square];
+            hash ^= PIECE_HASHES[square.0 as usize];
         }
     }
 

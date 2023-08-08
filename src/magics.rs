@@ -8,11 +8,13 @@ use crate::{
         create_square_and_checked_shift, dist, distance, get_file_bitboard, get_rank_bitboard,
         shift,
     },
+    bitboard::Bitboard,
     moves::{
         coordinates,
         Direction::{self, *},
     },
     pieces::PieceName,
+    square::Square,
 };
 
 #[derive(Clone, Copy)]
@@ -141,17 +143,17 @@ fn try_make_table(
     Ok(table)
 }
 
-pub fn rook_attacks(square: usize, blockers: u64) -> u64 {
+pub fn rook_attacks(square: Square, blockers: Bitboard) -> Bitboard {
     unsafe {
-        let magic = &ROOK_MAGICS[square];
-        ROOK_MOVES[magic_index(magic, blockers)]
+        let magic = &ROOK_MAGICS[square.0 as usize];
+        Bitboard(ROOK_MOVES[magic_index(magic, blockers.0)])
     }
 }
 
-pub fn bishop_attacks(square: usize, blockers: u64) -> u64 {
+pub fn bishop_attacks(square: Square, blockers: Bitboard) -> Bitboard {
     unsafe {
-        let magic = &BISHOP_MAGICS[square];
-        BISHOP_MOVES[magic_index(magic, blockers)]
+        let magic = &BISHOP_MAGICS[square.0 as usize];
+        Bitboard(BISHOP_MOVES[magic_index(magic, blockers.0)])
     }
 }
 

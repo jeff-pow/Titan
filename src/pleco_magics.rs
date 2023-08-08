@@ -3,6 +3,7 @@ use std::{mem, ptr};
 use crate::{
     attack_boards::*,
     bit_hacks::{distance, get_file_bitboard, get_rank_bitboard},
+    bitboard::Bitboard,
 };
 
 // Simple Pcg64Mcg implementation
@@ -178,8 +179,8 @@ unsafe fn gen_magic_board(
         // edges is the bitboard representation of the edges s is not on.
         // e.g. sq A1 is on FileA and Rank1, so edges = bitboard of FileH and Rank8
         // mask = occupancy mask of square s
-        let edges: u64 =
-            ((RANK1 | RANK8) & !get_rank_bitboard(s)) | ((FILE_A | FILE_H) & !get_file_bitboard(s));
+        let edges: u64 = ((RANK1.0 | RANK8.0) & !get_rank_bitboard(s))
+            | ((FILE_A.0 | FILE_H.0) & !get_file_bitboard(s));
         let mask: u64 = sliding_attack(deltas, s, 0) & !edges;
 
         // Shift = number of bits in 64 - bits in mask = log2(size)

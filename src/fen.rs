@@ -1,6 +1,7 @@
 use crate::board::Board;
 /** File takes a string in Forsyth-Edwards notation and constructs a board state */
 use crate::pieces::{Color, PieceName};
+use crate::square::Square;
 
 pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 #[allow(dead_code)]
@@ -25,6 +26,7 @@ pub fn build_board(fen_string: &str) -> Board {
                 continue;
             } else {
                 let square = row * 8 + idx;
+                let square = Square(square as u8);
                 match c {
                     'K' => board.place_piece(PieceName::King, Color::White, square),
                     'Q' => board.place_piece(PieceName::Queen, Color::White, square),
@@ -67,7 +69,7 @@ pub fn build_board(fen_string: &str) -> Board {
     let en_passant_letters: Vec<char> = iter.next().unwrap().chars().collect();
     let en_passant_idx = find_en_passant_square(en_passant_letters);
     if let Some(idx) = en_passant_idx {
-        board.en_passant_square = idx as i8
+        board.en_passant_square = Square(idx as u8)
     }
     // Half move clock: not yet implemented
     iter.next();

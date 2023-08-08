@@ -1,6 +1,7 @@
 use crate::{
     attack_boards::*,
     moves::{self, coordinates, rank, Direction},
+    square::Square,
 };
 use std::ops::{Shl, ShlAssign};
 
@@ -16,7 +17,7 @@ pub fn create_square_and_checked_shift(bitboard: u64, dir: Direction) -> Option<
             }
         }
         Direction::NorthWest => {
-            let shifted = (bitboard.checked_shl(7).unwrap_or(0)) & !FILE_H;
+            let shifted = (bitboard.checked_shl(7).unwrap_or(0)) & !FILE_H.0;
             if bitboard.leading_zeros() >= 7 && shifted.trailing_zeros() >= 7 {
                 Some(shifted)
             } else {
@@ -24,7 +25,7 @@ pub fn create_square_and_checked_shift(bitboard: u64, dir: Direction) -> Option<
             }
         }
         Direction::West => {
-            let shifted = (bitboard.checked_shr(1).unwrap_or(0)) & !FILE_H;
+            let shifted = (bitboard.checked_shr(1).unwrap_or(0)) & !FILE_H.0;
             if shifted.leading_zeros() >= 7 && bitboard.trailing_zeros() >= 1 {
                 Some(shifted)
             } else {
@@ -32,7 +33,7 @@ pub fn create_square_and_checked_shift(bitboard: u64, dir: Direction) -> Option<
             }
         }
         Direction::SouthWest => {
-            let shifted = (bitboard.checked_shr(9).unwrap_or(0)) & !FILE_H;
+            let shifted = (bitboard.checked_shr(9).unwrap_or(0)) & !FILE_H.0;
             if shifted.leading_zeros() >= 7 && bitboard.trailing_zeros() >= 9 {
                 Some(shifted)
             } else {
@@ -47,7 +48,7 @@ pub fn create_square_and_checked_shift(bitboard: u64, dir: Direction) -> Option<
             }
         }
         Direction::SouthEast => {
-            let shifted = (bitboard.checked_shr(7).unwrap_or(0)) & !FILE_A;
+            let shifted = (bitboard.checked_shr(7).unwrap_or(0)) & !FILE_A.0;
             if bitboard.trailing_zeros() >= 7 && shifted.leading_zeros() >= 7 {
                 Some(shifted)
             } else {
@@ -55,7 +56,7 @@ pub fn create_square_and_checked_shift(bitboard: u64, dir: Direction) -> Option<
             }
         }
         Direction::East => {
-            let shifted = (bitboard.checked_shl(1).unwrap_or(0)) & !FILE_A;
+            let shifted = (bitboard.checked_shl(1).unwrap_or(0)) & !FILE_A.0;
             if bitboard.leading_zeros() >= 1 && shifted.trailing_zeros() >= 7 {
                 Some(shifted)
             } else {
@@ -63,7 +64,7 @@ pub fn create_square_and_checked_shift(bitboard: u64, dir: Direction) -> Option<
             }
         }
         Direction::NorthEast => {
-            let shifted = (bitboard.checked_shl(9).unwrap_or(0)) & !FILE_A;
+            let shifted = (bitboard.checked_shl(9).unwrap_or(0)) & !FILE_A.0;
             if bitboard.leading_zeros() >= 9 && shifted.trailing_zeros() >= 7 {
                 Some(shifted)
             } else {
@@ -77,13 +78,13 @@ pub fn create_square_and_checked_shift(bitboard: u64, dir: Direction) -> Option<
 pub fn shift(bitboard: u64, dir: Direction) -> u64 {
     match dir {
         Direction::North => bitboard << 8,
-        Direction::NorthWest => (bitboard << 7) & !FILE_H,
-        Direction::West => (bitboard >> 1) & !FILE_H,
-        Direction::SouthWest => (bitboard >> 9) & !FILE_H,
+        Direction::NorthWest => (bitboard << 7) & !FILE_H.0,
+        Direction::West => (bitboard >> 1) & !FILE_H.0,
+        Direction::SouthWest => (bitboard >> 9) & !FILE_H.0,
         Direction::South => bitboard >> 8,
-        Direction::SouthEast => (bitboard >> 7) & !FILE_A,
-        Direction::East => (bitboard << 1) & !FILE_A,
-        Direction::NorthEast => (bitboard << 9) & !FILE_A,
+        Direction::SouthEast => (bitboard >> 7) & !FILE_A.0,
+        Direction::East => (bitboard << 1) & !FILE_A.0,
+        Direction::NorthEast => (bitboard << 9) & !FILE_A.0,
     }
 }
 
@@ -95,27 +96,17 @@ pub fn pop_lsb(bb: &mut u64) -> u64 {
 }
 
 #[inline]
-pub fn bit_is_on(bb: u64, idx: usize) -> bool {
-    bb & (1 << idx) != 0
-}
-
-#[inline]
-pub fn bit_is_off(bb: u64, idx: usize) -> bool {
-    bb & (1 << idx) == 0
-}
-
-#[inline]
 pub fn get_rank_bitboard(square: u8) -> u64 {
     let x = moves::rank(square);
     match x {
-        0 => RANK1,
-        1 => RANK2,
-        2 => RANK3,
-        3 => RANK4,
-        4 => RANK5,
-        5 => RANK6,
-        6 => RANK7,
-        7 => RANK8,
+        0 => RANK1.0,
+        1 => RANK2.0,
+        2 => RANK3.0,
+        3 => RANK4.0,
+        4 => RANK5.0,
+        5 => RANK6.0,
+        6 => RANK7.0,
+        7 => RANK8.0,
         _ => panic!(),
     }
 }
@@ -124,14 +115,14 @@ pub fn get_rank_bitboard(square: u8) -> u64 {
 pub fn get_file_bitboard(square: u8) -> u64 {
     let y = moves::file(square);
     match y {
-        0 => FILE_A,
-        1 => FILE_B,
-        2 => FILE_C,
-        3 => FILE_D,
-        4 => FILE_E,
-        5 => FILE_F,
-        6 => FILE_G,
-        7 => FILE_H,
+        0 => FILE_A.0,
+        1 => FILE_B.0,
+        2 => FILE_C.0,
+        3 => FILE_D.0,
+        4 => FILE_E.0,
+        5 => FILE_F.0,
+        6 => FILE_G.0,
+        7 => FILE_H.0,
         _ => panic!(),
     }
 }
@@ -174,27 +165,27 @@ mod bitboard_tests {
         );
         assert_eq!(
             shift(bitboard, Direction::East),
-            (0b1100_0000_0000_0000 << 1) & !FILE_A
+            (0b1100_0000_0000_0000 << 1) & !FILE_A.0
         );
         assert_eq!(
             shift(bitboard, Direction::West),
-            (0b1100_0000_0000_0000 >> 1) & !FILE_H
+            (0b1100_0000_0000_0000 >> 1) & !FILE_H.0
         );
         assert_eq!(
             shift(bitboard, Direction::NorthEast),
-            (0b1100_0000_0000_0000 << 9) & !FILE_A
+            (0b1100_0000_0000_0000 << 9) & !FILE_A.0
         );
         assert_eq!(
             shift(bitboard, Direction::NorthWest),
-            (0b1100_0000_0000_0000 << 7) & !FILE_H
+            (0b1100_0000_0000_0000 << 7) & !FILE_H.0
         );
         assert_eq!(
             shift(bitboard, Direction::SouthEast),
-            (0b1100_0000_0000_0000 >> 7) & !FILE_A
+            (0b1100_0000_0000_0000 >> 7) & !FILE_A.0
         );
         assert_eq!(
             shift(bitboard, Direction::SouthWest),
-            (0b1100_0000_0000_0000 >> 9) & !FILE_H
+            (0b1100_0000_0000_0000 >> 9) & !FILE_H.0
         );
     }
 
@@ -211,27 +202,27 @@ mod bitboard_tests {
         );
         assert_eq!(
             create_square_and_checked_shift(bitboard, Direction::East),
-            Some((0b1100_0000_0000_0000 << 1) & !FILE_A)
+            Some((0b1100_0000_0000_0000 << 1) & !FILE_A.0)
         );
         assert_eq!(
             create_square_and_checked_shift(bitboard, Direction::West),
-            Some((0b1100_0000_0000_0000 >> 1) & !FILE_H)
+            Some((0b1100_0000_0000_0000 >> 1) & !FILE_H.0)
         );
         assert_eq!(
             create_square_and_checked_shift(bitboard, Direction::NorthEast),
-            Some((0b1100_0000_0000_0000 << 9) & !FILE_A)
+            Some((0b1100_0000_0000_0000 << 9) & !FILE_A.0)
         );
         assert_eq!(
             create_square_and_checked_shift(bitboard, Direction::NorthWest),
-            Some((0b1100_0000_0000_0000 << 7) & !FILE_H)
+            Some((0b1100_0000_0000_0000 << 7) & !FILE_H.0)
         );
         assert_eq!(
             create_square_and_checked_shift(bitboard, Direction::SouthEast),
-            Some((0b1100_0000_0000_0000 >> 7) & !FILE_A)
+            Some((0b1100_0000_0000_0000 >> 7) & !FILE_A.0)
         );
         assert_eq!(
             create_square_and_checked_shift(bitboard, Direction::SouthWest),
-            Some((0b1100_0000_0000_0000 >> 9) & !FILE_H)
+            Some((0b1100_0000_0000_0000 >> 9) & !FILE_H.0)
         );
     }
 

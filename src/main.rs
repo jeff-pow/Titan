@@ -1,7 +1,10 @@
+#![feature(const_trait_impl)]
 mod attack_boards;
 mod bit_hacks;
 mod bitboard;
+mod board;
 mod eval;
+mod fen;
 mod magics;
 mod moves;
 mod pieces;
@@ -23,13 +26,11 @@ use std::process::exit;
 
 use crate::moves::generate_moves;
 
-mod board;
-mod fen;
-
 fn main() {
     init_attack_boards();
     let board = fen::build_board(fen::STARTING_FEN);
-    // print_moves(&board);
+    let board = fen::build_board("8/8/8/8/4Q3/8/8/8 w - - 0 1");
+    print_moves(&board);
     uci::main_loop();
 }
 
