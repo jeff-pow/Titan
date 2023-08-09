@@ -1,29 +1,7 @@
 use crate::{
     attack_boards::*,
-    moves::{self, coordinates, rank, Direction},
+    moves::{self, coordinates},
 };
-
-
-#[inline]
-pub fn shift(bitboard: u64, dir: Direction) -> u64 {
-    match dir {
-        Direction::North => bitboard << 8,
-        Direction::NorthWest => (bitboard << 7) & !FILE_H.0,
-        Direction::West => (bitboard >> 1) & !FILE_H.0,
-        Direction::SouthWest => (bitboard >> 9) & !FILE_H.0,
-        Direction::South => bitboard >> 8,
-        Direction::SouthEast => (bitboard >> 7) & !FILE_A.0,
-        Direction::East => (bitboard << 1) & !FILE_A.0,
-        Direction::NorthEast => (bitboard << 9) & !FILE_A.0,
-    }
-}
-
-#[inline]
-pub fn pop_lsb(bb: &mut u64) -> u64 {
-    let lsb = *bb & bb.wrapping_neg();
-    *bb ^= lsb;
-    lsb.trailing_zeros() as u64
-}
 
 #[inline]
 pub fn get_rank_bitboard(square: u8) -> u64 {
@@ -65,14 +43,3 @@ pub fn distance(s1: u8, s2: u8) -> u64 {
     let y_diff = y1.abs_diff(y2);
     x_diff.max(y_diff) as u64
 }
-
-pub fn dist(s1: u8, s2: u8) -> u64 {
-    let x1 = rank(s1);
-    let y1 = moves::file(s1);
-    let x2 = rank(s2);
-    let y2 = moves::file(s2);
-    let x_diff = x1.abs_diff(x2);
-    let y_diff = y1.abs_diff(y2);
-    x_diff.max(y_diff) as u64
-}
-

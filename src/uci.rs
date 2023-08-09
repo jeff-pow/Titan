@@ -1,7 +1,6 @@
 use crate::board::Board;
 use crate::fen::{self, build_board, parse_fen_from_buffer};
 use crate::moves::from_lan;
-use crate::pieces::Color;
 use crate::search::*;
 use crate::zobrist::add_to_triple_repetition_map;
 #[allow(unused_imports)]

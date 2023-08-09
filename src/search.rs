@@ -178,9 +178,9 @@ fn search_helper(
 fn score_move(board: &Board, m: &Move) -> i32 {
     let mut score = 0;
     let piece_moving = board
-        .piece_on_square(m.origin_square().into())
+        .piece_on_square(m.origin_square())
         .expect("There should be a piece here");
-    let capture = board.piece_on_square(m.dest_square().into());
+    let capture = board.piece_on_square(m.dest_square());
     if let Some(capture) = capture {
         score += 10 * piece_value(capture) - piece_value(piece_moving);
     }
