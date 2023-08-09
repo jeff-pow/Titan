@@ -331,8 +331,8 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
         moves.push(Move::new(src, dest, None, MoveType::Normal));
     }
 
+    // Promotions - captures and straight pushes
     if promotions > Bitboard::empty() {
-        // Promotions - captures and straight pushes
         let mut no_capture_promotions = promotions.shift(up) & vacancies;
         let left_capture_promotions = promotions.shift(up_left) & enemies;
         let right_capture_promotions = promotions.shift(up_right) & enemies;
