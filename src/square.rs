@@ -116,7 +116,6 @@ impl Iterator for SquareIter {
 
 impl ops::BitAnd for Square {
     type Output = Self;
-
     fn bitand(self, rhs: Self) -> Self::Output {
         Square(self.0 & rhs.0)
     }
@@ -124,7 +123,6 @@ impl ops::BitAnd for Square {
 
 impl ops::BitOr for Square {
     type Output = Self;
-
     fn bitor(self, rhs: Self) -> Self::Output {
         Square(self.0 | rhs.0)
     }
@@ -132,7 +130,6 @@ impl ops::BitOr for Square {
 
 impl ops::BitXor for Square {
     type Output = Self;
-
     fn bitxor(self, rhs: Self) -> Self::Output {
         Square(self.0 ^ rhs.0)
     }

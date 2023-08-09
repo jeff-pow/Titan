@@ -433,8 +433,10 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> Vec<Move> {
                 PieceName::Knight => knight_attacks(square),
                 Pawn => panic!(),
             };
-            let enemies = !board.color_occupancies(board.to_move);
-            let attacks = attack_bitboard & enemies;
+            // Tells the program that out of the selected attack squares, the piece can move to
+            // empty ones or ones where an enemy piece is
+            let enemies_and_vacancies = !board.color_occupancies(board.to_move);
+            let attacks = attack_bitboard & enemies_and_vacancies;
             push_moves(&mut moves, attacks, square);
         }
     }

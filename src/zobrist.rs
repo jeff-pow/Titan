@@ -69,7 +69,7 @@ mod hashing_test {
     use crate::{fen, zobrist::hash_board};
 
     #[test]
-    fn test_different_boards() {
+    fn test_hashing() {
         let board1 = fen::build_board(fen::STARTING_FEN);
         let board2 = fen::build_board("4r3/4k3/8/4K3/8/8/8/8 w - - 0 1");
         let board3 = fen::build_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");

@@ -22,6 +22,7 @@ pub struct Board {
     pub black_king_square: Square,
     pub white_king_square: Square,
     pub num_moves: i32,
+    pub zobrist_hash: u64,
 }
 
 impl Board {
@@ -37,6 +38,7 @@ impl Board {
             white_king_square: Square::INVALID,
             black_king_square: Square::INVALID,
             num_moves: 0,
+            zobrist_hash: 0,
         }
     }
 
