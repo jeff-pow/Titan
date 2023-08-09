@@ -72,7 +72,7 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, zobrist_map: &mut
         println!("{m}");
         println!("{board}");
         println!();
-        if board.under_attack(board.to_move) {
+        if board.square_under_attack(board.to_move) {
             match board.to_move {
                 Color::White => {
                     board.white_king_castle = false;

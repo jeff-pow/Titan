@@ -1,9 +1,8 @@
-use std::{mem, ptr};
+use std::ptr;
 
 use crate::{
     attack_boards::*,
     bit_hacks::{distance, get_file_bitboard, get_rank_bitboard},
-    bitboard::Bitboard,
 };
 
 // Simple Pcg64Mcg implementation

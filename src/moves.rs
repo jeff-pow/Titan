@@ -333,7 +333,7 @@ fn gen_pawn_moves(board: &Board) -> Vec<Move> {
 
     // Single and double pawn pushes w/o captures
     let mut push_one = vacancies & non_promotions.shift(up);
-    let mut push_two = vacancies & (push_one & rank3_bb).shift(up);
+    let push_two = vacancies & (push_one & rank3_bb).shift(up);
     while push_one > Bitboard::empty() {
         let dest = push_one.pop_lsb();
         let src = dest.shift(South).expect("Valid shift");
@@ -352,8 +352,8 @@ fn gen_pawn_moves(board: &Board) -> Vec<Move> {
     if promotions > Bitboard::empty() {
         // Promotions - captures and straight pushes
         let mut no_capture_promotions = promotions.shift(up) & vacancies;
-        let mut left_capture_promotions = promotions.shift(up_left) & enemies;
-        let mut right_capture_promotions = promotions.shift(up_right) & enemies;
+        let left_capture_promotions = promotions.shift(up_left) & enemies;
+        let right_capture_promotions = promotions.shift(up_right) & enemies;
         while no_capture_promotions > Bitboard::empty() {
             generate_promotions(no_capture_promotions.pop_lsb(), up, &mut moves);
         }
@@ -472,7 +472,7 @@ pub fn generate_moves(board: &Board) -> Vec<Move> {
         .filter(|m| {
             let mut new_b = *board;
             new_b.make_move(m);
-            !new_b.under_attack(board.to_move)
+            !new_b.square_under_attack(board.to_move)
         })
         .collect::<Vec<Move>>()
 }

@@ -1,4 +1,3 @@
-#![feature(const_trait_impl)]
 mod attack_boards;
 mod bit_hacks;
 mod bitboard;
@@ -14,30 +13,20 @@ mod uci;
 mod zobrist;
 
 use attack_boards::init_attack_boards;
-#[allow(unused_imports)]
-// use crate::{moves::generate_all_moves, search::time_move_generation};
 use board::Board;
 
 #[allow(unused_imports)]
 use search::*;
-use square::Square;
+
 use std::process::exit;
 
 use crate::moves::generate_moves;
 
 fn main() {
     init_attack_boards();
-    let mut rng = pleco_magics::Rng::default();
-    let mut num_ones = Vec::new();
-    for _ in 0..100000000 {
-        let next = rng.next_magic();
-        num_ones.push(next.count_ones());
-    }
-    let avg = num_ones.iter().sum::<u32>() as f64 / num_ones.len() as f64;
-    println!("{}", avg);
-    exit(0);
     let board = fen::build_board(fen::STARTING_FEN);
-    let board = fen::build_board("8/8/8/8/4Q3/8/8/8 w - - 0 1");
+    // Test out a knight that has to move into the way of the rook to prevent check
+    let board = fen::build_board("5r2/8/8/8/8/4N3/8/5K2 w - - 0 1");
     print_moves(&board);
     uci::main_loop();
 }

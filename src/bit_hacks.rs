@@ -1,9 +1,7 @@
 use crate::{
     attack_boards::*,
     moves::{self, coordinates, rank, Direction},
-    square::Square,
 };
-use std::ops::{Shl, ShlAssign};
 
 #[inline]
 pub fn create_square_and_checked_shift(bitboard: u64, dir: Direction) -> Option<u64> {

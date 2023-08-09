@@ -8,15 +8,8 @@ pub const KNIGHT_PTS: i32 = 350;
 pub const PAWN_PTS: i32 = 100;
 pub const NUM_PIECES: usize = 6;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Piece {
-    pub current_square: i8,
-    pub color: Color,
-    pub piece_name: PieceName,
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(usize)]
+#[repr(u8)]
 pub enum Color {
     White = 0,
     Black = 1,
@@ -57,16 +50,5 @@ pub fn piece_value(piece_name: PieceName) -> i32 {
         PieceName::Bishop => BISHOP_PTS,
         PieceName::Knight => KNIGHT_PTS,
         PieceName::Pawn => PAWN_PTS,
-    }
-}
-
-impl Piece {
-    #[allow(dead_code)]
-    pub fn new(color: Color, piece_name: PieceName, starting_square: i8) -> Self {
-        Self {
-            current_square: starting_square,
-            color,
-            piece_name,
-        }
     }
 }

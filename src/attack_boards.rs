@@ -3,7 +3,7 @@ use crate::{
     board::Board,
     moves::coordinates,
     pieces::{Color, PieceName},
-    pleco_magics::{self, init_magics},
+    pleco_magics::init_magics,
     square::Square,
 };
 
@@ -89,7 +89,7 @@ fn gen_king_attack_boards() {
 fn gen_knight_attack_boards() {
     unsafe {
         KNIGHT_TABLE.iter_mut().enumerate().for_each(|(square, moves)| {
-            let (x, y) = coordinates(square);
+            let (_x, _y) = coordinates(square);
             let x = Square(square as u8).rank();
             let y = Square(square as u8).file();
             if x >= 2 {

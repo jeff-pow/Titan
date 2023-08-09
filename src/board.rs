@@ -1,7 +1,9 @@
 use core::fmt;
 
+use crate::attack_boards::{gen_pawn_attack_board, king_attacks, knight_attacks};
 use crate::bitboard::Bitboard;
 use crate::moves::Direction;
+use crate::pleco_magics::{bishop_attacks, rook_attacks};
 use crate::square::Square;
 use crate::{
     moves::{Castle, Direction::*, Move, Promotion},
@@ -117,8 +119,22 @@ impl Board {
         self.board[color as usize][piece_type as usize] &= !sq.bitboard();
     }
 
-    pub fn under_attack(&self, _to_move: Color) -> bool {
-        false
+    pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
+        let attacker_occupancy = self.board[attacker as usize];
+        let occupancy = self.occupancies();
+        let pawn_attacks = gen_pawn_attack_board(self);
+        let knight_attacks = knight_attacks(sq);
+        let bishop_attacks = Bitboard(bishop_attacks(occupancy.0, sq.0));
+        let rook_attacks = Bitboard(rook_attacks(occupancy.0, sq.0));
+        let queen_attacks = rook_attacks | bishop_attacks;
+        let king_attacks = king_attacks(sq);
+
+        (king_attacks & attacker_occupancy[King as usize] > Bitboard::empty())
+            || (queen_attacks & attacker_occupancy[Queen as usize] > Bitboard::empty())
+            || (rook_attacks & attacker_occupancy[Rook as usize] > Bitboard::empty())
+            || (bishop_attacks & attacker_occupancy[Bishop as usize] > Bitboard::empty())
+            || (knight_attacks & attacker_occupancy[Knight as usize] > Bitboard::empty())
+            || (pawn_attacks & attacker_occupancy[Pawn as usize] > Bitboard::empty())
     }
 
     /// Function makes a move and modifies board state to reflect the move that just happened
@@ -282,13 +298,13 @@ impl Board {
         // Update castling ability based on check
         match self.to_move {
             Color::White => {
-                if self.under_attack(Color::White) {
+                if self.square_under_attack(Color::Black, self.white_king_square) {
                     self.white_king_castle = false;
                     self.white_queen_castle = false;
                 }
             }
             Color::Black => {
-                if self.under_attack(Color::Black) {
+                if self.square_under_attack(Color::White, self.black_king_square) {
                     self.black_king_castle = false;
                     self.black_queen_castle = false;
                 }
