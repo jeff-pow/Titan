@@ -11,7 +11,7 @@ use crate::magics::{bishop_attacks, rook_attacks};
 use crate::moves::Direction::*;
 use crate::pieces::opposite_color;
 use crate::pieces::PieceName::Pawn;
-use crate::square::{Square, SquareIter};
+use crate::square::Square;
 use crate::{board::Board, pieces::Color, pieces::PieceName};
 
 enum MoveType {
@@ -418,7 +418,7 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> Vec<Move> {
     if board.board[board.to_move as usize][piece_name as usize] == Bitboard::empty() {
         return moves;
     }
-    for square in SquareIter::new() {
+    for square in Square::iter() {
         if board.square_contains_piece(piece_name, board.to_move, square) {
             // Possible bug? Or maybe enemies is just an awful name and it should be occupancies...
             let enemies = !board.color_occupancies(board.to_move);

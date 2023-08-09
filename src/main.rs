@@ -21,7 +21,7 @@ use board::Board;
 
 #[allow(unused_imports)]
 use search::*;
-use square::{Square, SquareIter};
+use square::Square;
 use std::process::exit;
 
 use crate::moves::generate_moves;

@@ -75,13 +75,9 @@ impl Square {
         self.0 < 64
     }
 
-    pub fn new(sq: u8) -> Self {
-        Square(sq)
-    }
-
     #[inline]
     pub fn bitboard(&self) -> Bitboard {
-        Bitboard(1 << self.0 as u8)
+        Bitboard(1 << self.0)
     }
 
     #[inline]
@@ -90,20 +86,18 @@ impl Square {
         self.0 ^= lsb;
         lsb.trailing_zeros() as u8
     }
-}
 
-pub struct SquareIter {
-    current: u8,
-    end: u8,
-}
-
-impl SquareIter {
-    pub fn new() -> Self {
+    pub fn iter() -> SquareIter {
         SquareIter {
             current: 0,
             end: 64,
         }
     }
+}
+
+pub struct SquareIter {
+    current: u8,
+    end: u8,
 }
 
 impl Iterator for SquareIter {
