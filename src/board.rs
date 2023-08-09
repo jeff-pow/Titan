@@ -119,6 +119,14 @@ impl Board {
         self.board[color as usize][piece_type as usize] &= !sq.bitboard();
     }
 
+    pub fn side_in_check(&self, side: Color) -> bool {
+        let king_square = match side {
+            Color::White => self.white_king_square,
+            Color::Black => self.black_king_square,
+        };
+        self.square_under_attack(opposite_color(side), king_square)
+    }
+
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
         let attacker_occupancy = self.board[attacker as usize];
         let occupancy = self.occupancies();
@@ -129,12 +137,12 @@ impl Board {
         let queen_attacks = rook_attacks | bishop_attacks;
         let king_attacks = king_attacks(sq);
 
-        (king_attacks & attacker_occupancy[King as usize] > Bitboard::empty())
-            || (queen_attacks & attacker_occupancy[Queen as usize] > Bitboard::empty())
-            || (rook_attacks & attacker_occupancy[Rook as usize] > Bitboard::empty())
-            || (bishop_attacks & attacker_occupancy[Bishop as usize] > Bitboard::empty())
-            || (knight_attacks & attacker_occupancy[Knight as usize] > Bitboard::empty())
-            || (pawn_attacks & attacker_occupancy[Pawn as usize] > Bitboard::empty())
+        (king_attacks & attacker_occupancy[PieceName::King as usize] > Bitboard::empty())
+            || (queen_attacks & attacker_occupancy[PieceName::Queen as usize] > Bitboard::empty())
+            || (rook_attacks & attacker_occupancy[PieceName::Rook as usize] > Bitboard::empty())
+            || (bishop_attacks & attacker_occupancy[PieceName::Bishop as usize] > Bitboard::empty())
+            || (knight_attacks & attacker_occupancy[PieceName::Knight as usize] > Bitboard::empty())
+            || (pawn_attacks & attacker_occupancy[PieceName::Pawn as usize] > Bitboard::empty())
     }
 
     /// Function makes a move and modifies board state to reflect the move that just happened
@@ -161,9 +169,9 @@ impl Board {
         }
 
         let piece_moving = self
-            .piece_on_square(m.origin_square().into())
+            .piece_on_square(m.origin_square())
             .expect("There should be a piece here");
-        let capture = self.piece_on_square(m.dest_square().into());
+        let capture = self.piece_on_square(m.dest_square());
         self.place_piece(piece_moving, self.to_move, m.dest_square());
         self.remove_piece(piece_moving, self.to_move, m.origin_square());
 
@@ -298,13 +306,13 @@ impl Board {
         // Update castling ability based on check
         match self.to_move {
             Color::White => {
-                if self.square_under_attack(Color::Black, self.white_king_square) {
+                if self.side_in_check(Color::White) {
                     self.white_king_castle = false;
                     self.white_queen_castle = false;
                 }
             }
             Color::Black => {
-                if self.square_under_attack(Color::White, self.black_king_square) {
+                if self.side_in_check(Color::Black) {
                     self.black_king_castle = false;
                     self.black_queen_castle = false;
                 }

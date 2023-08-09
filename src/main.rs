@@ -25,8 +25,6 @@ use crate::moves::generate_moves;
 fn main() {
     init_attack_boards();
     let board = fen::build_board(fen::STARTING_FEN);
-    // Test out a knight that has to move into the way of the rook to prevent check
-    let board = fen::build_board("5r2/8/8/8/8/4N3/8/5K2 w - - 0 1");
     print_moves(&board);
     uci::main_loop();
 }

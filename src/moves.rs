@@ -73,13 +73,6 @@ impl Direction {
 pub struct Move(u16);
 
 impl Move {
-    /// A move needs 16 bits to be stored
-    ///
-    /// bit  0- 5: origin square (from 0 to 63)
-    /// bit  6-11: destination square (from 0 to 63)
-    /// bit 12-13: promotion piece
-    /// bit 14-15: special move flag: normal move (0), promotion (1), en passant (2), castling (3)
-    /// NOTE: en passant bit is set only when a pawn can be captured
     fn new(
         origin: Square,
         destination: Square,
@@ -282,11 +275,11 @@ fn generate_psuedolegal_moves(board: &Board) -> Vec<Move> {
     moves.append(&mut generate_bitboard_moves(board, PieceName::Queen));
     moves.append(&mut generate_bitboard_moves(board, PieceName::Rook));
     moves.append(&mut generate_bitboard_moves(board, PieceName::Bishop));
-    moves.append(&mut gen_pawn_moves(board));
+    moves.append(&mut generate_pawn_moves(board));
     moves
 }
 
-fn gen_pawn_moves(board: &Board) -> Vec<Move> {
+fn generate_pawn_moves(board: &Board) -> Vec<Move> {
     let mut moves = Vec::new();
     let pawns = board.board[board.to_move as usize][Pawn as usize];
     let vacancies = !board.occupancies();
@@ -465,16 +458,14 @@ pub fn generate_quiet_moves(board: &Board) -> Vec<Move> {
 }
 
 pub fn generate_moves(board: &Board) -> Vec<Move> {
-    let psuedolegal = generate_psuedolegal_moves(board);
-
-    psuedolegal
+    generate_psuedolegal_moves(board)
         .into_iter()
         .filter(|m| {
             let mut new_b = *board;
             new_b.make_move(m);
-            !new_b.square_under_attack(board.to_move)
+            !new_b.side_in_check(board.to_move)
         })
-        .collect::<Vec<Move>>()
+        .collect()
 }
 
 impl Display for Move {

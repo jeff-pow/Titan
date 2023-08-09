@@ -72,18 +72,6 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, zobrist_map: &mut
         println!("{m}");
         println!("{board}");
         println!();
-        if board.square_under_attack(board.to_move) {
-            match board.to_move {
-                Color::White => {
-                    board.white_king_castle = false;
-                    board.white_queen_castle = false;
-                }
-                Color::Black => {
-                    board.black_king_castle = false;
-                    board.black_queen_castle = false;
-                }
-            }
-        }
         add_to_triple_repetition_map(board, zobrist_map);
     }
 }

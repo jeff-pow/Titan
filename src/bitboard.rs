@@ -149,7 +149,7 @@ impl ops::BitOr for Bitboard {
 }
 impl ops::BitOrAssign for Bitboard {
     fn bitor_assign(&mut self, rhs: Self) {
-        self.0 ^= rhs.0;
+        self.0 |= rhs.0;
     }
 }
 impl ops::BitXor for Bitboard {

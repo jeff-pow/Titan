@@ -141,7 +141,7 @@ fn search_helper(
 
     if moves.is_empty() {
         // Checkmate
-        if board.square_under_attack(board.to_move) {
+        if board.side_in_check(board.to_move) {
             // Distance from root is returned in order for other recursive calls to determine
             // shortest viable checkmate path
             return -IN_CHECK_MATE + dist_from_root;
