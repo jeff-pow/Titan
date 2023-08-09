@@ -32,7 +32,7 @@ pub fn check_for_3x_repetition(board: &Board, triple_repetitions: &mut HashMap<u
 pub fn hash_board(board: &Board) -> u64 {
     let mut hash = 0;
     for square in Square::iter() {
-        if let Some(_piece) = board.piece_on_square(square) {
+        if let Some(_) = board.piece_on_square(square) {
             hash ^= PIECE_HASHES[square.0 as usize];
         }
     }

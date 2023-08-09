@@ -90,7 +90,7 @@ impl Square {
     pub fn iter() -> SquareIter {
         SquareIter {
             current: 0,
-            end: 64,
+            end: 63,
         }
     }
 }

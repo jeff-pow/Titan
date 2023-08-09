@@ -5,7 +5,6 @@ mod bitboard;
 mod board;
 mod eval;
 mod fen;
-mod magics;
 mod moves;
 mod pieces;
 mod pleco_magics;

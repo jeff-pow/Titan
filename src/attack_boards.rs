@@ -1,11 +1,9 @@
 use crate::{
     bitboard::Bitboard,
     board::Board,
-    magics,
-    magics::gen_magics,
     moves::coordinates,
     pieces::{Color, PieceName},
-    pleco_magics,
+    pleco_magics::{self, init_magics},
     square::Square,
 };
 
@@ -48,12 +46,12 @@ pub const RANK8: Bitboard = Bitboard(RANK8_U64);
 static mut KNIGHT_TABLE: [Bitboard; 64] = [Bitboard::empty(); 64];
 static mut KING_TABLE: [Bitboard; 64] = [Bitboard::empty(); 64];
 
-pub fn knight_attacks(square: usize) -> Bitboard {
-    unsafe { KNIGHT_TABLE[square] }
+pub fn knight_attacks(square: Square) -> Bitboard {
+    unsafe { KNIGHT_TABLE[square.0 as usize] }
 }
 
-pub fn king_attacks(square: usize) -> Bitboard {
-    unsafe { KING_TABLE[square] }
+pub fn king_attacks(square: Square) -> Bitboard {
+    unsafe { KING_TABLE[square.0 as usize] }
 }
 
 /// Non thread safe - this functions callee's have to finish running before the program will
@@ -61,8 +59,7 @@ pub fn king_attacks(square: usize) -> Bitboard {
 pub fn init_attack_boards() {
     gen_king_attack_boards();
     gen_knight_attack_boards();
-    pleco_magics::init_magics();
-    // gen_magics();
+    init_magics();
 }
 
 #[rustfmt::skip]

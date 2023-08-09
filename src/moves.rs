@@ -1,3 +1,4 @@
+use crate::pleco_magics::bishop_attacks;
 use core::fmt;
 use std::fmt::Display;
 
@@ -5,12 +6,11 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use crate::attack_boards::{king_attacks, knight_attacks, RANK2, RANK3, RANK6, RANK7};
-use crate::bit_hacks::*;
 use crate::bitboard::Bitboard;
-use crate::magics::{bishop_attacks, rook_attacks};
 use crate::moves::Direction::*;
 use crate::pieces::opposite_color;
 use crate::pieces::PieceName::Pawn;
+use crate::pleco_magics::rook_attacks;
 use crate::square::Square;
 use crate::{board::Board, pieces::Color, pieces::PieceName};
 
@@ -415,21 +415,25 @@ fn generate_promotions(dest: Square, d: Direction, moves: &mut Vec<Move>) {
 
 fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> Vec<Move> {
     let mut moves = Vec::new();
+    // Don't calculate any moves if no pieces of that type exist for the given color
     if board.board[board.to_move as usize][piece_name as usize] == Bitboard::empty() {
         return moves;
     }
     for square in Square::iter() {
         if board.square_contains_piece(piece_name, board.to_move, square) {
             // Possible bug? Or maybe enemies is just an awful name and it should be occupancies...
-            let enemies = !board.color_occupancies(board.to_move);
+            let occupancies = board.occupancies();
             let attack_bitboard = match piece_name {
-                PieceName::King => king_attacks(square.0 as usize),
-                PieceName::Queen => rook_attacks(square, enemies) | bishop_attacks(square, enemies),
-                PieceName::Rook => rook_attacks(square, enemies),
-                PieceName::Bishop => bishop_attacks(square, enemies),
-                PieceName::Knight => knight_attacks(square.0 as usize),
+                PieceName::King => king_attacks(square),
+                PieceName::Queen => Bitboard(
+                    rook_attacks(occupancies.0, square.0) | bishop_attacks(occupancies.0, square.0),
+                ),
+                PieceName::Rook => Bitboard(rook_attacks(occupancies.0, square.0)),
+                PieceName::Bishop => Bitboard(bishop_attacks(occupancies.0, square.0)),
+                PieceName::Knight => knight_attacks(square),
                 Pawn => panic!(),
             };
+            let enemies = !board.color_occupancies(board.to_move);
             let attacks = attack_bitboard & enemies;
             push_moves(&mut moves, attacks, square);
         }
