@@ -304,20 +304,14 @@ impl Board {
             self.en_passant_square = Square::INVALID;
         }
         // Update castling ability based on check
-        match self.to_move {
-            Color::White => {
                 if self.side_in_check(Color::White) {
                     self.white_king_castle = false;
                     self.white_queen_castle = false;
                 }
-            }
-            Color::Black => {
                 if self.side_in_check(Color::Black) {
                     self.black_king_castle = false;
                     self.black_queen_castle = false;
                 }
-            }
-        }
         // Change the side to move after making a move
         match self.to_move {
             Color::White => self.to_move = Color::Black,

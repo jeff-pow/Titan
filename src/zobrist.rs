@@ -16,7 +16,7 @@ const PIECE_HASHES: [u64; 64] = [
 0x344057a0d3bc89af, 0x383c647f42f417b7, 0x58d163ba5c76fb69, 0xe18b6540a36fff7d, 0x3dc554a23ac08ac7, 0xc5d5edffdead807d, 0x71c6a53448e3a35d, 0xd628f30ca0a6a2e4
 ];
 
-/// Function checks for the presence of the board in the game. If the board position will have occured three times,
+/// Function checks for the presence of the board in the game. If the board position will have occurred three times,
 /// returns true indicating the position would be a stalemate due to the threefold repetition rule
 pub fn check_for_3x_repetition(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) -> bool {
     let hash = hash_board(board);

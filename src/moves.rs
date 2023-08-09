@@ -48,6 +48,7 @@ pub enum Direction {
 }
 
 impl Direction {
+    /// Returns the opposite direction of the given direction
     pub fn opp(&self) -> Self {
         match self {
             North => South,
@@ -292,32 +293,20 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
         Color::Black => pawns & RANK2,
     };
     let up = match board.to_move {
-        Color::White => Direction::North,
-        Color::Black => Direction::South,
+        Color::White => North,
+        Color::Black => South,
     };
-    let down = match up {
-        Direction::North => Direction::South,
-        Direction::South => Direction::North,
-        _ => panic!(),
-    };
+    let down = up.opp();
     let up_left = match board.to_move {
-        Color::White => Direction::NorthWest,
-        Color::Black => Direction::SouthEast,
+        Color::White => NorthWest,
+        Color::Black => SouthEast,
     };
-    let down_right = match up_left {
-        Direction::NorthWest => Direction::SouthEast,
-        Direction::SouthEast => Direction::NorthWest,
-        _ => panic!(),
-    };
+    let down_right = up_left.opp();
     let up_right = match board.to_move {
-        Color::White => Direction::NorthEast,
-        Color::Black => Direction::SouthWest,
+        Color::White => NorthEast,
+        Color::Black => SouthWest,
     };
-    let down_left = match up_right {
-        NorthEast => SouthWest,
-        SouthWest => NorthEast,
-        _ => panic!(),
-    };
+    let down_left = up_right.opp();
     let rank3_bb = match board.to_move {
         Color::White => RANK3,
         Color::Black => RANK6,
@@ -326,14 +315,14 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
 
     // Single and double pawn pushes w/o captures
     let mut push_one = vacancies & non_promotions.shift(up);
-    let push_two = vacancies & (push_one & rank3_bb).shift(up);
+    let mut push_two = vacancies & (push_one & rank3_bb).shift(up);
     while push_one > Bitboard::empty() {
         let dest = push_one.pop_lsb();
-        let src = dest.shift(South).expect("Valid shift");
+        let src = dest.shift(down).expect("Valid shift");
         moves.push(Move::new(src, dest, None, MoveType::Normal));
     }
     while push_two > Bitboard::empty() {
-        let dest = push_one.pop_lsb();
+        let dest = push_two.pop_lsb();
         let src = dest
             .shift(down)
             .expect("Valid shift")
