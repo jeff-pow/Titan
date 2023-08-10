@@ -64,14 +64,14 @@ impl Direction {
 
     pub fn to_xy(self) -> (i8, i8) {
         match self {
-            Direction::North => (0, 1),
-            Direction::NorthWest => (-1, 1),
-            Direction::West => (-1, 0),
-            Direction::SouthWest => (-1, -1),
-            Direction::South => (0, -1),
-            Direction::SouthEast => (1, -1),
-            Direction::East => (1, 0),
-            Direction::NorthEast => (1, 1),
+            North => (0, 1),
+            NorthWest => (-1, 1),
+            West => (-1, 0),
+            SouthWest => (-1, -1),
+            South => (0, -1),
+            SouthEast => (1, -1),
+            East => (1, 0),
+            NorthEast => (1, 1),
         }
     }
 }
@@ -413,7 +413,6 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> Vec<Move> {
     }
     for square in Square::iter() {
         if board.square_contains_piece(piece_name, board.to_move, square) {
-            // Possible bug? Or maybe enemies is just an awful name and it should be occupancies...
             let occupancies = board.occupancies();
             let attack_bitboard = match piece_name {
                 PieceName::King => king_attacks(square),
@@ -465,6 +464,7 @@ pub fn generate_moves(board: &Board) -> Vec<Move> {
         })
         .collect()
 }
+
 
 impl Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

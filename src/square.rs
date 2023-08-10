@@ -34,8 +34,7 @@ impl Square {
         }
         let new_index = (self.0 as i32 + dir as i32) as u8;
 
-        if (0..64).contains(&new_index)
-        {
+        if (0..64).contains(&new_index) {
             Some(Square(new_index))
         } else {
             None

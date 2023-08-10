@@ -51,7 +51,7 @@ pub fn main_loop() -> ! {
                 let depth = vec[9].to_digit(10).unwrap();
                 perft(&board, depth as i32);
             } else {
-                let m = search(&board, 3, &mut triple_repetitions);
+                let m = search(&board, 5, &mut triple_repetitions);
                 println!("bestmove {}", m.to_lan());
                 board.make_move(&m);
             }

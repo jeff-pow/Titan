@@ -1,7 +1,7 @@
 use core::fmt;
 use strum::IntoEnumIterator;
 
-use crate::attack_boards::{gen_pawn_attack_board, king_attacks, knight_attacks, pawn_attacks};
+use crate::attack_boards::{king_attacks, knight_attacks, pawn_attacks};
 use crate::bitboard::Bitboard;
 use crate::moves::Direction;
 use crate::pleco_magics::{bishop_attacks, rook_attacks};

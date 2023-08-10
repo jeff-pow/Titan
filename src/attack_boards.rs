@@ -1,3 +1,5 @@
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 use crate::moves::Direction::*;
 use crate::{
     bitboard::Bitboard,
@@ -92,61 +94,70 @@ fn gen_king_attack_boards() {
     }
 }
 
+/// Movement chords are defined by a combination of three cardinal directions - ex West West North
+#[derive(EnumIter, Copy, Clone, Debug, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
+enum KnightMovement {
+    WWN = 6,
+    WNN = 15,
+    ENN = 17,
+    EEN = 10,
+    EES = -6,
+    ESS = -15,
+    WSS = -17,
+    WWS = -10,
+}
+
+/// Converts a direction of moves into a tuple of x,y movement
+impl KnightMovement {
+    fn to_xy(&self) -> (i8, i8) {
+        match self {
+            KnightMovement::WWN => (-2, 1),
+            KnightMovement::WNN => (-1, 2),
+            KnightMovement::ENN => (1, 2),
+            KnightMovement::EEN => (2, 1),
+            KnightMovement::EES => (2, -1),
+            KnightMovement::ESS => (1, -2),
+            KnightMovement::WSS => (-1, -2),
+            KnightMovement::WWS => (-2, -1),
+        }
+    }
+}
+
 #[rustfmt::skip]
 fn gen_knight_attack_boards() {
     unsafe {
         KNIGHT_TABLE.iter_mut().enumerate().for_each(|(square, moves)| {
-            let x = Square(square as u8).rank();
-            let y = Square(square as u8).file();
-            if x >= 2 {
-                if y >= 1 { *moves |= Bitboard(1 << (square - 17)); }
-                if y <= 6 { *moves |= Bitboard(1 << (square - 15)); }
-            }
-            if x >= 1 {
-                if y >= 2 { *moves |= Bitboard(1 << (square - 10)); }
-                if y <= 5 { *moves |= Bitboard(1 << (square - 6)); }
-            }
-            if x <= 6 {
-                if y >= 1 && square + 15 < 64 { *moves |= Bitboard(1 << (square + 15)); }
-                if y <= 6 && square + 17 < 64 { *moves |= Bitboard(1 << (square + 17)); }
-            }
-            if x <= 5 {
-                if y >= 2 && square + 6 < 64 { *moves |= Bitboard(1 << (square + 6)); }
-                if y <= 5 && square + 10 < 64 { *moves |= Bitboard(1 << (square + 10)); }
+            let current_rank = Square(square as u8).rank();
+            let current_file = Square(square as u8).file();
+            for mv in KnightMovement::iter() {
+                let (dir_x, dir_y) = mv.to_xy();
+                if !(0..8).contains(&(current_file as i8 + dir_x)) {
+                    continue;
+                }
+                if !(0..8).contains(&(current_rank as i8 + dir_y)) {
+                    continue;
+                }
+                let new_index = (square as i32 + mv as i32) as u8;
+
+                if (0..64).contains(&new_index) {
+                    *moves |= Square(new_index).bitboard();
+                } else {
+                    continue;
+                }
             }
         });
     }
 }
 
-pub fn gen_pawn_attack_board(board: &Board, attacker: Color) -> Bitboard {
-    let pawns = board.board[attacker as usize][PieceName::Pawn as usize];
-
-    if attacker == Color::White {
-        ((pawns << Bitboard(9)) & !FILE_A) | ((pawns << Bitboard(7)) & !FILE_H)
-    } else {
-        ((pawns >> Bitboard(9)) & !FILE_H) | ((pawns >> Bitboard(9)) & !FILE_H)
-    }
-}
-
-// pub fn pawn_attacks(board: &Board, sq: Square, attacker: Color) -> Bitboard {
-//     let up_left = match attacker {
-//         Color::White => NorthWest,
-//         Color::Black => SouthEast,
-//     };
-//     let up_right = match attacker {
-//         Color::White => NorthEast,
-//         Color::Black => SouthWest,
-//     };
-//     let s1 = sq.checked_shift(up_left.opp());
-//     let s2 = sq.checked_shift(up_right.opp());
-//     let mut bitboard = Bitboard::empty();
-//     if let Some(s1) = s1 {
-//         bitboard |= s1.bitboard();
+// pub fn gen_pawn_attack_board(board: &Board, attacker: Color) -> Bitboard {
+//     let pawns = board.board[attacker as usize][PieceName::Pawn as usize];
+//
+//     if attacker == Color::White {
+//         ((pawns << Bitboard(9)) & !FILE_A) | ((pawns << Bitboard(7)) & !FILE_H)
+//     } else {
+//         ((pawns >> Bitboard(9)) & !FILE_H) | ((pawns >> Bitboard(9)) & !FILE_H)
 //     }
-//     if let Some(s2) = s2 {
-//         bitboard |= s2.bitboard();
-//     }
-//     bitboard
 // }
 
 fn gen_pawn_attack_boards() {
@@ -170,5 +181,24 @@ fn gen_pawn_attack_boards() {
             PAWN_TABLE[Color::White as usize][sq.idx()] = w;
             PAWN_TABLE[Color::Black as usize][sq.idx()] = b;
         }
+    }
+}
+
+#[cfg(test)]
+mod test_attack_boards {
+    use crate::attack_boards::{init_attack_boards, pawn_attacks};
+    use crate::pieces::Color;
+    use crate::square::Square;
+
+    #[test]
+    fn test_pawn_attacks() {
+        init_attack_boards();
+        let p_sq = Square(40);
+        assert_eq!(pawn_attacks(p_sq, Color::Black), Square(33).bitboard());
+        assert_eq!(pawn_attacks(p_sq, Color::White), Square(49).bitboard());
+
+        let p_sq = Square(19);
+        assert_eq!(pawn_attacks(p_sq, Color::Black), (Square(10).bitboard() | Square(12).bitboard()));
+        assert_eq!(pawn_attacks(p_sq, Color::White), (Square(26).bitboard() | Square(28).bitboard()));
     }
 }
