@@ -9,17 +9,37 @@ impl Square {
     /// Declaration of an invalid square used as the equivalent of null
     pub const INVALID: Square = Square(64);
 
-    #[inline]
+    // #[inline]
+    // pub fn checked_shift(&self, dir: Direction) -> Option<Square> {
+    //     let file = self.file();
+    //     let rank = self.rank();
+    //     let (dir_rank, dir_file) = dir.to_xy();
+    //     let new_file = file as i8 + dir_file;
+    //     let new_rank = rank as i8 + dir_rank;
+    //     if (0..8).contains(&new_file) && (0..8).contains(&new_rank) {
+    //         return self.shift(dir);
+    //     }
+    //     None
+    // }
+
     pub fn checked_shift(&self, dir: Direction) -> Option<Square> {
-        let file = self.file();
-        let rank = self.rank();
-        let (dir_rank, dir_file) = dir.to_xy();
-        let new_file = file as i8 + dir_file;
-        let new_rank = rank as i8 + dir_rank;
-        if (0..8).contains(&new_file) && (0..8).contains(&new_rank) {
-            return self.shift(dir);
+        let current_file = self.file();
+        let current_rank = self.rank();
+        let (dir_x, dir_y) = dir.to_xy();
+        if !(0..8).contains(&(current_file as i8 + dir_x)) {
+            return None;
         }
-        None
+        if !(0..8).contains(&(current_rank as i8 + dir_y)) {
+            return None;
+        }
+        let new_index = (self.0 as i32 + dir as i32) as u8;
+
+        if (0..64).contains(&new_index)
+        {
+            Some(Square(new_index))
+        } else {
+            None
+        }
     }
 
     #[inline]
@@ -42,16 +62,20 @@ impl Square {
         x_diff.max(y_diff) as u64
     }
 
-    ///Rank is the horizontal row of the piece
+    /// Rank is the horizontal row of the piece (y-coord)
     #[inline]
     pub fn rank(&self) -> u8 {
         self.0 >> 3
     }
 
-    /// File is the vertical column of the piece
+    /// File is the vertical column of the piece (x-coord)
     #[inline]
     pub fn file(&self) -> u8 {
         self.0 & 0b111
+    }
+
+    pub fn idx(&self) -> usize {
+        self.0 as usize
     }
 
     #[inline]
@@ -155,4 +179,28 @@ impl ToString for Square {
     fn to_string(&self) -> String {
         self.0.to_string()
     }
+}
+
+#[cfg(test)]
+mod square_test {
+    use super::*;
+
+    #[test]
+    fn test_valid_shift() {
+        let square = Square(35);
+        let new_square = square.checked_shift(Direction::North);
+        assert_eq!(new_square, Some(Square(43)));
+    }
+
+    #[test]
+    fn test_invalid_shift() {
+        let square = Square(63);
+        let new_square = square.checked_shift(Direction::North);
+        assert_eq!(new_square, None);
+        let square = Square(47);
+        let new_square = square.checked_shift(Direction::East);
+        assert!(new_square.is_none());
+    }
+
+    // ... add more test cases here ...
 }

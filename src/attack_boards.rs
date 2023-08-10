@@ -1,3 +1,4 @@
+use crate::moves::Direction::*;
 use crate::{
     bitboard::Bitboard,
     board::Board,
@@ -6,7 +7,6 @@ use crate::{
     pleco_magics::init_magics,
     square::Square,
 };
-use crate::moves::Direction::*;
 
 const FILE_A_U64: u64 = 0x101010101010101;
 const FILE_B_U64: u64 = FILE_A_U64 << 1;
@@ -46,6 +46,7 @@ pub const RANK8: Bitboard = Bitboard(RANK8_U64);
 
 static mut KNIGHT_TABLE: [Bitboard; 64] = [Bitboard::empty(); 64];
 static mut KING_TABLE: [Bitboard; 64] = [Bitboard::empty(); 64];
+static mut PAWN_TABLE: [[Bitboard; 64]; 2] = [[Bitboard::empty(); 64]; 2];
 
 pub fn knight_attacks(square: Square) -> Bitboard {
     unsafe { KNIGHT_TABLE[square.0 as usize] }
@@ -55,11 +56,16 @@ pub fn king_attacks(square: Square) -> Bitboard {
     unsafe { KING_TABLE[square.0 as usize] }
 }
 
+pub fn pawn_attacks(square: Square, attacker: Color) -> Bitboard {
+    unsafe { PAWN_TABLE[attacker as usize][square.idx()] }
+}
+
 /// Non thread safe - this functions call's have to finish running before the program will
 /// successfully run w/o race conditions
 pub fn init_attack_boards() {
     gen_king_attack_boards();
     gen_knight_attack_boards();
+    gen_pawn_attack_boards();
     init_magics();
 }
 
@@ -122,23 +128,47 @@ pub fn gen_pawn_attack_board(board: &Board, attacker: Color) -> Bitboard {
     }
 }
 
-pub fn pawn_attacks(board: &Board, sq: Square, attacker: Color) -> Bitboard {
-    let up_left = match attacker {
-        Color::White => NorthWest,
-        Color::Black => SouthEast,
-    };
-    let up_right = match attacker {
-        Color::White => NorthEast,
-        Color::Black => SouthWest,
-    };
-    let s1 = sq.checked_shift(up_left.opp());
-    let s2 = sq.checked_shift(up_right.opp());
-    let mut bitboard = Bitboard::empty();
-    if let Some(s1) = s1 {
-        bitboard |= s1.bitboard();
+// pub fn pawn_attacks(board: &Board, sq: Square, attacker: Color) -> Bitboard {
+//     let up_left = match attacker {
+//         Color::White => NorthWest,
+//         Color::Black => SouthEast,
+//     };
+//     let up_right = match attacker {
+//         Color::White => NorthEast,
+//         Color::Black => SouthWest,
+//     };
+//     let s1 = sq.checked_shift(up_left.opp());
+//     let s2 = sq.checked_shift(up_right.opp());
+//     let mut bitboard = Bitboard::empty();
+//     if let Some(s1) = s1 {
+//         bitboard |= s1.bitboard();
+//     }
+//     if let Some(s2) = s2 {
+//         bitboard |= s2.bitboard();
+//     }
+//     bitboard
+// }
+
+fn gen_pawn_attack_boards() {
+    unsafe {
+        for sq in Square::iter() {
+            let bb_square = sq.bitboard();
+            let mut w = Bitboard::empty();
+            if let Some(w1) = bb_square.checked_shift(NorthEast) {
+                w |= w1;
+            }
+            if let Some(w2) = bb_square.checked_shift(NorthWest) {
+                w |= w2;
+            }
+            let mut b = Bitboard::empty();
+            if let Some(b1) = bb_square.checked_shift(SouthWest) {
+                b |= b1;
+            }
+            if let Some(b2) = bb_square.checked_shift(SouthEast) {
+                b |= b2;
+            }
+            PAWN_TABLE[Color::White as usize][sq.idx()] = w;
+            PAWN_TABLE[Color::Black as usize][sq.idx()] = b;
+        }
     }
-    if let Some(s2) = s2 {
-        bitboard |= s2.bitboard();
-    }
-    bitboard
 }

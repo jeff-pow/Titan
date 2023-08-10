@@ -26,9 +26,9 @@ use crate::square::Square;
 fn main() {
     init_attack_boards();
     let board = fen::build_board(fen::STARTING_FEN);
-    let board = fen::build_board("rnbqkbnr/ppp1pppp/8/8/3p4/3P4/PPPKPPPP/RNBQ1BNR w kq - 0 3");
-    search::perft(&board, 1);
-    let m = crate::moves::Move::new(Square(11), Square(18), None, moves::MoveType::Normal);
+    // let board = fen::build_board("rnbqkbnr/1pppp1pp/8/pP3p2/8/8/P1PPPPPP/RNBQKBNR w KQkq a6 0 3");
+    // search::perft(&board, 6);
+    time_move_generation(&board, 6);
     uci::main_loop();
 }
 

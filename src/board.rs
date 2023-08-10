@@ -127,7 +127,7 @@ impl Board {
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
         let attacker_occupancy = self.board[attacker as usize];
         let occupancy = self.occupancies();
-        let pawn_attacks = pawn_attacks(self, sq, attacker);
+        let pawn_attacks = pawn_attacks(sq, attacker.opposite());
         let knight_attacks = knight_attacks(sq);
         let bishop_attacks = Bitboard(bishop_attacks(occupancy.0, sq.0));
         let rook_attacks = Bitboard(rook_attacks(occupancy.0, sq.0));
