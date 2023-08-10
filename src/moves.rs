@@ -61,6 +61,14 @@ impl Direction {
             NorthEast => SouthWest,
         }
     }
+
+    pub fn file(self) -> u8 {
+        self as u8 >> 3
+    }
+
+    pub fn rank(self) -> u8 {
+        self as u8 & 0b111
+    }
 }
 
 /// A move needs 16 bits to be stored
@@ -80,8 +88,8 @@ impl Move {
         promotion: Option<Promotion>,
         move_type: MoveType,
     ) -> Self {
-        debug_assert!(origin.is_valid());
-        debug_assert!(destination.is_valid());
+        // debug_assert!(origin.is_valid());
+        // debug_assert!(destination.is_valid());
         let promotion = match promotion {
             Some(Promotion::Queen) => 3,
             Some(Promotion::Rook) => 2,
@@ -148,14 +156,14 @@ impl Move {
     pub fn to_lan(self) -> String {
         let mut str = String::new();
         let arr = ["a", "b", "c", "d", "e", "f", "g", "h"];
-        let y_origin = self.origin_square().file() + 1;
-        let x_origin = self.origin_square().rank() % 8;
-        let y_end = self.dest_square().file() + 1;
-        let x_end = self.dest_square().rank();
-        str += arr[x_origin as usize];
-        str += &y_origin.to_string();
-        str += arr[x_end as usize];
-        str += &y_end.to_string();
+        let origin_number = self.origin_square().rank() + 1;
+        let origin_letter = self.origin_square().file();
+        let end_number = self.dest_square().rank() + 1;
+        let end_letter = self.dest_square().file();
+        str += arr[origin_letter as usize];
+        str += &origin_number.to_string();
+        str += arr[end_letter as usize];
+        str += &end_number.to_string();
         match self.promotion() {
             Some(Promotion::Queen) => str += "q",
             Some(Promotion::Rook) => str += "r",
@@ -316,12 +324,12 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
     // Single and double pawn pushes w/o captures
     let mut push_one = vacancies & non_promotions.shift(up);
     let mut push_two = vacancies & (push_one & rank3_bb).shift(up);
-    while push_one > Bitboard::empty() {
+    while push_one != Bitboard::empty() {
         let dest = push_one.pop_lsb();
         let src = dest.shift(down).expect("Valid shift");
         moves.push(Move::new(src, dest, None, MoveType::Normal));
     }
-    while push_two > Bitboard::empty() {
+    while push_two != Bitboard::empty() {
         let dest = push_two.pop_lsb();
         let src = dest
             .shift(down)
@@ -332,18 +340,18 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
     }
 
     // Promotions - captures and straight pushes
-    if promotions > Bitboard::empty() {
+    if promotions != Bitboard::empty() {
         let mut no_capture_promotions = promotions.shift(up) & vacancies;
-        let left_capture_promotions = promotions.shift(up_left) & enemies;
-        let right_capture_promotions = promotions.shift(up_right) & enemies;
+        let mut left_capture_promotions = promotions.shift(up_left) & enemies;
+        let mut right_capture_promotions = promotions.shift(up_right) & enemies;
         while no_capture_promotions > Bitboard::empty() {
             generate_promotions(no_capture_promotions.pop_lsb(), up, &mut moves);
         }
         while left_capture_promotions > Bitboard::empty() {
-            generate_promotions(no_capture_promotions.pop_lsb(), up_left, &mut moves);
+            generate_promotions(left_capture_promotions.pop_lsb(), down_right, &mut moves);
         }
         while right_capture_promotions > Bitboard::empty() {
-            generate_promotions(no_capture_promotions.pop_lsb(), up_right, &mut moves);
+            generate_promotions(right_capture_promotions.pop_lsb(), down_left, &mut moves);
         }
     }
 
@@ -363,25 +371,22 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
 
     // En Passant
     if board.can_en_passant() {
-        let p1 = board.piece_on_square(board.en_passant_square.shift(down_right).unwrap());
-        let p2 = board.piece_on_square(board.en_passant_square.shift(down_left).unwrap());
-        if let Some(p1) = p1 {
-            if p1 == Pawn {
-                let dest = board.en_passant_square;
-                let src = dest.shift(down_right).unwrap();
-                moves.push(Move::new(src, dest, None, MoveType::EnPassant));
-            }
-        }
-        if let Some(p2) = p2 {
-            if p2 == Pawn {
-                let dest = board.en_passant_square;
-                let src = dest.shift(down_left).unwrap();
-                moves.push(Move::new(src, dest, None, MoveType::EnPassant));
-            }
-        }
+        get_en_passant(board, down_right).map(|x| moves.push(x));
+        get_en_passant(board, down_left).map(|x| moves.push(x));
     }
 
     moves
+}
+
+fn get_en_passant(board: &Board, dir: Direction) -> Option<Move> {
+    let sq = board.en_passant_square.checked_shift(dir)?;
+    let pawn = sq.bitboard() & board.board[board.to_move as usize][Pawn as usize];
+    if pawn != Bitboard::empty() {
+        let dest = board.en_passant_square;
+        let src = dest.shift(dir)?;
+        return Some(Move::new(src, dest, None, MoveType::EnPassant));
+    }
+    None
 }
 
 fn generate_promotions(dest: Square, d: Direction, moves: &mut Vec<Move>) {

@@ -25,7 +25,14 @@ use crate::moves::generate_moves;
 fn main() {
     init_attack_boards();
     let board = fen::build_board(fen::STARTING_FEN);
-    print_moves(&board);
+    // let board = fen::build_board("rnbqkbnr/ppppp1pp/8/5p2/4PP2/8/PPPP2PP/RNBQKBNR b KQkq e3 0 2");
+    // print_moves(&board);
+    // exit(0);
+    // search::time_move_generation(&board, 7);
+    search::perft(&board, 5);
+    // let board = fen::build_board("rnbqkbnr/1ppppppp/8/p7/8/N7/PPPPPPPP/R1BQKBNR w KQkq a6 0 2");
+    // search::perft(&board, 1);
+    // print_moves(&board);
     uci::main_loop();
 }
 
@@ -41,7 +48,6 @@ fn print_moves(board: &Board) {
         println!("---------------------------------------------------------");
     }
     println!("{} moves found", moves.len());
-    exit(0);
 }
 
 #[cfg(test)]

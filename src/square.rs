@@ -10,6 +10,20 @@ impl Square {
     pub const INVALID: Square = Square(64);
 
     #[inline]
+    pub fn checked_shift(&self, dir: Direction) -> Option<Square> {
+        let file = self.file();
+        let rank = self.rank();
+        let dir_file = dir.file();
+        let dir_rank = dir.rank();
+        let new_file = file + dir_file;
+        let new_rank = rank + dir_rank;
+        if (0..8).contains(&new_file) && (0..8).contains(&new_rank) {
+            return self.shift(dir);
+        }
+        None
+    }
+
+    #[inline]
     pub fn shift(&self, dir: Direction) -> Option<Square> {
         let new_square = self.0 as i8 + dir as i8;
         if Square(new_square as u8).is_valid() {
@@ -18,6 +32,7 @@ impl Square {
         None
     }
 
+    #[inline]
     pub fn dist(&self, sq: Square) -> u64 {
         let x1 = self.rank();
         let y1 = self.file();
@@ -28,11 +43,13 @@ impl Square {
         x_diff.max(y_diff) as u64
     }
 
+    ///Rank is the horizontal row of the piece
     #[inline]
     pub fn rank(&self) -> u8 {
         self.0 >> 3
     }
 
+    /// File is the vertical column of the piece
     #[inline]
     pub fn file(&self) -> u8 {
         self.0 & 0b111

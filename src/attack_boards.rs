@@ -54,7 +54,7 @@ pub fn king_attacks(square: Square) -> Bitboard {
     unsafe { KING_TABLE[square.0 as usize] }
 }
 
-/// Non thread safe - this functions callee's have to finish running before the program will
+/// Non thread safe - this functions call's have to finish running before the program will
 /// successfully run w/o race conditions
 pub fn init_attack_boards() {
     gen_king_attack_boards();
@@ -89,7 +89,6 @@ fn gen_king_attack_boards() {
 fn gen_knight_attack_boards() {
     unsafe {
         KNIGHT_TABLE.iter_mut().enumerate().for_each(|(square, moves)| {
-            let (_x, _y) = coordinates(square);
             let x = Square(square as u8).rank();
             let y = Square(square as u8).file();
             if x >= 2 {
@@ -120,4 +119,8 @@ pub fn gen_pawn_attack_board(board: &Board) -> Bitboard {
     } else {
         ((pawns >> Bitboard(9)) & !FILE_H) | ((pawns >> Bitboard(9)) & !FILE_H)
     }
+}
+
+pub fn pawn_attacks(board: &Board, sq: Square) -> Bitboard {
+    Bitboard::empty()
 }

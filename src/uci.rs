@@ -41,7 +41,10 @@ pub fn main_loop() -> ! {
                 }
             }
         } else if buffer.eq("d\n") {
-            println!("{}\n", board);
+            dbg!(board);
+        } else if buffer.eq("dbg\n") {
+            dbg!(board);
+            board.debug_bitboards();
         } else if buffer.starts_with("go") {
             if buffer.contains("perft") {
                 let vec: Vec<char> = buffer.chars().collect();

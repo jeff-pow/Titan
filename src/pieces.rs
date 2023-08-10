@@ -1,3 +1,4 @@
+use strum_macros::EnumIter;
 use crate::search::INFINITY;
 
 pub const KING_PTS: i32 = INFINITY;
@@ -31,7 +32,7 @@ pub fn opposite_color(color: Color) -> Color {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, EnumIter, Copy, Clone, PartialEq, Eq)]
 #[repr(usize)]
 pub enum PieceName {
     King = 0,

@@ -1,4 +1,4 @@
-use std::ops;
+use std::{fmt, ops};
 
 use crate::{
     attack_boards::{FILE_A, FILE_H},
@@ -6,7 +6,7 @@ use crate::{
     square::Square,
 };
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Bitboard(pub u64);
 
 impl Bitboard {
@@ -120,6 +120,62 @@ impl Bitboard {
         }
     }
 }
+
+impl fmt::Debug for Bitboard {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for row in (0..8).rev() {
+            for col in 0..8 {
+                let index = row * 8 + col;
+                let bit_is_set = self.0 & (1 << index) != 0;
+
+                if bit_is_set {
+                    write!(f, "1")?;
+                } else {
+                    write!(f, "0")?;
+                }
+
+                if col < 7 {
+                    write!(f, " ")?;
+                }
+            }
+
+            if row > 0 {
+                writeln!(f)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+// impl fmt::Debug for Bitboard {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         let mut result = String::new();
+//
+//         for row in (0..8).rev() {
+//             for col in 0..8 {
+//                 let index = row * 8 + col;
+//                 let bit_is_set = self.0 & (1 << index) != 0;
+//
+//                 if bit_is_set {
+//                     result.push('1');
+//                 } else {
+//                     result.push('0');
+//                 }
+//
+//                 if col < 7 {
+//                     result.push(' ');
+//                 }
+//             }
+//
+//             if row < 7 {
+//                 result.push('\n');
+//             }
+//         }
+//
+//         write!(f, "\n{}", result)
+//     }
+// }
 
 impl ops::Not for Bitboard {
     type Output = Self;

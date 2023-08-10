@@ -1,4 +1,5 @@
 use core::fmt;
+use strum::IntoEnumIterator;
 
 use crate::attack_boards::{gen_pawn_attack_board, king_attacks, knight_attacks};
 use crate::bitboard::Bitboard;
@@ -85,17 +86,8 @@ impl Board {
 
     #[inline]
     pub fn piece_on_square(&self, sq: Square) -> Option<PieceName> {
-        let piece_names = [
-            PieceName::King,
-            PieceName::Queen,
-            PieceName::Rook,
-            PieceName::Bishop,
-            PieceName::Knight,
-            PieceName::Pawn,
-        ];
-
         for color in &[Color::White, Color::Black] {
-            for &piece_name in &piece_names {
+            for piece_name in PieceName::iter() {
                 if self.square_contains_piece(piece_name, *color, sq) {
                     return Some(piece_name);
                 }
@@ -117,6 +109,11 @@ impl Board {
 
     fn remove_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
         self.board[color as usize][piece_type as usize] &= !sq.bitboard();
+        for color in &[Color::White, Color::Black] {
+            for piece in PieceName::iter() {
+                self.board[*color as usize][piece as usize] &= !(sq.bitboard());
+            }
+        }
     }
 
     pub fn side_in_check(&self, side: Color) -> bool {
@@ -137,32 +134,53 @@ impl Board {
         let queen_attacks = rook_attacks | bishop_attacks;
         let king_attacks = king_attacks(sq);
 
-        (king_attacks & attacker_occupancy[PieceName::King as usize] > Bitboard::empty())
-            || (queen_attacks & attacker_occupancy[PieceName::Queen as usize] > Bitboard::empty())
-            || (rook_attacks & attacker_occupancy[PieceName::Rook as usize] > Bitboard::empty())
-            || (bishop_attacks & attacker_occupancy[PieceName::Bishop as usize] > Bitboard::empty())
-            || (knight_attacks & attacker_occupancy[PieceName::Knight as usize] > Bitboard::empty())
-            || (pawn_attacks & attacker_occupancy[PieceName::Pawn as usize] > Bitboard::empty())
+        // (king_attacks & attacker_occupancy[PieceName::King as usize] != Bitboard::empty())
+        //     || (queen_attacks & attacker_occupancy[PieceName::Queen as usize] != Bitboard::empty())
+        //     || (rook_attacks & attacker_occupancy[PieceName::Rook as usize] != Bitboard::empty())
+        //     || (bishop_attacks & attacker_occupancy[PieceName::Bishop as usize] != Bitboard::empty())
+        //     || (knight_attacks & attacker_occupancy[PieceName::Knight as usize] != Bitboard::empty())
+        //     || (pawn_attacks & attacker_occupancy[PieceName::Pawn as usize] != Bitboard::empty())
+        let king_occupancy = attacker_occupancy[PieceName::King as usize];
+        let queen_occupancy = attacker_occupancy[PieceName::Queen as usize];
+        let rook_occupancy = attacker_occupancy[PieceName::Rook as usize];
+        let bishop_occupancy = attacker_occupancy[PieceName::Bishop as usize];
+        let knight_occupancy = attacker_occupancy[PieceName::Knight as usize];
+        let pawn_occupancy = attacker_occupancy[PieceName::Pawn as usize];
+
+        let king_attacker_check = king_attacks & king_occupancy != Bitboard::empty();
+        let queen_attacker_check = queen_attacks & queen_occupancy != Bitboard::empty();
+        let rook_attacker_check = rook_attacks & rook_occupancy != Bitboard::empty();
+        let bishop_attacker_check = bishop_attacks & bishop_occupancy != Bitboard::empty();
+        let knight_attacker_check = knight_attacks & knight_occupancy != Bitboard::empty();
+        let pawn_attacker_check =
+            pawn_attacks & pawn_occupancy & sq.bitboard() != Bitboard::empty();
+
+        let is_under_attack = king_attacker_check
+            || queen_attacker_check
+            || rook_attacker_check
+            || bishop_attacker_check
+            || knight_attacker_check
+            || pawn_attacker_check;
+        is_under_attack
     }
 
     /// Function makes a move and modifies board state to reflect the move that just happened
     pub fn make_move(&mut self, m: &Move) {
         // Special case if the move is an en_passant
         if m.is_en_passant() {
-            let end_idx = m.dest_square();
             match self.to_move {
                 Color::White => {
                     self.remove_piece(
                         PieceName::Pawn,
                         opposite_color(self.to_move),
-                        m.dest_square().shift(Direction::South).unwrap(),
+                        m.dest_square().shift(South).unwrap(),
                     );
                 }
                 Color::Black => {
                     self.remove_piece(
                         PieceName::Pawn,
                         opposite_color(self.to_move),
-                        end_idx.shift(North).unwrap(),
+                        m.dest_square().shift(North).unwrap(),
                     );
                 }
             }
@@ -172,6 +190,7 @@ impl Board {
             .piece_on_square(m.origin_square())
             .expect("There should be a piece here");
         let capture = self.piece_on_square(m.dest_square());
+        self.remove_piece(PieceName::Queen, self.to_move, m.dest_square());
         self.place_piece(piece_moving, self.to_move, m.dest_square());
         self.remove_piece(piece_moving, self.to_move, m.origin_square());
 
@@ -299,7 +318,7 @@ impl Board {
                 }
             }
         }
-        // If en passant was not performed this move, the ability to do it on future moves goes away
+        // If this move did not create a new en passant opportunity, the ability to do it goes away
         if !en_passant {
             self.en_passant_square = Square::INVALID;
         }
@@ -313,11 +332,26 @@ impl Board {
             self.black_queen_castle = false;
         }
         // Change the side to move after making a move
-        match self.to_move {
-            Color::White => self.to_move = Color::Black,
-            Color::Black => self.to_move = Color::White,
-        }
+        self.to_move = self.to_move.opposite();
+
         self.num_moves += 1;
+    }
+
+    pub fn debug_bitboards(&self) {
+        for color in &[Color::White, Color::Black] {
+            for piece in &[
+                PieceName::King,
+                PieceName::Queen,
+                PieceName::Rook,
+                PieceName::Bishop,
+                PieceName::Knight,
+                PieceName::Pawn,
+            ] {
+                dbg!("{:?} {:?}", color, piece);
+                dbg!(self.board[*color as usize][*piece as usize]);
+                dbg!("\n");
+            }
+        }
     }
 }
 
@@ -395,8 +429,32 @@ impl fmt::Debug for Board {
             str += "q"
         };
         str += "\n";
+        str += "En Passant Square: ";
+        str += &self.en_passant_square.0.to_string();
+        str += "\n";
         str += "Num moves made: ";
         str += &self.num_moves.to_string();
         write!(f, "{}", str)
+    }
+}
+
+#[cfg(test)]
+mod board_tests {
+    use super::*;
+    use crate::fen;
+    use crate::pieces::PieceName::*;
+    #[test]
+    fn test_place_piece() {
+        let mut board = Board::new();
+        board.place_piece(Rook, Color::White, Square(0));
+        assert!(board.board[Color::White as usize][Rook as usize].square_is_occupied(Square(0)));
+    }
+
+    #[test]
+    fn test_remove_piece() {
+        let mut board = fen::build_board(fen::STARTING_FEN);
+        board.remove_piece(Rook, Color::White, Square(0));
+        assert!(board.board[Color::White as usize][Rook as usize].square_is_empty(Square(0)));
+        assert!(board.occupancies().square_is_empty(Square(0)));
     }
 }
