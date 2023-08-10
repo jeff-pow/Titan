@@ -13,10 +13,9 @@ impl Square {
     pub fn checked_shift(&self, dir: Direction) -> Option<Square> {
         let file = self.file();
         let rank = self.rank();
-        let dir_file = dir.file();
-        let dir_rank = dir.rank();
-        let new_file = file + dir_file;
-        let new_rank = rank + dir_rank;
+        let (dir_rank, dir_file) = dir.to_xy();
+        let new_file = file as i8 + dir_file;
+        let new_rank = rank as i8 + dir_rank;
         if (0..8).contains(&new_file) && (0..8).contains(&new_rank) {
             return self.shift(dir);
         }

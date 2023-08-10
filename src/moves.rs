@@ -14,7 +14,7 @@ use crate::pleco_magics::rook_attacks;
 use crate::square::Square;
 use crate::{board::Board, pieces::Color, pieces::PieceName};
 
-enum MoveType {
+pub(crate) enum MoveType {
     Normal,
     Promotion,
     EnPassant,
@@ -62,12 +62,17 @@ impl Direction {
         }
     }
 
-    pub fn file(self) -> u8 {
-        self as u8 >> 3
-    }
-
-    pub fn rank(self) -> u8 {
-        self as u8 & 0b111
+    pub fn to_xy(self) -> (i8, i8) {
+        match self {
+            Direction::North => (0, 1),
+            Direction::NorthWest => (-1, 1),
+            Direction::West => (-1, 0),
+            Direction::SouthWest => (-1, -1),
+            Direction::South => (0, -1),
+            Direction::SouthEast => (1, -1),
+            Direction::East => (1, 0),
+            Direction::NorthEast => (1, 1),
+        }
     }
 }
 
@@ -82,7 +87,7 @@ impl Direction {
 pub struct Move(u16);
 
 impl Move {
-    fn new(
+    pub(crate) fn new(
         origin: Square,
         destination: Square,
         promotion: Option<Promotion>,

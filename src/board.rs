@@ -1,7 +1,7 @@
 use core::fmt;
 use strum::IntoEnumIterator;
 
-use crate::attack_boards::{gen_pawn_attack_board, king_attacks, knight_attacks};
+use crate::attack_boards::{gen_pawn_attack_board, king_attacks, knight_attacks, pawn_attacks};
 use crate::bitboard::Bitboard;
 use crate::moves::Direction;
 use crate::pleco_magics::{bishop_attacks, rook_attacks};
@@ -127,7 +127,7 @@ impl Board {
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
         let attacker_occupancy = self.board[attacker as usize];
         let occupancy = self.occupancies();
-        let pawn_attacks = gen_pawn_attack_board(self);
+        let pawn_attacks = pawn_attacks(self, sq, attacker);
         let knight_attacks = knight_attacks(sq);
         let bishop_attacks = Bitboard(bishop_attacks(occupancy.0, sq.0));
         let rook_attacks = Bitboard(rook_attacks(occupancy.0, sq.0));
@@ -152,8 +152,7 @@ impl Board {
         let rook_attacker_check = rook_attacks & rook_occupancy != Bitboard::empty();
         let bishop_attacker_check = bishop_attacks & bishop_occupancy != Bitboard::empty();
         let knight_attacker_check = knight_attacks & knight_occupancy != Bitboard::empty();
-        let pawn_attacker_check =
-            pawn_attacks & pawn_occupancy & sq.bitboard() != Bitboard::empty();
+        let pawn_attacker_check = pawn_attacks & pawn_occupancy != Bitboard::empty();
 
         let is_under_attack = king_attacker_check
             || queen_attacker_check

@@ -21,18 +21,14 @@ use search::*;
 use std::process::exit;
 
 use crate::moves::generate_moves;
+use crate::square::Square;
 
 fn main() {
     init_attack_boards();
     let board = fen::build_board(fen::STARTING_FEN);
-    // let board = fen::build_board("rnbqkbnr/ppppp1pp/8/5p2/4PP2/8/PPPP2PP/RNBQKBNR b KQkq e3 0 2");
-    // print_moves(&board);
-    // exit(0);
-    // search::time_move_generation(&board, 7);
-    search::perft(&board, 5);
-    // let board = fen::build_board("rnbqkbnr/1ppppppp/8/p7/8/N7/PPPPPPPP/R1BQKBNR w KQkq a6 0 2");
-    // search::perft(&board, 1);
-    // print_moves(&board);
+    let board = fen::build_board("rnbqkbnr/ppp1pppp/8/8/3p4/3P4/PPPKPPPP/RNBQ1BNR w kq - 0 3");
+    search::perft(&board, 1);
+    let m = crate::moves::Move::new(Square(11), Square(18), None, moves::MoveType::Normal);
     uci::main_loop();
 }
 

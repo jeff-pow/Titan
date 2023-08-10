@@ -6,6 +6,7 @@ use crate::{
     pleco_magics::init_magics,
     square::Square,
 };
+use crate::moves::Direction::*;
 
 const FILE_A_U64: u64 = 0x101010101010101;
 const FILE_B_U64: u64 = FILE_A_U64 << 1;
@@ -111,16 +112,33 @@ fn gen_knight_attack_boards() {
     }
 }
 
-pub fn gen_pawn_attack_board(board: &Board) -> Bitboard {
-    let pawns = board.board[board.to_move as usize][PieceName::Pawn as usize];
+pub fn gen_pawn_attack_board(board: &Board, attacker: Color) -> Bitboard {
+    let pawns = board.board[attacker as usize][PieceName::Pawn as usize];
 
-    if board.to_move == Color::White {
+    if attacker == Color::White {
         ((pawns << Bitboard(9)) & !FILE_A) | ((pawns << Bitboard(7)) & !FILE_H)
     } else {
         ((pawns >> Bitboard(9)) & !FILE_H) | ((pawns >> Bitboard(9)) & !FILE_H)
     }
 }
 
-pub fn pawn_attacks(board: &Board, sq: Square) -> Bitboard {
-    Bitboard::empty()
+pub fn pawn_attacks(board: &Board, sq: Square, attacker: Color) -> Bitboard {
+    let up_left = match attacker {
+        Color::White => NorthWest,
+        Color::Black => SouthEast,
+    };
+    let up_right = match attacker {
+        Color::White => NorthEast,
+        Color::Black => SouthWest,
+    };
+    let s1 = sq.checked_shift(up_left.opp());
+    let s2 = sq.checked_shift(up_right.opp());
+    let mut bitboard = Bitboard::empty();
+    if let Some(s1) = s1 {
+        bitboard |= s1.bitboard();
+    }
+    if let Some(s2) = s2 {
+        bitboard |= s2.bitboard();
+    }
+    bitboard
 }
