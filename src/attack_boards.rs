@@ -150,16 +150,6 @@ fn gen_knight_attack_boards() {
     }
 }
 
-// pub fn gen_pawn_attack_board(board: &Board, attacker: Color) -> Bitboard {
-//     let pawns = board.board[attacker as usize][PieceName::Pawn as usize];
-//
-//     if attacker == Color::White {
-//         ((pawns << Bitboard(9)) & !FILE_A) | ((pawns << Bitboard(7)) & !FILE_H)
-//     } else {
-//         ((pawns >> Bitboard(9)) & !FILE_H) | ((pawns >> Bitboard(9)) & !FILE_H)
-//     }
-// }
-
 fn gen_pawn_attack_boards() {
     unsafe {
         for sq in Square::iter() {

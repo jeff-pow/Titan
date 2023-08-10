@@ -27,8 +27,8 @@ fn main() {
     init_attack_boards();
     let board = fen::build_board(fen::STARTING_FEN);
     // let board = fen::build_board("r1bqkbnr/pppnpppp/3p4/8/8/P4P1N/1PPPP1PP/RNBQKB1R b KQkq - 0 3");
-    search::perft(&board, 6);
-    // time_move_generation(&board, 6);
+    // search::perft(&board, 6);
+    time_move_generation(&board, 6);
     uci::main_loop();
 }
 
