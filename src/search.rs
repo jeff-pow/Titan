@@ -16,7 +16,7 @@ pub const INFINITY: i32 = 9999999;
 #[allow(dead_code)]
 /// Counts and times the action of generating moves to a certain depth. Prints this information
 pub fn time_move_generation(board: &Board, depth: i32) {
-    for i in 1..=depth {
+    for i in 1..depth {
         let start = Instant::now();
         print!("{}", count_moves(i, board));
         let elapsed = start.elapsed();

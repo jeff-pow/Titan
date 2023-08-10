@@ -1,5 +1,3 @@
-use strum::IntoEnumIterator;
-use strum_macros::EnumIter;
 use crate::moves::Direction::*;
 use crate::{
     bitboard::Bitboard,
@@ -9,6 +7,8 @@ use crate::{
     pleco_magics::init_magics,
     square::Square,
 };
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
 const FILE_A_U64: u64 = 0x101010101010101;
 const FILE_B_U64: u64 = FILE_A_U64 << 1;
@@ -63,7 +63,7 @@ pub fn pawn_attacks(square: Square, attacker: Color) -> Bitboard {
 }
 
 /// Non thread safe - this functions call's have to finish running before the program will
-/// successfully run w/o race conditions
+/// successfully run w/o undefined behavior
 pub fn init_attack_boards() {
     gen_king_attack_boards();
     gen_knight_attack_boards();
@@ -188,7 +188,13 @@ mod test_attack_boards {
         assert_eq!(pawn_attacks(p_sq, Color::White), Square(49).bitboard());
 
         let p_sq = Square(19);
-        assert_eq!(pawn_attacks(p_sq, Color::Black), (Square(10).bitboard() | Square(12).bitboard()));
-        assert_eq!(pawn_attacks(p_sq, Color::White), (Square(26).bitboard() | Square(28).bitboard()));
+        assert_eq!(
+            pawn_attacks(p_sq, Color::Black),
+            (Square(10).bitboard() | Square(12).bitboard())
+        );
+        assert_eq!(
+            pawn_attacks(p_sq, Color::White),
+            (Square(26).bitboard() | Square(28).bitboard())
+        );
     }
 }

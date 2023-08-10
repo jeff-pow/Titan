@@ -346,32 +346,35 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
 
     // Promotions - captures and straight pushes
     if promotions != Bitboard::empty() {
+        let a = promotions.shift(up);
         let mut no_capture_promotions = promotions.shift(up) & vacancies;
         let mut left_capture_promotions = promotions.shift(up_left) & enemies;
         let mut right_capture_promotions = promotions.shift(up_right) & enemies;
-        while no_capture_promotions > Bitboard::empty() {
-            generate_promotions(no_capture_promotions.pop_lsb(), up, &mut moves);
+        while no_capture_promotions != Bitboard::empty() {
+            generate_promotions(no_capture_promotions.pop_lsb(), down, &mut moves);
         }
-        while left_capture_promotions > Bitboard::empty() {
+        while left_capture_promotions != Bitboard::empty() {
             generate_promotions(left_capture_promotions.pop_lsb(), down_right, &mut moves);
         }
-        while right_capture_promotions > Bitboard::empty() {
+        while right_capture_promotions != Bitboard::empty() {
             generate_promotions(right_capture_promotions.pop_lsb(), down_left, &mut moves);
         }
     }
 
-    // Captures
-    let mut left_captures = non_promotions.shift(up_left) & enemies;
-    let mut right_captures = non_promotions.shift(up_right) & enemies;
-    while left_captures > Bitboard::empty() {
-        let dest = left_captures.pop_lsb();
-        let src = dest.shift(down_right).expect("Valid shift");
-        moves.push(Move::new(src, dest, None, MoveType::Normal));
-    }
-    while right_captures > Bitboard::empty() {
-        let dest = right_captures.pop_lsb();
-        let src = dest.shift(down_left).expect("Valid shift");
-        moves.push(Move::new(src, dest, None, MoveType::Normal));
+    if non_promotions != Bitboard::empty() {
+        // Captures
+        let mut left_captures = non_promotions.shift(up_left) & enemies;
+        let mut right_captures = non_promotions.shift(up_right) & enemies;
+        while left_captures > Bitboard::empty() {
+            let dest = left_captures.pop_lsb();
+            let src = dest.shift(down_right).expect("Valid shift");
+            moves.push(Move::new(src, dest, None, MoveType::Normal));
+        }
+        while right_captures > Bitboard::empty() {
+            let dest = right_captures.pop_lsb();
+            let src = dest.shift(down_left).expect("Valid shift");
+            moves.push(Move::new(src, dest, None, MoveType::Normal));
+        }
     }
 
     // En Passant
@@ -397,7 +400,7 @@ fn get_en_passant(board: &Board, dir: Direction) -> Option<Move> {
 fn generate_promotions(dest: Square, d: Direction, moves: &mut Vec<Move>) {
     for p in Promotion::iter() {
         moves.push(Move::new(
-            dest.shift(d.opp()).unwrap(),
+            dest.shift(d).unwrap(),
             dest,
             Some(p),
             MoveType::Promotion,
@@ -464,7 +467,6 @@ pub fn generate_moves(board: &Board) -> Vec<Move> {
         })
         .collect()
 }
-
 
 impl Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

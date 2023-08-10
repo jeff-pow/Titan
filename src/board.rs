@@ -245,6 +245,9 @@ impl Board {
         }
         // If move is a promotion, a pawn is removed from the board and replaced with a higher
         // value piece
+        if m.promotion().is_some() {
+            self.remove_piece(PieceName::Pawn, self.to_move, m.dest_square());
+        }
         match m.promotion() {
             Some(Promotion::Queen) => {
                 self.place_piece(PieceName::Queen, self.to_move, m.dest_square());
