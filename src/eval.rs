@@ -197,9 +197,8 @@ pub fn eval(board: &Board) -> i32 {
         if board.piece_on_square(square).is_none() {
             continue;
         }
-        let piece_name = board.piece_on_square(square).unwrap();
-        game_phase += game_phase_value(piece_name);
         if let Some(piece) = board.piece_on_square(square) {
+            game_phase += game_phase_value(piece);
             match board.color_on_square(square) {
                 Some(Color::White) => {
                     white_mg += get_mg_table(piece)[square.0 as usize ^ 56] + piece_value(piece);
@@ -231,7 +230,9 @@ pub fn eval(board: &Board) -> i32 {
     // captures
     let mg_phase = min(game_phase, 24);
     let eg_phase = 24 - mg_phase;
-    (mg_pts * mg_phase + eg_pts * eg_phase) / 24
+    let a = (mg_pts * mg_phase + eg_pts * eg_phase) / 24;
+    let b = 7;
+    a
 }
 
 #[cfg(test)]
