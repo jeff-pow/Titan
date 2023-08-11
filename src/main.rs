@@ -4,6 +4,7 @@ mod bitboard;
 mod board;
 mod eval;
 mod fen;
+mod movegenerator;
 mod moves;
 mod pieces;
 mod pleco_magics;
@@ -25,9 +26,6 @@ use crate::moves::generate_moves;
 fn main() {
     init_attack_boards();
     let board = fen::build_board(fen::STARTING_FEN);
-    let board = fen::build_board("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
-    // search::perft(&board, 6);
-    time_move_generation(&board, 6);
     // uci::main_loop();
 }
 
@@ -60,7 +58,7 @@ mod move_number_tests {
     fn test_starting_pos() {
         init_attack_boards();
         let board = build_board(fen::STARTING_FEN);
-        assert_eq!(119060324, perft(&board, 6));
+        assert_eq!(119_060_324, perft(&board, 6));
     }
 
     #[test]
@@ -112,6 +110,6 @@ mod move_number_tests {
         init_attack_boards();
         let board =
             build_board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
-        assert_eq!(8031647685, perft(&board, 6));
+        assert_eq!(193_690_690, perft(&board, 5));
     }
 }

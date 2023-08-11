@@ -172,14 +172,14 @@ impl Board {
                     self.remove_piece(
                         PieceName::Pawn,
                         opposite_color(self.to_move),
-                        m.dest_square().shift(South).unwrap(),
+                        m.dest_square().shift(South),
                     );
                 }
                 Color::Black => {
                     self.remove_piece(
                         PieceName::Pawn,
                         opposite_color(self.to_move),
-                        m.dest_square().shift(North).unwrap(),
+                        m.dest_square().shift(North),
                     );
                 }
             }
@@ -303,19 +303,15 @@ impl Board {
         if piece_moving == PieceName::Pawn {
             match self.to_move {
                 Color::White => {
-                    if m.origin_square()
-                        == m.dest_square().shift(South).unwrap().shift(South).unwrap()
-                    {
+                    if m.origin_square() == m.dest_square().shift(South).shift(South) {
                         en_passant = true;
-                        self.en_passant_square = m.dest_square().shift(South).unwrap();
+                        self.en_passant_square = m.dest_square().shift(South);
                     }
                 }
                 Color::Black => {
-                    if m.dest_square().shift(North).unwrap().shift(North).unwrap()
-                        == m.origin_square()
-                    {
+                    if m.dest_square().shift(North).shift(North) == m.origin_square() {
                         en_passant = true;
-                        self.en_passant_square = m.origin_square().shift(South).unwrap();
+                        self.en_passant_square = m.origin_square().shift(South);
                     }
                 }
             }

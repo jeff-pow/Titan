@@ -42,12 +42,9 @@ impl Square {
     }
 
     #[inline]
-    pub fn shift(&self, dir: Direction) -> Option<Square> {
+    pub fn shift(&self, dir: Direction) -> Square {
         let new_square = self.0 as i8 + dir as i8;
-        if Square(new_square as u8).is_valid() {
-            return Some(Square(new_square as u8));
-        }
-        None
+        Square(new_square as u8)
     }
 
     #[inline]
@@ -78,8 +75,8 @@ impl Square {
     }
 
     #[inline]
-    pub fn get_rank_bitboard(square: Square) -> Bitboard {
-        let x = square.rank();
+    pub fn get_rank_bitboard(&self) -> Bitboard {
+        let x = self.rank();
         match x {
             0 => RANK1,
             1 => RANK2,
@@ -94,8 +91,8 @@ impl Square {
     }
 
     #[inline]
-    pub fn get_file_bitboard(square: Square) -> Bitboard {
-        let y = square.file();
+    pub fn get_file_bitboard(&self) -> Bitboard {
+        let y = self.file();
         match y {
             0 => FILE_A,
             1 => FILE_B,

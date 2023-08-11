@@ -294,28 +294,23 @@ fn generate_psuedolegal_moves(board: &Board) -> Vec<Move> {
     moves
 }
 
-
 fn generate_castling_moves(board: &Board) -> Vec<Move> {
     let mut moves = Vec::new();
     let (kingside_vacancies, queenside_vacancies) = match board.to_move {
-        Color::White => {
-            (Bitboard(0b1110), Bitboard(0b1100000))
-        }
-        Color::Black => {
-            (Bitboard(0x6000000000000000), Bitboard(0xe00000000000000))
-        }
+        Color::White => (Bitboard(0b1110), Bitboard(0b1100000)),
+        Color::Black => (Bitboard(0x6000000000000000), Bitboard(0xe00000000000000)),
     };
     let (can_kingside, can_queenside) = match board.to_move {
-        Color::White => { (board.white_king_castle, board.white_queen_castle) }
-        Color::Black => { (board.black_king_castle, board.black_queen_castle) }
+        Color::White => (board.white_king_castle, board.white_queen_castle),
+        Color::Black => (board.black_king_castle, board.black_queen_castle),
     };
     let (kingside_dest, queenside_dest) = match board.to_move {
         Color::White => (Square(6), Square(2)),
-        Color::Black => (Square(62), Square(58))
+        Color::Black => (Square(62), Square(58)),
     };
     let king_sq = match board.to_move {
         Color::White => board.white_king_square,
-        Color::Black => board.black_king_square
+        Color::Black => board.black_king_square,
     };
     'kingside: {
         if can_kingside && (kingside_vacancies & board.occupancies()) == Bitboard::empty() {
@@ -386,15 +381,15 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
     let mut push_two = vacancies & (push_one & rank3_bb).shift(up);
     while push_one != Bitboard::empty() {
         let dest = push_one.pop_lsb();
-        let src = dest.shift(down).expect("Valid shift");
+        let src = dest.checked_shift(down).expect("Valid shift");
         moves.push(Move::new(src, dest, None, MoveType::Normal));
     }
     while push_two != Bitboard::empty() {
         let dest = push_two.pop_lsb();
         let src = dest
-            .shift(down)
+            .checked_shift(down)
             .expect("Valid shift")
-            .shift(down)
+            .checked_shift(down)
             .expect("Valid shift");
         moves.push(Move::new(src, dest, None, MoveType::Normal));
     }
@@ -422,12 +417,12 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
         let mut right_captures = non_promotions.shift(up_right) & enemies;
         while left_captures > Bitboard::empty() {
             let dest = left_captures.pop_lsb();
-            let src = dest.shift(down_right).expect("Valid shift");
+            let src = dest.checked_shift(down_right).expect("Valid shift");
             moves.push(Move::new(src, dest, None, MoveType::Normal));
         }
         while right_captures > Bitboard::empty() {
             let dest = right_captures.pop_lsb();
-            let src = dest.shift(down_left).expect("Valid shift");
+            let src = dest.checked_shift(down_left).expect("Valid shift");
             moves.push(Move::new(src, dest, None, MoveType::Normal));
         }
     }
@@ -446,7 +441,7 @@ fn get_en_passant(board: &Board, dir: Direction) -> Option<Move> {
     let pawn = sq.bitboard() & board.board[board.to_move as usize][Pawn as usize];
     if pawn != Bitboard::empty() {
         let dest = board.en_passant_square;
-        let src = dest.shift(dir)?;
+        let src = dest.checked_shift(dir)?;
         return Some(Move::new(src, dest, None, MoveType::EnPassant));
     }
     None
@@ -455,7 +450,7 @@ fn get_en_passant(board: &Board, dir: Direction) -> Option<Move> {
 fn generate_promotions(dest: Square, d: Direction, moves: &mut Vec<Move>) {
     for p in Promotion::iter() {
         moves.push(Move::new(
-            dest.shift(d).unwrap(),
+            dest.checked_shift(d).unwrap(),
             dest,
             Some(p),
             MoveType::Promotion,

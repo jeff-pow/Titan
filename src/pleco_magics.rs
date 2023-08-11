@@ -1,12 +1,16 @@
 use std::ptr;
 
+use crate::bitboard::Bitboard;
+use crate::square::Square;
 use crate::{
     attack_boards::*,
     bit_hacks::{distance, get_file_bitboard, get_rank_bitboard},
+    moves::Direction,
+    moves::Direction::*,
 };
 
 // Simple Pcg64Mcg implementation
-pub struct Rng(u128);
+struct Rng(u128);
 
 impl Default for Rng {
     fn default() -> Self {
@@ -23,23 +27,23 @@ impl Rng {
     }
 
     /// Method returns u64s with an average of 8 bits active, the desirable range for magic numbers
-    pub fn next_magic(&mut self) -> u64 {
+    fn next_magic(&mut self) -> u64 {
         self.next_u64() & self.next_u64() & self.next_u64()
     }
 }
 
 /// Size of the magic rook table.
-const ROOK_M_SIZE: usize = 102_400;
+pub const ROOK_M_SIZE: usize = 102_400;
 static mut ROOK_MAGICS: [SMagic; 64] = [SMagic::init(); 64];
-static mut ROOK_TABLE: [u64; ROOK_M_SIZE] = [0; ROOK_M_SIZE];
+static mut ROOK_TABLE: [Bitboard; ROOK_M_SIZE] = [Bitboard::empty(); ROOK_M_SIZE];
 
 /// Size of the magic bishop table.
-const BISHOP_M_SIZE: usize = 5248;
+pub const BISHOP_M_SIZE: usize = 5248;
 static mut BISHOP_MAGICS: [SMagic; 64] = [SMagic::init(); 64];
-static mut BISHOP_TABLE: [u64; BISHOP_M_SIZE] = [0; BISHOP_M_SIZE];
+static mut BISHOP_TABLE: [Bitboard; BISHOP_M_SIZE] = [Bitboard::empty(); BISHOP_M_SIZE];
 
-const B_DELTAS: [i8; 4] = [7, 9, -9, -7];
-const R_DELTAS: [i8; 4] = [8, 1, -8, -1];
+const B_DELTAS: [Direction; 4] = [SouthEast, SouthWest, NorthEast, NorthWest];
+const R_DELTAS: [Direction; 4] = [North, South, East, West];
 
 #[cold]
 pub fn init_magics() {
@@ -81,7 +85,7 @@ pub fn rook_attacks(mut occupied: u64, square: u8) -> u64 {
 /// contains a mask,  magic number, number to shift by, and a pointer into the array slice
 /// where the position is held.
 #[derive(Copy, Clone)]
-struct SMagic {
+pub struct SMagic {
     ptr: usize,
     mask: u64,
     magic: u64,
@@ -138,9 +142,9 @@ impl PreSMagic {
 #[cold]
 unsafe fn gen_magic_board(
     table_size: usize,
-    deltas: &[i8; 4],
+    deltas: &[Direction; 4],
     static_magics: *mut SMagic,
-    attacks: *mut u64,
+    attacks: *mut Bitboard,
 ) {
     // Creates PreSMagic to hold raw numbers. Technically just adds room to stack
     let mut pre_sq_table: [PreSMagic; 64] = PreSMagic::init64();
@@ -171,39 +175,40 @@ unsafe fn gen_magic_board(
     pre_sq_table[0].start = 0;
 
     // Loop through each square! s is a SQ
-    for s in 0..64_u8 {
+    for s in Square::iter() {
         // Magic number for later
         let mut magic: u64;
 
         // edges is the bitboard representation of the edges s is not on.
         // e.g. sq A1 is on FileA and Rank1, so edges = bitboard of FileH and Rank8
         // mask = occupancy mask of square s
-        let edges: u64 = ((RANK1.0 | RANK8.0) & !get_rank_bitboard(s))
-            | ((FILE_A.0 | FILE_H.0) & !get_file_bitboard(s));
-        let mask: u64 = sliding_attack(deltas, s, 0) & !edges;
+        // let edges: u64 = ((RANK1.0 | RANK8.0) & !get_rank_bitboard(s))
+        let edges = ((RANK1 | RANK8) & !(s.get_rank_bitboard()))
+            | ((FILE_A | FILE_H) & !(s.get_file_bitboard()));
+        let mask = sliding_attack(deltas, s, Bitboard::empty()) & !edges;
 
         // Shift = number of bits in 64 - bits in mask = log2(size)
-        let shift: u32 = (64 - mask.count_ones()) as u32;
+        let shift: u32 = (64 - mask.0.count_ones()) as u32;
         b = 0;
         size = 0;
 
         // Ripple carry to determine occupancy, reference, and size
         'bit: loop {
             occupancy[size] = b;
-            reference[size] = sliding_attack(deltas, s, b);
+            reference[size] = sliding_attack(deltas, s, Bitboard(b)).0;
             size += 1;
-            b = ((b).wrapping_sub(mask)) as u64 & mask;
+            b = ((b).wrapping_sub(mask.0)) as u64 & mask.0;
             if b == 0 {
                 break 'bit;
             }
         }
 
         // Set current PreSMagic length to be of size
-        pre_sq_table[s as usize].len = size;
+        pre_sq_table[s.idx()].len = size;
 
         // If there is a next square, set the start of it.
-        if s < 63 {
-            pre_sq_table[s as usize + 1].start = pre_sq_table[s as usize].next_idx();
+        if s.idx() < 63 {
+            pre_sq_table[s.idx() + 1].start = pre_sq_table[s.idx()].next_idx();
         }
         // Create our Random Number Generator with a seed
         let mut rng = Rng::default();
@@ -213,7 +218,7 @@ unsafe fn gen_magic_board(
             // Create a magic with our desired number of bits in the first 8 places
             'first_in: loop {
                 magic = rng.next_magic();
-                if (magic.wrapping_mul(mask)).wrapping_shr(56).count_ones() >= 6 {
+                if (magic.wrapping_mul(mask.0)).wrapping_shr(56).count_ones() >= 6 {
                     break 'first_in;
                 }
             }
@@ -223,7 +228,7 @@ unsafe fn gen_magic_board(
             // Filling the attacks Vector up to size digits
             while i < size {
                 // Magic part! The index is = ((occupancy[s] & mask) * magic >> shift)
-                let index: usize = ((occupancy[i as usize] & mask).wrapping_mul(magic) as u64)
+                let index: usize = ((occupancy[i as usize] & mask.0).wrapping_mul(magic) as u64)
                     .wrapping_shr(shift) as usize;
 
                 // Checking to see if we have visited this index already with a lower current number
@@ -231,8 +236,10 @@ unsafe fn gen_magic_board(
                     // If we have visited with lower current, we replace it with this current number,
                     // as this current is higher and has gone through more passes
                     age[index] = current;
-                    *attacks.add(pre_sq_table[s as usize].start + index) = reference[i];
-                } else if *attacks.add(pre_sq_table[s as usize].start + index) != reference[i] {
+                    *attacks.add(pre_sq_table[s.idx()].start + index) = Bitboard(reference[i]);
+                } else if *attacks.add(pre_sq_table[s.idx()].start + index)
+                    != Bitboard(reference[i])
+                {
                     // If a magic maps to the same index but different result, either magic is bad or we are done
                     break;
                 }
@@ -244,9 +251,9 @@ unsafe fn gen_magic_board(
             }
         }
         // Set the remaining variables for the PreSMagic Struct
-        pre_sq_table[s as usize].magic = magic;
-        pre_sq_table[s as usize].mask = mask;
-        pre_sq_table[s as usize].shift = shift;
+        pre_sq_table[s.idx()].magic = magic;
+        pre_sq_table[s.idx()].mask = mask.0;
+        pre_sq_table[s.idx()].shift = shift;
     }
 
     // size = running total of total size
@@ -276,18 +283,18 @@ unsafe fn gen_magic_board(
 /// Returns a bitboards of sliding attacks given an array of 4 deltas/
 /// Does not include the original position/
 /// Includes occupied bits if it runs into them, but stops before going further.
-fn sliding_attack(deltas: &[i8; 4], sq: u8, occupied: u64) -> u64 {
-    assert!(sq < 64);
-    let mut attack: u64 = 0;
-    let square: i16 = sq as i16;
+fn sliding_attack(deltas: &[Direction; 4], sq: Square, occupied: Bitboard) -> Bitboard {
+    assert!(sq.0 < 64);
+    let mut attack = Bitboard::empty();
     for delta in deltas.iter().take(4_usize) {
-        let mut s: u8 = ((square as i16) + (*delta as i16)) as u8;
-        'inner: while s < 64 && distance(s as u8, ((s as i16) - (*delta as i16)) as u8) == 1 {
-            attack |= 1_u64.wrapping_shl(s as u32);
-            if occupied & 1_u64.wrapping_shl(s as u32) != 0 {
+        // let mut s: u8 = ((square as i16) + (*delta as i16)) as u8;
+        let mut s = sq.shift(*delta);
+        'inner: while s.is_valid() && s.dist(s.shift(delta.opp())) == 1 {
+            attack |= Bitboard(1_u64.wrapping_shl(s.0.into()));
+            if occupied & Bitboard(1_u64.wrapping_shl(s.0.into())) != Bitboard::empty() {
                 break 'inner;
             }
-            s = ((s as i16) + (*delta as i16)) as u8;
+            s = s.shift(*delta);
         }
     }
     attack
