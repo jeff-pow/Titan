@@ -290,6 +290,61 @@ fn generate_psuedolegal_moves(board: &Board) -> Vec<Move> {
     moves.append(&mut generate_bitboard_moves(board, PieceName::Rook));
     moves.append(&mut generate_bitboard_moves(board, PieceName::Bishop));
     moves.append(&mut generate_pawn_moves(board));
+    moves.append(&mut generate_castling_moves(board));
+    moves
+}
+
+
+fn generate_castling_moves(board: &Board) -> Vec<Move> {
+    let mut moves = Vec::new();
+    let (kingside_vacancies, queenside_vacancies) = match board.to_move {
+        Color::White => {
+            (Bitboard(0b1110), Bitboard(0b1100000))
+        }
+        Color::Black => {
+            (Bitboard(0x6000000000000000), Bitboard(0xe00000000000000))
+        }
+    };
+    let (can_kingside, can_queenside) = match board.to_move {
+        Color::White => { (board.white_king_castle, board.white_queen_castle) }
+        Color::Black => { (board.black_king_castle, board.black_queen_castle) }
+    };
+    let (kingside_dest, queenside_dest) = match board.to_move {
+        Color::White => (Square(6), Square(2)),
+        Color::Black => (Square(62), Square(58))
+    };
+    let king_sq = match board.to_move {
+        Color::White => board.white_king_square,
+        Color::Black => board.black_king_square
+    };
+    'kingside: {
+        if can_kingside && (kingside_vacancies & board.occupancies()) == Bitboard::empty() {
+            let range = match board.to_move {
+                Color::White => 5..=6,
+                Color::Black => 61..=62,
+            };
+            for check_sq in range {
+                if board.square_under_attack(opposite_color(board.to_move), Square(check_sq)) {
+                    break 'kingside;
+                }
+            }
+            moves.push(Move::new(king_sq, kingside_dest, None, MoveType::Castle));
+        }
+    }
+    'queenside: {
+        if can_queenside && (queenside_vacancies & board.occupancies()) == Bitboard::empty() {
+            let range = match board.to_move {
+                Color::White => 2..=3,
+                Color::Black => 58..=59,
+            };
+            for check_sq in range {
+                if board.square_under_attack(opposite_color(board.to_move), Square(check_sq)) {
+                    break 'queenside;
+                }
+            }
+            moves.push(Move::new(king_sq, queenside_dest, None, MoveType::Castle));
+        }
+    }
     moves
 }
 

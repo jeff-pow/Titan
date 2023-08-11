@@ -79,7 +79,7 @@ fn gen_king_attack_boards() {
             if y >= 1 {
                 if x >= 1 { *moves |= Bitboard(1 << (square as u32 - 9)); }
                 *moves |= Bitboard(1 << (square as u32 - 8));
-                if x <= 6 { *moves |= Bitboard(1<< (square as u32 - 7)); }
+                if x <= 6 { *moves |= Bitboard(1 << (square as u32 - 7)); }
             }
 
             if x >= 1 { *moves |= Bitboard(1 << (square as u32 - 1)); }
