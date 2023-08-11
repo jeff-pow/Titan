@@ -1,4 +1,4 @@
-use crate::pleco_magics::bishop_attacks;
+use crate::magics::bishop_attacks;
 use core::fmt;
 use std::fmt::Display;
 
@@ -10,7 +10,7 @@ use crate::bitboard::Bitboard;
 use crate::moves::Direction::*;
 use crate::pieces::opposite_color;
 use crate::pieces::PieceName::Pawn;
-use crate::pleco_magics::rook_attacks;
+use crate::magics::rook_attacks;
 use crate::square::Square;
 use crate::{board::Board, pieces::Color, pieces::PieceName};
 

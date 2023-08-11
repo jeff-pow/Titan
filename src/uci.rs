@@ -3,8 +3,6 @@ use crate::fen::{self, build_board, parse_fen_from_buffer};
 use crate::moves::from_lan;
 use crate::search::*;
 use crate::zobrist::add_to_triple_repetition_map;
-#[allow(unused_imports)]
-use rand::seq::SliceRandom;
 use std::collections::HashMap;
 use std::io;
 
@@ -51,7 +49,7 @@ pub fn main_loop() -> ! {
                 let depth = vec[9].to_digit(10).unwrap();
                 perft(&board, depth as i32);
             } else {
-                let m = search(&board, 5, &mut triple_repetitions);
+                let m = search(&board, 7, &mut triple_repetitions);
                 println!("bestmove {}", m.to_lan());
                 board.make_move(&m);
             }

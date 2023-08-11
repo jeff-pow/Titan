@@ -4,7 +4,7 @@ use strum::IntoEnumIterator;
 use crate::attack_boards::{king_attacks, knight_attacks, pawn_attacks};
 use crate::bitboard::Bitboard;
 use crate::moves::Direction;
-use crate::pleco_magics::{bishop_attacks, rook_attacks};
+use crate::magics::{bishop_attacks, rook_attacks};
 use crate::square::Square;
 use crate::{
     moves::{Castle, Direction::*, Move, Promotion},

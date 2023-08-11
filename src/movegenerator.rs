@@ -1,5 +1,5 @@
 use crate::bitboard::Bitboard;
-use crate::pleco_magics::{SMagic, BISHOP_M_SIZE, ROOK_M_SIZE};
+use crate::magics::{SMagic, BISHOP_M_SIZE, ROOK_M_SIZE};
 
 pub struct MoveGenerator {
     pub knight_table: [Bitboard; 64],

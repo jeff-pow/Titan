@@ -7,7 +7,7 @@ mod fen;
 mod movegenerator;
 mod moves;
 mod pieces;
-mod pleco_magics;
+mod magics;
 mod search;
 mod square;
 mod uci;
@@ -26,7 +26,7 @@ use crate::moves::generate_moves;
 fn main() {
     init_attack_boards();
     let board = fen::build_board(fen::STARTING_FEN);
-    // uci::main_loop();
+    uci::main_loop();
 }
 
 #[allow(dead_code)]

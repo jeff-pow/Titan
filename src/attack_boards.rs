@@ -4,7 +4,7 @@ use crate::{
     board::Board,
     moves::coordinates,
     pieces::{Color, PieceName},
-    pleco_magics::init_magics,
+    magics::init_magics,
     square::Square,
 };
 use strum::IntoEnumIterator;
