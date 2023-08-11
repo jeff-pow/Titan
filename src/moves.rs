@@ -7,10 +7,10 @@ use strum_macros::EnumIter;
 
 use crate::attack_boards::{king_attacks, knight_attacks, RANK2, RANK3, RANK6, RANK7};
 use crate::bitboard::Bitboard;
+use crate::magics::rook_attacks;
 use crate::moves::Direction::*;
 use crate::pieces::opposite_color;
 use crate::pieces::PieceName::Pawn;
-use crate::magics::rook_attacks;
 use crate::square::Square;
 use crate::{board::Board, pieces::Color, pieces::PieceName};
 
@@ -265,23 +265,6 @@ pub enum Castle {
     BlackQueenCastle,
 }
 
-/// Rank is horizontal, file is vertical
-/// Function returns 0 indexed board, doesn't start at 1
-#[inline]
-pub fn coordinates(idx: usize) -> (usize, usize) {
-    (idx % 8, idx / 8)
-}
-
-#[inline]
-pub fn file(square: u8) -> u8 {
-    square & 0b111
-}
-
-#[inline]
-pub fn rank(square: u8) -> u8 {
-    square >> 3
-}
-
 fn generate_psuedolegal_moves(board: &Board) -> Vec<Move> {
     let mut moves = Vec::new();
     moves.append(&mut generate_bitboard_moves(board, PieceName::Knight));
@@ -313,7 +296,7 @@ fn generate_castling_moves(board: &Board) -> Vec<Move> {
         Color::Black => board.black_king_square,
     };
     'kingside: {
-        if can_kingside && (kingside_vacancies & board.occupancies()) == Bitboard::empty() {
+        if can_kingside && (kingside_vacancies & board.occupancies()) == Bitboard::EMPTY {
             let range = match board.to_move {
                 Color::White => 5..=6,
                 Color::Black => 61..=62,
@@ -327,7 +310,7 @@ fn generate_castling_moves(board: &Board) -> Vec<Move> {
         }
     }
     'queenside: {
-        if can_queenside && (queenside_vacancies & board.occupancies()) == Bitboard::empty() {
+        if can_queenside && (queenside_vacancies & board.occupancies()) == Bitboard::EMPTY {
             let range = match board.to_move {
                 Color::White => 2..=3,
                 Color::Black => 58..=59,
@@ -379,12 +362,12 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
     // Single and double pawn pushes w/o captures
     let mut push_one = vacancies & non_promotions.shift(up);
     let mut push_two = vacancies & (push_one & rank3_bb).shift(up);
-    while push_one != Bitboard::empty() {
+    while push_one != Bitboard::EMPTY {
         let dest = push_one.pop_lsb();
         let src = dest.checked_shift(down).expect("Valid shift");
         moves.push(Move::new(src, dest, None, MoveType::Normal));
     }
-    while push_two != Bitboard::empty() {
+    while push_two != Bitboard::EMPTY {
         let dest = push_two.pop_lsb();
         let src = dest
             .checked_shift(down)
@@ -395,32 +378,31 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
     }
 
     // Promotions - captures and straight pushes
-    if promotions != Bitboard::empty() {
-        let a = promotions.shift(up);
+    if promotions != Bitboard::EMPTY {
         let mut no_capture_promotions = promotions.shift(up) & vacancies;
         let mut left_capture_promotions = promotions.shift(up_left) & enemies;
         let mut right_capture_promotions = promotions.shift(up_right) & enemies;
-        while no_capture_promotions != Bitboard::empty() {
+        while no_capture_promotions != Bitboard::EMPTY {
             generate_promotions(no_capture_promotions.pop_lsb(), down, &mut moves);
         }
-        while left_capture_promotions != Bitboard::empty() {
+        while left_capture_promotions != Bitboard::EMPTY {
             generate_promotions(left_capture_promotions.pop_lsb(), down_right, &mut moves);
         }
-        while right_capture_promotions != Bitboard::empty() {
+        while right_capture_promotions != Bitboard::EMPTY {
             generate_promotions(right_capture_promotions.pop_lsb(), down_left, &mut moves);
         }
     }
 
-    if non_promotions != Bitboard::empty() {
+    if non_promotions != Bitboard::EMPTY {
         // Captures
         let mut left_captures = non_promotions.shift(up_left) & enemies;
         let mut right_captures = non_promotions.shift(up_right) & enemies;
-        while left_captures > Bitboard::empty() {
+        while left_captures > Bitboard::EMPTY {
             let dest = left_captures.pop_lsb();
             let src = dest.checked_shift(down_right).expect("Valid shift");
             moves.push(Move::new(src, dest, None, MoveType::Normal));
         }
-        while right_captures > Bitboard::empty() {
+        while right_captures > Bitboard::EMPTY {
             let dest = right_captures.pop_lsb();
             let src = dest.checked_shift(down_left).expect("Valid shift");
             moves.push(Move::new(src, dest, None, MoveType::Normal));
@@ -429,8 +411,12 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
 
     // En Passant
     if board.can_en_passant() {
-        get_en_passant(board, down_right).map(|x| moves.push(x));
-        get_en_passant(board, down_left).map(|x| moves.push(x));
+        if let Some(x) = get_en_passant(board, down_right) {
+            moves.push(x)
+        }
+        if let Some(x) = get_en_passant(board, down_left) {
+            moves.push(x)
+        }
     }
 
     moves
@@ -439,7 +425,7 @@ fn generate_pawn_moves(board: &Board) -> Vec<Move> {
 fn get_en_passant(board: &Board, dir: Direction) -> Option<Move> {
     let sq = board.en_passant_square.checked_shift(dir)?;
     let pawn = sq.bitboard() & board.board[board.to_move as usize][Pawn as usize];
-    if pawn != Bitboard::empty() {
+    if pawn != Bitboard::EMPTY {
         let dest = board.en_passant_square;
         let src = dest.checked_shift(dir)?;
         return Some(Move::new(src, dest, None, MoveType::EnPassant));
@@ -461,7 +447,7 @@ fn generate_promotions(dest: Square, d: Direction, moves: &mut Vec<Move>) {
 fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> Vec<Move> {
     let mut moves = Vec::new();
     // Don't calculate any moves if no pieces of that type exist for the given color
-    if board.board[board.to_move as usize][piece_name as usize] == Bitboard::empty() {
+    if board.board[board.to_move as usize][piece_name as usize] == Bitboard::EMPTY {
         return moves;
     }
     for square in Square::iter() {
@@ -489,8 +475,8 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> Vec<Move> {
 
 fn push_moves(moves: &mut Vec<Move>, mut attacks: Bitboard, sq: Square) {
     let mut idx = 0;
-    while attacks != Bitboard::empty() {
-        if attacks & Bitboard(1) != Bitboard::empty() {
+    while attacks != Bitboard::EMPTY {
+        if attacks & Bitboard(1) != Bitboard::EMPTY {
             moves.push(Move::new(sq, Square(idx), None, MoveType::Normal));
         }
         attacks = attacks >> Bitboard(1);

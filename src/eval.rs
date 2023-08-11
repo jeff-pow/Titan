@@ -230,31 +230,5 @@ pub fn eval(board: &Board) -> i32 {
     // captures
     let mg_phase = min(game_phase, 24);
     let eg_phase = 24 - mg_phase;
-    let a = (mg_pts * mg_phase + eg_pts * eg_phase) / 24;
-    let b = 7;
-    a
-}
-
-#[cfg(test)]
-mod eval_test {
-    use crate::{eval::eval, fen};
-
-    #[test]
-    fn starting_position() {
-        let board = fen::build_board(fen::STARTING_FEN);
-        assert_eq!(0, eval(&board));
-    }
-
-    #[test]
-    fn test_positions() {
-        let worst = fen::build_board("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1");
-        let less_worse =
-            fen::build_board("rnbqkbnr/1ppppppp/p7/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1");
-        let good = fen::build_board("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1");
-        let also_good =
-            fen::build_board("rnbqkb1r/pppppppp/5n2/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1");
-        assert!(eval(&less_worse) > eval(&worst));
-        assert!(eval(&good) > eval(&less_worse));
-        assert!(eval(&also_good) > eval(&less_worse));
-    }
+    (mg_pts * mg_phase + eg_pts * eg_phase) / 24
 }

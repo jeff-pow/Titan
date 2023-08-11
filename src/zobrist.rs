@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{board::Board, eval::eval, pieces::Color, square::Square};
+use crate::{board::Board, eval::eval, pieces::Color, search::MAX_GAME_LENGTH, square::Square};
 
 #[rustfmt::skip]
 /// Randomly generated values to hash boards. Far from perfect, but *probably* good enough to avoid
@@ -18,14 +18,10 @@ const PIECE_HASHES: [u64; 64] = [
 
 /// Function checks for the presence of the board in the game. If the board position will have occurred three times,
 /// returns true indicating the position would be a stalemate due to the threefold repetition rule
-pub fn check_for_3x_repetition(board: &Board, triple_repetitions: &HashMap<u64, u8>) -> bool {
+pub fn check_for_3x_repetition(board: &Board, history: &Vec<u64>) -> bool {
     let hash = hash_board(board);
-    if let Some(num) = triple_repetitions.get(&hash) {
-        if num >= &2 {
-            return true;
-        }
-    }
-    false
+    let count = history.iter().filter(|&&x| x == hash).count();
+    count >= 2
 }
 
 /// Provides a hash for the board eval to be placed into a transposition table
@@ -51,17 +47,13 @@ pub fn get_transposition(board: &Board, transpos_table: &mut HashMap<u64, i32>) 
     *transpos_table.entry(hash).or_insert_with(|| eval(board))
 }
 
-pub fn add_to_triple_repetition_map(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) {
+pub fn add_to_history(board: &Board, history: &mut Vec<u64>) {
     let hash = hash_board(board);
-    triple_repetitions
-        .entry(hash)
-        .and_modify(|i| *i += 1)
-        .or_insert(1);
+    history.push(hash);
 }
 
-pub fn remove_from_triple_repetition_map(board: &Board, triple_repetitions: &mut HashMap<u64, u8>) {
-    let hash = hash_board(board);
-    triple_repetitions.entry(hash).and_modify(|e| *e -= 1);
+pub fn remove_from_history(history: &mut Vec<u64>) {
+    history.pop();
 }
 
 #[cfg(test)]

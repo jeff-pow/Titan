@@ -1,12 +1,5 @@
 use crate::moves::Direction::*;
-use crate::{
-    bitboard::Bitboard,
-    board::Board,
-    moves::coordinates,
-    pieces::{Color, PieceName},
-    magics::init_magics,
-    square::Square,
-};
+use crate::{bitboard::Bitboard, magics::init_magics, pieces::Color, square::Square};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
@@ -46,9 +39,9 @@ pub const RANK6: Bitboard = Bitboard(RANK6_U64);
 pub const RANK7: Bitboard = Bitboard(RANK7_U64);
 pub const RANK8: Bitboard = Bitboard(RANK8_U64);
 
-static mut KNIGHT_TABLE: [Bitboard; 64] = [Bitboard::empty(); 64];
-static mut KING_TABLE: [Bitboard; 64] = [Bitboard::empty(); 64];
-static mut PAWN_TABLE: [[Bitboard; 64]; 2] = [[Bitboard::empty(); 64]; 2];
+static mut KNIGHT_TABLE: [Bitboard; 64] = [Bitboard::EMPTY; 64];
+static mut KING_TABLE: [Bitboard; 64] = [Bitboard::EMPTY; 64];
+static mut PAWN_TABLE: [[Bitboard; 64]; 2] = [[Bitboard::EMPTY; 64]; 2];
 
 pub fn knight_attacks(square: Square) -> Bitboard {
     unsafe { KNIGHT_TABLE[square.0 as usize] }
@@ -75,7 +68,8 @@ pub fn init_attack_boards() {
 fn gen_king_attack_boards() {
     unsafe {
         KING_TABLE.iter_mut().enumerate().for_each(|(square, moves)| {
-            let (x, y) = coordinates(square);
+            let x = Square(square as u8).file();
+            let y = Square(square as u8).rank();
             if y >= 1 {
                 if x >= 1 { *moves |= Bitboard(1 << (square as u32 - 9)); }
                 *moves |= Bitboard(1 << (square as u32 - 8));
@@ -110,7 +104,7 @@ enum KnightMovement {
 
 /// Converts a direction of moves into a tuple of x,y movement
 impl KnightMovement {
-    fn to_xy(&self) -> (i8, i8) {
+    fn deltas(&self) -> (i8, i8) {
         match self {
             KnightMovement::WWN => (-2, 1),
             KnightMovement::WNN => (-1, 2),
@@ -131,7 +125,7 @@ fn gen_knight_attack_boards() {
             let current_rank = Square(square as u8).rank();
             let current_file = Square(square as u8).file();
             for mv in KnightMovement::iter() {
-                let (dir_x, dir_y) = mv.to_xy();
+                let (dir_x, dir_y) = mv.deltas();
                 if !(0..8).contains(&(current_file as i8 + dir_x)) {
                     continue;
                 }
@@ -154,14 +148,14 @@ fn gen_pawn_attack_boards() {
     unsafe {
         for sq in Square::iter() {
             let bb_square = sq.bitboard();
-            let mut w = Bitboard::empty();
+            let mut w = Bitboard::EMPTY;
             if let Some(w1) = bb_square.checked_shift(NorthEast) {
                 w |= w1;
             }
             if let Some(w2) = bb_square.checked_shift(NorthWest) {
                 w |= w2;
             }
-            let mut b = Bitboard::empty();
+            let mut b = Bitboard::EMPTY;
             if let Some(b1) = bb_square.checked_shift(SouthWest) {
                 b |= b1;
             }

@@ -2,12 +2,7 @@ use std::ptr;
 
 use crate::bitboard::Bitboard;
 use crate::square::Square;
-use crate::{
-    attack_boards::*,
-    bit_hacks::{distance, get_file_bitboard, get_rank_bitboard},
-    moves::Direction,
-    moves::Direction::*,
-};
+use crate::{attack_boards::*, moves::Direction, moves::Direction::*};
 
 // Simple Pcg64Mcg implementation
 struct Rng(u128);
@@ -35,12 +30,12 @@ impl Rng {
 /// Size of the magic rook table.
 pub const ROOK_M_SIZE: usize = 102_400;
 static mut ROOK_MAGICS: [SMagic; 64] = [SMagic::init(); 64];
-static mut ROOK_TABLE: [Bitboard; ROOK_M_SIZE] = [Bitboard::empty(); ROOK_M_SIZE];
+static mut ROOK_TABLE: [Bitboard; ROOK_M_SIZE] = [Bitboard::EMPTY; ROOK_M_SIZE];
 
 /// Size of the magic bishop table.
 pub const BISHOP_M_SIZE: usize = 5248;
 static mut BISHOP_MAGICS: [SMagic; 64] = [SMagic::init(); 64];
-static mut BISHOP_TABLE: [Bitboard; BISHOP_M_SIZE] = [Bitboard::empty(); BISHOP_M_SIZE];
+static mut BISHOP_TABLE: [Bitboard; BISHOP_M_SIZE] = [Bitboard::EMPTY; BISHOP_M_SIZE];
 
 const B_DELTAS: [Direction; 4] = [SouthEast, SouthWest, NorthEast, NorthWest];
 const R_DELTAS: [Direction; 4] = [North, South, East, West];
@@ -185,10 +180,10 @@ unsafe fn gen_magic_board(
         // let edges: u64 = ((RANK1.0 | RANK8.0) & !get_rank_bitboard(s))
         let edges = ((RANK1 | RANK8) & !(s.get_rank_bitboard()))
             | ((FILE_A | FILE_H) & !(s.get_file_bitboard()));
-        let mask = sliding_attack(deltas, s, Bitboard::empty()) & !edges;
+        let mask = sliding_attack(deltas, s, Bitboard::EMPTY) & !edges;
 
         // Shift = number of bits in 64 - bits in mask = log2(size)
-        let shift: u32 = (64 - mask.0.count_ones()) as u32;
+        let shift: u32 = 64 - mask.0.count_ones();
         b = 0;
         size = 0;
 
@@ -197,7 +192,7 @@ unsafe fn gen_magic_board(
             occupancy[size] = b;
             reference[size] = sliding_attack(deltas, s, Bitboard(b)).0;
             size += 1;
-            b = ((b).wrapping_sub(mask.0)) as u64 & mask.0;
+            b = ((b).wrapping_sub(mask.0)) & mask.0;
             if b == 0 {
                 break 'bit;
             }
@@ -228,7 +223,8 @@ unsafe fn gen_magic_board(
             // Filling the attacks Vector up to size digits
             while i < size {
                 // Magic part! The index is = ((occupancy[s] & mask) * magic >> shift)
-                let index: usize = ((occupancy[i as usize] & mask.0).wrapping_mul(magic) as u64)
+                let index: usize = (occupancy[i] & mask.0)
+                    .wrapping_mul(magic)
                     .wrapping_shr(shift) as usize;
 
                 // Checking to see if we have visited this index already with a lower current number
@@ -285,13 +281,13 @@ unsafe fn gen_magic_board(
 /// Includes occupied bits if it runs into them, but stops before going further.
 fn sliding_attack(deltas: &[Direction; 4], sq: Square, occupied: Bitboard) -> Bitboard {
     assert!(sq.0 < 64);
-    let mut attack = Bitboard::empty();
+    let mut attack = Bitboard::EMPTY;
     for delta in deltas.iter().take(4_usize) {
         // let mut s: u8 = ((square as i16) + (*delta as i16)) as u8;
         let mut s = sq.shift(*delta);
         'inner: while s.is_valid() && s.dist(s.shift(delta.opp())) == 1 {
             attack |= Bitboard(1_u64.wrapping_shl(s.0.into()));
-            if occupied & Bitboard(1_u64.wrapping_shl(s.0.into())) != Bitboard::empty() {
+            if occupied & Bitboard(1_u64.wrapping_shl(s.0.into())) != Bitboard::EMPTY {
                 break 'inner;
             }
             s = s.shift(*delta);

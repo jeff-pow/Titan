@@ -3,7 +3,6 @@ use strum::IntoEnumIterator;
 
 use crate::attack_boards::{king_attacks, knight_attacks, pawn_attacks};
 use crate::bitboard::Bitboard;
-use crate::moves::Direction;
 use crate::magics::{bishop_attacks, rook_attacks};
 use crate::square::Square;
 use crate::{
@@ -31,7 +30,7 @@ pub struct Board {
 impl Board {
     pub fn new() -> Self {
         Board {
-            board: [[Bitboard::empty(); 6]; 2],
+            board: [[Bitboard::EMPTY; 6]; 2],
             black_king_castle: false,
             black_queen_castle: false,
             white_king_castle: false,
@@ -60,7 +59,7 @@ impl Board {
         // be on a square at a time though so ¯\_(ツ)_/¯
         self.board[color as usize]
             .iter()
-            .fold(Bitboard::empty(), |a, b| a ^ *b)
+            .fold(Bitboard::EMPTY, |a, b| a ^ *b)
     }
 
     #[inline]
@@ -68,17 +67,17 @@ impl Board {
         self.board
             .iter()
             .flatten()
-            .fold(Bitboard::empty(), |a, b| a ^ *b)
+            .fold(Bitboard::EMPTY, |a, b| a ^ *b)
     }
 
     #[inline]
     pub fn color_on_square(&self, sq: Square) -> Option<Color> {
         let white_occ = self.color_occupancies(Color::White);
         let black_occ = self.color_occupancies(Color::Black);
-        if white_occ & sq.bitboard() != Bitboard::empty() {
+        if white_occ & sq.bitboard() != Bitboard::EMPTY {
             return Some(Color::White);
         }
-        if black_occ & sq.bitboard() != Bitboard::empty() {
+        if black_occ & sq.bitboard() != Bitboard::EMPTY {
             return Some(Color::Black);
         }
         None
@@ -134,33 +133,12 @@ impl Board {
         let queen_attacks = rook_attacks | bishop_attacks;
         let king_attacks = king_attacks(sq);
 
-        // (king_attacks & attacker_occupancy[PieceName::King as usize] != Bitboard::empty())
-        //     || (queen_attacks & attacker_occupancy[PieceName::Queen as usize] != Bitboard::empty())
-        //     || (rook_attacks & attacker_occupancy[PieceName::Rook as usize] != Bitboard::empty())
-        //     || (bishop_attacks & attacker_occupancy[PieceName::Bishop as usize] != Bitboard::empty())
-        //     || (knight_attacks & attacker_occupancy[PieceName::Knight as usize] != Bitboard::empty())
-        //     || (pawn_attacks & attacker_occupancy[PieceName::Pawn as usize] != Bitboard::empty())
-        let king_occupancy = attacker_occupancy[PieceName::King as usize];
-        let queen_occupancy = attacker_occupancy[PieceName::Queen as usize];
-        let rook_occupancy = attacker_occupancy[PieceName::Rook as usize];
-        let bishop_occupancy = attacker_occupancy[PieceName::Bishop as usize];
-        let knight_occupancy = attacker_occupancy[PieceName::Knight as usize];
-        let pawn_occupancy = attacker_occupancy[PieceName::Pawn as usize];
-
-        let king_attacker_check = king_attacks & king_occupancy != Bitboard::empty();
-        let queen_attacker_check = queen_attacks & queen_occupancy != Bitboard::empty();
-        let rook_attacker_check = rook_attacks & rook_occupancy != Bitboard::empty();
-        let bishop_attacker_check = bishop_attacks & bishop_occupancy != Bitboard::empty();
-        let knight_attacker_check = knight_attacks & knight_occupancy != Bitboard::empty();
-        let pawn_attacker_check = pawn_attacks & pawn_occupancy != Bitboard::empty();
-
-        let is_under_attack = king_attacker_check
-            || queen_attacker_check
-            || rook_attacker_check
-            || bishop_attacker_check
-            || knight_attacker_check
-            || pawn_attacker_check;
-        is_under_attack
+        (king_attacks & attacker_occupancy[PieceName::King as usize] != Bitboard::EMPTY)
+            || (queen_attacks & attacker_occupancy[PieceName::Queen as usize] != Bitboard::EMPTY)
+            || (rook_attacks & attacker_occupancy[PieceName::Rook as usize] != Bitboard::EMPTY)
+            || (bishop_attacks & attacker_occupancy[PieceName::Bishop as usize] != Bitboard::EMPTY)
+            || (knight_attacks & attacker_occupancy[PieceName::Knight as usize] != Bitboard::EMPTY)
+            || (pawn_attacks & attacker_occupancy[PieceName::Pawn as usize] != Bitboard::EMPTY)
     }
 
     /// Function makes a move and modifies board state to reflect the move that just happened

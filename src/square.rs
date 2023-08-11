@@ -9,19 +9,8 @@ impl Square {
     /// Declaration of an invalid square used as the equivalent of null
     pub const INVALID: Square = Square(64);
 
-    // #[inline]
-    // pub fn checked_shift(&self, dir: Direction) -> Option<Square> {
-    //     let file = self.file();
-    //     let rank = self.rank();
-    //     let (dir_rank, dir_file) = dir.to_xy();
-    //     let new_file = file as i8 + dir_file;
-    //     let new_rank = rank as i8 + dir_rank;
-    //     if (0..8).contains(&new_file) && (0..8).contains(&new_rank) {
-    //         return self.shift(dir);
-    //     }
-    //     None
-    // }
-
+    /// Function checks whether a shift is valid before executing it
+    #[inline]
     pub fn checked_shift(&self, dir: Direction) -> Option<Square> {
         let current_file = self.file();
         let current_rank = self.rank();
@@ -42,17 +31,20 @@ impl Square {
     }
 
     #[inline]
+    /// Function does not check a shift's validity before returning it. Only to be used when the
+    /// shifts validity has already been proven valid elsewhere
     pub fn shift(&self, dir: Direction) -> Square {
         let new_square = self.0 as i8 + dir as i8;
         Square(new_square as u8)
     }
 
     #[inline]
+    /// Calculates the distance between two square
     pub fn dist(&self, sq: Square) -> u64 {
-        let x1 = self.rank();
-        let y1 = self.file();
-        let x2 = sq.rank();
-        let y2 = sq.file();
+        let y1 = self.rank();
+        let x1 = self.file();
+        let y2 = sq.rank();
+        let x2 = sq.file();
         let x_diff = x1.abs_diff(x2);
         let y_diff = y1.abs_diff(y2);
         x_diff.max(y_diff) as u64
@@ -70,6 +62,7 @@ impl Square {
         self.0 & 0b111
     }
 
+    #[inline]
     pub fn idx(&self) -> usize {
         self.0 as usize
     }
@@ -114,13 +107,6 @@ impl Square {
     #[inline]
     pub fn bitboard(&self) -> Bitboard {
         Bitboard(1 << self.0)
-    }
-
-    #[inline]
-    pub fn pop_lsb(&mut self) -> u8 {
-        let lsb = self.0 & self.0.wrapping_neg();
-        self.0 ^= lsb;
-        lsb.trailing_zeros() as u8
     }
 
     pub fn iter() -> SquareIter {
