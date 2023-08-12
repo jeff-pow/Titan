@@ -1,8 +1,11 @@
+use crate::moves::Castle;
+use crate::moves::Direction::*;
+use crate::moves::Move;
 use std::collections::HashMap;
 
-use crate::moves::{Castle, Move};
-use crate::{board::Board, eval::eval, pieces::Color, square::Square};
-use crate::moves::Direction::{North, South};
+use crate::bitboard::Bitboard;
+
+use crate::{board::Board, eval::eval, pieces::Color};
 
 #[rustfmt::skip]
 /// Randomly generated values to hash boards. Far from perfect, but *probably* good enough to avoid
@@ -22,81 +25,41 @@ const TURN_HASH: u64 = 0x0b2727e5e37fed2d;
 
 /// Function checks for the presence of the board in the game. If the board position will have occurred three times,
 /// returns true indicating the position would be a stalemate due to the threefold repetition rule
-pub fn check_for_3x_repetition(board: &Board, history: &Vec<u64>) -> bool {
-    debug_assert_eq!(board.zobrist_hash, generate_hash(board));
+pub fn check_for_3x_repetition(board: &Board, history: &[u64]) -> bool {
+    debug_assert_eq!(board.zobrist_hash, board.generate_hash());
     let hash = board.zobrist_hash;
     let count = history.iter().filter(|&&x| x == hash).count();
     count >= 2
 }
 
-/// Provides a hash for the board eval to be placed into a transposition table
-pub fn generate_hash(board: &Board) -> u64 {
-    let mut hash = 0;
-    for square in Square::iter() {
-        if board.piece_on_square(square).is_some() {
-            hash ^= SQUARE_HASHES[square.idx()];
-        }
-    }
-
-    if board.to_move == Color::Black {
-        hash ^= TURN_HASH;
-    }
-
-    hash
-}
-
 impl Board {
-    pub fn update_hash(&mut self, m: &Move) {
-        self.zobrist_hash ^= TURN_HASH;
-        self.zobrist_hash ^= SQUARE_HASHES[m.dest_square().idx()];
-        self.zobrist_hash ^= SQUARE_HASHES[m.origin_square().idx()];
-
-        if m.is_castle() {
-            let castle = m.castle_type();
-            match castle {
-                Castle::None => {}
-                Castle::WhiteKingCastle => {
-                    self.zobrist_hash ^= SQUARE_HASHES[5];
-                    self.zobrist_hash ^= SQUARE_HASHES[7];
-                }
-                Castle::WhiteQueenCastle => {
-                    self.zobrist_hash ^= SQUARE_HASHES[3];
-                    self.zobrist_hash ^= SQUARE_HASHES[0];
-                }
-                Castle::BlackKingCastle => {
-                    self.zobrist_hash ^= SQUARE_HASHES[61];
-                    self.zobrist_hash ^= SQUARE_HASHES[63];
-                }
-                Castle::BlackQueenCastle => {
-                    self.zobrist_hash ^= SQUARE_HASHES[59];
-                    self.zobrist_hash ^= SQUARE_HASHES[56];
-                }
-            }
+    /// Provides a hash for the board eval to be placed into a transposition table
+    #[inline(always)]
+    pub fn generate_hash(&self) -> u64 {
+        let mut hash = 0;
+        let mut occupancies = self.occupancies();
+        while occupancies != Bitboard::EMPTY {
+            hash ^= SQUARE_HASHES[occupancies.pop_lsb().idx()];
         }
 
-        if m.is_en_passant() {
-            match self.to_move {
-                Color::White => {
-                    self.zobrist_hash ^= SQUARE_HASHES[m.dest_square().shift(South).idx()];
-                }
-                Color::Black => {
-                    self.zobrist_hash ^= SQUARE_HASHES[m.dest_square().shift(North).idx()];
-                }
-            }
+        if self.to_move == Color::Black {
+            hash ^= TURN_HASH;
         }
+
+        hash
     }
 }
 
 /// Attempts to look up a board state in the transposition table. If found, returns the eval, and
 /// if not found, places eval in the table before returning eval.
 pub fn get_eval(board: &Board, transpos_table: &mut HashMap<u64, i32>) -> i32 {
-    debug_assert_eq!(board.zobrist_hash, generate_hash(board));
+    debug_assert_eq!(board.zobrist_hash, board.generate_hash());
     let hash = board.zobrist_hash;
     *transpos_table.entry(hash).or_insert_with(|| eval(board))
 }
 
 pub fn add_to_history(board: &Board, history: &mut Vec<u64>) {
-    let hash = generate_hash(board);
+    let hash = board.zobrist_hash;
     history.push(hash);
 }
 
@@ -106,14 +69,14 @@ pub fn remove_from_history(history: &mut Vec<u64>) {
 
 #[cfg(test)]
 mod hashing_test {
-    use crate::{fen, zobrist::generate_hash};
+    use crate::fen;
 
     #[test]
     fn test_hashing() {
         let board1 = fen::build_board(fen::STARTING_FEN);
         let board2 = fen::build_board("4r3/4k3/8/4K3/8/8/8/8 w - - 0 1");
         let board3 = fen::build_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        assert_ne!(generate_hash(&board1), generate_hash(&board2));
-        assert_eq!(generate_hash(&board1), generate_hash(&board3));
+        assert_ne!(board1.generate_hash(), board2.generate_hash());
+        assert_eq!(board1.generate_hash(), board3.generate_hash());
     }
 }
