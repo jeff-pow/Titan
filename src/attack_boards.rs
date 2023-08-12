@@ -61,7 +61,6 @@ pub fn init_attack_boards() {
     gen_king_attack_boards();
     gen_knight_attack_boards();
     gen_pawn_attack_boards();
-    init_magics();
 }
 
 #[rustfmt::skip]

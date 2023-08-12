@@ -194,19 +194,16 @@ pub fn eval(board: &Board) -> i32 {
     let mut game_phase = 0;
 
     for square in Square::iter() {
-        if board.piece_on_square(square).is_none() {
-            continue;
-        }
         if let Some(piece) = board.piece_on_square(square) {
             game_phase += game_phase_value(piece);
             match board.color_on_square(square) {
                 Some(Color::White) => {
-                    white_mg += get_mg_table(piece)[square.0 as usize ^ 56] + piece_value(piece);
-                    white_eg += get_eg_table(piece)[square.0 as usize ^ 56] + piece_value(piece);
+                    white_mg += get_mg_table(piece)[square.idx()] + piece_value(piece);
+                    white_eg += get_eg_table(piece)[square.idx()] + piece_value(piece);
                 }
                 Some(Color::Black) => {
-                    black_mg += get_mg_table(piece)[square.0 as usize ^ 56] + piece_value(piece);
-                    black_eg += get_eg_table(piece)[square.0 as usize ^ 56] + piece_value(piece);
+                    black_mg += get_mg_table(piece)[square.idx()] + piece_value(piece);
+                    black_eg += get_eg_table(piece)[square.idx()] + piece_value(piece);
                 }
                 None => (),
             }

@@ -92,7 +92,6 @@ impl Board {
                 }
             }
         }
-
         None
     }
 
@@ -107,7 +106,7 @@ impl Board {
     }
 
     fn remove_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
-        self.board[color as usize][piece_type as usize] &= !sq.bitboard();
+        // self.board[color as usize][piece_type as usize] &= !sq.bitboard();
         for color in &[Color::White, Color::Black] {
             for piece in PieceName::iter() {
                 self.board[*color as usize][piece as usize] &= !(sq.bitboard());
@@ -143,6 +142,9 @@ impl Board {
 
     /// Function makes a move and modifies board state to reflect the move that just happened
     pub fn make_move(&mut self, m: &Move) {
+        // Update the zobrist hash of the board
+        self.update_hash(m);
+
         // Special case if the move is an en_passant
         if m.is_en_passant() {
             match self.to_move {
@@ -173,36 +175,16 @@ impl Board {
 
         // Move rooks if a castle move is applied
         if m.is_castle() {
-            // Determine which kind of castle, no reason for this besides I haven't changed it to
-            // something nicer yet...
-            let castle = match piece_moving {
-                PieceName::King => {
-                    if m.dest_square().dist(m.origin_square()) != 2 {
-                        Castle::None
-                    } else if m.dest_square() == Square(2) {
-                        Castle::WhiteQueenCastle
-                    } else if m.dest_square() == Square(6) {
-                        Castle::WhiteKingCastle
-                    } else if m.dest_square() == Square(58) {
-                        Castle::BlackQueenCastle
-                    } else if m.dest_square() == Square(62) {
-                        Castle::BlackKingCastle
-                    } else {
-                        unreachable!()
-                    }
-                }
-                _ => panic!("There should not be a king moving if castle is marked true..."),
-            };
-            match castle {
-                Castle::WhiteQueenCastle => {
-                    self.place_piece(PieceName::Rook, self.to_move, Square(3));
-                    self.remove_piece(PieceName::Rook, self.to_move, Square(0));
-                    self.white_queen_castle = false;
-                    self.white_king_castle = false;
-                }
+            match m.castle_type() {
                 Castle::WhiteKingCastle => {
                     self.place_piece(PieceName::Rook, self.to_move, Square(5));
                     self.remove_piece(PieceName::Rook, self.to_move, Square(7));
+                    self.white_queen_castle = false;
+                    self.white_king_castle = false;
+                }
+                Castle::WhiteQueenCastle => {
+                    self.place_piece(PieceName::Rook, self.to_move, Square(3));
+                    self.remove_piece(PieceName::Rook, self.to_move, Square(0));
                     self.white_queen_castle = false;
                     self.white_king_castle = false;
                 }
@@ -241,16 +223,18 @@ impl Board {
             }
             None => (),
         }
-        // Update board's king square if king moves
+        // Update board's king square if king moves and remove ability to castle
         if piece_moving == PieceName::King {
             match self.to_move {
                 Color::White => {
                     self.white_king_castle = false;
                     self.white_queen_castle = false;
+                    self.white_king_square = m.dest_square();
                 }
                 Color::Black => {
                     self.black_queen_castle = false;
                     self.black_king_castle = false;
+                    self.black_king_square = m.dest_square();
                 }
             }
         }
@@ -313,6 +297,7 @@ impl Board {
         self.num_moves += 1;
     }
 
+    #[allow(dead_code)]
     pub fn debug_bitboards(&self) {
         for color in &[Color::White, Color::Black] {
             for piece in &[

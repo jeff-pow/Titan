@@ -2,6 +2,7 @@ use crate::board::Board;
 /** File takes a string in Forsyth-Edwards notation and constructs a board state */
 use crate::pieces::{Color, PieceName};
 use crate::square::Square;
+use crate::zobrist::generate_hash;
 
 pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 #[allow(dead_code)]
@@ -76,6 +77,7 @@ pub fn build_board(fen_string: &str) -> Board {
     // Full number of moves in the game: starts from 1 and incremented after black's first move
     iter.next();
     assert_eq!(iter.next(), None);
+    board.zobrist_hash = generate_hash(&board);
     board
 }
 

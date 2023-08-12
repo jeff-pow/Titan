@@ -184,6 +184,23 @@ impl Move {
     pub fn invalid() -> Self {
         Move::new(Square::INVALID, Square::INVALID, None, MoveType::Normal)
     }
+
+    pub fn castle_type(&self) -> Castle {
+        debug_assert!(self.is_castle());
+        if self.dest_square().dist(self.origin_square()) != 2 {
+            Castle::None
+        } else if self.dest_square() == Square(2) {
+            Castle::WhiteQueenCastle
+        } else if self.dest_square() == Square(6) {
+            Castle::WhiteKingCastle
+        } else if self.dest_square() == Square(58) {
+            Castle::BlackQueenCastle
+        } else if self.dest_square() == Square(62) {
+            Castle::BlackKingCastle
+        } else {
+            unreachable!()
+        }
+    }
 }
 
 /// Method converts a lan move provided by UCI framework into a Move struct

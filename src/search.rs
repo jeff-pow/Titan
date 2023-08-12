@@ -4,9 +4,7 @@ use std::time::Instant;
 use crate::board::Board;
 use crate::moves::{generate_moves, Move, Promotion};
 use crate::pieces::piece_value;
-use crate::zobrist::{
-    add_to_history, check_for_3x_repetition, get_transposition, remove_from_history,
-};
+use crate::zobrist::{add_to_history, check_for_3x_repetition, get_eval, remove_from_history};
 use std::cmp::{max, min};
 
 pub const IN_CHECK_MATE: i32 = 100000;
@@ -54,15 +52,6 @@ impl Search {
                 new_b.make_move(m);
                 add_to_history(&new_b, &mut self.history);
 
-                // let eval = -search_helper(
-                //     &new_b,
-                //     i - 1,
-                //     1,
-                //     -beta,
-                //     -alpha,
-                //     triple_repetitions,
-                //     &mut transpos_table,
-                // );
                 self.current_depth = i;
                 self.dist_from_root = 0;
                 self.current_depth -= 1;
@@ -97,7 +86,7 @@ impl Search {
     fn search_helper(&mut self, board: &Board, mut alpha: i32, mut beta: i32) -> i32 {
         // Return an evaluation of the board if maximum depth has been reached.
         if self.current_depth == 0 {
-            return get_transposition(board, &mut self.transpos_table);
+            return get_eval(board, &mut self.transpos_table);
         }
         // Stalemate if a board position has appeared three times
         if check_for_3x_repetition(board, &self.history) {
