@@ -1,7 +1,11 @@
-use crate::board::Board;
+use crate::types::{
+    pieces::{Color, PieceName},
+    square::Square,
+};
+
+use super::board::Board;
+
 /** File takes a string in Forsyth-Edwards notation and constructs a board state */
-use crate::pieces::{Color, PieceName};
-use crate::square::Square;
 
 pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -102,7 +106,7 @@ pub fn parse_fen_from_buffer(buf: &[&str]) -> String {
 
 #[cfg(test)]
 mod fen_tests {
-    use crate::fen::find_en_passant_square;
+    use crate::board::fen::find_en_passant_square;
 
     #[test]
     fn test_en_passant_square() {

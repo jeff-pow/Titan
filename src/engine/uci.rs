@@ -1,9 +1,14 @@
-use crate::board::Board;
-use crate::fen::{self, build_board, parse_fen_from_buffer};
-use crate::moves::from_lan;
-use crate::search::*;
-use crate::zobrist::add_to_history;
 use std::io;
+
+use crate::{
+    board::{
+        board::Board,
+        fen::{self, build_board, parse_fen_from_buffer},
+        zobrist::add_to_history,
+    },
+    moves::moves::from_lan,
+    search::search::{perft, Search},
+};
 
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {

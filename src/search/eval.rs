@@ -1,9 +1,11 @@
 use std::cmp::min;
 
 use crate::{
-    board::Board,
-    pieces::{piece_value, Color, PieceName},
-    square::Square,
+    board::board::Board,
+    types::{
+        pieces::{piece_value, Color, PieceName},
+        square::Square,
+    },
 };
 
 /// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function

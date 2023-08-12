@@ -1,10 +1,11 @@
 use std::{fmt, ops};
 
-use crate::{
+use crate::moves::{
     attack_boards::{FILE_A, FILE_H},
     moves::Direction,
-    square::Square,
 };
+
+use super::square::Square;
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Bitboard(pub u64);
@@ -12,7 +13,7 @@ pub struct Bitboard(pub u64);
 impl Bitboard {
     pub const EMPTY: Bitboard = Bitboard(0);
 
-    #[inline]
+    #[inline(always)]
     /// Returns the index of the lowest bit of a bitboard, and modifies the bitboard to exclude
     /// that bit
     pub fn pop_lsb(&mut self) -> Square {
@@ -21,19 +22,19 @@ impl Bitboard {
         Square(lsb.trailing_zeros() as u8)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn square_is_occupied(&self, sq: Square) -> bool {
         debug_assert!(sq.is_valid());
         self.0 & (1 << sq.0) != 0
     }
 
-    #[inline]
+    #[inline(always)]
     #[allow(dead_code)]
     pub fn square_is_empty(&self, sq: Square) -> bool {
         !self.square_is_occupied(sq)
     }
 
-    #[inline]
+    #[inline(always)]
     /// Checks a bitboard shift to ensure no information is lost and then executes the shift
     pub fn checked_shift(&self, dir: Direction) -> Option<Bitboard> {
         let bitboard = self.0.max(1);
@@ -106,7 +107,7 @@ impl Bitboard {
 
     /// Executes a shift without checking to ensure no information is list. Only to be used when a
     /// shift has already been proven to be safe
-    #[inline]
+    #[inline(always)]
     pub fn shift(&self, dir: Direction) -> Bitboard {
         match dir {
             Direction::North => Bitboard(self.0 << 8),

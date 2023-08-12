@@ -1,33 +1,22 @@
-mod attack_boards;
-mod bit_hacks;
-mod bitboard;
 mod board;
-mod eval;
-mod fen;
+mod engine;
 mod init;
-mod magics;
-mod movegenerator;
 mod moves;
-mod pieces;
 mod search;
-mod square;
-mod uci;
-mod zobrist;
+mod types;
 
-use board::Board;
+use board::board::Board;
 
+use crate::engine::uci::main_loop;
 use crate::init::init;
-#[allow(unused_imports)]
-use search::*;
-
-use crate::moves::generate_moves;
+use crate::moves::moves::generate_moves;
 
 fn main() {
     init();
-    let board = fen::build_board(fen::STARTING_FEN);
-    let mut searcher = Search::new();
+    let board = board::fen::build_board(board::fen::STARTING_FEN);
+    let mut searcher = search::search::Search::new();
     println!("{}", searcher.search(&board, 7));
-    uci::main_loop();
+    main_loop();
 }
 
 #[allow(dead_code)]
@@ -46,11 +35,10 @@ fn print_moves(board: &Board) {
 
 #[cfg(test)]
 mod move_number_tests {
-    use crate::attack_boards::init_attack_boards;
-    use crate::init::init;
     use crate::{
-        fen::{self, build_board},
-        search::perft,
+        board::fen::{self, build_board},
+        init::init,
+        search::search::perft,
     };
 
     // Positions and expected values from https://www.chessprogramming.org/Perft_Results

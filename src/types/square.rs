@@ -1,6 +1,14 @@
 use std::ops;
 
-use crate::{attack_boards::*, bitboard::Bitboard, moves::Direction};
+use crate::moves::{
+    attack_boards::{
+        FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, RANK1, RANK2, RANK3, RANK4,
+        RANK5, RANK6, RANK7, RANK8,
+    },
+    moves::Direction,
+};
+
+use super::bitboard::Bitboard;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Square(pub u8);
@@ -10,7 +18,7 @@ impl Square {
     pub const INVALID: Square = Square(64);
 
     /// Function checks whether a shift is valid before executing it
-    #[inline]
+    #[inline(always)]
     pub fn checked_shift(&self, dir: Direction) -> Option<Square> {
         let current_file = self.file();
         let current_rank = self.rank();
@@ -30,7 +38,7 @@ impl Square {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     /// Function does not check a shift's validity before returning it. Only to be used when the
     /// shifts validity has already been proven valid elsewhere
     pub fn shift(&self, dir: Direction) -> Square {
@@ -38,7 +46,7 @@ impl Square {
         Square(new_square as u8)
     }
 
-    #[inline]
+    #[inline(always)]
     /// Calculates the distance between two square
     pub fn dist(&self, sq: Square) -> u64 {
         let y1 = self.rank();
@@ -51,23 +59,23 @@ impl Square {
     }
 
     /// Rank is the horizontal row of the piece (y-coord)
-    #[inline]
+    #[inline(always)]
     pub fn rank(&self) -> u8 {
         self.0 >> 3
     }
 
     /// File is the vertical column of the piece (x-coord)
-    #[inline]
+    #[inline(always)]
     pub fn file(&self) -> u8 {
         self.0 & 0b111
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn idx(&self) -> usize {
         self.0 as usize
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn get_rank_bitboard(&self) -> Bitboard {
         let x = self.rank();
         match x {
@@ -83,7 +91,7 @@ impl Square {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn get_file_bitboard(&self) -> Bitboard {
         let y = self.file();
         match y {
@@ -99,12 +107,12 @@ impl Square {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn is_valid(&self) -> bool {
         self.0 < 64
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn bitboard(&self) -> Bitboard {
         Bitboard(1 << self.0)
     }

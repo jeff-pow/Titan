@@ -1,11 +1,14 @@
 use std::ptr;
 
-use crate::bitboard::Bitboard;
-use crate::square::Square;
-use crate::{attack_boards::*, moves::Direction, moves::Direction::*};
+use crate::{
+    moves::attack_boards::{FILE_A, FILE_H, RANK1, RANK8},
+    types::{bitboard::Bitboard, square::Square},
+};
+
+use super::moves::{Direction, Direction::*};
 
 // Simple Pcg64Mcg implementation
-struct Rng(u128);
+pub struct Rng(u128);
 
 impl Default for Rng {
     fn default() -> Self {
@@ -14,7 +17,7 @@ impl Default for Rng {
 }
 
 impl Rng {
-    fn next_u64(&mut self) -> u64 {
+    pub fn next_u64(&mut self) -> u64 {
         self.0 = self.0.wrapping_mul(0x2360ED051FC65DA44385DF649FCCF645);
         let rot = (self.0 >> 122) as u32;
         let xsl = (self.0 >> 64) as u64 ^ self.0 as u64;
@@ -22,7 +25,7 @@ impl Rng {
     }
 
     /// Method returns u64s with an average of 8 bits active, the desirable range for magic numbers
-    fn next_magic(&mut self) -> u64 {
+    pub fn next_magic(&mut self) -> u64 {
         self.next_u64() & self.next_u64() & self.next_u64()
     }
 }
@@ -58,7 +61,7 @@ pub fn init_magics() {
     }
 }
 
-#[inline]
+#[inline(always)]
 pub fn bishop_attacks(mut occupied: u64, square: u8) -> u64 {
     let magic_entry: &SMagic = unsafe { BISHOP_MAGICS.get_unchecked(square as usize) };
     occupied &= magic_entry.mask;
@@ -67,7 +70,7 @@ pub fn bishop_attacks(mut occupied: u64, square: u8) -> u64 {
     unsafe { *(magic_entry.ptr as *const u64).add(occupied as usize) }
 }
 
-#[inline]
+#[inline(always)]
 pub fn rook_attacks(mut occupied: u64, square: u8) -> u64 {
     let magic_entry: &SMagic = unsafe { ROOK_MAGICS.get_unchecked(square as usize) };
     occupied &= magic_entry.mask;

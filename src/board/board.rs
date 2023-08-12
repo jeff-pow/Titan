@@ -1,14 +1,20 @@
 use core::fmt;
 use strum::IntoEnumIterator;
 
-use crate::attack_boards::{king_attacks, knight_attacks, pawn_attacks};
-use crate::bitboard::Bitboard;
-use crate::magics::{bishop_attacks, rook_attacks};
-use crate::square::Square;
 use crate::{
-    moves::{Castle, Direction::*, Move, Promotion},
-    pieces::Color,
-    pieces::{opposite_color, PieceName, NUM_PIECES},
+    moves::{
+        attack_boards::{king_attacks, knight_attacks, pawn_attacks},
+        magics::{bishop_attacks, rook_attacks},
+        moves::Castle,
+        moves::Direction::*,
+        moves::Move,
+        moves::Promotion,
+    },
+    types::{
+        bitboard::Bitboard,
+        pieces::{opposite_color, Color, PieceName, NUM_PIECES},
+        square::Square,
+    },
 };
 
 #[repr(C)]
@@ -48,21 +54,21 @@ impl Board {
         self.en_passant_square != Square::INVALID
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn square_contains_piece(&self, piece_type: PieceName, color: Color, sq: Square) -> bool {
         self.board[color as usize][piece_type as usize].square_is_occupied(sq)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn color_occupancies(&self, color: Color) -> Bitboard {
-        // It's odd to me that xor and bitwise or both seem to work here, only one piece should
+        // It's interesting to me that xor and bitwise or both seem to work here, only one piece should
         // be on a square at a time though so ¯\_(ツ)_/¯
         self.board[color as usize]
             .iter()
             .fold(Bitboard::EMPTY, |a, b| a ^ *b)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn occupancies(&self) -> Bitboard {
         self.board
             .iter()
@@ -70,7 +76,7 @@ impl Board {
             .fold(Bitboard::EMPTY, |a, b| a ^ *b)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn color_on_square(&self, sq: Square) -> Option<Color> {
         let white_occ = self.color_occupancies(Color::White);
         let black_occ = self.color_occupancies(Color::Black);
@@ -83,7 +89,7 @@ impl Board {
         None
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn piece_on_square(&self, sq: Square) -> Option<PieceName> {
         for color in &[Color::White, Color::Black] {
             for piece_name in PieceName::iter() {
@@ -401,8 +407,7 @@ impl fmt::Debug for Board {
 #[cfg(test)]
 mod board_tests {
     use super::*;
-    use crate::fen;
-    use crate::pieces::PieceName::*;
+    use crate::{board::fen, types::pieces::PieceName::*};
     #[test]
     fn test_place_piece() {
         let mut board = Board::new();

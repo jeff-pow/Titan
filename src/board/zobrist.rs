@@ -1,11 +1,10 @@
-use crate::moves::Castle;
-use crate::moves::Direction::*;
-use crate::moves::Move;
 use std::collections::HashMap;
 
-use crate::bitboard::Bitboard;
-
-use crate::{board::Board, eval::eval, pieces::Color};
+use crate::{
+    board::board::Board,
+    search::eval::eval,
+    types::{bitboard::Bitboard, pieces::Color},
+};
 
 #[rustfmt::skip]
 /// Randomly generated values to hash boards. Far from perfect, but *probably* good enough to avoid
@@ -69,7 +68,7 @@ pub fn remove_from_history(history: &mut Vec<u64>) {
 
 #[cfg(test)]
 mod hashing_test {
-    use crate::fen;
+    use crate::board::fen;
 
     #[test]
     fn test_hashing() {

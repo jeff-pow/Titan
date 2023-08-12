@@ -1,6 +1,6 @@
-use crate::attack_boards::init_attack_boards;
-use crate::magics::init_magics;
 use std::sync::Once;
+
+use crate::moves::{attack_boards::init_attack_boards, magics::init_magics};
 
 static INIT: Once = Once::new();
 

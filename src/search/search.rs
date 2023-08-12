@@ -1,11 +1,15 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
-use crate::board::Board;
-use crate::moves::{generate_moves, Move, Promotion};
-use crate::pieces::piece_value;
-use crate::zobrist::{add_to_history, check_for_3x_repetition, get_eval, remove_from_history};
 use std::cmp::{max, min};
+
+use crate::board::board::Board;
+use crate::board::zobrist::{
+    add_to_history, check_for_3x_repetition, get_eval, remove_from_history,
+};
+use crate::moves::moves::Promotion;
+use crate::moves::moves::{generate_moves, Move};
+use crate::types::pieces::piece_value;
 
 pub const IN_CHECK_MATE: i32 = 100000;
 pub const INFINITY: i32 = 9999999;

@@ -1,18 +1,23 @@
-use crate::magics::bishop_attacks;
 use core::fmt;
 use std::fmt::Display;
+
+use crate::{
+    board::board::Board,
+    moves::moves::Direction::*,
+    types::{
+        bitboard::Bitboard,
+        pieces::{opposite_color, Color, PieceName, PieceName::*},
+        square::Square,
+    },
+};
 
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use crate::attack_boards::{king_attacks, knight_attacks, RANK2, RANK3, RANK6, RANK7};
-use crate::bitboard::Bitboard;
-use crate::magics::rook_attacks;
-use crate::moves::Direction::*;
-use crate::pieces::opposite_color;
-use crate::pieces::PieceName::Pawn;
-use crate::square::Square;
-use crate::{board::Board, pieces::Color, pieces::PieceName};
+use super::{
+    attack_boards::{king_attacks, knight_attacks, RANK2, RANK3, RANK6, RANK7},
+    magics::{bishop_attacks, rook_attacks},
+};
 
 pub(crate) enum MoveType {
     Normal,
@@ -113,19 +118,19 @@ impl Move {
         Move(m)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn is_castle(&self) -> bool {
         let castle_flag = (self.0 >> 14) & 0b11;
         castle_flag == 3
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn is_en_passant(&self) -> bool {
         let en_passant_flag = (self.0 >> 14) & 0b11;
         en_passant_flag == 2
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn promotion(&self) -> Option<Promotion> {
         let promotion_flag = (self.0 >> 14) & 0b11;
         if promotion_flag != 1 {
@@ -140,19 +145,19 @@ impl Move {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn origin_square(&self) -> Square {
         Square((self.0 & 0b111111) as u8)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn dest_square(&self) -> Square {
         Square(((self.0 >> 6) & 0b111111) as u8)
     }
 
     /// Determines if a move is "quiet" for quiescence search
     #[allow(dead_code)]
-    #[inline]
+    #[inline(always)]
     pub fn is_quiet(&self, board: &Board) -> bool {
         board.piece_on_square(self.dest_square()).is_none()
     }

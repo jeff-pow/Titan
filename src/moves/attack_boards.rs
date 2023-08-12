@@ -1,7 +1,8 @@
-use crate::moves::Direction::*;
-use crate::{bitboard::Bitboard, magics::init_magics, pieces::Color, square::Square};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
+
+use crate::moves::moves::Direction::*;
+use crate::types::{bitboard::Bitboard, pieces::Color, square::Square};
 
 const FILE_A_U64: u64 = 0x101010101010101;
 const FILE_B_U64: u64 = FILE_A_U64 << 1;
@@ -169,9 +170,10 @@ fn gen_pawn_attack_boards() {
 
 #[cfg(test)]
 mod test_attack_boards {
-    use crate::attack_boards::{init_attack_boards, pawn_attacks};
-    use crate::pieces::Color;
-    use crate::square::Square;
+    use crate::{
+        moves::attack_boards::{init_attack_boards, pawn_attacks},
+        types::{pieces::Color, square::Square},
+    };
 
     #[test]
     fn test_pawn_attacks() {
