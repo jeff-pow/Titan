@@ -26,7 +26,7 @@ fn main() {
     let board = fen::build_board(fen::STARTING_FEN);
     let mut searcher = Search::new();
     searcher.search(&board, 6);
-    uci::main_loop();
+    // uci::main_loop();
 }
 
 #[allow(dead_code)]

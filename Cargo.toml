@@ -12,7 +12,7 @@ strum_macros = "0.24"
 rand = "0.8.5"
 
 [profile.release]
-debug = false
+debug = true
 codegen-units = 1
 opt-level = 3
 lto = "fat"
