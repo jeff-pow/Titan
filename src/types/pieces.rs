@@ -1,6 +1,6 @@
 use strum_macros::EnumIter;
 
-use crate::search::search::INFINITY;
+use crate::search::alphabeta::INFINITY;
 
 pub const KING_PTS: i32 = INFINITY;
 pub const QUEEN_PTS: i32 = 1000;
@@ -44,6 +44,7 @@ pub enum PieceName {
     Pawn = 5,
 }
 
+#[inline(always)]
 pub fn piece_value(piece_name: PieceName) -> i32 {
     match piece_name {
         PieceName::King => KING_PTS,

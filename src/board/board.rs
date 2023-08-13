@@ -50,6 +50,7 @@ impl Board {
         }
     }
 
+    #[inline(always)]
     pub fn can_en_passant(&self) -> bool {
         self.en_passant_square != Square::INVALID
     }

@@ -200,8 +200,10 @@ pub fn eval(board: &Board) -> i32 {
             game_phase += game_phase_value(piece);
             match board.color_on_square(square) {
                 Some(Color::White) => {
-                    white_mg += get_mg_table(piece)[square.idx()] + piece_value(piece);
-                    white_eg += get_eg_table(piece)[square.idx()] + piece_value(piece);
+                    // Tables are in a flipped position, so we flip the index of white by XORing
+                    // with 56
+                    white_mg += get_mg_table(piece)[square.idx() ^ 56] + piece_value(piece);
+                    white_eg += get_eg_table(piece)[square.idx() ^ 56] + piece_value(piece);
                 }
                 Some(Color::Black) => {
                     black_mg += get_mg_table(piece)[square.idx()] + piece_value(piece);
