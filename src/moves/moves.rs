@@ -5,19 +5,15 @@ use crate::{
     board::board::Board,
     moves::moves::Direction::*,
     types::{
-        bitboard::Bitboard,
-        pieces::{opposite_color, Color, PieceName, PieceName::*},
+        pieces::{PieceName},
         square::Square,
     },
 };
 
-use strum::IntoEnumIterator;
+
 use strum_macros::EnumIter;
 
-use super::{
-    attack_boards::{king_attacks, knight_attacks, RANK2, RANK3, RANK6, RANK7},
-    magics::{bishop_attacks, rook_attacks},
-};
+
 
 pub(crate) enum MoveType {
     Normal,

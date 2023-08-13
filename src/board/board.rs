@@ -112,7 +112,7 @@ impl Board {
         }
     }
 
-    fn remove_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
+    fn remove_piece(&mut self, _piece_type: PieceName, _color: Color, sq: Square) {
         // self.board[color as usize][piece_type as usize] &= !sq.bitboard();
         for color in &[Color::White, Color::Black] {
             for piece in PieceName::iter() {
