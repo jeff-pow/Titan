@@ -44,6 +44,7 @@ impl Search {
         let mut best_move = Move::invalid();
 
         for i in 1..=depth {
+            self.transpos_table = HashMap::new();
             self.current_iteration_max_depth = i;
             let start = Instant::now();
             let mut alpha = -INFINITY;
@@ -93,8 +94,14 @@ impl Search {
             return 0;
         }
         // Skip move if a path to checkmate has already been found in this path
-        alpha = max(alpha, -IN_CHECK_MATE + dist_from_root(self.current_iteration_max_depth, depth));
-        beta = min(beta, IN_CHECK_MATE - dist_from_root(self.current_iteration_max_depth, depth));
+        alpha = max(
+            alpha,
+            -IN_CHECK_MATE + dist_from_root(self.current_iteration_max_depth, depth),
+        );
+        beta = min(
+            beta,
+            IN_CHECK_MATE - dist_from_root(self.current_iteration_max_depth, depth),
+        );
         if alpha >= beta {
             return alpha;
         }

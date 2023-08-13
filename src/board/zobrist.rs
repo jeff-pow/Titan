@@ -45,6 +45,10 @@ impl Board {
             hash ^= TURN_HASH;
         }
 
+        if self.en_passant_square.is_valid() {
+            hash ^= SQUARE_HASHES[self.en_passant_square.idx()];
+        }
+
         hash
     }
 }
