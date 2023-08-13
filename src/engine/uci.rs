@@ -7,7 +7,7 @@ use crate::{
         zobrist::add_to_history,
     },
     moves::moves::from_lan,
-    search::alphabeta::{perft, Search},
+    search::alpha_beta::{perft, Search},
 };
 
 /// Main loop that handles UCI communication with GUIs

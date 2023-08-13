@@ -14,7 +14,7 @@ use crate::moves::movegenerator::generate_moves;
 fn main() {
     init();
     let board = board::fen::build_board(board::fen::STARTING_FEN);
-    let mut searcher = search::alphabeta::Search::new();
+    let mut searcher = search::alpha_beta::Search::new();
     println!("{}", searcher.search(&board, 7));
     main_loop();
 }
@@ -38,7 +38,7 @@ mod move_number_tests {
     use crate::{
         board::fen::{self, build_board},
         init::init,
-        search::alphabeta::perft,
+        search::alpha_beta::perft,
     };
 
     // Positions and expected values from https://www.chessprogramming.org/Perft_Results

@@ -1,6 +1,6 @@
 use strum_macros::EnumIter;
 
-use crate::search::alphabeta::INFINITY;
+use crate::search::alpha_beta::INFINITY;
 
 pub const KING_PTS: i32 = INFINITY;
 pub const QUEEN_PTS: i32 = 1000;

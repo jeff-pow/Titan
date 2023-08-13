@@ -4,16 +4,10 @@ use std::fmt::Display;
 use crate::{
     board::board::Board,
     moves::moves::Direction::*,
-    types::{
-        pieces::{PieceName},
-        square::Square,
-    },
+    types::{pieces::PieceName, square::Square},
 };
 
-
 use strum_macros::EnumIter;
-
-
 
 pub(crate) enum MoveType {
     Normal,
