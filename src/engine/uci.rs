@@ -53,7 +53,7 @@ pub fn main_loop() -> ! {
                 let depth = vec[9].to_digit(10).unwrap();
                 perft(&board, depth as i32);
             } else {
-                let m = searcher.search(&board, 7);
+                let m = searcher.search(&board, 6);
                 println!("bestmove {}", m.to_lan());
                 board.make_move(&m);
             }
@@ -73,9 +73,6 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, history: &mut Vec
     for str in moves.iter().skip(skip) {
         let m = from_lan(str, board);
         board.make_move(&m);
-        println!("{m}");
-        println!("{board}");
-        println!();
         add_to_history(board, history);
     }
 }

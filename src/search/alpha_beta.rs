@@ -15,26 +15,27 @@ use crate::types::pieces::piece_value;
 pub const IN_CHECK_MATE: i32 = 100000;
 pub const INFINITY: i32 = 9999999;
 pub const MAX_GAME_LENGTH: usize = 1000;
-pub const MAX_SEARCH_DEPTH: i32 = 25;
+pub const MAX_SEARCH_DEPTH: usize = 25;
 
 pub struct Search {
-    pub best_moves: Vec<Move>,
+    pub best_moves: Vec<(Move, i32)>,
     pub transpos_table: HashMap<u64, i32>,
     pub history: Vec<u64>,
-    pub current_depth: i32,
-    pub dist_from_root: i32,
-    pub depth_this_iter: i32,
+    pub current_iteration_max_depth: i32,
+}
+
+#[inline(always)]
+fn dist_from_root(max_depth: i32, current_depth: i32) -> i32 {
+    max_depth - current_depth
 }
 
 impl Search {
     pub fn new() -> Self {
         Search {
-            best_moves: Vec::new(),
+            best_moves: vec![(Move::invalid(), -1); MAX_SEARCH_DEPTH],
             transpos_table: HashMap::with_capacity(100_000_000),
             history: Vec::with_capacity(MAX_GAME_LENGTH),
-            current_depth: 0,
-            dist_from_root: 0,
-            depth_this_iter: 0,
+            current_iteration_max_depth: 0,
         }
     }
 
@@ -43,7 +44,7 @@ impl Search {
         let mut best_move = Move::invalid();
 
         for i in 1..=depth {
-            self.depth_this_iter = i;
+            self.current_iteration_max_depth = i;
             let start = Instant::now();
             let mut alpha = -INFINITY;
             let beta = INFINITY;
@@ -57,13 +58,7 @@ impl Search {
                 new_b.make_move(m);
                 add_to_history(&new_b, &mut self.history);
 
-                self.current_depth = i;
-                self.dist_from_root = 0;
-                self.current_depth -= 1;
-                self.dist_from_root += 1;
-                let eval = -self.search_helper(&new_b, -beta, -alpha);
-                self.dist_from_root -= 1;
-                self.current_depth += 1;
+                let eval = -self.search_helper(&new_b, -beta, -alpha, i - 1);
 
                 // remove_from_triple_repetition_map(&new_b, triple_repetitions);
                 remove_from_history(&mut self.history);
@@ -88,9 +83,9 @@ impl Search {
     /// return the evaluation of the best possible position *eventually* down a tree from the first
     /// level of moves. The search function is responsible for keeping track of which move is the best
     /// based off of these values.
-    fn search_helper(&mut self, board: &Board, mut alpha: i32, mut beta: i32) -> i32 {
+    fn search_helper(&mut self, board: &Board, mut alpha: i32, mut beta: i32, depth: i32) -> i32 {
         // Return an evaluation of the board if maximum depth has been reached.
-        if self.current_depth == 0 {
+        if depth == 0 {
             return get_eval(board, &mut self.transpos_table);
         }
         // Stalemate if a board position has appeared three times
@@ -98,8 +93,8 @@ impl Search {
             return 0;
         }
         // Skip move if a path to checkmate has already been found in this path
-        alpha = max(alpha, -IN_CHECK_MATE + self.dist_from_root);
-        beta = min(beta, IN_CHECK_MATE - self.dist_from_root);
+        alpha = max(alpha, -IN_CHECK_MATE + dist_from_root(self.current_iteration_max_depth, depth));
+        beta = min(beta, IN_CHECK_MATE - dist_from_root(self.current_iteration_max_depth, depth));
         if alpha >= beta {
             return alpha;
         }
@@ -113,7 +108,7 @@ impl Search {
             if board.side_in_check(board.to_move) {
                 // Distance from root is returned in order for other recursive calls to determine
                 // shortest viable checkmate path
-                return -IN_CHECK_MATE + self.dist_from_root;
+                return -IN_CHECK_MATE + dist_from_root(self.current_iteration_max_depth, depth);
             }
             // Stalemate
             return 0;
@@ -124,20 +119,7 @@ impl Search {
             new_b.make_move(m);
             add_to_history(&new_b, &mut self.history);
 
-            // let eval = -search_helper(
-            //     &new_b,
-            //     depth - 1,
-            //     dist_from_root + 1,
-            //     -beta,
-            //     -alpha,
-            //     triple_repetitions,
-            //     transpos_table,
-            // );
-            self.current_depth -= 1;
-            self.dist_from_root += 1;
-            let eval = -self.search_helper(&new_b, -beta, -alpha);
-            self.dist_from_root -= 1;
-            self.current_depth += 1;
+            let eval = -self.search_helper(&new_b, -beta, -alpha, depth - 1);
 
             remove_from_history(&mut self.history);
 
