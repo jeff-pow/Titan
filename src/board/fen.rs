@@ -10,7 +10,7 @@ use super::board::Board;
 pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 pub fn build_board(fen_string: &str) -> Board {
-    let mut board = Board::new();
+    let mut board = Board::default();
     let mut row = 7;
     let pieces: Vec<&str> = fen_string.split(['/', ' ']).collect();
     // FEN strings have 13 entries (if each slash and each space delimit an entry)

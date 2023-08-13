@@ -31,10 +31,12 @@ pub struct Board {
     pub white_king_square: Square,
     pub num_moves: i32,
     pub zobrist_hash: u64,
+    pub wtime: i32,
+    pub btime: i32,
 }
 
-impl Board {
-    pub fn new() -> Self {
+impl Default for Board {
+    fn default() -> Self {
         Board {
             board: [[Bitboard::EMPTY; 6]; 2],
             black_king_castle: false,
@@ -47,9 +49,13 @@ impl Board {
             black_king_square: Square::INVALID,
             num_moves: 0,
             zobrist_hash: 0,
+            wtime: 0,
+            btime: 0,
         }
     }
+}
 
+impl Board {
     #[inline(always)]
     pub fn can_en_passant(&self) -> bool {
         self.en_passant_square != Square::INVALID
@@ -411,7 +417,7 @@ mod board_tests {
     use crate::{board::fen, types::pieces::PieceName::*};
     #[test]
     fn test_place_piece() {
-        let mut board = Board::new();
+        let mut board = Board::default();
         board.place_piece(Rook, Color::White, Square(0));
         assert!(board.board[Color::White as usize][Rook as usize].square_is_occupied(Square(0)));
     }

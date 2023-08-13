@@ -1,8 +1,11 @@
 use std::cmp::min;
 
+use strum::IntoEnumIterator;
+
 use crate::{
     board::board::Board,
     types::{
+        bitboard::Bitboard,
         pieces::{piece_value, Color, PieceName},
         square::Square,
     },
@@ -189,28 +192,30 @@ fn game_phase_value(piece: PieceName) -> i32 {
 
 /// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 pub fn eval(board: &Board) -> i32 {
+    let eval = std::time::Instant::now();
     let mut white_mg = 0;
     let mut white_eg = 0;
     let mut black_mg = 0;
     let mut black_eg = 0;
     let mut game_phase = 0;
 
-    for square in Square::iter() {
-        if let Some(piece) = board.piece_on_square(square) {
+    for piece in PieceName::iter() {
+        let mut bb = board.board[Color::White as usize][piece as usize];
+        while bb != Bitboard::EMPTY {
+            let sq = bb.pop_lsb();
             game_phase += game_phase_value(piece);
-            match board.color_on_square(square) {
-                Some(Color::White) => {
-                    // Tables are in a flipped position, so we flip the index of white by XORing
-                    // with 56
-                    white_mg += get_mg_table(piece)[square.idx() ^ 56] + piece_value(piece);
-                    white_eg += get_eg_table(piece)[square.idx() ^ 56] + piece_value(piece);
-                }
-                Some(Color::Black) => {
-                    black_mg += get_mg_table(piece)[square.idx()] + piece_value(piece);
-                    black_eg += get_eg_table(piece)[square.idx()] + piece_value(piece);
-                }
-                None => (),
-            }
+            // We flip the index of white pieces because the const boards are indexed with square
+            // A8 being arr[63]
+            white_mg += get_mg_table(piece)[sq.idx() ^ 56] + piece_value(piece);
+            white_eg += get_eg_table(piece)[sq.idx() ^ 56] + piece_value(piece);
+        }
+    }
+    for piece in PieceName::iter() {
+        let mut bb = board.board[Color::Black as usize][piece as usize];
+        while bb != Bitboard::EMPTY {
+            let sq = bb.pop_lsb();
+            black_mg += get_mg_table(piece)[sq.idx()] + piece_value(piece);
+            black_eg += get_eg_table(piece)[sq.idx()] + piece_value(piece);
         }
     }
 
@@ -231,5 +236,6 @@ pub fn eval(board: &Board) -> i32 {
     // captures
     let mg_phase = min(game_phase, 24);
     let eg_phase = 24 - mg_phase;
+    // dbg!(eval.elapsed());
     (mg_pts * mg_phase + eg_pts * eg_phase) / 24
 }

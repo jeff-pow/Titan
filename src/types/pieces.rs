@@ -10,7 +10,7 @@ pub const KNIGHT_PTS: i32 = 350;
 pub const PAWN_PTS: i32 = 100;
 pub const NUM_PIECES: usize = 6;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(EnumIter, Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Color {
     White = 0,

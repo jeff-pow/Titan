@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+// use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 use crate::{
     board::board::Board,
@@ -35,6 +36,7 @@ impl Board {
     /// Provides a hash for the board eval to be placed into a transposition table
     #[inline(always)]
     pub fn generate_hash(&self) -> u64 {
+        let hsh = std::time::Instant::now();
         let mut hash = 0;
         let mut occupancies = self.occupancies();
         while occupancies != Bitboard::EMPTY {
@@ -49,13 +51,14 @@ impl Board {
             hash ^= SQUARE_HASHES[self.en_passant_square.idx()];
         }
 
+        // dbg!(hsh.elapsed());
         hash
     }
 }
 
 /// Attempts to look up a board state in the transposition table. If found, returns the eval, and
 /// if not found, places eval in the table before returning eval.
-pub fn get_eval(board: &Board, transpos_table: &mut HashMap<u64, i32>) -> i32 {
+pub fn get_eval(board: &Board, transpos_table: &mut FxHashMap<u64, i32>) -> i32 {
     debug_assert_eq!(board.zobrist_hash, board.generate_hash());
     let hash = board.zobrist_hash;
     *transpos_table.entry(hash).or_insert_with(|| eval(board))

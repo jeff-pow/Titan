@@ -1,11 +1,12 @@
-use std::collections::HashMap;
+// use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use std::time::Instant;
 
 use std::cmp::{max, min};
 
-use crate::board::board::Board;
-use crate::board::zobrist::{
-    add_to_history, check_for_3x_repetition, get_eval, remove_from_history,
+use crate::board::{
+    board::Board,
+    zobrist::{add_to_history, check_for_3x_repetition, get_eval, remove_from_history},
 };
 use crate::moves::movegenerator::generate_moves;
 use crate::moves::moves::Move;
@@ -19,9 +20,10 @@ pub const MAX_SEARCH_DEPTH: usize = 25;
 
 pub struct Search {
     pub best_moves: Vec<(Move, i32)>,
-    pub transpos_table: HashMap<u64, i32>,
+    pub transpos_table: FxHashMap<u64, i32>,
     pub history: Vec<u64>,
     pub current_iteration_max_depth: i32,
+    pub stats: SearchStats,
 }
 
 #[inline(always)]
@@ -32,10 +34,11 @@ fn dist_from_root(max_depth: i32, current_depth: i32) -> i32 {
 impl Search {
     pub fn new() -> Self {
         Search {
-            best_moves: vec![(Move::invalid(), -1); MAX_SEARCH_DEPTH],
-            transpos_table: HashMap::with_capacity(100_000_000),
+            best_moves: Vec::with_capacity(100_000_000),
+            transpos_table: FxHashMap::default(),
             history: Vec::with_capacity(MAX_GAME_LENGTH),
             current_iteration_max_depth: 0,
+            stats: SearchStats::default(),
         }
     }
 
@@ -44,7 +47,6 @@ impl Search {
         let mut best_move = Move::invalid();
 
         for i in 1..=depth {
-            self.transpos_table = HashMap::new();
             self.current_iteration_max_depth = i;
             let start = Instant::now();
             let mut alpha = -INFINITY;

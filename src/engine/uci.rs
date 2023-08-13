@@ -1,5 +1,7 @@
 use std::io;
 
+use itertools::Itertools;
+
 use crate::{
     board::{
         board::Board,
@@ -48,6 +50,7 @@ pub fn main_loop() -> ! {
             dbg!(board);
             board.debug_bitboards();
         } else if buffer.starts_with("go") {
+            parse_go_buffer(&mut board, &buffer);
             if buffer.contains("perft") {
                 let vec: Vec<char> = buffer.chars().collect();
                 let depth = vec[9].to_digit(10).unwrap();
@@ -74,5 +77,16 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, history: &mut Vec
         let m = from_lan(str, board);
         board.make_move(&m);
         add_to_history(board, history);
+    }
+}
+
+fn parse_go_buffer(board: &mut Board, buff: &str) {
+    let mut vec = buff.split_whitespace().skip(1).tuples::<(_, _)>();
+    while let Some(entry) = vec.next() {
+        match entry {
+            ("winc", _) => {
+                board.
+            }
+        }
     }
 }
