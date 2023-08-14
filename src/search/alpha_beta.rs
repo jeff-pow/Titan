@@ -13,7 +13,8 @@ use crate::types::pieces::piece_value;
 use super::game_time::GameTime;
 use super::search_stats::SearchStats;
 
-pub const IN_CHECK_MATE: i32 = 100000;
+pub const IN_CHECKMATE: i32 = 100000;
+pub const NEAR_CHECKMATE: i32 = IN_CHECKMATE - 1000;
 pub const INFINITY: i32 = 9999999;
 pub const MAX_SEARCH_DEPTH: i32 = 30;
 
@@ -35,7 +36,7 @@ impl AlphaBetaSearch {
     pub fn new() -> Self {
         AlphaBetaSearch {
             max_depth: None,
-            best_moves: Vec::with_capacity(100_000_000),
+            best_moves: Vec::new(),
             transpos_table: FxHashMap::default(),
             current_iteration_max_depth: 0,
             stats: SearchStats::default(),
@@ -120,11 +121,11 @@ impl AlphaBetaSearch {
         // Skip move if a path to checkmate has already been found in this path
         alpha = max(
             alpha,
-            -IN_CHECK_MATE + dist_from_root(self.current_iteration_max_depth, depth),
+            -IN_CHECKMATE + dist_from_root(self.current_iteration_max_depth, depth),
         );
         beta = min(
             beta,
-            IN_CHECK_MATE - dist_from_root(self.current_iteration_max_depth, depth),
+            IN_CHECKMATE - dist_from_root(self.current_iteration_max_depth, depth),
         );
         if alpha >= beta {
             return alpha;
@@ -139,7 +140,7 @@ impl AlphaBetaSearch {
             if board.side_in_check(board.to_move) {
                 // Distance from root is returned in order for other recursive calls to determine
                 // shortest viable checkmate path
-                return -IN_CHECK_MATE + dist_from_root(self.current_iteration_max_depth, depth);
+                return -IN_CHECKMATE + dist_from_root(self.current_iteration_max_depth, depth);
             }
             // Stalemate
             return 0;
