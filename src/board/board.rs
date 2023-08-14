@@ -1,4 +1,5 @@
 use core::fmt;
+use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
@@ -18,7 +19,7 @@ use crate::{
 };
 
 #[repr(C)]
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Board {
     pub board: [[Bitboard; NUM_PIECES]; 2],
     pub to_move: Color,
@@ -31,10 +32,8 @@ pub struct Board {
     pub white_king_square: Square,
     pub num_moves: i32,
     pub zobrist_hash: u64,
-    pub wtime: i32,
-    pub btime: i32,
+    pub history: Vec<u64>,
 }
-
 impl Default for Board {
     fn default() -> Self {
         Board {
@@ -49,8 +48,7 @@ impl Default for Board {
             black_king_square: Square::INVALID,
             num_moves: 0,
             zobrist_hash: 0,
-            wtime: 0,
-            btime: 0,
+            history: Vec::new(),
         }
     }
 }

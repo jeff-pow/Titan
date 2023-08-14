@@ -36,7 +36,6 @@ impl Board {
     /// Provides a hash for the board eval to be placed into a transposition table
     #[inline(always)]
     pub fn generate_hash(&self) -> u64 {
-        let hsh = std::time::Instant::now();
         let mut hash = 0;
         let mut occupancies = self.occupancies();
         while occupancies != Bitboard::EMPTY {
@@ -54,23 +53,6 @@ impl Board {
         // dbg!(hsh.elapsed());
         hash
     }
-}
-
-/// Attempts to look up a board state in the transposition table. If found, returns the eval, and
-/// if not found, places eval in the table before returning eval.
-pub fn get_eval(board: &Board, transpos_table: &mut FxHashMap<u64, i32>) -> i32 {
-    debug_assert_eq!(board.zobrist_hash, board.generate_hash());
-    let hash = board.zobrist_hash;
-    *transpos_table.entry(hash).or_insert_with(|| eval(board))
-}
-
-pub fn add_to_history(board: &Board, history: &mut Vec<u64>) {
-    let hash = board.zobrist_hash;
-    history.push(hash);
-}
-
-pub fn remove_from_history(history: &mut Vec<u64>) {
-    history.pop();
 }
 
 #[cfg(test)]

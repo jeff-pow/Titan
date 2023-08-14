@@ -249,7 +249,7 @@ pub fn generate_moves(board: &Board) -> Vec<Move> {
     generate_psuedolegal_moves(board)
         .into_iter()
         .filter(|m| {
-            let mut new_b = *board;
+            let mut new_b = board.to_owned();
             new_b.make_move(m);
             !new_b.side_in_check(board.to_move)
         })

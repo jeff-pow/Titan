@@ -1,29 +1,29 @@
-// use std::collections::HashMap;
 use rustc_hash::FxHashMap;
 use std::time::Instant;
 
 use std::cmp::{max, min};
 
-use crate::board::{
-    board::Board,
-    zobrist::{add_to_history, check_for_3x_repetition, get_eval, remove_from_history},
-};
+use crate::board::{board::Board, zobrist::check_for_3x_repetition};
+use crate::engine::transposition::{add_to_history, get_eval, remove_from_history};
 use crate::moves::movegenerator::generate_moves;
 use crate::moves::moves::Move;
 use crate::moves::moves::Promotion;
 use crate::types::pieces::piece_value;
 
+use super::game_time::GameTime;
+use super::search_stats::SearchStats;
+
 pub const IN_CHECK_MATE: i32 = 100000;
 pub const INFINITY: i32 = 9999999;
-pub const MAX_GAME_LENGTH: usize = 1000;
-pub const MAX_SEARCH_DEPTH: usize = 25;
+pub const MAX_SEARCH_DEPTH: i32 = 30;
 
-pub struct Search {
+pub struct AlphaBetaSearch {
+    pub max_depth: Option<i32>,
     pub best_moves: Vec<(Move, i32)>,
     pub transpos_table: FxHashMap<u64, i32>,
-    pub history: Vec<u64>,
     pub current_iteration_max_depth: i32,
     pub stats: SearchStats,
+    pub game_time: GameTime,
 }
 
 #[inline(always)]
@@ -31,24 +31,46 @@ fn dist_from_root(max_depth: i32, current_depth: i32) -> i32 {
     max_depth - current_depth
 }
 
-impl Search {
+impl AlphaBetaSearch {
     pub fn new() -> Self {
-        Search {
+        AlphaBetaSearch {
+            max_depth: None,
             best_moves: Vec::with_capacity(100_000_000),
             transpos_table: FxHashMap::default(),
-            history: Vec::with_capacity(MAX_GAME_LENGTH),
             current_iteration_max_depth: 0,
             stats: SearchStats::default(),
+            game_time: GameTime::default(),
         }
     }
 
     /// Generates the optimal move for a given position using alpha beta pruning and basic transposition tables.
-    pub fn search(&mut self, board: &Board, depth: i32) -> Move {
+    pub fn search(&mut self, board: &Board) -> Move {
+        assert_eq!(board.history.len(), board.num_moves as usize);
         let mut best_move = Move::invalid();
+        let search_start = Instant::now();
+        self.game_time
+            .update_recommended_time(board.to_move, board.history.len());
+        unsafe {
+            println!(
+                "RECOMMENDED TIME: {:?}",
+                self.game_time
+                    .recommended_time
+                    .unwrap_unchecked()
+                    .as_secs_f32()
+            );
+        }
+        let mut max_depth = match self.game_time.recommended_time {
+            Some(_) => MAX_SEARCH_DEPTH,
+            None => 1,
+        };
+        max_depth = self.max_depth.unwrap_or(max_depth);
 
-        for i in 1..=depth {
+        for i in 1..=max_depth {
+            if !self.game_time.reached_termination(search_start) && self.max_depth.is_none() {
+                break;
+            }
             self.current_iteration_max_depth = i;
-            let start = Instant::now();
+            let iteration_start = Instant::now();
             let mut alpha = -INFINITY;
             let beta = INFINITY;
 
@@ -57,14 +79,14 @@ impl Search {
             moves.reverse();
 
             for m in &moves {
-                let mut new_b = *board;
+                let mut new_b = board.to_owned();
                 new_b.make_move(m);
-                add_to_history(&new_b, &mut self.history);
+                add_to_history(&mut new_b);
 
                 let eval = -self.search_helper(&new_b, -beta, -alpha, i - 1);
 
                 // remove_from_triple_repetition_map(&new_b, triple_repetitions);
-                remove_from_history(&mut self.history);
+                remove_from_history(&mut new_b);
 
                 if eval >= beta {
                     break;
@@ -74,7 +96,7 @@ impl Search {
                     best_move = *m;
                 }
             }
-            let elapsed_time = start.elapsed().as_millis();
+            let elapsed_time = iteration_start.elapsed().as_millis();
             println!("info time {} depth {}", elapsed_time, i);
         }
         best_move
@@ -92,7 +114,7 @@ impl Search {
             return get_eval(board, &mut self.transpos_table);
         }
         // Stalemate if a board position has appeared three times
-        if check_for_3x_repetition(board, &self.history) {
+        if check_for_3x_repetition(board, &board.history) {
             return 0;
         }
         // Skip move if a path to checkmate has already been found in this path
@@ -124,13 +146,13 @@ impl Search {
         }
 
         for m in &moves {
-            let mut new_b = *board;
+            let mut new_b = board.to_owned();
             new_b.make_move(m);
-            add_to_history(&new_b, &mut self.history);
+            add_to_history(&mut new_b);
 
             let eval = -self.search_helper(&new_b, -beta, -alpha, depth - 1);
 
-            remove_from_history(&mut self.history);
+            remove_from_history(&mut new_b);
 
             if eval >= beta {
                 return beta;
@@ -178,7 +200,7 @@ pub fn perft(board: &Board, depth: i32) -> usize {
     let mut total = 0;
     let moves = generate_moves(board);
     for m in &moves {
-        let mut new_b = *board;
+        let mut new_b = board.to_owned();
         new_b.make_move(m);
         let count = count_moves(depth - 1, &new_b);
         total += count;
@@ -196,7 +218,7 @@ fn count_moves(depth: i32, board: &Board) -> usize {
     let mut count = 0;
     let moves = generate_moves(board);
     for m in &moves {
-        let mut new_b = *board;
+        let mut new_b = board.to_owned();
         new_b.make_move(m);
         count += count_moves(depth - 1, &new_b);
     }

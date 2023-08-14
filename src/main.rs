@@ -11,7 +11,8 @@ use crate::init::init;
 fn main() {
     init();
     // let board = board::fen::build_board(board::fen::STARTING_FEN);
-    // let mut searcher = search::alpha_beta::Search::new();
-    // println!("{}", searcher.search(&board, 7));
+    // let mut searcher = search::alpha_beta::AlphaBetaSearch::new();
+    // searcher.max_depth = Some(7);
+    // println!("{}", searcher.search(&board));
     main_loop();
 }
