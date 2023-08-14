@@ -4,167 +4,218 @@ use std::time::Instant;
 use std::cmp::{max, min};
 
 use crate::board::{board::Board, zobrist::check_for_3x_repetition};
-use crate::engine::transposition::{add_to_history, get_eval, remove_from_history};
+use crate::engine::transposition::{add_to_history, remove_from_history, EntryFlag, TableEntry};
 use crate::moves::movegenerator::generate_moves;
 use crate::moves::moves::Move;
 use crate::moves::moves::Promotion;
 use crate::types::pieces::piece_value;
 
+use super::eval::eval;
 use super::game_time::GameTime;
-use super::search_stats::SearchStats;
+use super::quiescence::quiescence;
+use super::search_stats::{self, SearchStats};
+use super::{SearchInfo, SearchType};
 
 pub const IN_CHECKMATE: i32 = 100000;
+pub const STALEMATE: i32 = 0;
 pub const NEAR_CHECKMATE: i32 = IN_CHECKMATE - 1000;
 pub const INFINITY: i32 = 9999999;
-pub const MAX_SEARCH_DEPTH: i32 = 30;
-
-pub struct AlphaBetaSearch {
-    pub max_depth: Option<i32>,
-    pub best_moves: Vec<(Move, i32)>,
-    pub transpos_table: FxHashMap<u64, i32>,
-    pub current_iteration_max_depth: i32,
-    pub stats: SearchStats,
-    pub game_time: GameTime,
-}
+pub const MAX_SEARCH_DEPTH: i8 = 30;
 
 #[inline(always)]
 fn dist_from_root(max_depth: i32, current_depth: i32) -> i32 {
     max_depth - current_depth
 }
 
-impl AlphaBetaSearch {
-    pub fn new() -> Self {
-        AlphaBetaSearch {
-            max_depth: None,
-            best_moves: Vec::new(),
-            transpos_table: FxHashMap::default(),
-            current_iteration_max_depth: 0,
-            stats: SearchStats::default(),
-            game_time: GameTime::default(),
-        }
+pub fn search(search_info: &mut SearchInfo) -> Move {
+    let mut max_depth = 1;
+    let mut best_move = Move::invalid();
+    let mut best_moves = Vec::new();
+    let determine_game_time = search_info.search_type == SearchType::Time;
+    if determine_game_time {
+        let board = &search_info.board;
+        let history_len = board.history.len();
+        search_info
+            .game_time
+            .update_recommended_time(board.to_move, history_len);
     }
 
-    /// Generates the optimal move for a given position using alpha beta pruning and basic transposition tables.
-    pub fn search(&mut self, board: &Board) -> Move {
-        assert_eq!(board.history.len(), board.num_moves as usize);
-        let mut best_move = Move::invalid();
-        let search_start = Instant::now();
-        self.game_time
-            .update_recommended_time(board.to_move, board.history.len());
-        unsafe {
-            println!(
-                "RECOMMENDED TIME: {:?}",
-                self.game_time
-                    .recommended_time
-                    .unwrap_unchecked()
-                    .as_secs_f32()
-            );
-        }
-        let mut max_depth = match self.game_time.recommended_time {
-            Some(_) => MAX_SEARCH_DEPTH,
-            None => 1,
-        };
-        max_depth = self.max_depth.unwrap_or(max_depth);
-
-        for i in 1..=max_depth {
-            if !self.game_time.reached_termination(search_start) && self.max_depth.is_none() {
-                break;
-            }
-            self.current_iteration_max_depth = i;
-            let iteration_start = Instant::now();
-            let mut alpha = -INFINITY;
-            let beta = INFINITY;
-
-            let mut moves = generate_moves(board);
-            moves.sort_by_key(|m| score_move(board, m));
-            moves.reverse();
-
-            for m in &moves {
-                let mut new_b = board.to_owned();
-                new_b.make_move(m);
-                add_to_history(&mut new_b);
-
-                let eval = -self.search_helper(&new_b, -beta, -alpha, i - 1);
-
-                // remove_from_triple_repetition_map(&new_b, triple_repetitions);
-                remove_from_history(&mut new_b);
-
-                if eval >= beta {
-                    break;
-                }
-                if eval > alpha {
-                    alpha = eval;
-                    best_move = *m;
-                }
-            }
-            let elapsed_time = iteration_start.elapsed().as_millis();
-            println!("info time {} depth {}", elapsed_time, i);
-        }
-        best_move
+    if search_info.search_type == SearchType::Depth {
+        max_depth = search_info.depth;
     }
 
-    /// Helper function for search. My implementation does not record a queue of optimal moves, simply
-    /// the best one for a current position. Because of this, we only care about the score of each move
-    /// at the surface level. Which moves lead to this optimial position do not matter, so we just
-    /// return the evaluation of the best possible position *eventually* down a tree from the first
-    /// level of moves. The search function is responsible for keeping track of which move is the best
-    /// based off of these values.
-    fn search_helper(&mut self, board: &Board, mut alpha: i32, mut beta: i32, depth: i32) -> i32 {
-        // Return an evaluation of the board if maximum depth has been reached.
-        if depth == 0 {
-            return get_eval(board, &mut self.transpos_table);
+    let alpha_start = -INFINITY;
+    let beta_start = INFINITY;
+
+    search_info.search_stats.start = Instant::now();
+    let mut current_depth = 1;
+    while current_depth <= MAX_SEARCH_DEPTH && current_depth <= max_depth {
+        if search_info
+            .game_time
+            .reached_termination(search_info.search_stats.start)
+        {
+            break;
         }
-        // Stalemate if a board position has appeared three times
-        if check_for_3x_repetition(board, &board.history) {
-            return 0;
-        }
-        // Skip move if a path to checkmate has already been found in this path
-        alpha = max(
-            alpha,
-            -IN_CHECKMATE + dist_from_root(self.current_iteration_max_depth, depth),
+        search_info.depth = current_depth;
+        let eval = alpha_beta(
+            current_depth,
+            0,
+            alpha_start,
+            beta_start,
+            &mut best_moves,
+            search_info,
         );
-        beta = min(
-            beta,
-            IN_CHECKMATE - dist_from_root(self.current_iteration_max_depth, depth),
-        );
-        if alpha >= beta {
-            return alpha;
+
+        if !best_moves.is_empty() {
+            best_move = best_moves[0];
         }
-
-        let mut moves = generate_moves(board);
-        moves.sort_unstable_by_key(|m| (score_move(board, m)));
-        moves.reverse();
-
-        if moves.is_empty() {
-            // Checkmate
-            if board.side_in_check(board.to_move) {
-                // Distance from root is returned in order for other recursive calls to determine
-                // shortest viable checkmate path
-                return -IN_CHECKMATE + dist_from_root(self.current_iteration_max_depth, depth);
-            }
-            // Stalemate
-            return 0;
-        }
-
-        for m in &moves {
-            let mut new_b = board.to_owned();
-            new_b.make_move(m);
-            add_to_history(&mut new_b);
-
-            let eval = -self.search_helper(&new_b, -beta, -alpha, depth - 1);
-
-            remove_from_history(&mut new_b);
-
-            if eval >= beta {
-                return beta;
-            }
-            alpha = max(alpha, eval);
-        }
-        alpha
+        current_depth += 1;
     }
+
+    best_move
 }
 
-fn score_move(board: &Board, m: &Move) -> i32 {
+fn alpha_beta(
+    mut depth: i8,
+    mut ply: i8,
+    mut alpha: i32,
+    beta: i32,
+    best_moves: &mut Vec<Move>,
+    search_info: &mut SearchInfo,
+) -> i32 {
+    let is_root = ply == 0;
+    let mut principal_var_search = false;
+    if ply >= MAX_SEARCH_DEPTH {
+        return eval(&search_info.board);
+    }
+
+    let is_check = search_info.board.side_in_check(search_info.board.to_move);
+
+    if is_check {
+        depth += 1;
+    }
+
+    if depth <= 0 {
+        return quiescence(ply, alpha, beta, best_moves, search_info);
+    }
+
+    search_info.search_stats.nodes_searched += 1;
+
+    let (table_value, table_move) = {
+        let hash = search_info.board.zobrist_hash;
+        let entry = search_info.transpos_table.get(&hash);
+        if let Some(entry) = entry {
+            entry.get(depth, ply, alpha, beta)
+        } else {
+            (None, Move::invalid())
+        }
+    };
+    if let Some(eval) = table_value {
+        if !is_root {
+            return eval;
+        }
+    }
+
+    let mut moves = generate_moves(&search_info.board);
+    if table_move != Move::invalid() {
+        if let Some(index) = moves.iter().position(|&m| m == table_move) {
+            moves.swap(index, 0);
+        } else {
+            panic!("Table move wasn't in generated move list...")
+        }
+    }
+    moves[1..].sort_unstable_by_key(|m| score_move(&search_info.board, m));
+    moves.reverse();
+
+    if moves.is_empty() {
+        // Checkmate
+        if search_info.board.side_in_check(search_info.board.to_move) {
+            // Distance from root is returned in order for other recursive calls to determine
+            // shortest viable checkmate path
+            return -IN_CHECKMATE + ply as i32;
+        }
+        return STALEMATE;
+    }
+
+    let mut best_eval = -INFINITY;
+    let mut entry_flag = EntryFlag::AlphaCutOff;
+    let mut best_move = Move::invalid();
+
+    for m in moves.iter() {
+        let mut node_best_moves = Vec::new();
+
+        let mut eval = -INFINITY;
+
+        // Draw if a position has occurred three times
+        if check_for_3x_repetition(&search_info.board) {
+            return 0;
+        }
+
+        if principal_var_search {
+            eval = -alpha_beta(
+                depth - 1,
+                ply + 1,
+                -alpha - 1,
+                -alpha,
+                &mut node_best_moves,
+                search_info,
+            );
+
+            // Check if we failed the PVS.
+            if (eval > alpha) && (eval < beta) {
+                eval = -alpha_beta(
+                    depth - 1,
+                    ply + 1,
+                    -beta,
+                    -alpha,
+                    &mut node_best_moves,
+                    search_info,
+                );
+            }
+        } else {
+            eval = -alpha_beta(
+                depth - 1,
+                ply + 1,
+                -beta,
+                -alpha,
+                &mut node_best_moves,
+                search_info,
+            );
+        }
+
+        if eval > best_eval {
+            best_eval = eval;
+            best_move = *m;
+        }
+
+        if eval >= beta {
+            search_info.transpos_table.insert(
+                search_info.board.zobrist_hash,
+                TableEntry::new(depth, ply, EntryFlag::BetaCutOff, beta, best_move),
+            );
+            // TODO: Killer moves here (rstc)
+            return beta;
+        }
+
+        if eval > alpha {
+            alpha = eval;
+            entry_flag = EntryFlag::Exact;
+            principal_var_search = true;
+            best_moves.clear();
+            best_moves.push(*m);
+            best_moves.append(&mut node_best_moves);
+        }
+    }
+
+    search_info.transpos_table.insert(
+        search_info.board.zobrist_hash,
+        TableEntry::new(depth, ply, entry_flag, alpha, best_move),
+    );
+
+    alpha
+}
+
+pub(super) fn score_move(board: &Board, m: &Move) -> i32 {
     let mut score = 0;
     let piece_moving = board
         .piece_on_square(m.origin_square())

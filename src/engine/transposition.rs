@@ -68,22 +68,22 @@ impl TableEntry {
 
 /// Attempts to look up a board state in the transposition table. If found, returns the eval, and
 /// if not found, places eval in the table before returning eval.
-pub fn get_eval(
-    board: &Board,
-    transpos_table: &mut FxHashMap<u64, TableEntry>,
-    depth: i8,
-    ply: i8,
-    entry_flag: EntryFlag,
-    best_move: Move,
-) -> (Option<i32>, Move) {
-    debug_assert_eq!(board.zobrist_hash, board.generate_hash());
-    let hash = board.zobrist_hash;
-    let entry = *transpos_table.entry(hash).or_insert_with(|| {
-        let eval = eval(board);
-        TableEntry::new(depth, ply, entry_flag, eval, best_move)
-    });
-    entry.get(depth, ply, alpha, beta)
-}
+// pub fn get_eval(
+//     board: &Board,
+//     transpos_table: &mut FxHashMap<u64, TableEntry>,
+//     depth: i8,
+//     ply: i8,
+//     entry_flag: EntryFlag,
+//     best_move: Move,
+// ) -> (Option<i32>, Move) {
+//     debug_assert_eq!(board.zobrist_hash, board.generate_hash());
+//     let hash = board.zobrist_hash;
+//     let entry = *transpos_table.entry(hash).or_insert_with(|| {
+//         let eval = eval(board);
+//         TableEntry::new(depth, ply, entry_flag, eval, best_move)
+//     });
+//     entry.get(depth, ply, alpha, beta)
+// }
 
 pub fn add_to_history(board: &mut Board) {
     let hash = board.zobrist_hash;

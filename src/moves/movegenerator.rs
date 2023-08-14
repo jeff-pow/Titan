@@ -236,12 +236,12 @@ fn push_moves(moves: &mut Vec<Move>, mut attacks: Bitboard, sq: Square) {
     }
 }
 
-/// Filters out moves that are captures for quiescence search
-pub fn generate_quiet_moves(board: &Board) -> Vec<Move> {
+/// Filters out moves that are silent for quiescence search
+pub fn generate_capture_moves(board: &Board) -> Vec<Move> {
     let legal_moves = generate_moves(board);
     legal_moves
         .into_iter()
-        .filter(|m| board.occupancies().square_is_empty(m.dest_square()))
+        .filter(|m| board.occupancies().square_is_occupied(m.dest_square()))
         .collect::<Vec<Move>>()
 }
 

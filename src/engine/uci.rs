@@ -5,13 +5,11 @@ use itertools::Itertools;
 use crate::{
     board::{
         board::Board,
-        fen::{self, build_board, parse_fen_from_buffer},
+        fen::{self, build_board},
     },
     moves::moves::from_lan,
-    search::{
-        alpha_beta::{perft, AlphaBetaSearch},
-        game_time::GameTime,
-    },
+    search::alpha_beta,
+    search::{alpha_beta::perft, game_time::GameTime, SearchInfo, SearchType},
     types::pieces::Color,
 };
 
@@ -19,9 +17,9 @@ use super::transposition::add_to_history;
 
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
-    let mut board = build_board(fen::STARTING_FEN);
     let mut buffer = String::new();
-    let mut searcher = AlphaBetaSearch::new();
+    let mut search_info = SearchInfo::default();
+    search_info.board = build_board(fen::STARTING_FEN);
 
     loop {
         buffer.clear();
@@ -32,41 +30,42 @@ pub fn main_loop() -> ! {
         } else if buffer.starts_with("debug on") {
             println!("info string debug on");
         } else if buffer.starts_with("ucinewgame") {
-            board = build_board(fen::STARTING_FEN);
+            search_info.board = build_board(fen::STARTING_FEN);
         } else if buffer.starts_with("position") {
             let vec: Vec<&str> = buffer.split_whitespace().collect();
 
             if buffer.contains("fen") {
-                board = build_board(&parse_fen_from_buffer(&vec));
+                search_info.board = build_board(fen::STARTING_FEN);
 
                 if vec.len() > 9 {
-                    parse_moves(&vec, &mut board, 9);
+                    parse_moves(&vec, &mut search_info.board, 9);
                 }
             } else if buffer.contains("startpos") {
-                board = build_board(fen::STARTING_FEN);
+                search_info.board = build_board(fen::STARTING_FEN);
 
                 if vec.len() > 3 {
-                    parse_moves(&vec, &mut board, 3);
+                    parse_moves(&vec, &mut search_info.board, 3);
                 }
             }
         } else if buffer.eq("d\n") {
-            dbg!(&board);
+            dbg!(&search_info.board);
         } else if buffer.eq("dbg\n") {
-            dbg!(&board);
-            board.debug_bitboards();
+            dbg!(&search_info.board);
+            search_info.board.debug_bitboards();
         } else if buffer.starts_with("go") {
-            searcher.game_time = parse_time(&buffer);
+            search_info.game_time = parse_time(&buffer);
             if buffer.contains("perft") {
                 let vec: Vec<char> = buffer.chars().collect();
                 let depth = vec[9].to_digit(10).unwrap();
-                perft(&board, depth as i32);
+                perft(&search_info.board, depth as i32);
             } else if buffer.contains("depth") {
                 let vec: Vec<char> = buffer.chars().collect();
                 let depth = vec[9].to_digit(10).unwrap();
-                searcher.max_depth = Some(depth as i32);
-                println!("bestmove {}", searcher.search(&board).to_lan());
+                search_info.depth = depth as i8;
+                search_info.search_type = SearchType::Depth;
+                println!("bestmove {}", alpha_beta::search(&mut search_info).to_lan());
             } else {
-                let m = searcher.search(&board);
+                let m = alpha_beta::search(&mut search_info);
                 println!("bestmove {}", m.to_lan());
             }
         } else if buffer.starts_with("stop") || buffer.starts_with("quit") {

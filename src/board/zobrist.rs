@@ -25,10 +25,10 @@ const TURN_HASH: u64 = 0x0b2727e5e37fed2d;
 
 /// Function checks for the presence of the board in the game. If the board position will have occurred three times,
 /// returns true indicating the position would be a stalemate due to the threefold repetition rule
-pub fn check_for_3x_repetition(board: &Board, history: &[u64]) -> bool {
+pub fn check_for_3x_repetition(board: &Board) -> bool {
     debug_assert_eq!(board.zobrist_hash, board.generate_hash());
     let hash = board.zobrist_hash;
-    let count = history.iter().filter(|&&x| x == hash).count();
+    let count = board.history.iter().filter(|&&x| x == hash).count();
     count >= 2
 }
 

@@ -10,6 +10,8 @@ const AVG_NUMBER_MOVES: i32 = 30;
 /// Gives the system some wiggle room to communicate between the GUI and the engine
 const TIME_BUFFER: Duration = Duration::from_millis(30);
 
+const TIME_FRACTION: f64 = 0.3;
+
 #[derive(Copy, Clone, Debug, Default)]
 pub struct GameTime {
     /// Time increase for each side
@@ -23,23 +25,23 @@ pub struct GameTime {
 }
 
 impl GameTime {
-    /// If the function returns false and the search has not yet started, it means the side to play
+    /// If the function returns true and the search has not yet started, it means the side to play
     /// is out of time and any move should be played to avoid from dying.
-    /// Otherwise returns true if the program should have time to finish another level of iterative
+    /// Otherwise returns false if the program should have time to finish another level of iterative
     /// deepening
     pub fn reached_termination(&self, search_start: Instant) -> bool {
         if let Some(recommended_time) = self.recommended_time {
             // If a previous iteration of iterative deepening hasn't finished in less than a small percentage of the time for the move, the
             // chances of the next iteration finishing before we go over allotted time are
             // basically none
-            let target_elapsed_ms = recommended_time.as_millis() as f64 * 0.1;
+            let target_elapsed_ms = recommended_time.as_millis() as f64 * TIME_FRACTION;
             let actual_elapsed_ms = search_start.elapsed().as_millis() as f64;
             if actual_elapsed_ms < target_elapsed_ms {
-                return true;
+                return false;
             }
         }
-        // Return false if the recommended_time is none, e.g. we have no time left whatsoever
-        false
+        // Return true if the recommended_time is none, e.g. we have no time left whatsoever
+        true
     }
 
     /// Returns a recommended amount of time to spend on a given search.

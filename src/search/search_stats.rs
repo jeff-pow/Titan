@@ -1,8 +1,8 @@
 use std::time::Instant;
 
 pub struct SearchStats {
-    nodes_searched: u64,
-    start: Instant,
+    pub nodes_searched: u64,
+    pub start: Instant,
 }
 
 impl Default for SearchStats {

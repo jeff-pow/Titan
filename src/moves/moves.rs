@@ -78,7 +78,7 @@ impl Direction {
 /// bit 12-13: promotion piece
 /// bit 14-15: special move flag: normal move(0), promotion (1), en passant (2), castling (3)
 /// NOTE: en passant bit is set only when a pawn can be captured
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Move(u16);
 
 impl Move {
