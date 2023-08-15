@@ -22,18 +22,13 @@ pub const NEAR_CHECKMATE: i32 = IN_CHECKMATE - 1000;
 pub const INFINITY: i32 = 9999999;
 pub const MAX_SEARCH_DEPTH: i8 = 30;
 
-#[inline(always)]
-fn dist_from_root(max_depth: i32, current_depth: i32) -> i32 {
-    max_depth - current_depth
-}
-
 pub fn search(search_info: &mut SearchInfo) -> Move {
     let mut max_depth = 1;
     let mut best_move = Move::invalid();
     let mut best_moves = Vec::new();
     let determine_game_time = search_info.search_type == SearchType::Time;
+    let board = search_info.board.to_owned();
     if determine_game_time {
-        let board = &search_info.board;
         let history_len = board.history.len();
         search_info
             .game_time
@@ -49,60 +44,79 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
 
     search_info.search_stats.start = Instant::now();
     let mut current_depth = 1;
+    let mut eval = -INFINITY;
     while current_depth <= MAX_SEARCH_DEPTH && current_depth <= max_depth {
-        if search_info
-            .game_time
-            .reached_termination(search_info.search_stats.start)
+        if determine_game_time
+            && search_info
+                .game_time
+                .reached_termination(search_info.search_stats.start)
         {
             break;
         }
         search_info.depth = current_depth;
-        let eval = alpha_beta(
+        eval = alpha_beta(
             current_depth,
             0,
             alpha_start,
             beta_start,
             &mut best_moves,
             search_info,
+            &board,
         );
 
         if !best_moves.is_empty() {
             best_move = best_moves[0];
         }
+        println!(
+            "info time {} depth {}",
+            search_info.search_stats.start.elapsed().as_millis(),
+            current_depth
+        );
+
         current_depth += 1;
     }
+    println!(
+        "info {} nodes {} nps",
+        search_info.search_stats.nodes_searched,
+        search_info.search_stats.nodes_searched as f64
+            / search_info.search_stats.start.elapsed().as_secs_f64()
+    );
+    println!("info score cp {}", eval as f64 / 100.);
+
+    assert_ne!(best_move, Move::invalid());
 
     best_move
 }
 
 fn alpha_beta(
     mut depth: i8,
-    mut ply: i8,
+    ply: i8,
     mut alpha: i32,
     beta: i32,
     best_moves: &mut Vec<Move>,
     search_info: &mut SearchInfo,
+    board: &Board,
 ) -> i32 {
     let is_root = ply == 0;
     let mut principal_var_search = false;
     if ply >= MAX_SEARCH_DEPTH {
-        return eval(&search_info.board);
+        return eval(board);
     }
 
-    let is_check = search_info.board.side_in_check(search_info.board.to_move);
+    let is_check = board.side_in_check(board.to_move);
 
     if is_check {
         depth += 1;
     }
 
     if depth <= 0 {
-        return quiescence(ply, alpha, beta, best_moves, search_info);
+        return quiescence(ply, alpha, beta, best_moves, search_info, board);
     }
 
     search_info.search_stats.nodes_searched += 1;
 
     let (table_value, table_move) = {
-        let hash = search_info.board.zobrist_hash;
+        let hash = board.zobrist_hash;
         let entry = search_info.transpos_table.get(&hash);
         if let Some(entry) = entry {
             entry.get(depth, ply, alpha, beta)
@@ -116,20 +130,24 @@ fn alpha_beta(
         }
     }
 
-    let mut moves = generate_moves(&search_info.board);
+    let mut moves = generate_moves(board);
     if table_move != Move::invalid() {
         if let Some(index) = moves.iter().position(|&m| m == table_move) {
             moves.swap(index, 0);
+            moves[1..].sort_unstable_by_key(|m| score_move(board, m));
+            moves.reverse();
         } else {
-            panic!("Table move wasn't in generated move list...")
+            moves.sort_unstable_by_key(|m| score_move(board, m));
+            moves.reverse();
         }
+    } else {
+        moves.sort_unstable_by_key(|m| score_move(board, m));
+        moves.reverse();
     }
-    moves[1..].sort_unstable_by_key(|m| score_move(&search_info.board, m));
-    moves.reverse();
 
     if moves.is_empty() {
         // Checkmate
-        if search_info.board.side_in_check(search_info.board.to_move) {
+        if board.side_in_check(board.to_move) {
             // Distance from root is returned in order for other recursive calls to determine
             // shortest viable checkmate path
             return -IN_CHECKMATE + ply as i32;
@@ -147,9 +165,13 @@ fn alpha_beta(
         let mut eval = -INFINITY;
 
         // Draw if a position has occurred three times
-        if check_for_3x_repetition(&search_info.board) {
-            return 0;
+        if check_for_3x_repetition(board) {
+            return STALEMATE;
         }
+
+        let mut new_b = board.to_owned();
+        new_b.make_move(m);
+        add_to_history(&mut new_b);
 
         if principal_var_search {
             eval = -alpha_beta(
@@ -159,9 +181,10 @@ fn alpha_beta(
                 -alpha,
                 &mut node_best_moves,
                 search_info,
+                &new_b,
             );
 
-            // Check if we failed the PVS.
+            // Redo search with full window if principal variation search failed
             if (eval > alpha) && (eval < beta) {
                 eval = -alpha_beta(
                     depth - 1,
@@ -170,6 +193,7 @@ fn alpha_beta(
                     -alpha,
                     &mut node_best_moves,
                     search_info,
+                    &new_b,
                 );
             }
         } else {
@@ -180,8 +204,11 @@ fn alpha_beta(
                 -alpha,
                 &mut node_best_moves,
                 search_info,
+                &new_b,
             );
         }
+
+        remove_from_history(&mut new_b);
 
         if eval > best_eval {
             best_eval = eval;
@@ -190,7 +217,7 @@ fn alpha_beta(
 
         if eval >= beta {
             search_info.transpos_table.insert(
-                search_info.board.zobrist_hash,
+                board.zobrist_hash,
                 TableEntry::new(depth, ply, EntryFlag::BetaCutOff, beta, best_move),
             );
             // TODO: Killer moves here (rstc)
@@ -208,7 +235,7 @@ fn alpha_beta(
     }
 
     search_info.transpos_table.insert(
-        search_info.board.zobrist_hash,
+        board.zobrist_hash,
         TableEntry::new(depth, ply, entry_flag, alpha, best_move),
     );
 

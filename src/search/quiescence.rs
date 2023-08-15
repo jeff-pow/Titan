@@ -1,3 +1,5 @@
+use crate::board::board::Board;
+use crate::engine::transposition::{add_to_history, remove_from_history};
 use crate::moves::{movegenerator::generate_capture_moves, moves::Move};
 
 use super::{
@@ -12,9 +14,10 @@ pub fn quiescence(
     beta: i32,
     best_moves: &mut Vec<Move>,
     search_info: &mut SearchInfo,
+    board: &Board,
 ) -> i32 {
     search_info.search_stats.nodes_searched += 1;
-    let eval = eval(&search_info.board);
+    let eval = eval(board);
 
     if ply >= MAX_SEARCH_DEPTH {
         return eval;
@@ -28,13 +31,26 @@ pub fn quiescence(
         alpha = eval;
     }
 
-    let mut moves = generate_capture_moves(&search_info.board);
-    moves.sort_unstable_by_key(|m| score_move(&search_info.board, m));
+    let mut moves = generate_capture_moves(board);
+    moves.sort_unstable_by_key(|m| score_move(board, m));
     moves.reverse();
 
     for m in moves.iter() {
         let mut best_node_moves = Vec::new();
-        let eval = -quiescence(ply + 1, -beta, -alpha, &mut best_node_moves, search_info);
+        let mut new_b = board.to_owned();
+        new_b.make_move(m);
+        add_to_history(&mut new_b);
+
+        let eval = -quiescence(
+            ply + 1,
+            -beta,
+            -alpha,
+            &mut best_node_moves,
+            search_info,
+            &new_b,
+        );
+
+        remove_from_history(&mut new_b);
 
         if eval >= beta {
             return beta;

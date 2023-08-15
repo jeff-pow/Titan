@@ -214,6 +214,7 @@ pub fn eval(board: &Board) -> i32 {
         let mut bb = board.board[Color::Black as usize][piece as usize];
         while bb != Bitboard::EMPTY {
             let sq = bb.pop_lsb();
+            game_phase += game_phase_value(piece);
             black_mg += get_mg_table(piece)[sq.idx()] + piece_value(piece);
             black_eg += get_eg_table(piece)[sq.idx()] + piece_value(piece);
         }
@@ -232,10 +233,9 @@ pub fn eval(board: &Board) -> i32 {
         }
     }
 
-    // 24 represents the highest normal value a user will have unless there are promotions before
-    // captures
+    // Using the number 24 makes the program take a few captures before it starts to take the end game
+    // tables into account
     let mg_phase = min(game_phase, 24);
     let eg_phase = 24 - mg_phase;
-    // dbg!(eval.elapsed());
     (mg_pts * mg_phase + eg_pts * eg_phase) / 24
 }

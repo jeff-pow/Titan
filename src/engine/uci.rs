@@ -13,17 +13,19 @@ use crate::{
     types::pieces::Color,
 };
 
-use super::transposition::add_to_history;
+use super::transposition::{add_to_history, get_table};
 
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
-    let mut buffer = String::new();
     let mut search_info = SearchInfo::default();
+    let mut buffer = String::new();
+    search_info.transpos_table = get_table();
     search_info.board = build_board(fen::STARTING_FEN);
 
     loop {
         buffer.clear();
         io::stdin().read_line(&mut buffer).unwrap();
+        search_info.search_stats.nodes_searched = 0;
 
         if buffer.starts_with("isready") {
             println!("readyok");
@@ -65,6 +67,7 @@ pub fn main_loop() -> ! {
                 search_info.search_type = SearchType::Depth;
                 println!("bestmove {}", alpha_beta::search(&mut search_info).to_lan());
             } else {
+                search_info.search_type = SearchType::Time;
                 let m = alpha_beta::search(&mut search_info);
                 println!("bestmove {}", m.to_lan());
             }
@@ -113,6 +116,5 @@ fn parse_time(buff: &str) -> GameTime {
             _ => return game_time,
         }
     }
-    dbg!(game_time);
     game_time
 }

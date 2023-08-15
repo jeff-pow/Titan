@@ -48,7 +48,10 @@ impl GameTime {
     /// Returns None if player is out of time and should play absolutely anything to keep
     /// themselves alive
     pub fn update_recommended_time(&mut self, side: Color, history_len: usize) {
-        let est_moves_left = AVG_NUMBER_MOVES - history_len as i32 / 2;
+        let mut est_moves_left = AVG_NUMBER_MOVES - history_len as i32 / 2;
+        if est_moves_left <= 0 {
+            est_moves_left = 15;
+        }
         let clock = self.time_remaining[side as usize];
         if clock == Duration::ZERO {
             self.recommended_time = None;
