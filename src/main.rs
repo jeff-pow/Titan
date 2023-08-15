@@ -10,6 +10,5 @@ use crate::init::init;
 
 fn main() {
     init();
-    std::process::exit(0);
     main_loop();
 }
