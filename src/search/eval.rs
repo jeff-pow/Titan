@@ -7,7 +7,6 @@ use crate::{
     types::{
         bitboard::Bitboard,
         pieces::{piece_value, Color, PieceName},
-        square::Square,
     },
 };
 
@@ -192,7 +191,7 @@ fn game_phase_value(piece: PieceName) -> i32 {
 
 /// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 pub fn eval(board: &Board) -> i32 {
-    let eval = std::time::Instant::now();
+    let _eval = std::time::Instant::now();
     let mut white_mg = 0;
     let mut white_eg = 0;
     let mut black_mg = 0;

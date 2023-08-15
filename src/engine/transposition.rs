@@ -1,6 +1,5 @@
 use std::mem;
 
-use crate::board::board::Board;
 use crate::moves::moves::Move;
 use crate::search::alpha_beta::NEAR_CHECKMATE;
 use rustc_hash::FxHashMap;

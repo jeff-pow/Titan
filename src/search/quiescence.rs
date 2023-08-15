@@ -17,7 +17,6 @@ pub fn quiescence(
 ) -> i32 {
     search_info.search_stats.nodes_searched += 1;
     let eval = eval(board);
-
     if ply >= MAX_SEARCH_DEPTH {
         return eval;
     }

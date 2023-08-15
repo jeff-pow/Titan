@@ -1,7 +1,4 @@
-use rustc_hash::FxHashMap;
-use std::time::Instant;
-
-use std::cmp::{max, min};
+use std::time::{Duration, Instant};
 
 use crate::board::{board::Board, zobrist::check_for_3x_repetition};
 use crate::engine::transposition::{EntryFlag, TableEntry};
@@ -25,13 +22,11 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
     let mut best_move = Move::invalid();
     let mut best_moves = Vec::new();
     let determine_game_time = search_info.search_type == SearchType::Time;
-    let mut recommended_time = None;
+    let mut recommended_time = Duration::ZERO;
     let board = search_info.board.to_owned();
     if determine_game_time {
-        let history_len = board.history.len();
-        recommended_time = search_info
-            .game_time
-            .update_recommended_time(board.to_move, history_len);
+        recommended_time = search_info.game_time.recommended_time(board.to_move);
+        dbg!(recommended_time);
     }
 
     if search_info.search_type == SearchType::Depth {
