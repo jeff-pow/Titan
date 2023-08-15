@@ -1,6 +1,6 @@
 use rustc_hash::FxHashMap;
 
-use crate::{board::board::Board, engine::transposition::TableEntry};
+use crate::{board::lib::Board, engine::transposition::TableEntry};
 
 use self::{game_time::GameTime, search_stats::SearchStats};
 

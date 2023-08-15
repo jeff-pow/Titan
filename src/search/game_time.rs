@@ -2,13 +2,10 @@ use std::time::{Duration, Instant};
 
 use crate::types::pieces::Color;
 
-/// Gives the system some wiggle room to communicate between the GUI and the engine
-const TIME_BUFFER: Duration = Duration::from_millis(30);
-
 const TIME_FRACTION: f64 = 0.3;
 
 /// Limit the maximum time the engine thinks for
-const MAX_THINK_TIME: Duration = Duration::from_millis(20000);
+const MAX_THINK_TIME: Duration = Duration::from_millis(15000);
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct GameTime {
@@ -30,9 +27,9 @@ impl GameTime {
             // If a previous iteration of iterative deepening hasn't finished in less than a small percentage of the time for the move, the
             // chances of the next iteration finishing before we go over allotted time are
             // basically none
-            let target_elapsed_ms = recommended_time.as_millis() as f64 * TIME_FRACTION;
-            let actual_elapsed_ms = search_start.elapsed().as_millis() as f64;
-            if actual_elapsed_ms < target_elapsed_ms {
+            let target_elapsed = recommended_time.mul_f64(TIME_FRACTION);
+            let actual_elapsed = search_start.elapsed();
+            if actual_elapsed < target_elapsed {
                 return false;
             }
         }
@@ -54,19 +51,4 @@ impl GameTime {
         let recommended_time = recommended_time.min(MAX_THINK_TIME);
         recommended_time + increment
     }
-    // pub fn recommended_time(&mut self, side: Color, history_len: usize) -> Option<Duration> {
-    //     let mut est_moves_left = AVG_NUMBER_MOVES - history_len as i32 / 2;
-    //     if est_moves_left <= 0 {
-    //         est_moves_left = 15;
-    //     }
-    //     let clock = self.time_remaining[side as usize];
-    //     if clock == Duration::ZERO {
-    //         return None;
-    //     }
-    //     let time_increase = self.time_inc[side as usize];
-    //     let default_time_ms = clock.as_millis() / est_moves_left as u128;
-    //     let recommended_time_ms = default_time_ms + time_increase.as_millis();
-    //
-    //     Some(Duration::from_millis(recommended_time_ms as u64))
-    // }
 }

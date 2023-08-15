@@ -3,7 +3,7 @@ use std::cmp::min;
 use strum::IntoEnumIterator;
 
 use crate::{
-    board::board::Board,
+    board::lib::Board,
     types::{
         bitboard::Bitboard,
         pieces::{piece_value, Color, PieceName},

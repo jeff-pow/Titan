@@ -1,7 +1,7 @@
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use crate::moves::moves::Direction::*;
+use crate::moves::lib::Direction::*;
 use crate::types::{bitboard::Bitboard, pieces::Color, square::Square};
 
 const FILE_A_U64: u64 = 0x101010101010101;

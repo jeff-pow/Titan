@@ -1,8 +1,8 @@
 use strum::IntoEnumIterator;
 
 use crate::{
-    board::board::Board,
-    moves::{moves::Direction, moves::Direction::*, moves::Promotion},
+    board::lib::Board,
+    moves::{lib::Direction, lib::Direction::*, lib::Promotion},
     types::{
         bitboard::Bitboard,
         pieces::PieceName::*,
@@ -13,11 +13,11 @@ use crate::{
 
 use super::{
     attack_boards::{king_attacks, knight_attacks, RANK2, RANK3, RANK6, RANK7},
+    lib::{Move, MoveType},
     magics::{bishop_attacks, rook_attacks},
-    moves::{Move, MoveType},
 };
 
-fn generate_psuedolegal_moves(board: &Board) -> Vec<Move> {
+pub fn generate_psuedolegal_moves(board: &Board) -> Vec<Move> {
     let mut moves = Vec::new();
     moves.append(&mut generate_bitboard_moves(board, PieceName::Knight));
     moves.append(&mut generate_bitboard_moves(board, PieceName::King));
@@ -237,8 +237,8 @@ fn push_moves(moves: &mut Vec<Move>, mut attacks: Bitboard, sq: Square) {
 }
 
 /// Filters out moves that are silent for quiescence search
-pub fn generate_capture_moves(board: &Board) -> Vec<Move> {
-    let legal_moves = generate_moves(board);
+pub fn generate_psuedolegal_captures(board: &Board) -> Vec<Move> {
+    let legal_moves = generate_psuedolegal_moves(board);
     legal_moves
         .into_iter()
         .filter(|m| board.occupancies().square_is_occupied(m.dest_square()))

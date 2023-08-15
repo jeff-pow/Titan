@@ -5,7 +5,7 @@ use crate::moves::{
         FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, RANK1, RANK2, RANK3, RANK4,
         RANK5, RANK6, RANK7, RANK8,
     },
-    moves::Direction,
+    lib::Direction,
 };
 
 use super::bitboard::Bitboard;

@@ -5,7 +5,7 @@ use crate::{
     types::{bitboard::Bitboard, square::Square},
 };
 
-use super::moves::{Direction, Direction::*};
+use super::lib::{Direction, Direction::*};
 
 // Simple Pcg64Mcg implementation
 pub struct Rng(u128);
@@ -257,7 +257,7 @@ unsafe fn gen_magic_board(
 
     // size = running total of total size
     let mut size = 0;
-    for i in 0..64 {
+    (0..64).for_each(|i| {
         // begin ptr points to the beginning of the current slice in the vector
         let beginptr = attacks.add(size);
 
@@ -274,7 +274,7 @@ unsafe fn gen_magic_board(
 
         // Create the pointer to the slice with begin_ptr / length
         size += pre_sq_table[i].len;
-    }
+    });
     // Sanity check
     assert_eq!(size, table_size);
 }

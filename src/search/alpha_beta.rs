@@ -1,10 +1,10 @@
 use std::time::{Duration, Instant};
 
-use crate::board::{board::Board, zobrist::check_for_3x_repetition};
+use crate::board::{lib::Board, zobrist::check_for_3x_repetition};
 use crate::engine::transposition::{EntryFlag, TableEntry};
-use crate::moves::movegenerator::generate_moves;
-use crate::moves::moves::Move;
-use crate::moves::moves::Promotion;
+use crate::moves::lib::Move;
+use crate::moves::lib::Promotion;
+use crate::moves::movegenerator::{generate_moves, generate_psuedolegal_moves};
 use crate::types::pieces::piece_value;
 
 use super::eval::eval;
@@ -19,14 +19,14 @@ pub const MAX_SEARCH_DEPTH: i8 = 30;
 
 pub fn search(search_info: &mut SearchInfo) -> Move {
     let mut max_depth = 1;
-    let mut best_move = Move::invalid();
+    let mut best_move = Move::NULL;
     let mut best_moves = Vec::new();
     let determine_game_time = search_info.search_type == SearchType::Time;
     let mut recommended_time = Duration::ZERO;
     let board = search_info.board.to_owned();
     if determine_game_time {
         recommended_time = search_info.game_time.recommended_time(board.to_move);
-        dbg!(recommended_time);
+        max_depth = MAX_SEARCH_DEPTH;
     }
 
     if search_info.search_type == SearchType::Depth {
@@ -39,15 +39,10 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
     search_info.search_stats.start = Instant::now();
     let mut current_depth = 1;
     let mut eval = -INFINITY;
+
     while current_depth <= MAX_SEARCH_DEPTH && current_depth <= max_depth {
-        if determine_game_time
-            && search_info
-                .game_time
-                .reached_termination(search_info.search_stats.start, recommended_time)
-        {
-            break;
-        }
         search_info.depth = current_depth;
+
         eval = alpha_beta(
             current_depth,
             0,
@@ -66,7 +61,13 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
             search_info.search_stats.start.elapsed().as_millis(),
             current_depth
         );
-
+        if determine_game_time
+            && search_info
+                .game_time
+                .reached_termination(search_info.search_stats.start, recommended_time)
+        {
+            break;
+        }
         current_depth += 1;
     }
     println!(
@@ -77,7 +78,7 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
     );
     println!("info score cp {}", eval as f64 / 100.);
 
-    assert_ne!(best_move, Move::invalid());
+    assert_ne!(best_move, Move::NULL);
 
     best_move
 }
@@ -115,7 +116,7 @@ fn alpha_beta(
         if let Some(entry) = entry {
             entry.get(depth, ply, alpha, beta)
         } else {
-            (None, Move::invalid())
+            (None, Move::NULL)
         }
     };
     if let Some(eval) = table_value {
@@ -124,7 +125,7 @@ fn alpha_beta(
         }
     }
 
-    let mut moves = generate_moves(board);
+    let mut moves = generate_psuedolegal_moves(board);
     if let Some(index) = moves.iter().position(|&m| m == table_move) {
         moves.swap(index, 0);
         moves[1..].sort_unstable_by_key(|m| score_move(board, m));
@@ -146,22 +147,26 @@ fn alpha_beta(
 
     let mut best_eval = -INFINITY;
     let mut entry_flag = EntryFlag::AlphaCutOff;
-    let mut best_move = Move::invalid();
+    let mut best_move = Move::NULL;
 
     for m in moves.iter() {
-        let mut node_best_moves = Vec::new();
-
-        let mut eval;
-
-        // Draw if a position has occurred three times
-        if check_for_3x_repetition(board) {
-            return STALEMATE;
-        }
-
         let mut new_b = board.to_owned();
         new_b.make_move(m);
         new_b.add_to_history();
+        // Just generate psuedolegal moves to save computation time on checks for moves that will be
+        // pruned
+        if board.side_in_check(board.to_move) {
+            continue;
+        }
 
+        let mut node_best_moves = Vec::new();
+
+        // Draw if a position has occurred three times
+        if check_for_3x_repetition(&new_b) {
+            return STALEMATE;
+        }
+
+        let mut eval;
         if principal_var_search {
             eval = -alpha_beta(
                 depth - 1,

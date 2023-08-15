@@ -4,10 +4,10 @@ use itertools::Itertools;
 
 use crate::{
     board::{
-        board::Board,
         fen::{self, build_board},
+        lib::Board,
     },
-    moves::moves::from_lan,
+    moves::lib::from_lan,
     search::alpha_beta,
     search::{alpha_beta::perft, game_time::GameTime, SearchInfo, SearchType},
     types::pieces::Color,

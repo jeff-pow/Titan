@@ -2,8 +2,8 @@ use core::fmt;
 use std::fmt::Display;
 
 use crate::{
-    board::board::Board,
-    moves::moves::Direction::*,
+    board::lib::Board,
+    moves::lib::Direction::*,
     types::{pieces::PieceName, square::Square},
 };
 
@@ -82,6 +82,7 @@ impl Direction {
 pub struct Move(u16);
 
 impl Move {
+    pub const NULL: Move = Move(0);
     pub(crate) fn new(
         origin: Square,
         destination: Square,
@@ -171,12 +172,6 @@ impl Move {
             None => (),
         }
         str
-    }
-
-    /// Constructor for new moves - Mostly a placeholder for initializing variables that will
-    /// certainly be changed at some other point during the runtime of the function
-    pub fn invalid() -> Self {
-        Move::new(Square::INVALID, Square::INVALID, None, MoveType::Normal)
     }
 
     pub fn castle_type(&self) -> Castle {

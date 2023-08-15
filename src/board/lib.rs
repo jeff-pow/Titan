@@ -4,11 +4,11 @@ use strum::IntoEnumIterator;
 use crate::{
     moves::{
         attack_boards::{king_attacks, knight_attacks, pawn_attacks},
+        lib::Castle,
+        lib::Direction::*,
+        lib::Move,
+        lib::Promotion,
         magics::{bishop_attacks, rook_attacks},
-        moves::Castle,
-        moves::Direction::*,
-        moves::Move,
-        moves::Promotion,
     },
     types::{
         bitboard::Bitboard,
@@ -33,6 +33,7 @@ pub struct Board {
     pub zobrist_hash: u64,
     pub history: Vec<u64>,
 }
+
 impl Default for Board {
     fn default() -> Self {
         Board {

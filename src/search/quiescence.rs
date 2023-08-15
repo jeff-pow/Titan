@@ -1,5 +1,7 @@
-use crate::board::board::Board;
-use crate::moves::{movegenerator::generate_capture_moves, moves::Move};
+use crate::board::lib::Board;
+use crate::board::zobrist::check_for_3x_repetition;
+use crate::moves::{lib::Move, movegenerator::generate_psuedolegal_captures};
+use crate::search::alpha_beta::STALEMATE;
 
 use super::{
     alpha_beta::{score_move, MAX_SEARCH_DEPTH},
@@ -29,7 +31,7 @@ pub fn quiescence(
         alpha = eval;
     }
 
-    let mut moves = generate_capture_moves(board);
+    let mut moves = generate_psuedolegal_captures(board);
     moves.sort_unstable_by_key(|m| score_move(board, m));
     moves.reverse();
 
@@ -37,7 +39,17 @@ pub fn quiescence(
         let mut best_node_moves = Vec::new();
         let mut new_b = board.to_owned();
         new_b.make_move(m);
+        // Just generate psuedolegal moves to save computation time on checks for moves that will be
+        // pruned
+        if new_b.side_in_check(board.to_move) {
+            continue;
+        }
         new_b.add_to_history();
+
+        // Draw if a position has occurred three times
+        if check_for_3x_repetition(&new_b) {
+            return STALEMATE;
+        }
 
         let eval = -quiescence(
             ply + 1,
