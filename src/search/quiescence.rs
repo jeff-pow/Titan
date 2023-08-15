@@ -1,5 +1,4 @@
 use crate::board::board::Board;
-use crate::engine::transposition::{add_to_history, remove_from_history};
 use crate::moves::{movegenerator::generate_capture_moves, moves::Move};
 
 use super::{
@@ -39,7 +38,7 @@ pub fn quiescence(
         let mut best_node_moves = Vec::new();
         let mut new_b = board.to_owned();
         new_b.make_move(m);
-        add_to_history(&mut new_b);
+        new_b.add_to_history();
 
         let eval = -quiescence(
             ply + 1,
@@ -50,7 +49,7 @@ pub fn quiescence(
             &new_b,
         );
 
-        remove_from_history(&mut new_b);
+        new_b.remove_from_history();
 
         if eval >= beta {
             return beta;

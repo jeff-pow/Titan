@@ -4,16 +4,14 @@ use std::time::Instant;
 use std::cmp::{max, min};
 
 use crate::board::{board::Board, zobrist::check_for_3x_repetition};
-use crate::engine::transposition::{add_to_history, remove_from_history, EntryFlag, TableEntry};
+use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::moves::movegenerator::generate_moves;
 use crate::moves::moves::Move;
 use crate::moves::moves::Promotion;
 use crate::types::pieces::piece_value;
 
 use super::eval::eval;
-use super::game_time::GameTime;
 use super::quiescence::quiescence;
-use super::search_stats::{self, SearchStats};
 use super::{SearchInfo, SearchType};
 
 pub const IN_CHECKMATE: i32 = 100000;
@@ -27,10 +25,11 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
     let mut best_move = Move::invalid();
     let mut best_moves = Vec::new();
     let determine_game_time = search_info.search_type == SearchType::Time;
+    let mut recommended_time = None;
     let board = search_info.board.to_owned();
     if determine_game_time {
         let history_len = board.history.len();
-        search_info
+        recommended_time = search_info
             .game_time
             .update_recommended_time(board.to_move, history_len);
     }
@@ -49,7 +48,7 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
         if determine_game_time
             && search_info
                 .game_time
-                .reached_termination(search_info.search_stats.start)
+                .reached_termination(search_info.search_stats.start, recommended_time)
         {
             break;
         }
@@ -131,15 +130,10 @@ fn alpha_beta(
     }
 
     let mut moves = generate_moves(board);
-    if table_move != Move::invalid() {
-        if let Some(index) = moves.iter().position(|&m| m == table_move) {
-            moves.swap(index, 0);
-            moves[1..].sort_unstable_by_key(|m| score_move(board, m));
-            moves.reverse();
-        } else {
-            moves.sort_unstable_by_key(|m| score_move(board, m));
-            moves.reverse();
-        }
+    if let Some(index) = moves.iter().position(|&m| m == table_move) {
+        moves.swap(index, 0);
+        moves[1..].sort_unstable_by_key(|m| score_move(board, m));
+        moves.reverse();
     } else {
         moves.sort_unstable_by_key(|m| score_move(board, m));
         moves.reverse();
@@ -162,7 +156,7 @@ fn alpha_beta(
     for m in moves.iter() {
         let mut node_best_moves = Vec::new();
 
-        let mut eval = -INFINITY;
+        let mut eval;
 
         // Draw if a position has occurred three times
         if check_for_3x_repetition(board) {
@@ -171,7 +165,7 @@ fn alpha_beta(
 
         let mut new_b = board.to_owned();
         new_b.make_move(m);
-        add_to_history(&mut new_b);
+        new_b.add_to_history();
 
         if principal_var_search {
             eval = -alpha_beta(
@@ -208,7 +202,7 @@ fn alpha_beta(
             );
         }
 
-        remove_from_history(&mut new_b);
+        new_b.remove_from_history();
 
         if eval > best_eval {
             best_eval = eval;

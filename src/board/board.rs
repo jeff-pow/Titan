@@ -1,5 +1,4 @@
 use core::fmt;
-use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
@@ -149,6 +148,15 @@ impl Board {
             || (bishop_attacks & attacker_occupancy[PieceName::Bishop as usize] != Bitboard::EMPTY)
             || (knight_attacks & attacker_occupancy[PieceName::Knight as usize] != Bitboard::EMPTY)
             || (pawn_attacks & attacker_occupancy[PieceName::Pawn as usize] != Bitboard::EMPTY)
+    }
+
+    pub fn add_to_history(&mut self) {
+        let hash = self.zobrist_hash;
+        self.history.push(hash);
+    }
+
+    pub fn remove_from_history(&mut self) {
+        self.history.pop();
     }
 
     /// Function makes a move and modifies board state to reflect the move that just happened

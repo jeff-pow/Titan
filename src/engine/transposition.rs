@@ -3,7 +3,6 @@ use std::mem;
 use crate::board::board::Board;
 use crate::moves::moves::Move;
 use crate::search::alpha_beta::NEAR_CHECKMATE;
-use crate::search::eval::eval;
 use rustc_hash::FxHashMap;
 
 pub struct TableEntry {
@@ -76,13 +75,4 @@ pub fn get_table() -> FxHashMap<u64, TableEntry> {
         TARGET_TABLE_SIZE_MB * BYTES_PER_MB / entry_size,
         Default::default(),
     )
-}
-
-pub fn add_to_history(board: &mut Board) {
-    let hash = board.zobrist_hash;
-    board.history.push(hash);
-}
-
-pub fn remove_from_history(board: &mut Board) {
-    board.history.pop();
 }

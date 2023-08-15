@@ -13,7 +13,7 @@ use crate::{
     types::pieces::Color,
 };
 
-use super::transposition::{add_to_history, get_table};
+use super::transposition::get_table;
 
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
@@ -87,7 +87,7 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize) {
     for str in moves.iter().skip(skip) {
         let m = from_lan(str, board);
         board.make_move(&m);
-        add_to_history(board);
+        board.add_to_history();
     }
 }
 

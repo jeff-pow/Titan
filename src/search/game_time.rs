@@ -20,8 +20,6 @@ pub struct GameTime {
     pub time_remaining: [Duration; 2],
     /// Moves until the next time control
     pub movestogo: i32,
-    /// Recommended amount of time to spend on the search
-    pub recommended_time: Option<Duration>,
 }
 
 impl GameTime {
@@ -29,8 +27,12 @@ impl GameTime {
     /// is out of time and any move should be played to avoid from dying.
     /// Otherwise returns false if the program should have time to finish another level of iterative
     /// deepening
-    pub fn reached_termination(&self, search_start: Instant) -> bool {
-        if let Some(recommended_time) = self.recommended_time {
+    pub fn reached_termination(
+        &self,
+        search_start: Instant,
+        recommended_time: Option<Duration>,
+    ) -> bool {
+        if let Some(recommended_time) = recommended_time {
             // If a previous iteration of iterative deepening hasn't finished in less than a small percentage of the time for the move, the
             // chances of the next iteration finishing before we go over allotted time are
             // basically none
@@ -47,19 +49,19 @@ impl GameTime {
     /// Returns a recommended amount of time to spend on a given search.
     /// Returns None if player is out of time and should play absolutely anything to keep
     /// themselves alive
-    pub fn update_recommended_time(&mut self, side: Color, history_len: usize) {
+    pub fn update_recommended_time(&mut self, side: Color, history_len: usize) -> Option<Duration> {
         let mut est_moves_left = AVG_NUMBER_MOVES - history_len as i32 / 2;
         if est_moves_left <= 0 {
             est_moves_left = 15;
         }
         let clock = self.time_remaining[side as usize];
         if clock == Duration::ZERO {
-            self.recommended_time = None;
+            return None;
         }
         let time_increase = self.time_inc[side as usize];
         let default_time_ms = clock.as_millis() / est_moves_left as u128;
         let recommended_time_ms = default_time_ms + time_increase.as_millis();
 
-        self.recommended_time = Some(Duration::from_millis(recommended_time_ms as u64))
+        Some(Duration::from_millis(recommended_time_ms as u64))
     }
 }
