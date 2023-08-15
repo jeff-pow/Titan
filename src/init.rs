@@ -1,6 +1,9 @@
 use std::sync::Once;
 
-use crate::moves::{attack_boards::init_attack_boards, magics::init_magics};
+use crate::{
+    board::zobrist::init_zobrist,
+    moves::{attack_boards::init_lookup_boards, magics::init_magics},
+};
 
 static INIT: Once = Once::new();
 
@@ -9,7 +12,8 @@ static INIT: Once = Once::new();
 /// without the Once wrapper led to race conditions out the wazoo
 pub fn init() {
     INIT.call_once(|| {
-        init_attack_boards();
+        init_lookup_boards();
         init_magics();
+        init_zobrist();
     });
 }

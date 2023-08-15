@@ -58,7 +58,7 @@ pub fn pawn_attacks(square: Square, attacker: Color) -> Bitboard {
 
 /// Non thread safe - this functions call's have to finish running before the program will
 /// successfully run w/o undefined behavior
-pub fn init_attack_boards() {
+pub fn init_lookup_boards() {
     gen_king_attack_boards();
     gen_knight_attack_boards();
     gen_pawn_attack_boards();
@@ -171,13 +171,13 @@ fn gen_pawn_attack_boards() {
 #[cfg(test)]
 mod test_attack_boards {
     use crate::{
-        moves::attack_boards::{init_attack_boards, pawn_attacks},
+        moves::attack_boards::{init_lookup_boards, pawn_attacks},
         types::{pieces::Color, square::Square},
     };
 
     #[test]
     fn test_pawn_attacks() {
-        init_attack_boards();
+        init_lookup_boards();
         let p_sq = Square(40);
         assert_eq!(pawn_attacks(p_sq, Color::Black), Square(33).bitboard());
         assert_eq!(pawn_attacks(p_sq, Color::White), Square(49).bitboard());
