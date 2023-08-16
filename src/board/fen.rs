@@ -92,6 +92,16 @@ fn find_en_passant_square(vec: Vec<char>) -> Option<u8> {
     let row = (vec[1].to_digit(10).unwrap() - 1) * 8;
     Some((row + column) as u8)
 }
+#[allow(clippy::ptr_arg)]
+pub fn parse_fen_from_buffer(buf: &[&str]) -> String {
+    let mut vec = buf.to_owned();
+    vec.remove(0);
+    vec.remove(0);
+    for _ in 6..vec.len() {
+        vec.pop();
+    }
+    vec.join(" ")
+}
 
 #[cfg(test)]
 mod fen_tests {

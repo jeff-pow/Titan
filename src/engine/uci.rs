@@ -2,6 +2,7 @@ use std::{io, time::Duration};
 
 use itertools::Itertools;
 
+use crate::board::fen::parse_fen_from_buffer;
 use crate::{
     board::{
         fen::{self, build_board},
@@ -9,10 +10,11 @@ use crate::{
     },
     moves::lib::from_lan,
     search::alpha_beta,
-    search::{alpha_beta::perft, game_time::GameTime, SearchInfo, SearchType},
+    search::{game_time::GameTime, SearchInfo, SearchType},
     types::pieces::Color,
 };
 
+use super::perft::perft;
 use super::transposition::get_table;
 
 /// Main loop that handles UCI communication with GUIs
@@ -37,7 +39,7 @@ pub fn main_loop() -> ! {
             let vec: Vec<&str> = buffer.split_whitespace().collect();
 
             if buffer.contains("fen") {
-                search_info.board = build_board(fen::STARTING_FEN);
+                search_info.board = build_board(&parse_fen_from_buffer(&vec));
 
                 if vec.len() > 9 {
                     parse_moves(&vec, &mut search_info.board, 9);
@@ -59,7 +61,7 @@ pub fn main_loop() -> ! {
             if buffer.contains("perft") {
                 let vec: Vec<char> = buffer.chars().collect();
                 let depth = vec[9].to_digit(10).unwrap();
-                perft(&search_info.board, depth as i32);
+                perft(search_info.board.to_owned(), depth as i32);
             } else if buffer.contains("depth") {
                 let vec: Vec<char> = buffer.chars().collect();
                 let depth = vec[9].to_digit(10).unwrap();

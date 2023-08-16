@@ -38,23 +38,17 @@ pub fn init_zobrist() {
 impl Board {
     /// Provides a hash for the board eval to be placed into a transposition table
     #[inline(always)]
-    pub fn generate_hash(&self) -> u64 {
+    pub(crate) fn generate_hash(&self) -> u64 {
         let mut hash = 0;
-        for piece in PieceName::iter() {
-            let mut occupancies = self.board[Color::White as usize][piece as usize];
-            while occupancies != Bitboard::EMPTY {
-                hash ^= unsafe {
-                    PIECE_SQUARE_HASHES[Color::White as usize][piece as usize]
-                        [occupancies.pop_lsb().idx()]
-                }
-            }
-        }
-        for piece in PieceName::iter() {
-            let mut occupancies = self.board[Color::Black as usize][piece as usize];
-            while occupancies != Bitboard::EMPTY {
-                hash ^= unsafe {
-                    PIECE_SQUARE_HASHES[Color::Black as usize][piece as usize]
-                        [occupancies.pop_lsb().idx()]
+
+        for color in Color::iter() {
+            for piece in PieceName::iter() {
+                let mut occupancies = self.board[color as usize][piece as usize];
+                while occupancies != Bitboard::EMPTY {
+                    unsafe {
+                        hash ^= PIECE_SQUARE_HASHES[color as usize][piece as usize]
+                            [occupancies.pop_lsb().idx()]
+                    }
                 }
             }
         }
@@ -70,9 +64,11 @@ impl Board {
 #[cfg(test)]
 mod hashing_test {
     use crate::board::fen;
+    use crate::init::init;
 
     #[test]
     fn test_hashing() {
+        init();
         let board1 = fen::build_board(fen::STARTING_FEN);
         let board2 = fen::build_board("4r3/4k3/8/4K3/8/8/8/8 w - - 0 1");
         let board3 = fen::build_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");

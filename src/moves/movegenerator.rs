@@ -32,7 +32,7 @@ pub fn generate_psuedolegal_moves(board: &Board) -> Vec<Move> {
 fn generate_castling_moves(board: &Board) -> Vec<Move> {
     let mut moves = Vec::new();
     let (kingside_vacancies, queenside_vacancies) = match board.to_move {
-        Color::White => (Bitboard(0b1110), Bitboard(0b1100000)),
+        Color::White => (Bitboard(0b1100000), Bitboard(0b1110)),
         Color::Black => (Bitboard(0x6000000000000000), Bitboard(0xe00000000000000)),
     };
     let (can_kingside, can_queenside) = match board.to_move {
@@ -261,43 +261,50 @@ mod movegen_tests {
     // Positions and expected values from https://www.chessprogramming.org/Perft_Results
     use crate::{
         board::fen::{self, build_board},
+        engine::perft::{multi_threaded_perft, perft},
         init,
-        search::alpha_beta::perft,
     };
 
     #[test]
     fn test_starting_pos() {
         init();
         let board = build_board(fen::STARTING_FEN);
-        assert_eq!(119_060_324, perft(&board, 6));
+        assert_eq!(119_060_324, perft(board, 6));
     }
 
     #[test]
     fn test_position_2() {
         init();
         let board = build_board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
-        assert_eq!(193_690_690, perft(&board, 5));
+        assert_eq!(193_690_690, perft(board, 5));
     }
 
     #[test]
     fn test_position_3() {
         init();
         let board = build_board("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -");
-        assert_eq!(11_030_083, perft(&board, 6));
+        assert_eq!(11_030_083, perft(board, 6));
     }
 
     #[test]
     fn test_position_4() {
         init();
         let board = build_board("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
-        assert_eq!(706_045_033, perft(&board, 6));
+        assert_eq!(706_045_033, perft(board, 6));
+    }
+
+    #[test]
+    fn test_multithread() {
+        init();
+        let board = build_board("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
+        assert_eq!(706_045_033, multi_threaded_perft(board, 6));
     }
 
     #[test]
     fn test_position_5() {
         init();
         let board = build_board("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
-        assert_eq!(89_941_194, perft(&board, 5));
+        assert_eq!(89_941_194, perft(board, 5));
     }
 
     #[test]
@@ -305,7 +312,7 @@ mod movegen_tests {
         init();
         let board =
             build_board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
-        assert_eq!(164_075_551, perft(&board, 5));
+        assert_eq!(164_075_551, perft(board, 5));
     }
 
     // http://www.rocechess.ch/perft.html
@@ -313,6 +320,6 @@ mod movegen_tests {
     fn test_position_7() {
         init();
         let board = build_board("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1");
-        assert_eq!(71_179_139, perft(&board, 6));
+        assert_eq!(71_179_139, perft(board, 6));
     }
 }

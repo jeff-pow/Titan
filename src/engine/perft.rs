@@ -1,0 +1,66 @@
+use std::{sync::RwLock, time::Instant};
+
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+
+use crate::{board::lib::Board, moves::movegenerator::generate_moves};
+
+#[allow(dead_code)]
+/// Counts and times the action of generating moves to a certain depth. Prints this information
+pub fn time_move_generation(board: &Board, depth: i32) {
+    for i in 1..=depth {
+        let start = Instant::now();
+        print!("{}", count_moves(i, board));
+        let elapsed = start.elapsed();
+        print!(" moves generated in {:?} ", elapsed);
+        println!("at a depth of {i}");
+    }
+}
+
+pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
+    let total = RwLock::new(0);
+
+    let moves = generate_moves(&board);
+    let len = moves.len() as i32;
+
+    (0..len).into_par_iter().for_each(|m| {
+        let mut new_b = board.to_owned();
+        new_b.make_move(&moves[m as usize]);
+        let count = count_moves(depth - 1, &new_b);
+        *total.write().unwrap() += count;
+        println!("{}: {}", moves[m as usize].to_lan(), count);
+    });
+    println!("\nNodes searched: {}", total.read().unwrap());
+
+    let x = *total.read().unwrap();
+    x
+}
+
+/// https://www.chessprogramming.org/Perft
+pub fn perft(board: Board, depth: i32) -> usize {
+    let mut total = 0;
+    let moves = generate_moves(&board);
+    for m in moves.iter() {
+        let mut new_b = board.to_owned();
+        new_b.make_move(m);
+        let count = count_moves(depth - 1, &new_b);
+        total += count;
+        println!("{}: {}", m.to_lan(), count);
+    }
+    println!("\nNodes searched: {}", total);
+    total
+}
+
+/// Recursively counts the number of moves down to a certain depth
+fn count_moves(depth: i32, board: &Board) -> usize {
+    if depth == 0 {
+        return 1;
+    }
+    let mut count = 0;
+    let moves = generate_moves(board);
+    for m in &moves {
+        let mut new_b = board.to_owned();
+        new_b.make_move(m);
+        count += count_moves(depth - 1, &new_b);
+    }
+    count
+}

@@ -4,7 +4,7 @@ use crate::board::{lib::Board, zobrist::check_for_3x_repetition};
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::moves::lib::Move;
 use crate::moves::lib::Promotion;
-use crate::moves::movegenerator::{generate_moves, generate_psuedolegal_moves};
+use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::types::pieces::piece_value;
 
 use super::eval::eval;
@@ -18,19 +18,21 @@ pub const INFINITY: i32 = 9999999;
 pub const MAX_SEARCH_DEPTH: i8 = 30;
 
 pub fn search(search_info: &mut SearchInfo) -> Move {
-    let mut max_depth = 1;
+    let max_depth;
     let mut best_move = Move::NULL;
     let mut best_moves = Vec::new();
-    let determine_game_time = search_info.search_type == SearchType::Time;
-    let mut recommended_time = Duration::ZERO;
-    let board = search_info.board.to_owned();
-    if determine_game_time {
-        recommended_time = search_info.game_time.recommended_time(board.to_move);
-        max_depth = MAX_SEARCH_DEPTH;
-    }
 
-    if search_info.search_type == SearchType::Depth {
-        max_depth = search_info.depth;
+    let mut recommended_time = Duration::ZERO;
+    match search_info.search_type {
+        SearchType::Time => {
+            recommended_time = search_info
+                .game_time
+                .recommended_time(search_info.board.to_move);
+            max_depth = MAX_SEARCH_DEPTH;
+        }
+        SearchType::Depth => {
+            max_depth = search_info.depth;
+        }
     }
 
     let alpha_start = -INFINITY;
@@ -40,7 +42,7 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
     let mut current_depth = 1;
     let mut eval = -INFINITY;
 
-    while current_depth <= MAX_SEARCH_DEPTH && current_depth <= max_depth {
+    while current_depth <= max_depth {
         search_info.depth = current_depth;
 
         eval = alpha_beta(
@@ -50,7 +52,7 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
             beta_start,
             &mut best_moves,
             search_info,
-            &board,
+            &search_info.board.to_owned(),
         );
 
         if !best_moves.is_empty() {
@@ -61,7 +63,7 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
             search_info.search_stats.start.elapsed().as_millis(),
             current_depth
         );
-        if determine_game_time
+        if search_info.search_type == SearchType::Time
             && search_info
                 .game_time
                 .reached_termination(search_info.search_stats.start, recommended_time)
@@ -94,8 +96,13 @@ fn alpha_beta(
 ) -> i32 {
     let is_root = ply == 0;
     let mut principal_var_search = false;
+    // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
         return eval(board);
+    }
+
+    if check_for_3x_repetition(board) {
+        return STALEMATE;
     }
 
     let is_check = board.side_in_check(board.to_move);
@@ -126,6 +133,7 @@ fn alpha_beta(
     }
 
     let mut moves = generate_psuedolegal_moves(board);
+    let mut legal_moves = 0;
     if let Some(index) = moves.iter().position(|&m| m == table_move) {
         moves.swap(index, 0);
         moves[1..].sort_unstable_by_key(|m| score_move(board, m));
@@ -133,16 +141,6 @@ fn alpha_beta(
     } else {
         moves.sort_unstable_by_key(|m| score_move(board, m));
         moves.reverse();
-    }
-
-    if moves.is_empty() {
-        // Checkmate
-        if board.side_in_check(board.to_move) {
-            // Distance from root is returned in order for other recursive calls to determine
-            // shortest viable checkmate path
-            return -IN_CHECKMATE + ply as i32;
-        }
-        return STALEMATE;
     }
 
     let mut best_eval = -INFINITY;
@@ -153,20 +151,18 @@ fn alpha_beta(
         let mut new_b = board.to_owned();
         new_b.make_move(m);
         new_b.add_to_history();
-        // Just generate psuedolegal moves to save computation time on checks for moves that will be
+        // Just generate psuedolegal moves to save computation time on legality for moves that will be
         // pruned
-        if board.side_in_check(board.to_move) {
+        if new_b.side_in_check(board.to_move) {
             continue;
         }
+        legal_moves += 1;
 
         let mut node_best_moves = Vec::new();
 
-        // Draw if a position has occurred three times
-        if check_for_3x_repetition(&new_b) {
-            return STALEMATE;
-        }
-
         let mut eval;
+        // Draw if a position has occurred three times
+
         if principal_var_search {
             eval = -alpha_beta(
                 depth - 1,
@@ -202,8 +198,6 @@ fn alpha_beta(
             );
         }
 
-        new_b.remove_from_history();
-
         if eval > best_eval {
             best_eval = eval;
             best_move = *m;
@@ -226,6 +220,16 @@ fn alpha_beta(
             best_moves.push(*m);
             best_moves.append(&mut node_best_moves);
         }
+    }
+
+    if legal_moves == 0 {
+        // Checkmate
+        if board.side_in_check(board.to_move) {
+            // Distance from root is returned in order for other recursive calls to determine
+            // shortest viable checkmate path
+            return -IN_CHECKMATE + ply as i32;
+        }
+        return STALEMATE;
     }
 
     search_info.transpos_table.insert(
@@ -254,46 +258,4 @@ pub(super) fn score_move(board: &Board, m: &Move) -> i32 {
     };
     score += score;
     score
-}
-
-#[allow(dead_code)]
-/// Counts and times the action of generating moves to a certain depth. Prints this information
-pub fn time_move_generation(board: &Board, depth: i32) {
-    for i in 1..=depth {
-        let start = Instant::now();
-        print!("{}", count_moves(i, board));
-        let elapsed = start.elapsed();
-        print!(" moves generated in {:?} ", elapsed);
-        println!("at a depth of {i}");
-    }
-}
-
-/// https://www.chessprogramming.org/Perft
-pub fn perft(board: &Board, depth: i32) -> usize {
-    let mut total = 0;
-    let moves = generate_moves(board);
-    for m in &moves {
-        let mut new_b = board.to_owned();
-        new_b.make_move(m);
-        let count = count_moves(depth - 1, &new_b);
-        total += count;
-        println!("{}: {}", m.to_lan(), count);
-    }
-    println!("\nNodes searched: {}", total);
-    total
-}
-
-/// Recursively counts the number of moves down to a certain depth
-fn count_moves(depth: i32, board: &Board) -> usize {
-    if depth == 0 {
-        return 1;
-    }
-    let mut count = 0;
-    let moves = generate_moves(board);
-    for m in &moves {
-        let mut new_b = board.to_owned();
-        new_b.make_move(m);
-        count += count_moves(depth - 1, &new_b);
-    }
-    count
 }

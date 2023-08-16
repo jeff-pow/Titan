@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use crate::types::pieces::Color;
 
-const TIME_FRACTION: f64 = 0.3;
+const TIME_FRACTION: f64 = 0.15;
 
 /// Limit the maximum time the engine thinks for
 const MAX_THINK_TIME: Duration = Duration::from_millis(15000);

@@ -17,16 +17,19 @@ pub fn quiescence(
     search_info: &mut SearchInfo,
     board: &Board,
 ) -> i32 {
+    // Draw if a position has occurred three times
+    if check_for_3x_repetition(board) {
+        return STALEMATE;
+    }
     search_info.search_stats.nodes_searched += 1;
     let eval = eval(board);
     if ply >= MAX_SEARCH_DEPTH {
         return eval;
     }
-
+    // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
     if eval >= beta {
         return beta;
     }
-
     if eval > alpha {
         alpha = eval;
     }
@@ -46,11 +49,6 @@ pub fn quiescence(
         }
         new_b.add_to_history();
 
-        // Draw if a position has occurred three times
-        if check_for_3x_repetition(&new_b) {
-            return STALEMATE;
-        }
-
         let eval = -quiescence(
             ply + 1,
             -beta,
@@ -59,8 +57,6 @@ pub fn quiescence(
             search_info,
             &new_b,
         );
-
-        new_b.remove_from_history();
 
         if eval >= beta {
             return beta;
