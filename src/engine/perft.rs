@@ -20,14 +20,13 @@ pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
     let total = RwLock::new(0);
 
     let moves = generate_moves(&board);
-    let len = moves.len() as i32;
 
-    (0..len).into_par_iter().for_each(|m| {
+    moves.into_par_iter().for_each(|m| {
         let mut new_b = board.to_owned();
-        new_b.make_move(&moves[m as usize]);
+        new_b.make_move(&m);
         let count = count_moves(depth - 1, &new_b);
         *total.write().unwrap() += count;
-        println!("{}: {}", moves[m as usize].to_lan(), count);
+        println!("{}: {}", m.to_lan(), count);
     });
     println!("\nNodes searched: {}", total.read().unwrap());
 
