@@ -50,8 +50,8 @@ fn generate_castling_moves(board: &Board) -> Vec<Move> {
     'kingside: {
         if can_kingside && (kingside_vacancies & board.occupancies()) == Bitboard::EMPTY {
             let range = match board.to_move {
-                Color::White => 5..=6,
-                Color::Black => 61..=62,
+                Color::White => 4..=6,
+                Color::Black => 60..=62,
             };
             for check_sq in range {
                 if board.square_under_attack(opposite_color(board.to_move), Square(check_sq)) {
@@ -64,8 +64,8 @@ fn generate_castling_moves(board: &Board) -> Vec<Move> {
     'queenside: {
         if can_queenside && (queenside_vacancies & board.occupancies()) == Bitboard::EMPTY {
             let range = match board.to_move {
-                Color::White => 2..=3,
-                Color::Black => 58..=59,
+                Color::White => 2..=4,
+                Color::Black => 58..=60,
             };
             for check_sq in range {
                 if board.square_under_attack(opposite_color(board.to_move), Square(check_sq)) {
@@ -206,13 +206,13 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> Vec<Move> {
         if board.square_contains_piece(piece_name, board.to_move, square) {
             let occupancies = board.occupancies();
             let attack_bitboard = match piece_name {
-                PieceName::King => king_attacks(square),
-                PieceName::Queen => Bitboard(
+                King => king_attacks(square),
+                Queen => Bitboard(
                     rook_attacks(occupancies.0, square.0) | bishop_attacks(occupancies.0, square.0),
                 ),
-                PieceName::Rook => Bitboard(rook_attacks(occupancies.0, square.0)),
-                PieceName::Bishop => Bitboard(bishop_attacks(occupancies.0, square.0)),
-                PieceName::Knight => knight_attacks(square),
+                Rook => Bitboard(rook_attacks(occupancies.0, square.0)),
+                Bishop => Bitboard(bishop_attacks(occupancies.0, square.0)),
+                Knight => knight_attacks(square),
                 Pawn => panic!(),
             };
             // Tells the program that out of the selected attack squares, the piece can move to

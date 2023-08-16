@@ -133,6 +133,23 @@ impl Board {
         self.square_under_attack(opposite_color(side), king_square)
     }
 
+    // pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
+    //     let attacker_occupancy = self.board[attacker as usize];
+    //     let occupancy = self.occupancies();
+    //     let pawn_attacks = pawn_attacks(sq, attacker.opposite());
+    //     let knight_attacks = knight_attacks(sq);
+    //     let bishop_attacks = Bitboard(bishop_attacks(occupancy.0, sq.0));
+    //     let rook_attacks = Bitboard(rook_attacks(occupancy.0, sq.0));
+    //     let queen_attacks = rook_attacks | bishop_attacks;
+    //     let king_attacks = king_attacks(sq);
+    //
+    //     (king_attacks & attacker_occupancy[PieceName::King as usize] != Bitboard::EMPTY)
+    //         || (queen_attacks & attacker_occupancy[PieceName::Queen as usize] != Bitboard::EMPTY)
+    //         || (rook_attacks & attacker_occupancy[PieceName::Rook as usize] != Bitboard::EMPTY)
+    //         || (bishop_attacks & attacker_occupancy[PieceName::Bishop as usize] != Bitboard::EMPTY)
+    //         || (knight_attacks & attacker_occupancy[PieceName::Knight as usize] != Bitboard::EMPTY)
+    //         || (pawn_attacks & attacker_occupancy[PieceName::Pawn as usize] != Bitboard::EMPTY)
+    // }
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
         let attacker_occupancy = self.board[attacker as usize];
         let occupancy = self.occupancies();
@@ -143,12 +160,28 @@ impl Board {
         let queen_attacks = rook_attacks | bishop_attacks;
         let king_attacks = king_attacks(sq);
 
-        (king_attacks & attacker_occupancy[PieceName::King as usize] != Bitboard::EMPTY)
-            || (queen_attacks & attacker_occupancy[PieceName::Queen as usize] != Bitboard::EMPTY)
-            || (rook_attacks & attacker_occupancy[PieceName::Rook as usize] != Bitboard::EMPTY)
-            || (bishop_attacks & attacker_occupancy[PieceName::Bishop as usize] != Bitboard::EMPTY)
-            || (knight_attacks & attacker_occupancy[PieceName::Knight as usize] != Bitboard::EMPTY)
-            || (pawn_attacks & attacker_occupancy[PieceName::Pawn as usize] != Bitboard::EMPTY)
+        let king_attacks_overlap = king_attacks & attacker_occupancy[PieceName::King as usize];
+        let queen_attacks_overlap = queen_attacks & attacker_occupancy[PieceName::Queen as usize];
+        let rook_attacks_overlap = rook_attacks & attacker_occupancy[PieceName::Rook as usize];
+        let bishop_attacks_overlap =
+            bishop_attacks & attacker_occupancy[PieceName::Bishop as usize];
+        let knight_attacks_overlap =
+            knight_attacks & attacker_occupancy[PieceName::Knight as usize];
+        let pawn_attacks_overlap = pawn_attacks & attacker_occupancy[PieceName::Pawn as usize];
+
+        let is_king_attack = king_attacks_overlap != Bitboard::EMPTY;
+        let is_queen_attack = queen_attacks_overlap != Bitboard::EMPTY;
+        let is_rook_attack = rook_attacks_overlap != Bitboard::EMPTY;
+        let is_bishop_attack = bishop_attacks_overlap != Bitboard::EMPTY;
+        let is_knight_attack = knight_attacks_overlap != Bitboard::EMPTY;
+        let is_pawn_attack = pawn_attacks_overlap != Bitboard::EMPTY;
+
+        return is_king_attack
+            || is_queen_attack
+            || is_rook_attack
+            || is_bishop_attack
+            || is_knight_attack
+            || is_pawn_attack;
     }
 
     pub fn add_to_history(&mut self) {
@@ -298,15 +331,6 @@ impl Board {
         // If this move did not create a new en passant opportunity, the ability to do it goes away
         if !en_passant {
             self.en_passant_square = Square::INVALID;
-        }
-        // Update castling ability based on check
-        if self.side_in_check(Color::White) {
-            self.white_king_castle = false;
-            self.white_queen_castle = false;
-        }
-        if self.side_in_check(Color::Black) {
-            self.black_king_castle = false;
-            self.black_queen_castle = false;
         }
         // Change the side to move after making a move
         self.to_move = self.to_move.opposite();
