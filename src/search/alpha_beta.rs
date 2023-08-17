@@ -6,7 +6,7 @@ use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::moves::lib::Move;
 use crate::moves::lib::Promotion;
 use crate::moves::movegenerator::generate_psuedolegal_moves;
-use crate::types::pieces::piece_value;
+use crate::types::pieces::{piece_value, PieceName};
 
 use super::eval::eval;
 use super::quiescence::quiescence;
@@ -257,13 +257,12 @@ pub(super) fn score_move(board: &Board, m: &Move) -> i32 {
     if let Some(capture) = capture {
         score += 10 * piece_value(capture) - piece_value(piece_moving);
     }
-    score += match m.promotion() {
-        Some(Promotion::Queen) => 900,
-        Some(Promotion::Rook) => 500,
-        Some(Promotion::Bishop) => 300,
-        Some(Promotion::Knight) => 300,
-        None => 0,
-    };
-    score += score;
     score
+        + match m.promotion() {
+            Some(Promotion::Queen) => piece_value(PieceName::Queen),
+            Some(Promotion::Rook) => piece_value(PieceName::Rook),
+            Some(Promotion::Bishop) => piece_value(PieceName::Bishop),
+            Some(Promotion::Knight) => piece_value(PieceName::Knight),
+            None => 0,
+        }
 }
