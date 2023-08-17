@@ -15,22 +15,23 @@ use super::{
     attack_boards::{king_attacks, knight_attacks, RANK2, RANK3, RANK6, RANK7},
     lib::{Move, MoveType},
     magics::{bishop_attacks, rook_attacks},
+    movelist::MoveList,
 };
 
-pub fn generate_psuedolegal_moves(board: &Board) -> Vec<Move> {
-    let mut moves = Vec::new();
-    moves.append(&mut generate_bitboard_moves(board, PieceName::Knight));
-    moves.append(&mut generate_bitboard_moves(board, PieceName::King));
-    moves.append(&mut generate_bitboard_moves(board, PieceName::Queen));
-    moves.append(&mut generate_bitboard_moves(board, PieceName::Rook));
-    moves.append(&mut generate_bitboard_moves(board, PieceName::Bishop));
-    moves.append(&mut generate_pawn_moves(board));
-    moves.append(&mut generate_castling_moves(board));
+pub fn generate_psuedolegal_moves(board: &Board) -> MoveList {
+    let mut moves = MoveList::default();
+    moves.append(&generate_bitboard_moves(board, PieceName::Knight));
+    moves.append(&generate_bitboard_moves(board, PieceName::King));
+    moves.append(&generate_bitboard_moves(board, PieceName::Queen));
+    moves.append(&generate_bitboard_moves(board, PieceName::Rook));
+    moves.append(&generate_bitboard_moves(board, PieceName::Bishop));
+    moves.append(&generate_pawn_moves(board));
+    moves.append(&generate_castling_moves(board));
     moves
 }
 
-fn generate_castling_moves(board: &Board) -> Vec<Move> {
-    let mut moves = Vec::new();
+fn generate_castling_moves(board: &Board) -> MoveList {
+    let mut moves = MoveList::default();
     let (kingside_vacancies, queenside_vacancies) = match board.to_move {
         Color::White => (Bitboard(0b1100000), Bitboard(0b1110)),
         Color::Black => (Bitboard(0x6000000000000000), Bitboard(0xe00000000000000)),
@@ -78,8 +79,8 @@ fn generate_castling_moves(board: &Board) -> Vec<Move> {
     moves
 }
 
-fn generate_pawn_moves(board: &Board) -> Vec<Move> {
-    let mut moves = Vec::new();
+fn generate_pawn_moves(board: &Board) -> MoveList {
+    let mut moves = MoveList::default();
     let pawns = board.board[board.to_move as usize][Pawn as usize];
     let vacancies = !board.occupancies();
     let non_promotions = match board.to_move {
@@ -185,7 +186,7 @@ fn get_en_passant(board: &Board, dir: Direction) -> Option<Move> {
     None
 }
 
-fn generate_promotions(dest: Square, d: Direction, moves: &mut Vec<Move>) {
+fn generate_promotions(dest: Square, d: Direction, moves: &mut MoveList) {
     for p in Promotion::iter() {
         moves.push(Move::new(
             dest.checked_shift(d).unwrap(),
@@ -196,8 +197,8 @@ fn generate_promotions(dest: Square, d: Direction, moves: &mut Vec<Move>) {
     }
 }
 
-fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> Vec<Move> {
-    let mut moves = Vec::new();
+fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
+    let mut moves = MoveList::default();
     // Don't calculate any moves if no pieces of that type exist for the given color
     if board.board[board.to_move as usize][piece_name as usize] == Bitboard::EMPTY {
         return moves;
@@ -225,7 +226,7 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> Vec<Move> {
     moves
 }
 
-fn push_moves(moves: &mut Vec<Move>, mut attacks: Bitboard, sq: Square) {
+fn push_moves(moves: &mut MoveList, mut attacks: Bitboard, sq: Square) {
     let mut idx = 0;
     while attacks != Bitboard::EMPTY {
         if attacks & Bitboard(1) != Bitboard::EMPTY {
@@ -237,17 +238,17 @@ fn push_moves(moves: &mut Vec<Move>, mut attacks: Bitboard, sq: Square) {
 }
 
 /// Filters out moves that are silent for quiescence search
-pub fn generate_psuedolegal_captures(board: &Board) -> Vec<Move> {
+pub fn generate_psuedolegal_captures(board: &Board) -> MoveList {
     let legal_moves = generate_psuedolegal_moves(board);
     legal_moves
-        .into_iter()
+        .iter()
         .filter(|m| board.occupancies().square_is_occupied(m.dest_square()))
-        .collect::<Vec<Move>>()
+        .collect::<MoveList>()
 }
 
-pub fn generate_moves(board: &Board) -> Vec<Move> {
+pub fn generate_moves(board: &Board) -> MoveList {
     generate_psuedolegal_moves(board)
-        .into_iter()
+        .iter()
         .filter(|m| {
             let mut new_b = board.to_owned();
             new_b.make_move(m);

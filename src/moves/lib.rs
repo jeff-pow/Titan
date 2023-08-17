@@ -399,3 +399,9 @@ mod move_test {
         assert_eq!(queen_promotion.promotion(), Some(Promotion::Queen));
     }
 }
+
+impl Default for Move {
+    fn default() -> Self {
+        Move::NULL
+    }
+}

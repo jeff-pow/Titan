@@ -2,6 +2,7 @@ use crate::board::lib::Board;
 use crate::moves::{lib::Move, movegenerator::generate_psuedolegal_captures};
 use crate::search::alpha_beta::STALEMATE;
 
+use super::alpha_beta::{score_move_list, sort_next_move};
 use super::{
     alpha_beta::{score_move, MAX_SEARCH_DEPTH},
     eval::eval,
@@ -35,12 +36,13 @@ pub fn quiescence(
     }
 
     let mut moves = generate_psuedolegal_captures(board);
-    moves.sort_unstable_by_key(|m| score_move(board, m));
-    moves.reverse();
+    score_move_list(board, &mut moves, Move::NULL);
 
-    for m in moves.iter() {
+    for i in 0..moves.len {
         let mut best_node_moves = Vec::new();
         let mut new_b = board.to_owned();
+        sort_next_move(&mut moves, i);
+        let m = moves.get_move(i);
         new_b.make_move(m);
         // Just generate psuedolegal moves to save computation time on checks for moves that will be
         // pruned

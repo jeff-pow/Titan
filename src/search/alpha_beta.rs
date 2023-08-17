@@ -6,6 +6,7 @@ use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::moves::lib::Move;
 use crate::moves::lib::Promotion;
 use crate::moves::movegenerator::generate_psuedolegal_moves;
+use crate::moves::movelist::MoveList;
 use crate::types::pieces::{piece_value, PieceName};
 
 use super::eval::eval;
@@ -143,21 +144,16 @@ fn alpha_beta(
 
     let mut moves = generate_psuedolegal_moves(board);
     let mut legal_moves = 0;
-    if let Some(index) = moves.iter().position(|&m| m == table_move) {
-        moves.swap(index, 0);
-        moves[1..].sort_unstable_by_key(|m| score_move(board, m));
-        moves.reverse();
-    } else {
-        moves.sort_unstable_by_key(|m| score_move(board, m));
-        moves.reverse();
-    }
+    score_move_list(board, &mut moves, table_move);
 
     let mut best_eval = -INFINITY;
     let mut entry_flag = EntryFlag::AlphaCutOff;
     let mut best_move = Move::NULL;
 
-    for m in moves.iter() {
+    for i in 0..moves.len {
         let mut new_b = board.to_owned();
+        sort_next_move(&mut moves, i);
+        let m = moves.get_move(i);
         new_b.make_move(m);
         // Just generate psuedolegal moves to save computation time on legality for moves that will be
         // pruned
@@ -265,4 +261,24 @@ pub(super) fn score_move(board: &Board, m: &Move) -> i32 {
             Some(Promotion::Knight) => piece_value(PieceName::Knight),
             None => 0,
         }
+}
+
+const TT_BONUS: i32 = 500;
+pub fn score_move_list(board: &Board, moves: &mut MoveList, table_move: Move) {
+    for i in 0..moves.len {
+        let (m, m_score) = moves.get_mut(i);
+        let mut score = score_move(board, &m);
+        if table_move != Move::NULL && table_move == *m {
+            score += TT_BONUS;
+        }
+        *m_score = score;
+    }
+}
+
+pub fn sort_next_move(moves: &mut MoveList, idx: usize) {
+    for i in (idx + 1)..moves.len {
+        if moves.get_score(i) > moves.get_score(i) {
+            moves.swap(idx as usize, i as usize);
+        }
+    }
 }

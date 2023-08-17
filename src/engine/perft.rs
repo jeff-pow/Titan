@@ -21,7 +21,7 @@ pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
 
     let moves = generate_moves(&board);
 
-    moves.into_par_iter().for_each(|m| {
+    moves.into_vec().into_par_iter().for_each(|m| {
         let mut new_b = board.to_owned();
         new_b.make_move(&m);
         let count = count_moves(depth - 1, &new_b);
@@ -40,7 +40,7 @@ pub fn perft(board: Board, depth: i32) -> usize {
     let moves = generate_moves(&board);
     for m in moves.iter() {
         let mut new_b = board.to_owned();
-        new_b.make_move(m);
+        new_b.make_move(&m);
         let count = count_moves(depth - 1, &new_b);
         total += count;
         println!("{}: {}", m.to_lan(), count);
@@ -54,11 +54,11 @@ fn count_moves(depth: i32, board: &Board) -> usize {
     let mut count = 0;
     let moves = generate_moves(board);
     if depth == 1 {
-        return moves.len();
+        return moves.len;
     }
-    for m in &moves {
+    for m in moves.iter() {
         let mut new_b = board.to_owned();
-        new_b.make_move(m);
+        new_b.make_move(&m);
         count += count_moves(depth - 1, &new_b);
     }
     count
