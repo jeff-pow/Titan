@@ -17,7 +17,7 @@ pub const IN_CHECKMATE: i32 = 100000;
 pub const STALEMATE: i32 = 0;
 pub const NEAR_CHECKMATE: i32 = IN_CHECKMATE - 1000;
 pub const INFINITY: i32 = 9999999;
-pub const MAX_SEARCH_DEPTH: i8 = 127;
+pub const MAX_SEARCH_DEPTH: i8 = 100;
 
 pub fn search(search_info: &mut SearchInfo) -> Move {
     let max_depth;
@@ -42,11 +42,11 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
 
     search_info.search_stats.start = Instant::now();
     let mut current_depth = 1;
-    let mut eval = -INFINITY;
+    let mut eval;
 
     while current_depth <= max_depth {
         search_info.depth = current_depth;
-        search_info.sel_depth = max(current_depth, search_info.sel_depth);
+        search_info.sel_depth = current_depth;
 
         eval = alpha_beta(
             current_depth,
@@ -101,6 +101,7 @@ fn alpha_beta(
 ) -> i32 {
     let is_root = ply == 0;
     let mut principal_var_search = false;
+    search_info.sel_depth = search_info.sel_depth.max(ply);
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
         return eval(board);
@@ -123,7 +124,6 @@ fn alpha_beta(
     if is_check {
         depth += 1;
     }
-    search_info.sel_depth = search_info.sel_depth.max(ply);
 
     if depth <= 0 {
         return quiescence(ply, alpha, beta, best_moves, search_info, board);
@@ -271,7 +271,7 @@ const TT_BONUS: i32 = 500;
 pub fn score_move_list(board: &Board, moves: &mut MoveList, table_move: Move) {
     for i in 0..moves.len {
         let (m, m_score) = moves.get_mut(i);
-        let mut score = score_move(board, &m);
+        let mut score = score_move(board, m);
         if table_move != Move::NULL && table_move == *m {
             score += TT_BONUS;
         }
@@ -282,7 +282,7 @@ pub fn score_move_list(board: &Board, moves: &mut MoveList, table_move: Move) {
 pub fn sort_next_move(moves: &mut MoveList, idx: usize) {
     for i in (idx + 1)..moves.len {
         if moves.get_score(i) > moves.get_score(i) {
-            moves.swap(idx as usize, i as usize);
+            moves.swap(idx, i);
         }
     }
 }

@@ -1,5 +1,3 @@
-use std::ops::Index;
-
 use crate::search::alpha_beta::INFINITY;
 
 use super::lib::Move;

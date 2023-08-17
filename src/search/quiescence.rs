@@ -3,11 +3,7 @@ use crate::moves::{lib::Move, movegenerator::generate_psuedolegal_captures};
 use crate::search::alpha_beta::STALEMATE;
 
 use super::alpha_beta::{score_move_list, sort_next_move};
-use super::{
-    alpha_beta::{score_move, MAX_SEARCH_DEPTH},
-    eval::eval,
-    SearchInfo,
-};
+use super::{alpha_beta::MAX_SEARCH_DEPTH, eval::eval, SearchInfo};
 
 pub fn quiescence(
     ply: i8,
@@ -18,12 +14,12 @@ pub fn quiescence(
     board: &Board,
 ) -> i32 {
     // Draw if a position has occurred three times
+    search_info.sel_depth = search_info.sel_depth.max(ply);
     if board.is_draw() {
         return STALEMATE;
     }
 
     search_info.search_stats.nodes_searched += 1;
-    search_info.sel_depth = search_info.sel_depth.max(ply);
     let eval = eval(board);
     if ply >= MAX_SEARCH_DEPTH {
         return eval;
