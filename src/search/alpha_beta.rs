@@ -17,7 +17,7 @@ pub const IN_CHECKMATE: i32 = 100000;
 pub const STALEMATE: i32 = 0;
 pub const NEAR_CHECKMATE: i32 = IN_CHECKMATE - 1000;
 pub const INFINITY: i32 = 9999999;
-pub const MAX_SEARCH_DEPTH: i8 = 30;
+pub const MAX_SEARCH_DEPTH: i8 = 127;
 
 pub fn search(search_info: &mut SearchInfo) -> Move {
     let max_depth;
@@ -46,6 +46,7 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
 
     while current_depth <= max_depth {
         search_info.depth = current_depth;
+        search_info.sel_depth = max(current_depth, search_info.sel_depth);
 
         eval = alpha_beta(
             current_depth,
@@ -61,8 +62,9 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
             best_move = best_moves[0];
         }
         print!(
-            "info time {} depth {} nodes {} nps {} score cp {} pv ",
+            "info time {} seldepth {} depth {} nodes {} nps {} score cp {} pv ",
             search_info.search_stats.start.elapsed().as_millis(),
+            search_info.sel_depth,
             current_depth,
             search_info.search_stats.nodes_searched,
             search_info.search_stats.nodes_searched as f64
@@ -121,6 +123,7 @@ fn alpha_beta(
     if is_check {
         depth += 1;
     }
+    search_info.sel_depth = search_info.sel_depth.max(ply);
 
     if depth <= 0 {
         return quiescence(ply, alpha, beta, best_moves, search_info, board);

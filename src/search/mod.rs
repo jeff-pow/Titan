@@ -18,6 +18,7 @@ pub struct SearchInfo {
     pub game_time: GameTime,
     pub search_type: SearchType,
     pub depth: i8,
+    pub sel_depth: i8
 }
 
 #[derive(Clone, Copy, Default, PartialEq)]

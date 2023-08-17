@@ -23,6 +23,7 @@ pub fn quiescence(
     }
 
     search_info.search_stats.nodes_searched += 1;
+    search_info.sel_depth = search_info.sel_depth.max(ply);
     let eval = eval(board);
     if ply >= MAX_SEARCH_DEPTH {
         return eval;
