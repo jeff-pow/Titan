@@ -7,7 +7,7 @@ const TIME_FRACTION: f64 = 0.15;
 /// Limit the maximum time the engine thinks for
 const MAX_THINK_TIME: Duration = Duration::from_millis(15000);
 
-const GUI_DELAY: Duration = Duration::from_millis(50);
+const GUI_DELAY: Duration = Duration::from_millis(00);
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct GameTime {
@@ -25,7 +25,7 @@ impl GameTime {
     /// Otherwise returns false if the program should have time to finish another level of iterative
     /// deepening
     pub fn reached_termination(&self, search_start: Instant, recommended_time: Duration) -> bool {
-        if recommended_time < GUI_DELAY {
+        if recommended_time.as_millis() > GUI_DELAY.as_millis() {
             // If a previous iteration of iterative deepening hasn't finished in less than a small percentage of the time for the move, the
             // chances of the next iteration finishing before we go over allotted time are
             // basically none

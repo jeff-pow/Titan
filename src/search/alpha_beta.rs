@@ -1,6 +1,7 @@
+use std::cmp::{max, min};
 use std::time::{Duration, Instant};
 
-use crate::board::{lib::Board, zobrist::check_for_3x_repetition};
+use crate::board::lib::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::moves::lib::Move;
 use crate::moves::lib::Promotion;
@@ -89,7 +90,7 @@ fn alpha_beta(
     mut depth: i8,
     ply: i8,
     mut alpha: i32,
-    beta: i32,
+    mut beta: i32,
     best_moves: &mut Vec<Move>,
     search_info: &mut SearchInfo,
     board: &Board,
@@ -101,8 +102,16 @@ fn alpha_beta(
         return eval(board);
     }
 
-    if check_for_3x_repetition(board) {
+    if board.is_draw() {
         return STALEMATE;
+    }
+
+    // Code determines if there is a faster path to checkmate than evaluating the current node, and
+    // if there is, it returns early
+    alpha = max(alpha, -IN_CHECKMATE + ply as i32);
+    beta = min(beta, IN_CHECKMATE - ply as i32);
+    if alpha >= beta {
+        return alpha;
     }
 
     let is_check = board.side_in_check(board.to_move);

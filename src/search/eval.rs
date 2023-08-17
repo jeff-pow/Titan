@@ -6,7 +6,7 @@ use crate::{
     board::lib::Board,
     types::{
         bitboard::Bitboard,
-        pieces::{piece_value, Color, PieceName},
+        pieces::{opposite_color, piece_value, Color, PieceName},
     },
 };
 
@@ -191,7 +191,6 @@ fn game_phase_value(piece: PieceName) -> i32 {
 
 /// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 pub fn eval(board: &Board) -> i32 {
-    let _eval = std::time::Instant::now();
     let mut white_mg = 0;
     let mut white_eg = 0;
     let mut black_mg = 0;
@@ -236,5 +235,9 @@ pub fn eval(board: &Board) -> i32 {
     // tables into account
     let mg_phase = min(game_phase, 24);
     let eg_phase = 24 - mg_phase;
-    (mg_pts * mg_phase + eg_pts * eg_phase) / 24
+    let mut eval = (mg_pts * mg_phase + eg_pts * eg_phase) / 24;
+    if board.side_in_check(opposite_color(board.to_move)) {
+        eval += 90;
+    }
+    eval
 }

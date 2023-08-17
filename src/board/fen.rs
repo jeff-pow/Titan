@@ -74,7 +74,7 @@ pub fn build_board(fen_string: &str) -> Board {
         board.en_passant_square = Square(idx)
     }
     // Half move clock: not yet implemented
-    iter.next();
+    board.half_moves = iter.next().unwrap().parse().unwrap();
     // Full number of moves in the game: starts from 1 and incremented after black's first move
     iter.next();
     assert_eq!(iter.next(), None);

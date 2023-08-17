@@ -18,7 +18,7 @@ use crate::{
     },
 };
 
-const PREDICTED_GAME_LEN: usize = 150;
+use super::zobrist::check_for_3x_repetition;
 
 #[repr(C)]
 #[derive(Clone, Eq, PartialEq)]
@@ -33,6 +33,7 @@ pub struct Board {
     pub black_king_square: Square,
     pub white_king_square: Square,
     pub num_moves: i32,
+    pub half_moves: i32,
     pub zobrist_hash: u64,
     pub history: SmallVec<[u64; 32]>,
 }
@@ -50,6 +51,7 @@ impl Default for Board {
             white_king_square: Square::INVALID,
             black_king_square: Square::INVALID,
             num_moves: 0,
+            half_moves: 0,
             zobrist_hash: 0,
             history: SmallVec::new(),
         }
@@ -60,6 +62,11 @@ impl Board {
     #[inline(always)]
     pub fn can_en_passant(&self) -> bool {
         self.en_passant_square != Square::INVALID
+    }
+
+    #[inline(always)]
+    pub fn is_draw(&self) -> bool {
+        check_for_3x_repetition(self) || self.half_moves >= 100
     }
 
     #[inline(always)]

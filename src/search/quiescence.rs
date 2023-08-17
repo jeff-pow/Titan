@@ -1,5 +1,4 @@
 use crate::board::lib::Board;
-use crate::board::zobrist::check_for_3x_repetition;
 use crate::moves::{lib::Move, movegenerator::generate_psuedolegal_captures};
 use crate::search::alpha_beta::STALEMATE;
 
@@ -18,9 +17,10 @@ pub fn quiescence(
     board: &Board,
 ) -> i32 {
     // Draw if a position has occurred three times
-    if check_for_3x_repetition(board) {
+    if board.is_draw() {
         return STALEMATE;
     }
+
     search_info.search_stats.nodes_searched += 1;
     let eval = eval(board);
     if ply >= MAX_SEARCH_DEPTH {
