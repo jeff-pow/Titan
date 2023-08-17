@@ -47,7 +47,6 @@ pub fn quiescence(
         if new_b.side_in_check(board.to_move) {
             continue;
         }
-        new_b.add_to_history();
 
         let eval = -quiescence(
             ply + 1,

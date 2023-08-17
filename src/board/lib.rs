@@ -1,4 +1,5 @@
 use core::fmt;
+use smallvec::SmallVec;
 use strum::IntoEnumIterator;
 
 use crate::{
@@ -17,6 +18,8 @@ use crate::{
     },
 };
 
+const PREDICTED_GAME_LEN: usize = 150;
+
 #[repr(C)]
 #[derive(Clone, Eq, PartialEq)]
 pub struct Board {
@@ -31,7 +34,7 @@ pub struct Board {
     pub white_king_square: Square,
     pub num_moves: i32,
     pub zobrist_hash: u64,
-    pub history: Vec<u64>,
+    pub history: SmallVec<[u64; 32]>,
 }
 
 impl Default for Board {
@@ -48,7 +51,7 @@ impl Default for Board {
             black_king_square: Square::INVALID,
             num_moves: 0,
             zobrist_hash: 0,
-            history: Vec::new(),
+            history: SmallVec::new(),
         }
     }
 }
@@ -176,12 +179,12 @@ impl Board {
         let is_knight_attack = knight_attacks_overlap != Bitboard::EMPTY;
         let is_pawn_attack = pawn_attacks_overlap != Bitboard::EMPTY;
 
-        return is_king_attack
+        is_king_attack
             || is_queen_attack
             || is_rook_attack
             || is_bishop_attack
             || is_knight_attack
-            || is_pawn_attack;
+            || is_pawn_attack
     }
 
     pub fn add_to_history(&mut self) {
@@ -338,6 +341,8 @@ impl Board {
         self.num_moves += 1;
 
         self.zobrist_hash = self.generate_hash();
+
+        self.add_to_history();
     }
 
     #[allow(dead_code)]

@@ -150,7 +150,6 @@ fn alpha_beta(
     for m in moves.iter() {
         let mut new_b = board.to_owned();
         new_b.make_move(m);
-        new_b.add_to_history();
         // Just generate psuedolegal moves to save computation time on legality for moves that will be
         // pruned
         if new_b.side_in_check(board.to_move) {

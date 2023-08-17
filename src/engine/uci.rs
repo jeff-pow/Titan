@@ -89,7 +89,6 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize) {
     for str in moves.iter().skip(skip) {
         let m = from_lan(str, board);
         board.make_move(&m);
-        board.add_to_history();
     }
 }
 
