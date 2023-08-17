@@ -60,11 +60,19 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
         if !best_moves.is_empty() {
             best_move = best_moves[0];
         }
-        println!(
-            "info time {} depth {}",
+        print!(
+            "info time {} depth {} nodes {} nps {} score cp {} pv ",
             search_info.search_stats.start.elapsed().as_millis(),
-            current_depth
+            current_depth,
+            search_info.search_stats.nodes_searched,
+            search_info.search_stats.nodes_searched as f64
+                / search_info.search_stats.start.elapsed().as_secs_f64(),
+            eval
         );
+        for m in best_moves.iter() {
+            print!("{} ", m.to_lan());
+        }
+        println!();
         if search_info.search_type == SearchType::Time
             && search_info
                 .game_time
@@ -74,13 +82,6 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
         }
         current_depth += 1;
     }
-    println!(
-        "info {} nodes {} nps",
-        search_info.search_stats.nodes_searched,
-        search_info.search_stats.nodes_searched as f64
-            / search_info.search_stats.start.elapsed().as_secs_f64()
-    );
-    println!("info score cp {}", eval as f64 / 100.);
 
     assert_ne!(best_move, Move::NULL);
 
