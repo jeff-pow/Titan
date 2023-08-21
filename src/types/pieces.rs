@@ -38,14 +38,16 @@ pub enum PieceName {
     Pawn = 5,
 }
 
-#[inline(always)]
-pub fn piece_value(piece_name: PieceName) -> i32 {
-    match piece_name {
-        PieceName::King => KING_PTS,
-        PieceName::Queen => QUEEN_PTS,
-        PieceName::Rook => ROOK_PTS,
-        PieceName::Bishop => BISHOP_PTS,
-        PieceName::Knight => KNIGHT_PTS,
-        PieceName::Pawn => PAWN_PTS,
+impl PieceName {
+    #[inline(always)]
+    pub fn value(&self) -> i32 {
+        match self {
+            PieceName::King => KING_PTS,
+            PieceName::Queen => QUEEN_PTS,
+            PieceName::Rook => ROOK_PTS,
+            PieceName::Bishop => BISHOP_PTS,
+            PieceName::Knight => KNIGHT_PTS,
+            PieceName::Pawn => PAWN_PTS,
+        }
     }
 }

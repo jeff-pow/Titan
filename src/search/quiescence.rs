@@ -1,7 +1,10 @@
 use crate::board::board::Board;
+use crate::moves::attack_boards::pawn_attacks;
 use crate::moves::{movegenerator::generate_psuedolegal_captures, moves::Move};
 use crate::search::pvs::STALEMATE;
-use crate::types::pieces::{piece_value, PieceName};
+use crate::types::bitboard::Bitboard;
+use crate::types::pieces::PieceName;
+use crate::types::square::Square;
 
 use super::pvs::{score_move_list, sort_next_move};
 use super::{eval::eval, pvs::MAX_SEARCH_DEPTH, SearchInfo};
@@ -35,12 +38,6 @@ pub fn quiescence(
         alpha = eval;
     }
 
-    // Delta pruning
-    let big_delta = piece_value(PieceName::Queen);
-    if eval < alpha - big_delta {
-        return alpha;
-    }
-
     let mut moves = generate_psuedolegal_captures(board);
     score_move_list(board, &mut moves, Move::NULL);
 
@@ -53,6 +50,20 @@ pub fn quiescence(
         // Just generate psuedolegal moves to save computation time on checks for moves that will be
         // pruned
         if new_b.side_in_check(board.to_move) {
+            continue;
+        }
+
+            if ((stand_pat + e.PIECE_VALUE[movelist[i].piece_cap] + 200 < alpha) &&
+      (b.PieceMaterial[!b.stm] - e.PIECE_VALUE[movelist[i].piece_cap] > e.ENDGAME_MAT) &&
+      (!move_isprom(movelist[i])))
+      continue;
+
+        if (eval + board.piece_on_square(m.dest_square()).unwrap().value() + 200 < alpha) &&
+            m.promotion().is_none() {
+            continue;
+        }
+        // TODO: Finish delta pruning
+        if is_bad_capture(board, m) && m.promotion().is_none() {
             continue;
         }
 
@@ -79,4 +90,32 @@ pub fn quiescence(
     }
 
     alpha
+}
+
+fn is_bad_capture(board: &Board, m: &Move) -> bool {
+    let moving_piece = board.piece_on_square(m.origin_square()).unwrap();
+    let capture = board.piece_on_square(m.dest_square()).unwrap();
+    if moving_piece == PieceName::Pawn {
+        return false;
+    }
+
+    if capture.value() >= moving_piece.value() - 50 {
+        return false;
+    }
+
+    if is_pawn_recapture(board, m.dest_square()) && capture.value() + 200 - moving_piece.value() < 0
+    {
+        return true;
+    }
+
+    false
+}
+
+fn is_pawn_recapture(board: &Board, sq: Square) -> bool {
+    let attacker = board.to_move.opp();
+    let pawn_attacks = pawn_attacks(sq, board.to_move);
+    if pawn_attacks & board.board[attacker as usize][PieceName::Pawn as usize] != Bitboard::EMPTY {
+        return true;
+    }
+    false
 }

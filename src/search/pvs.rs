@@ -7,15 +7,15 @@ use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::movelist::MoveList;
 use crate::moves::moves::Move;
 use crate::moves::moves::Promotion;
-use crate::types::pieces::{piece_value, PieceName};
+use crate::types::pieces::PieceName;
 
 use super::eval::eval;
 use super::quiescence::quiescence;
 use super::{SearchInfo, SearchType};
 
-pub const IN_CHECKMATE: i32 = 100000;
+pub const CHECKMATE: i32 = 100000;
 pub const STALEMATE: i32 = 0;
-pub const NEAR_CHECKMATE: i32 = IN_CHECKMATE - 1000;
+pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 9999999;
 pub const MAX_SEARCH_DEPTH: i8 = 100;
 
@@ -108,16 +108,34 @@ fn pvs(
         return eval(board);
     }
 
-    if board.is_draw() {
-        return STALEMATE;
+    if ply > 0 {
+        if board.is_draw() {
+            return STALEMATE;
+        }
+
+        // Determines if there is a faster path to checkmate than evaluating the current node, and
+        // if there is, it returns early
+        alpha = max(alpha, -CHECKMATE + ply as i32);
+        beta = min(beta, CHECKMATE - ply as i32);
+        if alpha >= beta {
+            return alpha;
+        }
     }
 
-    // Determines if there is a faster path to checkmate than evaluating the current node, and
-    // if there is, it returns early
-    alpha = max(alpha, -IN_CHECKMATE + ply as i32);
-    beta = min(beta, IN_CHECKMATE - ply as i32);
-    if alpha >= beta {
-        return alpha;
+    let (table_value, table_move) = {
+        let hash = board.zobrist_hash;
+        let entry = search_info.transpos_table.get(&hash);
+        if let Some(entry) = entry {
+            entry.get(depth, ply, alpha, beta)
+        } else {
+            (None, Move::NULL)
+        }
+    };
+    if let Some(eval) = table_value {
+        // TODO: Try removing this if statement
+        if !is_root {
+            return eval;
+        }
     }
 
     let is_check = board.side_in_check(board.to_move);
@@ -132,21 +150,8 @@ fn pvs(
 
     search_info.search_stats.nodes_searched += 1;
 
-    let (table_value, table_move) = {
-        let hash = board.zobrist_hash;
-        let entry = search_info.transpos_table.get(&hash);
-        if let Some(entry) = entry {
-            entry.get(depth, ply, alpha, beta)
-        } else {
-            (None, Move::NULL)
-        }
-    };
-    if let Some(eval) = table_value {
-        if !is_root {
-            return eval;
-        }
-    }
-
+    // TODO: Test just generating all moves - I sort of hate how the code looks with psuedolegal
+    // generation...
     let mut moves = generate_psuedolegal_moves(board);
     let mut legal_moves = 0;
     score_move_list(board, &mut moves, table_move);
@@ -241,7 +246,7 @@ fn pvs(
         if board.side_in_check(board.to_move) {
             // Distance from root is returned in order for other recursive calls to determine
             // shortest viable checkmate path
-            return -IN_CHECKMATE + ply as i32;
+            return -CHECKMATE + ply as i32;
         }
         return STALEMATE;
     }
@@ -261,14 +266,14 @@ pub(super) fn score_move(board: &Board, m: &Move) -> i32 {
         .expect("There should be a piece here");
     let capture = board.piece_on_square(m.dest_square());
     if let Some(capture) = capture {
-        score += 10 * piece_value(capture) - piece_value(piece_moving);
+        score += 10 * capture.value() - piece_moving.value();
     }
     score
         + match m.promotion() {
-            Some(Promotion::Queen) => piece_value(PieceName::Queen),
-            Some(Promotion::Rook) => piece_value(PieceName::Rook),
-            Some(Promotion::Bishop) => piece_value(PieceName::Bishop),
-            Some(Promotion::Knight) => piece_value(PieceName::Knight),
+            Some(Promotion::Queen) => PieceName::Queen.value(),
+            Some(Promotion::Rook) => PieceName::Rook.value(),
+            Some(Promotion::Bishop) => PieceName::Bishop.value(),
+            Some(Promotion::Knight) => PieceName::Knight.value(),
             None => 0,
         }
 }
