@@ -6,7 +6,7 @@ use crate::{
     board::board::Board,
     types::{
         bitboard::Bitboard,
-        pieces::{piece_value, Color, PieceName},
+        pieces::{Color, PieceName},
     },
 };
 
@@ -204,8 +204,8 @@ pub fn eval(board: &Board) -> i32 {
             game_phase += game_phase_value(piece);
             // We flip the index of white pieces because the const boards are indexed with square
             // A8 being arr[63]
-            white_mg += get_mg_table(piece)[sq.idx() ^ 56] + piece_value(piece);
-            white_eg += get_eg_table(piece)[sq.idx() ^ 56] + piece_value(piece);
+            white_mg += get_mg_table(piece)[sq.idx() ^ 56] + piece.value();
+            white_eg += get_eg_table(piece)[sq.idx() ^ 56] + piece.value();
         }
     }
     for piece in PieceName::iter() {
@@ -213,8 +213,8 @@ pub fn eval(board: &Board) -> i32 {
         while bb != Bitboard::EMPTY {
             let sq = bb.pop_lsb();
             game_phase += game_phase_value(piece);
-            black_mg += get_mg_table(piece)[sq.idx()] + piece_value(piece);
-            black_eg += get_eg_table(piece)[sq.idx()] + piece_value(piece);
+            black_mg += get_mg_table(piece)[sq.idx()] + piece.value();
+            black_eg += get_eg_table(piece)[sq.idx()] + piece.value();
         }
     }
 
@@ -240,4 +240,16 @@ pub fn eval(board: &Board) -> i32 {
         eval += 90;
     }
     eval
+}
+
+pub fn net_piece_value(board: &Board, color: Color) -> i32 {
+    let mut sum = 0;
+    for piece in PieceName::iter() {
+        let mut bb = board.board[color as usize][piece as usize];
+        while bb != Bitboard::EMPTY {
+            bb.pop_lsb();
+            sum += piece.value();
+        }
+    }
+    sum
 }

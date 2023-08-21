@@ -19,7 +19,6 @@ use super::{
 };
 
 pub fn generate_psuedolegal_moves(board: &Board) -> MoveList {
-    let psuedolegal = std::time::Instant::now();
     let mut moves = MoveList::default();
     moves.append(&generate_bitboard_moves(board, PieceName::Knight));
     moves.append(&generate_bitboard_moves(board, PieceName::King));
@@ -28,7 +27,6 @@ pub fn generate_psuedolegal_moves(board: &Board) -> MoveList {
     moves.append(&generate_bitboard_moves(board, PieceName::Bishop));
     moves.append(&generate_pawn_moves(board));
     moves.append(&generate_castling_moves(board));
-    dbg!(psuedolegal.elapsed());
     moves
 }
 
@@ -249,17 +247,14 @@ pub fn generate_psuedolegal_captures(board: &Board) -> MoveList {
 }
 
 pub fn generate_moves(board: &Board) -> MoveList {
-    let all = std::time::Instant::now();
-    let l = generate_psuedolegal_moves(board)
+    generate_psuedolegal_moves(board)
         .iter()
         .filter(|m| {
             let mut new_b = board.to_owned();
             new_b.make_move(m);
             !new_b.side_in_check(board.to_move)
         })
-        .collect();
-    dbg!(all.elapsed());
-    l
+        .collect()
 }
 
 #[cfg(test)]
