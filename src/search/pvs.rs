@@ -22,7 +22,7 @@ pub const MAX_SEARCH_DEPTH: i8 = 100;
 pub fn search(search_info: &mut SearchInfo) -> Move {
     let max_depth;
     let mut best_move = Move::NULL;
-    let mut best_moves = Vec::new();
+    let mut pv_moves = Vec::new();
 
     let mut recommended_time = Duration::ZERO;
     match search_info.search_type {
@@ -41,40 +41,37 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
         }
     }
 
-    let alpha_start = -INFINITY;
-    let beta_start = INFINITY;
-
     search_info.search_stats.start = Instant::now();
-    let mut current_depth = 1;
-    let mut eval;
+    let mut iter_depth = 1;
 
-    while current_depth <= max_depth {
-        search_info.iter_max_depth = current_depth;
-        search_info.sel_depth = current_depth;
+    while iter_depth <= max_depth {
+        search_info.iter_max_depth = iter_depth;
+        search_info.sel_depth = iter_depth;
 
-        eval = pvs(
-            current_depth,
-            alpha_start,
-            beta_start,
-            &mut best_moves,
+        let board = &search_info.board.to_owned();
+        let eval = pvs(
+            iter_depth,
+            -INFINITY,
+            INFINITY,
+            &mut pv_moves,
             search_info,
-            &search_info.board.to_owned(),
+            board,
         );
 
-        if !best_moves.is_empty() {
-            best_move = best_moves[0];
+        if !pv_moves.is_empty() {
+            best_move = pv_moves[0];
         }
         print!(
             "info time {} seldepth {} depth {} nodes {} nps {} score cp {} pv ",
             search_info.search_stats.start.elapsed().as_millis(),
             search_info.sel_depth,
-            current_depth,
+            iter_depth,
             search_info.search_stats.nodes_searched,
             search_info.search_stats.nodes_searched as f64
                 / search_info.search_stats.start.elapsed().as_secs_f64(),
             eval
         );
-        for m in best_moves.iter() {
+        for m in pv_moves.iter() {
             print!("{} ", m.to_lan());
         }
         println!();
@@ -85,7 +82,7 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
         {
             break;
         }
-        current_depth += 1;
+        iter_depth += 1;
     }
 
     assert_ne!(best_move, Move::NULL);
