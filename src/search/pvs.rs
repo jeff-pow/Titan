@@ -54,7 +54,6 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
 
         eval = pvs(
             current_depth,
-            0,
             alpha_start,
             beta_start,
             &mut best_moves,
@@ -98,15 +97,14 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
 /// to refute other variations
 fn pvs(
     mut depth: i8,
-    ply: i8,
     mut alpha: i32,
     mut beta: i32,
     pv: &mut Vec<Move>,
     search_info: &mut SearchInfo,
     board: &Board,
 ) -> i32 {
+    let ply = search_info.iter_max_depth - depth;
     let is_root = ply == 0;
-    dbg!(depth, ply, search_info.iter_max_depth);
     search_info.sel_depth = search_info.sel_depth.max(ply);
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
@@ -177,16 +175,8 @@ fn pvs(
         current_idx += 1;
         legal_moves += 1;
 
-        let mut node_best_moves = Vec::new();
-        best_eval = -pvs(
-            depth - 1,
-            ply + 1,
-            -beta,
-            -alpha,
-            &mut node_best_moves,
-            search_info,
-            &new_b,
-        );
+        let mut node_pvs = Vec::new();
+        best_eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
         if best_eval > alpha {
             if best_eval >= beta {
                 search_info.transpos_table.insert(
@@ -199,7 +189,7 @@ fn pvs(
             entry_flag = EntryFlag::Exact;
             pv.clear();
             pv.push(*m);
-            pv.append(&mut node_best_moves);
+            pv.append(&mut node_pvs);
         }
     }
 
@@ -215,33 +205,24 @@ fn pvs(
         }
         legal_moves += 1;
 
-        let mut node_best_moves = Vec::new();
+        let mut node_pvs = Vec::new();
 
         let mut eval = -pvs(
             depth - 1,
-            ply + 1,
             -alpha - 1,
             -alpha,
-            &mut node_best_moves,
+            &mut node_pvs,
             search_info,
             &new_b,
         );
         if eval > alpha && eval < beta {
-            eval = -pvs(
-                depth - 1,
-                ply + 1,
-                -beta,
-                -alpha,
-                &mut node_best_moves,
-                search_info,
-                &new_b,
-            );
+            eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
             if eval > alpha {
                 alpha = eval;
                 entry_flag = EntryFlag::Exact;
                 pv.clear();
                 pv.push(*m);
-                pv.append(&mut node_best_moves);
+                pv.append(&mut node_pvs);
             }
         }
 
