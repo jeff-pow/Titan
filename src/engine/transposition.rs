@@ -21,11 +21,9 @@ impl TableEntry {
     pub fn new(depth: i8, ply: i8, flag: EntryFlag, eval: i32, best_move: Move) -> Self {
         let mut v = eval;
 
-        if v > NEAR_CHECKMATE {
-            v += ply as i32;
-        }
-        if v < NEAR_CHECKMATE {
-            v -= ply as i32;
+        if eval.abs() > NEAR_CHECKMATE {
+            let sign = eval.signum();
+            v = (eval * sign + ply as i32) * sign;
         }
 
         Self {
@@ -42,12 +40,12 @@ impl TableEntry {
             match self.flag {
                 EntryFlag::Exact => {
                     let mut value = self.eval;
-                    if value > NEAR_CHECKMATE {
-                        value -= ply as i32;
+
+                    if value.abs() > NEAR_CHECKMATE {
+                        let sign = value.signum();
+                        value = (self.eval * sign - ply as i32) * sign;
                     }
-                    if value < NEAR_CHECKMATE {
-                        value += ply as i32;
-                    }
+
                     eval = Some(value);
                 }
                 EntryFlag::AlphaCutOff => {

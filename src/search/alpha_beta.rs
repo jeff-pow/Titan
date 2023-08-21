@@ -100,7 +100,6 @@ fn alpha_beta(
     board: &Board,
 ) -> i32 {
     let is_root = ply == 0;
-    let mut principal_var_search = false;
     search_info.sel_depth = search_info.sel_depth.max(ply);
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
@@ -111,7 +110,7 @@ fn alpha_beta(
         return STALEMATE;
     }
 
-    // Code determines if there is a faster path to checkmate than evaluating the current node, and
+    // Determines if there is a faster path to checkmate than evaluating the current node, and
     // if there is, it returns early
     alpha = max(alpha, -IN_CHECKMATE + ply as i32);
     beta = min(beta, IN_CHECKMATE - ply as i32);
@@ -154,7 +153,50 @@ fn alpha_beta(
     let mut entry_flag = EntryFlag::AlphaCutOff;
     let mut best_move = Move::NULL;
 
-    for i in 0..moves.len {
+    // This assumes the first move is the best, generates an evaluation, and then the future moves
+    // are compared against this one
+    let mut current_idx = 0;
+    while legal_moves == 0 && current_idx < moves.len {
+        let mut new_b = board.to_owned();
+        sort_next_move(&mut moves, current_idx);
+        let m = moves.get_move(current_idx);
+        new_b.make_move(m);
+        // Just generate psuedolegal moves to save computation time on legality for moves that will be
+        // pruned
+        if new_b.side_in_check(board.to_move) {
+            current_idx += 1;
+            continue;
+        }
+        current_idx += 1;
+        legal_moves += 1;
+
+        let mut node_best_moves = Vec::new();
+        best_eval = -alpha_beta(
+            depth - 1,
+            ply + 1,
+            -beta,
+            -alpha,
+            &mut node_best_moves,
+            search_info,
+            &new_b,
+        );
+        if best_eval > alpha {
+            if best_eval >= beta {
+                search_info.transpos_table.insert(
+                    board.zobrist_hash,
+                    TableEntry::new(depth, ply, EntryFlag::BetaCutOff, best_eval, best_move),
+                );
+                return best_eval;
+            }
+            alpha = best_eval;
+            entry_flag = EntryFlag::Exact;
+            best_moves.clear();
+            best_moves.push(*m);
+            best_moves.append(&mut node_best_moves);
+        }
+    }
+
+    for i in current_idx..moves.len {
         let mut new_b = board.to_owned();
         sort_next_move(&mut moves, i);
         let m = moves.get_move(i);
@@ -168,33 +210,16 @@ fn alpha_beta(
 
         let mut node_best_moves = Vec::new();
 
-        let mut eval;
-        // Draw if a position has occurred three times
-
-        if principal_var_search {
-            eval = -alpha_beta(
-                depth - 1,
-                ply + 1,
-                -alpha - 1,
-                -alpha,
-                &mut node_best_moves,
-                search_info,
-                &new_b,
-            );
-
-            // Redo search with full window if principal variation search failed
-            if (eval > alpha) && (eval < beta) {
-                eval = -alpha_beta(
-                    depth - 1,
-                    ply + 1,
-                    -beta,
-                    -alpha,
-                    &mut node_best_moves,
-                    search_info,
-                    &new_b,
-                );
-            }
-        } else {
+        let mut eval = -alpha_beta(
+            depth - 1,
+            ply + 1,
+            -alpha - 1,
+            -alpha,
+            &mut node_best_moves,
+            search_info,
+            &new_b,
+        );
+        if eval > alpha && eval < beta {
             eval = -alpha_beta(
                 depth - 1,
                 ply + 1,
@@ -204,29 +229,25 @@ fn alpha_beta(
                 search_info,
                 &new_b,
             );
+            if eval > alpha {
+                alpha = eval;
+                entry_flag = EntryFlag::Exact;
+                best_moves.clear();
+                best_moves.push(*m);
+                best_moves.append(&mut node_best_moves);
+            }
         }
 
         if eval > best_eval {
+            if eval >= beta {
+                search_info.transpos_table.insert(
+                    board.zobrist_hash,
+                    TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, best_move),
+                );
+                return eval;
+            }
             best_eval = eval;
             best_move = *m;
-        }
-
-        if eval >= beta {
-            search_info.transpos_table.insert(
-                board.zobrist_hash,
-                TableEntry::new(depth, ply, EntryFlag::BetaCutOff, beta, best_move),
-            );
-            // TODO: Killer moves here (rstc)
-            return beta;
-        }
-
-        if eval > alpha {
-            alpha = eval;
-            entry_flag = EntryFlag::Exact;
-            principal_var_search = true;
-            best_moves.clear();
-            best_moves.push(*m);
-            best_moves.append(&mut node_best_moves);
         }
     }
 

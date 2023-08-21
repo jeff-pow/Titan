@@ -4,7 +4,8 @@ use super::lib::Move;
 
 pub const MAX_LEN: usize = 218;
 #[derive(Copy, Clone, Debug)]
-/// Movelist contains the move and an i32 where a score can be stored later
+/// Movelist elements contains a move and an i32 where a score can be stored later to be used in move ordering
+/// for efficient search pruning
 pub struct MoveList {
     pub arr: [(Move, i32); MAX_LEN],
     pub len: usize,
