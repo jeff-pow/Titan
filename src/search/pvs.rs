@@ -1,12 +1,12 @@
 use std::cmp::{max, min};
 use std::time::{Duration, Instant};
 
-use crate::board::lib::Board;
+use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
-use crate::moves::lib::Move;
-use crate::moves::lib::Promotion;
 use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::movelist::MoveList;
+use crate::moves::moves::Move;
+use crate::moves::moves::Promotion;
 use crate::types::pieces::{piece_value, PieceName};
 
 use super::eval::eval;
@@ -33,7 +33,11 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
             max_depth = MAX_SEARCH_DEPTH;
         }
         SearchType::Depth => {
-            max_depth = search_info.depth;
+            max_depth = search_info.iter_max_depth;
+        }
+        SearchType::Infinite => {
+            search_info.iter_max_depth = MAX_SEARCH_DEPTH;
+            max_depth = MAX_SEARCH_DEPTH;
         }
     }
 
@@ -45,10 +49,10 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
     let mut eval;
 
     while current_depth <= max_depth {
-        search_info.depth = current_depth;
+        search_info.iter_max_depth = current_depth;
         search_info.sel_depth = current_depth;
 
-        eval = alpha_beta(
+        eval = pvs(
             current_depth,
             0,
             alpha_start,
@@ -90,16 +94,19 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
     best_move
 }
 
-fn alpha_beta(
+/// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
+/// to refute other variations
+fn pvs(
     mut depth: i8,
     ply: i8,
     mut alpha: i32,
     mut beta: i32,
-    best_moves: &mut Vec<Move>,
+    pv: &mut Vec<Move>,
     search_info: &mut SearchInfo,
     board: &Board,
 ) -> i32 {
     let is_root = ply == 0;
+    dbg!(depth, ply, search_info.iter_max_depth);
     search_info.sel_depth = search_info.sel_depth.max(ply);
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
@@ -125,7 +132,7 @@ fn alpha_beta(
     }
 
     if depth <= 0 {
-        return quiescence(ply, alpha, beta, best_moves, search_info, board);
+        return quiescence(ply, alpha, beta, pv, search_info, board);
     }
 
     search_info.search_stats.nodes_searched += 1;
@@ -171,7 +178,7 @@ fn alpha_beta(
         legal_moves += 1;
 
         let mut node_best_moves = Vec::new();
-        best_eval = -alpha_beta(
+        best_eval = -pvs(
             depth - 1,
             ply + 1,
             -beta,
@@ -190,9 +197,9 @@ fn alpha_beta(
             }
             alpha = best_eval;
             entry_flag = EntryFlag::Exact;
-            best_moves.clear();
-            best_moves.push(*m);
-            best_moves.append(&mut node_best_moves);
+            pv.clear();
+            pv.push(*m);
+            pv.append(&mut node_best_moves);
         }
     }
 
@@ -210,7 +217,7 @@ fn alpha_beta(
 
         let mut node_best_moves = Vec::new();
 
-        let mut eval = -alpha_beta(
+        let mut eval = -pvs(
             depth - 1,
             ply + 1,
             -alpha - 1,
@@ -220,7 +227,7 @@ fn alpha_beta(
             &new_b,
         );
         if eval > alpha && eval < beta {
-            eval = -alpha_beta(
+            eval = -pvs(
                 depth - 1,
                 ply + 1,
                 -beta,
@@ -232,9 +239,9 @@ fn alpha_beta(
             if eval > alpha {
                 alpha = eval;
                 entry_flag = EntryFlag::Exact;
-                best_moves.clear();
-                best_moves.push(*m);
-                best_moves.append(&mut node_best_moves);
+                pv.clear();
+                pv.push(*m);
+                pv.append(&mut node_best_moves);
             }
         }
 

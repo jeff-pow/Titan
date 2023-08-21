@@ -3,10 +3,10 @@ use std::cmp::min;
 use strum::IntoEnumIterator;
 
 use crate::{
-    board::lib::Board,
+    board::board::Board,
     types::{
         bitboard::Bitboard,
-        pieces::{opposite_color, piece_value, Color, PieceName},
+        pieces::{piece_value, Color, PieceName},
     },
 };
 
@@ -236,7 +236,7 @@ pub fn eval(board: &Board) -> i32 {
     let mg_phase = min(game_phase, 24);
     let eg_phase = 24 - mg_phase;
     let mut eval = (mg_pts * mg_phase + eg_pts * eg_phase) / 24;
-    if board.side_in_check(opposite_color(board.to_move)) {
+    if board.side_in_check(board.to_move.opp()) {
         eval += 90;
     }
     eval

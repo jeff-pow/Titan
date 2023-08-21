@@ -1,12 +1,12 @@
 use rustc_hash::FxHashMap;
 
-use crate::{board::lib::Board, engine::transposition::TableEntry};
+use crate::{board::board::Board, engine::transposition::TableEntry};
 
 use self::{game_time::GameTime, search_stats::SearchStats};
 
-pub(crate) mod alpha_beta;
 pub(crate) mod eval;
 pub(crate) mod game_time;
+pub(crate) mod pvs;
 pub(crate) mod quiescence;
 pub(crate) mod search_stats;
 
@@ -17,7 +17,7 @@ pub struct SearchInfo {
     pub search_stats: SearchStats,
     pub game_time: GameTime,
     pub search_type: SearchType,
-    pub depth: i8,
+    pub iter_max_depth: i8,
     pub sel_depth: i8,
 }
 
@@ -26,4 +26,5 @@ pub enum SearchType {
     Depth, // User has requested a search until a particular depth
     #[default]
     Time, // Search determines how much time to allow itself
+    Infinite, // Search forever
 }

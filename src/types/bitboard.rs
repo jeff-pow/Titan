@@ -2,7 +2,7 @@ use std::{fmt, ops};
 
 use crate::moves::{
     attack_boards::{FILE_A, FILE_H},
-    lib::Direction,
+    moves::Direction,
 };
 
 use super::square::Square;

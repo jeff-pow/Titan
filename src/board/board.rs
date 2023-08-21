@@ -5,15 +5,15 @@ use strum::IntoEnumIterator;
 use crate::{
     moves::{
         attack_boards::{king_attacks, knight_attacks, pawn_attacks},
-        lib::Castle,
-        lib::Direction::*,
-        lib::Move,
-        lib::Promotion,
         magics::{bishop_attacks, rook_attacks},
+        moves::Castle,
+        moves::Direction::*,
+        moves::Move,
+        moves::Promotion,
     },
     types::{
         bitboard::Bitboard,
-        pieces::{opposite_color, Color, PieceName, NUM_PIECES},
+        pieces::{Color, PieceName, NUM_PIECES},
         square::Square,
     },
 };
@@ -140,7 +140,7 @@ impl Board {
             Color::White => self.white_king_square,
             Color::Black => self.black_king_square,
         };
-        self.square_under_attack(opposite_color(side), king_square)
+        self.square_under_attack(side.opp(), king_square)
     }
 
     // pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
@@ -163,7 +163,7 @@ impl Board {
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
         let attacker_occupancy = self.board[attacker as usize];
         let occupancy = self.occupancies();
-        let pawn_attacks = pawn_attacks(sq, attacker.opposite());
+        let pawn_attacks = pawn_attacks(sq, attacker.opp());
         let knight_attacks = knight_attacks(sq);
         let bishop_attacks = Bitboard(bishop_attacks(occupancy.0, sq.0));
         let rook_attacks = Bitboard(rook_attacks(occupancy.0, sq.0));
@@ -211,14 +211,14 @@ impl Board {
                 Color::White => {
                     self.remove_piece(
                         PieceName::Pawn,
-                        opposite_color(self.to_move),
+                        self.to_move.opp(),
                         m.dest_square().shift(South),
                     );
                 }
                 Color::Black => {
                     self.remove_piece(
                         PieceName::Pawn,
-                        opposite_color(self.to_move),
+                        self.to_move.opp(),
                         m.dest_square().shift(North),
                     );
                 }
@@ -342,8 +342,17 @@ impl Board {
         if !en_passant {
             self.en_passant_square = Square::INVALID;
         }
+
+        // If a piece isn't captured or a pawn isn't moved, increment the half move clock.
+        // Otherwise set it to zero
+        if capture.is_none() && piece_moving != PieceName::Pawn {
+            self.half_moves += 1;
+        } else {
+            self.half_moves = 0;
+        }
+
         // Change the side to move after making a move
-        self.to_move = self.to_move.opposite();
+        self.to_move = self.to_move.opp();
 
         self.num_moves += 1;
 
@@ -355,16 +364,9 @@ impl Board {
     #[allow(dead_code)]
     pub fn debug_bitboards(&self) {
         for color in &[Color::White, Color::Black] {
-            for piece in &[
-                PieceName::King,
-                PieceName::Queen,
-                PieceName::Rook,
-                PieceName::Bishop,
-                PieceName::Knight,
-                PieceName::Pawn,
-            ] {
+            for piece in PieceName::iter() {
                 dbg!("{:?} {:?}", color, piece);
-                dbg!(self.board[*color as usize][*piece as usize]);
+                dbg!(self.board[*color as usize][piece as usize]);
                 dbg!("\n");
             }
         }

@@ -5,7 +5,7 @@ use crate::{
     types::{bitboard::Bitboard, square::Square},
 };
 
-use super::lib::{Direction, Direction::*};
+use super::moves::{Direction, Direction::*};
 
 // Simple Pcg64Mcg implementation
 pub struct Rng(u128);

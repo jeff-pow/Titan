@@ -1,21 +1,21 @@
 use strum::IntoEnumIterator;
 
 use crate::{
-    board::lib::Board,
-    moves::{lib::Direction, lib::Direction::*, lib::Promotion},
+    board::board::Board,
+    moves::{moves::Direction, moves::Direction::*, moves::Promotion},
     types::{
         bitboard::Bitboard,
         pieces::PieceName::*,
-        pieces::{opposite_color, Color, PieceName},
+        pieces::{Color, PieceName},
         square::Square,
     },
 };
 
 use super::{
     attack_boards::{king_attacks, knight_attacks, RANK2, RANK3, RANK6, RANK7},
-    lib::{Move, MoveType},
     magics::{bishop_attacks, rook_attacks},
     movelist::MoveList,
+    moves::{Move, MoveType},
 };
 
 pub fn generate_psuedolegal_moves(board: &Board) -> MoveList {
@@ -55,7 +55,7 @@ fn generate_castling_moves(board: &Board) -> MoveList {
                 Color::Black => 60..=62,
             };
             for check_sq in range {
-                if board.square_under_attack(opposite_color(board.to_move), Square(check_sq)) {
+                if board.square_under_attack(board.to_move.opp(), Square(check_sq)) {
                     break 'kingside;
                 }
             }
@@ -69,7 +69,7 @@ fn generate_castling_moves(board: &Board) -> MoveList {
                 Color::Black => 58..=60,
             };
             for check_sq in range {
-                if board.square_under_attack(opposite_color(board.to_move), Square(check_sq)) {
+                if board.square_under_attack(board.to_move.opp(), Square(check_sq)) {
                     break 'queenside;
                 }
             }
@@ -110,7 +110,7 @@ fn generate_pawn_moves(board: &Board) -> MoveList {
         Color::White => RANK3,
         Color::Black => RANK6,
     };
-    let enemies = board.color_occupancies(opposite_color(board.to_move));
+    let enemies = board.color_occupancies(board.to_move.opp());
 
     // Single and double pawn pushes w/o captures
     let mut push_one = vacancies & non_promotions.shift(up);
@@ -306,7 +306,7 @@ mod movegen_tests {
         init();
         let board =
             build_board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
-        assert_eq!(164_075_551, multi_threaded_perft(board, 5));
+        assert_eq!(164_075_551, perft(board, 5));
     }
 
     #[test]

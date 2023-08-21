@@ -5,11 +5,11 @@ use itertools::Itertools;
 use crate::board::fen::parse_fen_from_buffer;
 use crate::{
     board::{
+        board::Board,
         fen::{self, build_board},
-        lib::Board,
     },
-    moves::lib::from_lan,
-    search::alpha_beta,
+    moves::moves::from_lan,
+    search::pvs,
     search::{game_time::GameTime, SearchInfo, SearchType},
     types::pieces::Color,
 };
@@ -65,12 +65,12 @@ pub fn main_loop() -> ! {
             } else if buffer.contains("depth") {
                 let vec: Vec<char> = buffer.chars().collect();
                 let depth = vec[9].to_digit(10).unwrap();
-                search_info.depth = depth as i8;
+                search_info.iter_max_depth = depth as i8;
                 search_info.search_type = SearchType::Depth;
-                println!("bestmove {}", alpha_beta::search(&mut search_info).to_lan());
+                println!("bestmove {}", pvs::search(&mut search_info).to_lan());
             } else {
                 search_info.search_type = SearchType::Time;
-                let m = alpha_beta::search(&mut search_info);
+                let m = pvs::search(&mut search_info);
                 println!("bestmove {}", m.to_lan());
             }
         } else if buffer.starts_with("stop") || buffer.starts_with("quit") {

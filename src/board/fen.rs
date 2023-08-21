@@ -3,7 +3,7 @@ use crate::types::{
     square::Square,
 };
 
-use super::lib::Board;
+use super::board::Board;
 
 /** File takes a string in Forsyth-Edwards notation and constructs a board state */
 

@@ -1,6 +1,6 @@
 use strum_macros::EnumIter;
 
-use crate::search::alpha_beta::INFINITY;
+use crate::search::pvs::INFINITY;
 
 pub const KING_PTS: i32 = INFINITY;
 pub const QUEEN_PTS: i32 = 1000;
@@ -18,18 +18,12 @@ pub enum Color {
 }
 
 impl Color {
-    pub fn opposite(&self) -> Color {
+    /// Returns the opposite color
+    pub fn opp(&self) -> Color {
         match self {
             Color::White => Color::Black,
             Color::Black => Color::White,
         }
-    }
-}
-
-pub fn opposite_color(color: Color) -> Color {
-    match color {
-        Color::White => Color::Black,
-        Color::Black => Color::White,
     }
 }
 

@@ -2,7 +2,7 @@ use std::{sync::RwLock, time::Instant};
 
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
-use crate::{board::lib::Board, moves::movegenerator::generate_moves};
+use crate::{board::board::Board, moves::movegenerator::generate_moves};
 
 #[allow(dead_code)]
 /// Counts and times the action of generating moves to a certain depth. Prints this information

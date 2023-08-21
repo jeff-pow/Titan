@@ -1,6 +1,6 @@
-use crate::search::alpha_beta::INFINITY;
+use crate::search::pvs::INFINITY;
 
-use super::lib::Move;
+use super::moves::Move;
 
 pub const MAX_LEN: usize = 218;
 #[derive(Copy, Clone, Debug)]

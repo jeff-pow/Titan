@@ -1,9 +1,10 @@
-use crate::board::lib::Board;
-use crate::moves::{lib::Move, movegenerator::generate_psuedolegal_captures};
-use crate::search::alpha_beta::STALEMATE;
+use crate::board::board::Board;
+use crate::moves::{movegenerator::generate_psuedolegal_captures, moves::Move};
+use crate::search::pvs::STALEMATE;
+use crate::types::pieces::{piece_value, PieceName};
 
-use super::alpha_beta::{score_move_list, sort_next_move};
-use super::{alpha_beta::MAX_SEARCH_DEPTH, eval::eval, SearchInfo};
+use super::pvs::{score_move_list, sort_next_move};
+use super::{eval::eval, pvs::MAX_SEARCH_DEPTH, SearchInfo};
 
 pub fn quiescence(
     ply: i8,
@@ -13,23 +14,31 @@ pub fn quiescence(
     search_info: &mut SearchInfo,
     board: &Board,
 ) -> i32 {
+    //
     // Draw if a position has occurred three times
-    search_info.sel_depth = search_info.sel_depth.max(ply);
     if board.is_draw() {
         return STALEMATE;
     }
 
+    search_info.sel_depth = search_info.sel_depth.max(ply);
     search_info.search_stats.nodes_searched += 1;
     let eval = eval(board);
     if ply >= MAX_SEARCH_DEPTH {
         return eval;
     }
+
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
     if eval >= beta {
         return beta;
     }
     if eval > alpha {
         alpha = eval;
+    }
+
+    // Delta pruning
+    let big_delta = piece_value(PieceName::Queen);
+    if eval < alpha - big_delta {
+        return alpha;
     }
 
     let mut moves = generate_psuedolegal_captures(board);

@@ -2,8 +2,8 @@ use core::fmt;
 use std::fmt::Display;
 
 use crate::{
-    board::lib::Board,
-    moves::lib::Direction::*,
+    board::board::Board,
+    moves::moves::Direction::*,
     types::{pieces::PieceName, square::Square},
 };
 
