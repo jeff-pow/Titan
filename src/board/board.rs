@@ -13,7 +13,7 @@ use crate::{
     },
     types::{
         bitboard::Bitboard,
-        pieces::{Color, PieceName, NUM_PIECES},
+        pieces::{Color, Piece, PieceName, NUM_PIECES},
         square::Square,
     },
 };
@@ -24,7 +24,7 @@ use super::zobrist::check_for_3x_repetition;
 #[derive(Clone, Eq, PartialEq)]
 pub struct Board {
     pub bitboards: [[Bitboard; NUM_PIECES]; 2],
-    pub array_board: [Option<PieceName>; 64],
+    pub array_board: [Option<Piece>; 64],
     pub material_val: [i32; 2],
     pub to_move: Color,
     pub black_king_castle: bool,
@@ -110,18 +110,22 @@ impl Board {
 
     #[inline(always)]
     pub fn piece_on_square(&self, sq: Square) -> Option<PieceName> {
-        for color in Color::iter() {
-            for piece_name in PieceName::iter() {
-                if self.square_contains_piece(piece_name, color, sq) {
-                    return Some(piece_name);
-                }
-            }
-        }
-        None
+        self.array_board[sq.idx()].map(|piece| piece.name)
+        // for color in Color::iter() {
+        //     for piece_name in PieceName::iter() {
+        //         if self.square_contains_piece(piece_name, color, sq) {
+        //             return Some(piece_name);
+        //         }
+        //     }
+        // }
+        // None
     }
 
+    #[inline(always)]
     pub fn place_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
         self.bitboards[color as usize][piece_type as usize] |= sq.bitboard();
+        self.array_board[sq.idx()] = Some(Piece::new(piece_type, color));
+        self.material_val[color as usize] += piece_type.value();
         if piece_type == PieceName::King {
             match color {
                 Color::White => self.white_king_square = sq,
@@ -130,13 +134,20 @@ impl Board {
         }
     }
 
-    fn remove_piece(&mut self, _piece_type: PieceName, _color: Color, sq: Square) {
-        // self.board[color as usize][piece_type as usize] &= !sq.bitboard();
-        for color in &[Color::White, Color::Black] {
-            for piece in PieceName::iter() {
-                self.bitboards[*color as usize][piece as usize] &= !(sq.bitboard());
-            }
+    #[inline(always)]
+    fn remove_piece(&mut self, sq: Square) {
+        if let Some(piece) = self.array_board[sq.idx()] {
+            self.array_board[sq.idx()] = None;
+            self.bitboards[piece.color as usize][piece.name as usize] &= !sq.bitboard();
+            self.material_val[piece.color as usize] -= piece.value();
         }
+        // self.board[color as usize][piece_type as usize] &= !sq.bitboard();
+
+        // for color in Color::iter() {
+        //     for piece in PieceName::iter() {
+        //         self.bitboards[color as usize][piece as usize] &= !(sq.bitboard());
+        //     }
+        // }
     }
 
     pub fn side_in_check(&self, side: Color) -> bool {
@@ -213,18 +224,10 @@ impl Board {
         if m.is_en_passant() {
             match self.to_move {
                 Color::White => {
-                    self.remove_piece(
-                        PieceName::Pawn,
-                        self.to_move.opp(),
-                        m.dest_square().shift(South),
-                    );
+                    self.remove_piece(m.dest_square().shift(South));
                 }
                 Color::Black => {
-                    self.remove_piece(
-                        PieceName::Pawn,
-                        self.to_move.opp(),
-                        m.dest_square().shift(North),
-                    );
+                    self.remove_piece(m.dest_square().shift(North));
                 }
             }
         }
@@ -233,34 +236,34 @@ impl Board {
             .piece_on_square(m.origin_square())
             .expect("There should be a piece here");
         let capture = self.piece_on_square(m.dest_square());
-        self.remove_piece(PieceName::Queen, self.to_move, m.dest_square());
+        self.remove_piece(m.dest_square());
         self.place_piece(piece_moving, self.to_move, m.dest_square());
-        self.remove_piece(piece_moving, self.to_move, m.origin_square());
+        self.remove_piece(m.origin_square());
 
         // Move rooks if a castle move is applied
         if m.is_castle() {
             match m.castle_type() {
                 Castle::WhiteKingCastle => {
                     self.place_piece(PieceName::Rook, self.to_move, Square(5));
-                    self.remove_piece(PieceName::Rook, self.to_move, Square(7));
+                    self.remove_piece(Square(7));
                     self.white_queen_castle = false;
                     self.white_king_castle = false;
                 }
                 Castle::WhiteQueenCastle => {
                     self.place_piece(PieceName::Rook, self.to_move, Square(3));
-                    self.remove_piece(PieceName::Rook, self.to_move, Square(0));
+                    self.remove_piece(Square(0));
                     self.white_queen_castle = false;
                     self.white_king_castle = false;
                 }
                 Castle::BlackKingCastle => {
                     self.place_piece(PieceName::Rook, self.to_move, Square(61));
-                    self.remove_piece(PieceName::Rook, self.to_move, Square(63));
+                    self.remove_piece(Square(63));
                     self.black_queen_castle = false;
                     self.black_king_castle = false;
                 }
                 Castle::BlackQueenCastle => {
                     self.place_piece(PieceName::Rook, self.to_move, Square(59));
-                    self.remove_piece(PieceName::Rook, self.to_move, Square(56));
+                    self.remove_piece(Square(56));
                     self.black_queen_castle = false;
                     self.black_king_castle = false;
                 }
@@ -270,7 +273,7 @@ impl Board {
         // If move is a promotion, a pawn is removed from the board and replaced with a higher
         // value piece
         if m.promotion().is_some() {
-            self.remove_piece(PieceName::Pawn, self.to_move, m.dest_square());
+            self.remove_piece(m.dest_square());
         }
         match m.promotion() {
             Some(Promotion::Queen) => {
@@ -474,7 +477,7 @@ mod board_tests {
     #[test]
     fn test_remove_piece() {
         let mut board = fen::build_board(fen::STARTING_FEN);
-        board.remove_piece(Rook, Color::White, Square(0));
+        board.remove_piece(Square(0));
         assert!(board.bitboards[Color::White as usize][Rook as usize].square_is_empty(Square(0)));
         assert!(board.occupancies().square_is_empty(Square(0)));
     }

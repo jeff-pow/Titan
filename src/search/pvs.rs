@@ -6,8 +6,6 @@ use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::movelist::MoveList;
 use crate::moves::moves::Move;
-use crate::moves::moves::Promotion;
-use crate::types::pieces::PieceName;
 
 use super::eval::eval;
 use super::quiescence::quiescence;

@@ -1,5 +1,3 @@
-use crate::search::pvs::INFINITY;
-
 use super::moves::Move;
 
 pub const MAX_LEN: usize = 218;

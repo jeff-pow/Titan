@@ -1,8 +1,6 @@
 use strum_macros::EnumIter;
 
-use crate::search::pvs::INFINITY;
-
-pub const KING_PTS: i32 = INFINITY;
+pub const KING_PTS: i32 = 0;
 pub const QUEEN_PTS: i32 = 1000;
 pub const ROOK_PTS: i32 = 525;
 pub const BISHOP_PTS: i32 = 350;
@@ -49,5 +47,25 @@ impl PieceName {
             PieceName::Knight => KNIGHT_PTS,
             PieceName::Pawn => PAWN_PTS,
         }
+    }
+}
+
+#[derive(Eq, Copy, Clone, PartialEq, Debug)]
+pub struct Piece {
+    pub name: PieceName,
+    pub color: Color,
+}
+
+impl Piece {
+    pub fn new(piece_name: PieceName, color: Color) -> Self {
+        Self {
+            name: piece_name,
+            color,
+        }
+    }
+
+    #[inline(always)]
+    pub fn value(&self) -> i32 {
+        self.name.value()
     }
 }

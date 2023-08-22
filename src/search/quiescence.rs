@@ -6,7 +6,6 @@ use crate::types::bitboard::Bitboard;
 use crate::types::pieces::PieceName;
 use crate::types::square::Square;
 
-use super::eval::net_piece_value;
 use super::pvs::{score_move_list, sort_next_move};
 use super::{eval::eval, pvs::MAX_SEARCH_DEPTH, SearchInfo};
 
@@ -56,7 +55,8 @@ pub fn quiescence(
 
         if (eval + board.piece_on_square(m.dest_square()).unwrap().value() + 200 < alpha)
             && m.promotion().is_none()
-            && (net_piece_value(board, board.to_move.opp())
+            // && (net_piece_value(board, board.to_move.opp())
+            && (board.material_val[board.to_move.opp() as usize]
                 - board.piece_on_square(m.dest_square()).unwrap().value()
                 > 1300)
         {

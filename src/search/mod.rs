@@ -1,7 +1,7 @@
 use rustc_hash::FxHashMap;
 
 use crate::moves::moves::Move;
-use crate::search::pvs::{INFINITY, MAX_SEARCH_DEPTH};
+use crate::search::pvs::MAX_SEARCH_DEPTH;
 use crate::{board::board::Board, engine::transposition::TableEntry};
 
 use self::{game_time::GameTime, search_stats::SearchStats};

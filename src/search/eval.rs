@@ -11,6 +11,59 @@ use crate::{
 };
 
 /// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
+pub fn eval(board: &Board) -> i32 {
+    let mut white_mg = 0;
+    let mut white_eg = 0;
+    let mut black_mg = 0;
+    let mut black_eg = 0;
+    let mut game_phase = 0;
+
+    for piece in PieceName::iter() {
+        let mut bb = board.bitboards[Color::White as usize][piece as usize];
+        while bb != Bitboard::EMPTY {
+            let sq = bb.pop_lsb();
+            game_phase += game_phase_value(piece);
+            // We flip the index of white pieces because the const boards are indexed with square
+            // A8 being arr[63]
+            white_mg += get_mg_table(piece)[sq.idx() ^ 56] + piece.value();
+            white_eg += get_eg_table(piece)[sq.idx() ^ 56] + piece.value();
+        }
+    }
+    for piece in PieceName::iter() {
+        let mut bb = board.bitboards[Color::Black as usize][piece as usize];
+        while bb != Bitboard::EMPTY {
+            let sq = bb.pop_lsb();
+            game_phase += game_phase_value(piece);
+            black_mg += get_mg_table(piece)[sq.idx()] + piece.value();
+            black_eg += get_eg_table(piece)[sq.idx()] + piece.value();
+        }
+    }
+
+    let mg_pts;
+    let eg_pts;
+    match board.to_move {
+        Color::White => {
+            mg_pts = white_mg - black_mg;
+            eg_pts = white_eg - black_eg;
+        }
+        Color::Black => {
+            mg_pts = black_mg - white_mg;
+            eg_pts = black_eg - white_eg;
+        }
+    }
+
+    // Using the number 24 makes the program take a few captures before it starts to take the end game
+    // tables into account
+    let mg_phase = min(game_phase, 24);
+    let eg_phase = 24 - mg_phase;
+    let mut eval = (mg_pts * mg_phase + eg_pts * eg_phase) / 24;
+    if board.side_in_check(board.to_move.opp()) {
+        eval += 90;
+    }
+    eval
+}
+
+/// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 
 #[rustfmt::skip]
 const MG_PAWN_TABLE: [i32; 64] = [
@@ -187,69 +240,4 @@ fn game_phase_value(piece: PieceName) -> i32 {
         PieceName::Knight => 1,
         PieceName::Pawn => 0,
     }
-}
-
-/// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
-pub fn eval(board: &Board) -> i32 {
-    let mut white_mg = 0;
-    let mut white_eg = 0;
-    let mut black_mg = 0;
-    let mut black_eg = 0;
-    let mut game_phase = 0;
-
-    for piece in PieceName::iter() {
-        let mut bb = board.bitboards[Color::White as usize][piece as usize];
-        while bb != Bitboard::EMPTY {
-            let sq = bb.pop_lsb();
-            game_phase += game_phase_value(piece);
-            // We flip the index of white pieces because the const boards are indexed with square
-            // A8 being arr[63]
-            white_mg += get_mg_table(piece)[sq.idx() ^ 56] + piece.value();
-            white_eg += get_eg_table(piece)[sq.idx() ^ 56] + piece.value();
-        }
-    }
-    for piece in PieceName::iter() {
-        let mut bb = board.bitboards[Color::Black as usize][piece as usize];
-        while bb != Bitboard::EMPTY {
-            let sq = bb.pop_lsb();
-            game_phase += game_phase_value(piece);
-            black_mg += get_mg_table(piece)[sq.idx()] + piece.value();
-            black_eg += get_eg_table(piece)[sq.idx()] + piece.value();
-        }
-    }
-
-    let mg_pts;
-    let eg_pts;
-    match board.to_move {
-        Color::White => {
-            mg_pts = white_mg - black_mg;
-            eg_pts = white_eg - black_eg;
-        }
-        Color::Black => {
-            mg_pts = black_mg - white_mg;
-            eg_pts = black_eg - white_eg;
-        }
-    }
-
-    // Using the number 24 makes the program take a few captures before it starts to take the end game
-    // tables into account
-    let mg_phase = min(game_phase, 24);
-    let eg_phase = 24 - mg_phase;
-    let mut eval = (mg_pts * mg_phase + eg_pts * eg_phase) / 24;
-    if board.side_in_check(board.to_move.opp()) {
-        eval += 90;
-    }
-    eval
-}
-
-pub fn net_piece_value(board: &Board, color: Color) -> i32 {
-    let mut sum = 0;
-    for piece in PieceName::iter() {
-        let mut bb = board.bitboards[color as usize][piece as usize];
-        while bb != Bitboard::EMPTY {
-            bb.pop_lsb();
-            sum += piece.value();
-        }
-    }
-    sum
 }
