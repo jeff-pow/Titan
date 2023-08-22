@@ -162,40 +162,8 @@ fn pvs(
 
     // This assumes the first move is the best, generates an evaluation, and then the future moves
     // are compared against this one
-    let mut current_idx = 0;
-    while legal_moves == 0 && current_idx < moves.len {
-        let mut new_b = board.to_owned();
-        sort_next_move(&mut moves, current_idx);
-        let m = moves.get_move(current_idx);
-        new_b.make_move(m);
-        // Just generate psuedolegal moves to save computation time on legality for moves that will be
-        // pruned
-        if new_b.side_in_check(board.to_move) {
-            current_idx += 1;
-            continue;
-        }
-        current_idx += 1;
-        legal_moves += 1;
 
-        let mut node_pvs = Vec::new();
-        best_eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
-        if best_eval > alpha {
-            if best_eval >= beta {
-                search_info.transpos_table.insert(
-                    board.zobrist_hash,
-                    TableEntry::new(depth, ply, EntryFlag::BetaCutOff, best_eval, best_move),
-                );
-                return best_eval;
-            }
-            alpha = best_eval;
-            entry_flag = EntryFlag::Exact;
-            pv.clear();
-            pv.push(*m);
-            pv.append(&mut node_pvs);
-        }
-    }
-
-    for i in current_idx..moves.len {
+    for i in 0..moves.len {
         let mut new_b = board.to_owned();
         sort_next_move(&mut moves, i);
         let m = moves.get_move(i);
