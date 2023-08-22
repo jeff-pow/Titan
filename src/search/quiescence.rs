@@ -40,7 +40,7 @@ pub fn quiescence(
     }
 
     let mut moves = generate_psuedolegal_captures(board);
-    score_move_list(board, &mut moves, Move::NULL);
+    score_move_list(ply, board, &mut moves, Move::NULL, search_info);
 
     for i in 0..moves.len {
         let mut best_node_moves = Vec::new();
@@ -114,7 +114,9 @@ fn is_bad_capture(board: &Board, m: &Move) -> bool {
 fn is_pawn_recapture(board: &Board, sq: Square) -> bool {
     let attacker = board.to_move.opp();
     let pawn_attacks = pawn_attacks(sq, board.to_move);
-    if pawn_attacks & board.board[attacker as usize][PieceName::Pawn as usize] != Bitboard::EMPTY {
+    if pawn_attacks & board.bitboards[attacker as usize][PieceName::Pawn as usize]
+        != Bitboard::EMPTY
+    {
         return true;
     }
     false

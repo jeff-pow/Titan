@@ -198,7 +198,7 @@ pub fn eval(board: &Board) -> i32 {
     let mut game_phase = 0;
 
     for piece in PieceName::iter() {
-        let mut bb = board.board[Color::White as usize][piece as usize];
+        let mut bb = board.bitboards[Color::White as usize][piece as usize];
         while bb != Bitboard::EMPTY {
             let sq = bb.pop_lsb();
             game_phase += game_phase_value(piece);
@@ -209,7 +209,7 @@ pub fn eval(board: &Board) -> i32 {
         }
     }
     for piece in PieceName::iter() {
-        let mut bb = board.board[Color::Black as usize][piece as usize];
+        let mut bb = board.bitboards[Color::Black as usize][piece as usize];
         while bb != Bitboard::EMPTY {
             let sq = bb.pop_lsb();
             game_phase += game_phase_value(piece);
@@ -245,7 +245,7 @@ pub fn eval(board: &Board) -> i32 {
 pub fn net_piece_value(board: &Board, color: Color) -> i32 {
     let mut sum = 0;
     for piece in PieceName::iter() {
-        let mut bb = board.board[color as usize][piece as usize];
+        let mut bb = board.bitboards[color as usize][piece as usize];
         while bb != Bitboard::EMPTY {
             bb.pop_lsb();
             sum += piece.value();

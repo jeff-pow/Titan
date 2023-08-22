@@ -43,7 +43,7 @@ impl Board {
 
         for color in Color::iter() {
             for piece in PieceName::iter() {
-                let mut occupancies = self.board[color as usize][piece as usize];
+                let mut occupancies = self.bitboards[color as usize][piece as usize];
                 while occupancies != Bitboard::EMPTY {
                     unsafe {
                         hash ^= PIECE_SQUARE_HASHES[color as usize][piece as usize]

@@ -23,7 +23,9 @@ use super::zobrist::check_for_3x_repetition;
 #[repr(C)]
 #[derive(Clone, Eq, PartialEq)]
 pub struct Board {
-    pub board: [[Bitboard; NUM_PIECES]; 2],
+    pub bitboards: [[Bitboard; NUM_PIECES]; 2],
+    pub array_board: [Option<PieceName>; 64],
+    pub material_val: [i32; 2],
     pub to_move: Color,
     pub black_king_castle: bool,
     pub black_queen_castle: bool,
@@ -41,7 +43,9 @@ pub struct Board {
 impl Default for Board {
     fn default() -> Self {
         Board {
-            board: [[Bitboard::EMPTY; 6]; 2],
+            bitboards: [[Bitboard::EMPTY; 6]; 2],
+            array_board: [None; 64],
+            material_val: [0; 2],
             black_king_castle: false,
             black_queen_castle: false,
             white_king_castle: false,
@@ -71,21 +75,21 @@ impl Board {
 
     #[inline(always)]
     pub fn square_contains_piece(&self, piece_type: PieceName, color: Color, sq: Square) -> bool {
-        self.board[color as usize][piece_type as usize].square_is_occupied(sq)
+        self.bitboards[color as usize][piece_type as usize].square_is_occupied(sq)
     }
 
     #[inline(always)]
     pub fn color_occupancies(&self, color: Color) -> Bitboard {
         // It's interesting to me that xor and bitwise or both seem to work here, only one piece should
         // be on a square at a time though so ¯\_(ツ)_/¯
-        self.board[color as usize]
+        self.bitboards[color as usize]
             .iter()
             .fold(Bitboard::EMPTY, |a, b| a ^ *b)
     }
 
     #[inline(always)]
     pub fn occupancies(&self) -> Bitboard {
-        self.board
+        self.bitboards
             .iter()
             .flatten()
             .fold(Bitboard::EMPTY, |a, b| a ^ *b)
@@ -106,9 +110,9 @@ impl Board {
 
     #[inline(always)]
     pub fn piece_on_square(&self, sq: Square) -> Option<PieceName> {
-        for color in &[Color::White, Color::Black] {
+        for color in Color::iter() {
             for piece_name in PieceName::iter() {
-                if self.square_contains_piece(piece_name, *color, sq) {
+                if self.square_contains_piece(piece_name, color, sq) {
                     return Some(piece_name);
                 }
             }
@@ -117,7 +121,7 @@ impl Board {
     }
 
     pub fn place_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
-        self.board[color as usize][piece_type as usize] |= sq.bitboard();
+        self.bitboards[color as usize][piece_type as usize] |= sq.bitboard();
         if piece_type == PieceName::King {
             match color {
                 Color::White => self.white_king_square = sq,
@@ -130,7 +134,7 @@ impl Board {
         // self.board[color as usize][piece_type as usize] &= !sq.bitboard();
         for color in &[Color::White, Color::Black] {
             for piece in PieceName::iter() {
-                self.board[*color as usize][piece as usize] &= !(sq.bitboard());
+                self.bitboards[*color as usize][piece as usize] &= !(sq.bitboard());
             }
         }
     }
@@ -161,7 +165,7 @@ impl Board {
     //         || (pawn_attacks & attacker_occupancy[PieceName::Pawn as usize] != Bitboard::EMPTY)
     // }
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
-        let attacker_occupancy = self.board[attacker as usize];
+        let attacker_occupancy = self.bitboards[attacker as usize];
         let occupancy = self.occupancies();
         let pawn_attacks = pawn_attacks(sq, attacker.opp());
         let knight_attacks = knight_attacks(sq);
@@ -366,7 +370,7 @@ impl Board {
         for color in &[Color::White, Color::Black] {
             for piece in PieceName::iter() {
                 dbg!("{:?} {:?}", color, piece);
-                dbg!(self.board[*color as usize][piece as usize]);
+                dbg!(self.bitboards[*color as usize][piece as usize]);
                 dbg!("\n");
             }
         }
@@ -464,14 +468,14 @@ mod board_tests {
     fn test_place_piece() {
         let mut board = Board::default();
         board.place_piece(Rook, Color::White, Square(0));
-        assert!(board.board[Color::White as usize][Rook as usize].square_is_occupied(Square(0)));
+        assert!(board.bitboards[Color::White as usize][Rook as usize].square_is_occupied(Square(0)));
     }
 
     #[test]
     fn test_remove_piece() {
         let mut board = fen::build_board(fen::STARTING_FEN);
         board.remove_piece(Rook, Color::White, Square(0));
-        assert!(board.board[Color::White as usize][Rook as usize].square_is_empty(Square(0)));
+        assert!(board.bitboards[Color::White as usize][Rook as usize].square_is_empty(Square(0)));
         assert!(board.occupancies().square_is_empty(Square(0)));
     }
 }

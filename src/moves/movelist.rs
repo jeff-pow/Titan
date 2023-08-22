@@ -7,7 +7,7 @@ pub const MAX_LEN: usize = 218;
 /// Movelist elements contains a move and an i32 where a score can be stored later to be used in move ordering
 /// for efficient search pruning
 pub struct MoveList {
-    pub arr: [(Move, i32); MAX_LEN],
+    pub arr: [(Move, u32); MAX_LEN],
     pub len: usize,
 }
 
@@ -15,7 +15,7 @@ impl MoveList {
     #[inline(always)]
     pub fn push(&mut self, m: Move) {
         debug_assert!(self.len < MAX_LEN);
-        self.arr[self.len] = (m, -INFINITY);
+        self.arr[self.len] = (m, 0);
         self.len += 1;
     }
 
@@ -29,8 +29,8 @@ impl MoveList {
     #[inline(always)]
     pub fn swap(&mut self, a: usize, b: usize) {
         unsafe {
-            let ptr_a: *mut (Move, i32) = &mut self.arr[a];
-            let ptr_b: *mut (Move, i32) = &mut self.arr[b];
+            let ptr_a: *mut (Move, u32) = &mut self.arr[a];
+            let ptr_b: *mut (Move, u32) = &mut self.arr[b];
             std::ptr::swap(ptr_a, ptr_b);
         }
     }
@@ -49,17 +49,17 @@ impl MoveList {
     }
 
     #[inline(always)]
-    pub fn get_score(&self, idx: usize) -> i32 {
+    pub fn get_score(&self, idx: usize) -> u32 {
         self.arr[idx].1
     }
 
     #[inline(always)]
-    pub fn get_mut(&mut self, idx: usize) -> &mut (Move, i32) {
+    pub fn get_mut(&mut self, idx: usize) -> &mut (Move, u32) {
         &mut self.arr[idx]
     }
 
     #[inline(always)]
-    pub fn into_vec(&self) -> Vec<Move> {
+    pub fn into_vec(self) -> Vec<Move> {
         let mut v = Vec::new();
         for i in 0..self.len {
             v.push(*self.get_move(i));
@@ -95,7 +95,7 @@ impl FromIterator<Move> for MoveList {
             if move_list.len >= MAX_LEN {
                 break;
             }
-            move_list.arr[move_list.len] = (m, -INFINITY);
+            move_list.arr[move_list.len] = (m, 0);
             move_list.len += 1;
         }
 
@@ -106,7 +106,7 @@ impl FromIterator<Move> for MoveList {
 impl Default for MoveList {
     fn default() -> Self {
         Self {
-            arr: [(Move::NULL, -INFINITY); MAX_LEN],
+            arr: [(Move::NULL, 0); MAX_LEN],
             len: 0,
         }
     }

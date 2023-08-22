@@ -81,7 +81,7 @@ fn generate_castling_moves(board: &Board) -> MoveList {
 
 fn generate_pawn_moves(board: &Board) -> MoveList {
     let mut moves = MoveList::default();
-    let pawns = board.board[board.to_move as usize][Pawn as usize];
+    let pawns = board.bitboards[board.to_move as usize][Pawn as usize];
     let vacancies = !board.occupancies();
     let non_promotions = match board.to_move {
         Color::White => pawns & !RANK7,
@@ -177,7 +177,7 @@ fn generate_pawn_moves(board: &Board) -> MoveList {
 
 fn get_en_passant(board: &Board, dir: Direction) -> Option<Move> {
     let sq = board.en_passant_square.checked_shift(dir)?;
-    let pawn = sq.bitboard() & board.board[board.to_move as usize][Pawn as usize];
+    let pawn = sq.bitboard() & board.bitboards[board.to_move as usize][Pawn as usize];
     if pawn != Bitboard::EMPTY {
         let dest = board.en_passant_square;
         let src = dest.checked_shift(dir)?;
@@ -200,7 +200,7 @@ fn generate_promotions(dest: Square, d: Direction, moves: &mut MoveList) {
 fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
     let mut moves = MoveList::default();
     // Don't calculate any moves if no pieces of that type exist for the given color
-    if board.board[board.to_move as usize][piece_name as usize] == Bitboard::EMPTY {
+    if board.bitboards[board.to_move as usize][piece_name as usize] == Bitboard::EMPTY {
         return moves;
     }
     for square in Square::iter() {
