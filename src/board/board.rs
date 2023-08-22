@@ -210,8 +210,7 @@ impl Board {
     }
 
     pub fn add_to_history(&mut self) {
-        let hash = self.zobrist_hash;
-        self.history.push(hash);
+        self.history.push(self.zobrist_hash);
     }
 
     pub fn remove_from_history(&mut self) {
