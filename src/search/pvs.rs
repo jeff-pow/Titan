@@ -103,6 +103,7 @@ fn pvs(
     let ply = search_info.iter_max_depth - depth;
     let is_root = ply == 0;
     search_info.sel_depth = search_info.sel_depth.max(ply);
+    let mut do_pvs = false;
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
         return eval(board);
@@ -177,35 +178,43 @@ fn pvs(
 
         let mut node_pvs = Vec::new();
 
-        let mut eval = -pvs(
-            depth - 1,
-            -alpha - 1,
-            -alpha,
-            &mut node_pvs,
-            search_info,
-            &new_b,
-        );
-        if eval > alpha && eval < beta {
-            eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
-            if eval > alpha {
-                alpha = eval;
-                entry_flag = EntryFlag::Exact;
-                pv.clear();
-                pv.push(*m);
-                pv.append(&mut node_pvs);
+        let mut eval;
+        if do_pvs {
+            eval = -pvs(
+                depth - 1,
+                -alpha - 1,
+                -alpha,
+                &mut node_pvs,
+                search_info,
+                &new_b,
+            );
+            if eval > alpha && alpha < beta {
+                eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
             }
+        } else {
+            eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
         }
 
         if eval > best_eval {
-            if eval >= beta {
-                search_info.transpos_table.insert(
-                    board.zobrist_hash,
-                    TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, best_move),
-                );
-                return eval;
-            }
             best_eval = eval;
             best_move = *m;
+        }
+
+        if eval >= beta {
+            search_info.transpos_table.insert(
+                board.zobrist_hash,
+                TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, best_move),
+            );
+            return beta;
+        }
+
+        if eval > alpha {
+            alpha = eval;
+            entry_flag = EntryFlag::Exact;
+            do_pvs = true;
+            pv.clear();
+            pv.push(*m);
+            pv.append(&mut node_pvs);
         }
     }
 
