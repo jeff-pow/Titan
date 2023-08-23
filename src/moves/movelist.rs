@@ -1,3 +1,4 @@
+use std::mem::MaybeUninit;
 use crate::{
     board::board::Board,
     search::{killers::NUM_KILLER_MOVES, SearchInfo},
@@ -154,9 +155,6 @@ impl FromIterator<Move> for MoveList {
         let mut move_list = MoveList::default();
 
         for m in iter {
-            if move_list.len >= MAX_LEN {
-                break;
-            }
             move_list.arr[move_list.len] = (m, 0);
             move_list.len += 1;
         }
@@ -168,7 +166,8 @@ impl FromIterator<Move> for MoveList {
 impl Default for MoveList {
     fn default() -> Self {
         Self {
-            arr: [(Move::NULL, 0); MAX_LEN],
+            // arr: [(Move::NULL, 0); MAX_LEN],
+            arr: unsafe { MaybeUninit::uninit().assume_init() },
             len: 0,
         }
     }
