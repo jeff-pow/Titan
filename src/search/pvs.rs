@@ -4,10 +4,11 @@ use std::time::{Duration, Instant};
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::moves::movegenerator::generate_psuedolegal_moves;
-use crate::moves::movelist::MoveList;
+use crate::moves::movelist::{score_move_list, sort_next_move};
 use crate::moves::moves::Move;
 
 use super::eval::eval;
+use super::killers::store_killer_move;
 use super::quiescence::quiescence;
 use super::{SearchInfo, SearchType};
 
@@ -259,76 +260,3 @@ fn pvs(
 //         None => 0,
 //     }) as u32
 // }
-
-const KILLER_VAL: u32 = 10;
-const MVV_LVA_OFFSET: u32 = u32::MAX - 256;
-const TTMOVE_SORT_VALUE: u32 = 60;
-
-pub const MVV_LVA: [[u32; 7]; 7] = [
-    [0, 0, 0, 0, 0, 0, 0],       // victim K, attacker K, Q, R, B, N, P, None
-    [50, 51, 52, 53, 54, 55, 0], // victim Q, attacker K, Q, R, B, N, P, None
-    [40, 41, 42, 43, 44, 45, 0], // victim R, attacker K, Q, R, B, N, P, None
-    [30, 31, 32, 33, 34, 35, 0], // victim B, attacker K, Q, R, B, N, P, None
-    [20, 21, 22, 23, 24, 25, 0], // victim K, attacker K, Q, R, B, N, P, None
-    [10, 11, 12, 13, 14, 15, 0], // victim P, attacker K, Q, R, B, N, P, None
-    [0, 0, 0, 0, 0, 0, 0],       // victim None, attacker K, Q, R, B, N, P, None
-];
-
-pub fn score_move_list(
-    ply: i8,
-    board: &Board,
-    moves: &mut MoveList,
-    table_move: Move,
-    search_info: &mut SearchInfo,
-) {
-    for i in 0..moves.len {
-        let (m, m_score) = moves.get_mut(i);
-        let piece_moving = board.piece_on_square(m.origin_square()).unwrap();
-        let capture = board.piece_on_square(m.dest_square());
-        let mut score = 0;
-        if m == &table_move {
-            score = MVV_LVA_OFFSET + TTMOVE_SORT_VALUE;
-        } else if let Some(capture) = capture {
-            score = MVV_LVA_OFFSET + MVV_LVA[capture as usize][piece_moving as usize];
-        } else {
-            let mut n = 0;
-            while n < 2 && score == 0 {
-                let killer_move = search_info.killer_moves[ply as usize][n];
-                if *m == killer_move {
-                    score = MVV_LVA_OFFSET - ((i as u32 + 1) * KILLER_VAL);
-                }
-                n += 1;
-            }
-        }
-        *m_score = score;
-    }
-}
-
-pub fn sort_next_move(moves: &mut MoveList, idx: usize) {
-    // for i in (idx + 1)..moves.len {
-    //     if moves.get_score(i) > moves.get_score(idx) {
-    //         moves.swap(idx, i);
-    //     }
-    // }
-    let mut max_idx = idx;
-    for i in (idx + 1)..moves.len {
-        if moves.get_score(max_idx) < moves.get_score(i) {
-            max_idx = i;
-        }
-    }
-    moves.swap(max_idx, idx);
-}
-
-fn store_killer_move(ply: i8, m: &Move, search_info: &mut SearchInfo) {
-    const FIRST: usize = 0;
-    let first_killer = search_info.killer_moves[ply as usize][FIRST];
-
-    if &first_killer != m {
-        for i in (1..2).rev() {
-            let n = i;
-            let previous = search_info.killer_moves[ply as usize][n - 1];
-            search_info.killer_moves[ply as usize][n] = previous;
-        }
-        search_info.killer_moves[ply as usize][0] = *m;
-    }
-}

@@ -1,19 +1,19 @@
 use crate::board::board::Board;
 use crate::moves::attack_boards::pawn_attacks;
+use crate::moves::movelist::{score_move_list, sort_next_move};
 use crate::moves::{movegenerator::generate_psuedolegal_captures, moves::Move};
 use crate::search::pvs::STALEMATE;
 use crate::types::bitboard::Bitboard;
 use crate::types::pieces::PieceName;
 use crate::types::square::Square;
 
-use super::pvs::{score_move_list, sort_next_move};
 use super::{eval::eval, pvs::MAX_SEARCH_DEPTH, SearchInfo};
 
 pub fn quiescence(
     ply: i8,
     mut alpha: i32,
     beta: i32,
-    best_moves: &mut Vec<Move>,
+    pvs: &mut Vec<Move>,
     search_info: &mut SearchInfo,
     board: &Board,
 ) -> i32 {
@@ -42,7 +42,7 @@ pub fn quiescence(
     score_move_list(ply, board, &mut moves, Move::NULL, search_info);
 
     for i in 0..moves.len {
-        let mut best_node_moves = Vec::new();
+        let mut node_pvs = Vec::new();
         let mut new_b = board.to_owned();
         sort_next_move(&mut moves, i);
         let m = moves.get_move(i);
@@ -53,28 +53,13 @@ pub fn quiescence(
             continue;
         }
 
-        if (eval + board.piece_on_square(m.dest_square()).unwrap().value() + 200 < alpha)
-            && m.promotion().is_none()
-            // && (net_piece_value(board, board.to_move.opp())
-            && (board.material_val[board.to_move.opp() as usize]
-                - board.piece_on_square(m.dest_square()).unwrap().value()
-                > 1300)
-        {
-            continue;
-        }
+        // TODO: Implement delta pruning here
 
         if is_bad_capture(board, m) && m.promotion().is_none() {
             continue;
         }
 
-        let eval = -quiescence(
-            ply + 1,
-            -beta,
-            -alpha,
-            &mut best_node_moves,
-            search_info,
-            &new_b,
-        );
+        let eval = -quiescence(ply + 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
 
         if eval >= beta {
             return beta;
@@ -83,9 +68,9 @@ pub fn quiescence(
         if eval > alpha {
             alpha = eval;
 
-            best_moves.clear();
-            best_moves.push(*m);
-            best_moves.append(&mut best_node_moves);
+            pvs.clear();
+            pvs.push(*m);
+            pvs.append(&mut node_pvs);
         }
     }
 

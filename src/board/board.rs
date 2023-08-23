@@ -111,14 +111,6 @@ impl Board {
     #[inline(always)]
     pub fn piece_on_square(&self, sq: Square) -> Option<PieceName> {
         self.array_board[sq.idx()].map(|piece| piece.name)
-        // for color in Color::iter() {
-        //     for piece_name in PieceName::iter() {
-        //         if self.square_contains_piece(piece_name, color, sq) {
-        //             return Some(piece_name);
-        //         }
-        //     }
-        // }
-        // None
     }
 
     #[inline(always)]

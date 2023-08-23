@@ -4,10 +4,12 @@ use crate::moves::moves::Move;
 use crate::search::pvs::MAX_SEARCH_DEPTH;
 use crate::{board::board::Board, engine::transposition::TableEntry};
 
+use self::killers::{KillerMoves, NUM_KILLER_MOVES};
 use self::{game_time::GameTime, search_stats::SearchStats};
 
 pub(crate) mod eval;
 pub(crate) mod game_time;
+pub mod killers;
 pub(crate) mod pvs;
 pub(crate) mod quiescence;
 pub(crate) mod search_stats;
@@ -19,7 +21,7 @@ pub struct SearchInfo {
     pub game_time: GameTime,
     pub search_type: SearchType,
     pub iter_max_depth: i8,
-    pub killer_moves: [[Move; 2]; MAX_SEARCH_DEPTH as usize],
+    pub killer_moves: KillerMoves,
     pub sel_depth: i8,
 }
 
@@ -32,7 +34,7 @@ impl Default for SearchInfo {
             game_time: Default::default(),
             search_type: Default::default(),
             iter_max_depth: 0,
-            killer_moves: [[Move::NULL; 2]; MAX_SEARCH_DEPTH as usize],
+            killer_moves: [[Move::NULL; NUM_KILLER_MOVES]; MAX_SEARCH_DEPTH as usize],
 
             sel_depth: 0,
         }

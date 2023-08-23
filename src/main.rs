@@ -1,3 +1,4 @@
+#![allow(clippy::module_inception)]
 pub mod board;
 pub mod engine;
 pub mod init;

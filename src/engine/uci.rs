@@ -59,13 +59,17 @@ pub fn main_loop() -> ! {
         } else if buffer.starts_with("go") {
             search_info.game_time = parse_time(&buffer);
             if buffer.contains("perft") {
-                let vec: Vec<char> = buffer.chars().collect();
-                let depth = vec[9].to_digit(10).unwrap();
+                let mut iter = buffer.split_whitespace();
+                iter.next();
+                iter.next();
+                let depth = iter.next().unwrap().parse::<i8>().unwrap();
                 perft(search_info.board.to_owned(), depth as i32);
             } else if buffer.contains("depth") {
-                let vec: Vec<char> = buffer.chars().collect();
-                let depth = vec[9].to_digit(10).unwrap();
-                search_info.iter_max_depth = depth as i8;
+                let mut iter = buffer.split_whitespace();
+                iter.next();
+                iter.next();
+                let depth = iter.next().unwrap().parse::<i8>().unwrap();
+                search_info.iter_max_depth = depth;
                 search_info.search_type = SearchType::Depth;
                 println!("bestmove {}", pvs::search(&mut search_info).to_lan());
             } else {
