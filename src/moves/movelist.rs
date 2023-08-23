@@ -1,8 +1,8 @@
-use std::mem::MaybeUninit;
 use crate::{
     board::board::Board,
     search::{killers::NUM_KILLER_MOVES, SearchInfo},
 };
+use std::mem::MaybeUninit;
 
 use super::moves::Move;
 
@@ -165,9 +165,11 @@ impl FromIterator<Move> for MoveList {
 
 impl Default for MoveList {
     fn default() -> Self {
+        // Uninitialized memory is much faster than initializing it when the important stuff will
+        // be written over anyway ;)
+        let arr: MaybeUninit<[(Move, u32); MAX_LEN]> = MaybeUninit::uninit();
         Self {
-            // arr: [(Move::NULL, 0); MAX_LEN],
-            arr: unsafe { MaybeUninit::uninit().assume_init() },
+            arr: unsafe { arr.assume_init() },
             len: 0,
         }
     }
