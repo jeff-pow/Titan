@@ -97,15 +97,7 @@ impl Board {
 
     #[inline(always)]
     pub fn color_on_square(&self, sq: Square) -> Option<Color> {
-        let white_occ = self.color_occupancies(Color::White);
-        let black_occ = self.color_occupancies(Color::Black);
-        if white_occ & sq.bitboard() != Bitboard::EMPTY {
-            return Some(Color::White);
-        }
-        if black_occ & sq.bitboard() != Bitboard::EMPTY {
-            return Some(Color::Black);
-        }
-        None
+        self.array_board[sq.idx()].map(|piece| piece.color)
     }
 
     #[inline(always)]

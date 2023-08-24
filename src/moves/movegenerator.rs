@@ -227,13 +227,8 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
 }
 
 fn push_moves(moves: &mut MoveList, mut attacks: Bitboard, sq: Square) {
-    let mut idx = 0;
     while attacks != Bitboard::EMPTY {
-        if attacks & Bitboard(1) != Bitboard::EMPTY {
-            moves.push(Move::new(sq, Square(idx), None, MoveType::Normal));
-        }
-        attacks = attacks >> Bitboard(1);
-        idx += 1;
+        moves.push(Move::new(sq, attacks.pop_lsb(), None, MoveType::Normal));
     }
 }
 
