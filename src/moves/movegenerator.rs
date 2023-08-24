@@ -200,28 +200,28 @@ fn generate_promotions(dest: Square, d: Direction, moves: &mut MoveList) {
 fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
     let mut moves = MoveList::default();
     // Don't calculate any moves if no pieces of that type exist for the given color
-    if board.bitboards[board.to_move as usize][piece_name as usize] == Bitboard::EMPTY {
+    let mut occ_bitboard = board.bitboards[board.to_move as usize][piece_name as usize];
+    if occ_bitboard == Bitboard::EMPTY {
         return moves;
     }
-    for square in Square::iter() {
-        if board.square_contains_piece(piece_name, board.to_move, square) {
-            let occupancies = board.occupancies();
-            let attack_bitboard = match piece_name {
-                King => king_attacks(square),
-                Queen => Bitboard(
-                    rook_attacks(occupancies.0, square.0) | bishop_attacks(occupancies.0, square.0),
-                ),
-                Rook => Bitboard(rook_attacks(occupancies.0, square.0)),
-                Bishop => Bitboard(bishop_attacks(occupancies.0, square.0)),
-                Knight => knight_attacks(square),
-                Pawn => panic!(),
-            };
-            // Tells the program that out of the selected attack squares, the piece can move to
-            // empty ones or ones where an enemy piece is
-            let enemies_and_vacancies = !board.color_occupancies(board.to_move);
-            let attacks = attack_bitboard & enemies_and_vacancies;
-            push_moves(&mut moves, attacks, square);
-        }
+    while occ_bitboard != Bitboard::EMPTY {
+        let sq = occ_bitboard.pop_lsb();
+        let occupancies = board.occupancies();
+        let attack_bitboard = match piece_name {
+            King => king_attacks(sq),
+            Queen => {
+                Bitboard(rook_attacks(occupancies.0, sq.0) | bishop_attacks(occupancies.0, sq.0))
+            }
+            Rook => Bitboard(rook_attacks(occupancies.0, sq.0)),
+            Bishop => Bitboard(bishop_attacks(occupancies.0, sq.0)),
+            Knight => knight_attacks(sq),
+            Pawn => panic!(),
+        };
+        // Tells the program that out of the selected attack squares, the piece can move to
+        // empty ones or ones where an enemy piece is
+        let enemies_and_vacancies = !board.color_occupancies(board.to_move);
+        let attacks = attack_bitboard & enemies_and_vacancies;
+        push_moves(&mut moves, attacks, sq);
     }
     moves
 }
