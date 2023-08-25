@@ -11,5 +11,13 @@ Can be built by entering the chess-engine directory and running `cargo b --relea
 any UCI compliant chess GUI.
 
 # Useful Links
-https://www.chessprogramming.org/Main_Page
-https://lichess.org/editor
+- https://www.chessprogramming.org/Main_Page
+- https://lichess.org/editor
+
+# Future Resources
+- https://www.chessprogramming.org/Reductions
+- https://www.chessprogramming.org/Extensions
+- https://www.chessprogramming.org/Null_Move_Pruning
+- https://www.chessprogramming.org/AEL-Pruning
+- https://www.chessprogramming.org/Futility_Pruning
+- https://www.chessprogramming.org/Razoring

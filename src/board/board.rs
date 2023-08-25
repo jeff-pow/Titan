@@ -201,6 +201,18 @@ impl Board {
         self.history.pop();
     }
 
+    #[inline(always)]
+    pub fn material_balance(&self) -> i32 {
+        match self.to_move {
+            Color::White => {
+                self.material_val[Color::White as usize] - self.material_val[Color::Black as usize]
+            }
+            Color::Black => {
+                self.material_val[Color::Black as usize] - self.material_val[Color::White as usize]
+            }
+        }
+    }
+
     /// Function makes a move and modifies board state to reflect the move that just happened
     pub fn make_move(&mut self, m: &Move) {
         // Special case if the move is an en_passant
