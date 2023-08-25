@@ -212,7 +212,7 @@ fn pvs(
             if capture.is_none() {
                 store_killer_move(ply, m, search_info);
             }
-            return beta;
+            return eval;
         }
 
         if eval > alpha {

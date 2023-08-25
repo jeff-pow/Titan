@@ -32,7 +32,7 @@ pub fn quiescence(
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
     if eval >= beta {
-        return beta;
+        return eval;
     }
     if eval > alpha {
         alpha = eval;
@@ -62,7 +62,7 @@ pub fn quiescence(
         let eval = -quiescence(ply + 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
 
         if eval >= beta {
-            return beta;
+            return eval;
         }
 
         if eval > alpha {
