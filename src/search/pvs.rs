@@ -6,6 +6,7 @@ use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::movelist::{score_move_list, sort_next_move};
 use crate::moves::moves::Move;
+use crate::types::pieces::{value, PieceName, BISHOP_PTS, QUEEN_PTS, ROOK_PTS};
 
 use super::eval::eval;
 use super::killers::store_killer_move;
@@ -89,6 +90,12 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
     best_move
 }
 
+const FUTIL_MARGIN: i32 = BISHOP_PTS;
+const FUTIL_DEPTH: i8 = 1;
+const EXT_FUTIL_MARGIN: i32 = ROOK_PTS;
+const EXT_FUTIL_DEPTH: i8 = 2;
+const RAZOR_MARGIN: i32 = QUEEN_PTS;
+const RAZORING_DEPTH: i8 = 3;
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
 /// to refute other variations
 fn pvs(
@@ -116,8 +123,8 @@ fn pvs(
 
         // Determines if there is a faster path to checkmate than evaluating the current node, and
         // if there is, it returns early
-        alpha = max(alpha, -CHECKMATE + ply as i32);
-        beta = min(beta, CHECKMATE - ply as i32);
+        alpha = alpha.max(-CHECKMATE + ply as i32);
+        beta = beta.min(CHECKMATE - ply as i32);
         if alpha >= beta {
             return alpha;
         }
@@ -138,9 +145,9 @@ fn pvs(
         }
     }
 
-    let is_check = board.side_in_check(board.to_move);
+    let extend = board.side_in_check(board.to_move);
 
-    if is_check {
+    if extend {
         depth += 1;
     }
 
@@ -154,9 +161,43 @@ fn pvs(
     let mut legal_moves = 0;
     score_move_list(ply, board, &mut moves, table_move, search_info);
 
-    let mut best_eval = -INFINITY;
+    let mut score = -INFINITY;
     let mut entry_flag = EntryFlag::AlphaCutOff;
     let mut best_move = Move::NULL;
+    let mut fprune = false;
+    let mut pruned_moves = 0;
+    let mut fmax = -INFINITY;
+
+    let fscore = board.material_balance() + RAZOR_MARGIN;
+    if !extend && depth == RAZORING_DEPTH && fscore <= alpha {
+        fprune = true;
+        fmax = fscore;
+        score = fscore
+    }
+
+    let fscore = board.material_balance() + EXT_FUTIL_MARGIN;
+    if !extend && depth == EXT_FUTIL_DEPTH && fscore <= alpha {
+        fprune = true;
+        fmax = fscore;
+        score = fscore;
+    }
+
+    let fscore = board.material_balance() + FUTIL_MARGIN;
+    if !extend && depth == FUTIL_DEPTH && fscore <= alpha {
+        fprune = true;
+        fmax = fscore;
+        score = fscore;
+        depth -= 1;
+    }
+
+    //  if (!fprune && !check(move) && null_okay(current, move) &&
+    //     try_null(alpha, beta, current, depth, move, tt_ref)) {
+    //     int null_score;
+    //     null_score = -alpha_beta_search(-beta, -beta + 1, null_move, current, depth - R_adpt(current, depth) - 1);
+    //     if (null_score >= beta) {
+    //         return null_score;
+    //     }
+    // }
 
     for i in 0..moves.len {
         let mut new_b = board.to_owned();
@@ -172,9 +213,15 @@ fn pvs(
         }
         legal_moves += 1;
 
-        let mut node_pvs = Vec::new();
+        let capture = board.piece_on_square(m.dest_square());
+        if fprune && fmax + value(capture) < alpha {
+            pruned_moves += 1;
+            continue;
+        }
 
+        let mut node_pvs = Vec::new();
         let mut eval;
+
         if do_pvs {
             eval = -pvs(
                 depth - 1,
@@ -191,8 +238,8 @@ fn pvs(
             eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
         }
 
-        if eval > best_eval {
-            best_eval = eval;
+        if eval > score {
+            score = eval;
             best_move = *m;
         }
 
@@ -236,6 +283,10 @@ fn pvs(
         board.zobrist_hash,
         TableEntry::new(depth, ply, entry_flag, alpha, best_move),
     );
+
+    if pruned_moves > 0 {
+        // Handle selective pruning
+    }
 
     alpha
 }
