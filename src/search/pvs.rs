@@ -190,6 +190,7 @@ fn pvs(
         depth -= 1;
     }
 
+    //  Null pruning from the psuedocode given by the chess programming wiki AEL pruning page
     //  if (!fprune && !check(move) && null_okay(current, move) &&
     //     try_null(alpha, beta, current, depth, move, tt_ref)) {
     //     int null_score;
