@@ -102,6 +102,7 @@ fn pvs(
     let ply = search_info.iter_max_depth - depth;
     let is_root = ply == 0;
     search_info.sel_depth = search_info.sel_depth.max(ply);
+    // Don't do pvs unless you have a pv - otherwise you're wasting time
     let mut do_pvs = false;
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
@@ -149,8 +150,6 @@ fn pvs(
 
     search_info.search_stats.nodes_searched += 1;
 
-    // TODO: Test just generating all moves - I sort of hate how the code looks with psuedolegal
-    // generation...
     let mut moves = generate_psuedolegal_moves(board);
     let mut legal_moves = 0;
     score_move_list(ply, board, &mut moves, table_move, search_info);
@@ -158,9 +157,6 @@ fn pvs(
     let mut best_eval = -INFINITY;
     let mut entry_flag = EntryFlag::AlphaCutOff;
     let mut best_move = Move::NULL;
-
-    // This assumes the first move is the best, generates an evaluation, and then the future moves
-    // are compared against this one
 
     for i in 0..moves.len {
         let mut new_b = board.to_owned();
@@ -218,6 +214,7 @@ fn pvs(
         if eval > alpha {
             alpha = eval;
             entry_flag = EntryFlag::Exact;
+            // A principal variation has been found, so we can do pvs on the remaining nodes of this level
             do_pvs = true;
             pv.clear();
             pv.push(*m);
@@ -239,6 +236,7 @@ fn pvs(
         board.zobrist_hash,
         TableEntry::new(depth, ply, entry_flag, alpha, best_move),
     );
+
     alpha
 }
 

@@ -67,7 +67,6 @@ pub fn quiescence(
 
         if eval > alpha {
             alpha = eval;
-
             pvs.clear();
             pvs.push(*m);
             pvs.append(&mut node_pvs);
