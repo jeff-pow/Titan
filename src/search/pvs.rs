@@ -168,11 +168,13 @@ fn pvs(
     let mut pruned_moves = 0;
     let mut fmax = -INFINITY;
 
-    let fscore = board.material_balance() + RAZOR_MARGIN;
-    if !extend && depth == RAZORING_DEPTH && fscore <= alpha {
+    let fscore = board.material_balance() + FUTIL_MARGIN;
+    if !extend && depth == FUTIL_DEPTH && fscore <= alpha {
         fprune = true;
         fmax = fscore;
-        score = fscore
+        score = fscore;
+        // And this shouldnt make any sense to do much of anything but... ?
+        depth -= 1;
     }
 
     let fscore = board.material_balance() + EXT_FUTIL_MARGIN;
@@ -182,14 +184,14 @@ fn pvs(
         score = fscore;
     }
 
-    let fscore = board.material_balance() + FUTIL_MARGIN;
-    if !extend && depth == FUTIL_DEPTH && fscore <= alpha {
+    let fscore = board.material_balance() + RAZOR_MARGIN;
+    if !extend && depth == RAZORING_DEPTH && fscore <= alpha {
         fprune = true;
         fmax = fscore;
         score = fscore;
-        depth -= 1;
+        // For some reason this line of code makes it search 1.5M extra nodes at depth 12?
+        // depth -= 1;
     }
-
     //  Null pruning from the psuedocode given by the chess programming wiki AEL pruning page
     //  if (!fprune && !check(move) && null_okay(current, move) &&
     //     try_null(alpha, beta, current, depth, move, tt_ref)) {
