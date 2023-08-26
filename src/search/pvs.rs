@@ -4,7 +4,7 @@ use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::moves::Move;
-use crate::types::pieces::{value, BISHOP_PTS, QUEEN_PTS, ROOK_PTS};
+use crate::types::pieces::{QUEEN_PTS, ROOK_PTS};
 
 use super::eval::eval;
 use super::killers::store_killer_move;
@@ -100,7 +100,7 @@ const RAZORING_DEPTH: i8 = 3;
 fn pvs(
     mut depth: i8,
     mut alpha: i32,
-    mut beta: i32,
+    beta: i32,
     pv: &mut Vec<Move>,
     search_info: &mut SearchInfo,
     board: &Board,
@@ -126,8 +126,8 @@ fn pvs(
 
         // Determines if there is a faster path to checkmate than evaluating the current node, and
         // if there is, it returns early
-        alpha = alpha.max(-CHECKMATE + ply as i32);
-        beta = beta.min(CHECKMATE - ply as i32);
+        let alpha = alpha.max(-CHECKMATE + ply as i32);
+        let beta = beta.min(CHECKMATE - ply as i32);
         if alpha >= beta {
             return alpha;
         }
@@ -195,13 +195,15 @@ fn pvs(
     // Null pruning I haven't got around to testing yet
     // if !fprune && !board.side_in_check(board.to_move) && null_ok(board) {
     //     let mut node_pvs = Vec::new();
+    //     let mut new_b = board.to_owned();
+    //     new_b.to_move = new_b.to_move.opp();
     //     let null_eval = -pvs(
     //         depth - 1,
     //         -beta,
     //         -beta + 1,
     //         &mut node_pvs,
     //         search_info,
-    //         board,
+    //         &new_b,
     //     );
     //     if null_eval >= beta {
     //         return null_eval;
@@ -287,7 +289,7 @@ fn pvs(
         TableEntry::new(depth, ply, entry_flag, alpha, best_move),
     );
 
-    alpha
+    score
 }
 
 /// Arbitrary value determining if a side is in endgame yet
