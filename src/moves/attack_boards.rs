@@ -4,41 +4,26 @@ use strum_macros::EnumIter;
 use crate::moves::moves::Direction::*;
 use crate::types::{bitboard::Bitboard, pieces::Color, square::Square};
 
+// These basically exist because rust won't let me
 const FILE_A_U64: u64 = 0x101010101010101;
-const FILE_B_U64: u64 = FILE_A_U64 << 1;
-const FILE_C_U64: u64 = FILE_A_U64 << 2;
-const FILE_D_U64: u64 = FILE_A_U64 << 3;
-const FILE_E_U64: u64 = FILE_A_U64 << 4;
-const FILE_F_U64: u64 = FILE_A_U64 << 5;
-const FILE_G_U64: u64 = FILE_A_U64 << 6;
-const FILE_H_U64: u64 = FILE_A_U64 << 7;
-
 pub const FILE_A: Bitboard = Bitboard(FILE_A_U64);
-pub const FILE_B: Bitboard = Bitboard(FILE_B_U64);
-pub const FILE_C: Bitboard = Bitboard(FILE_C_U64);
-pub const FILE_D: Bitboard = Bitboard(FILE_D_U64);
-pub const FILE_E: Bitboard = Bitboard(FILE_E_U64);
-pub const FILE_F: Bitboard = Bitboard(FILE_F_U64);
-pub const FILE_G: Bitboard = Bitboard(FILE_G_U64);
-pub const FILE_H: Bitboard = Bitboard(FILE_H_U64);
+pub const FILE_B: Bitboard = Bitboard(FILE_A_U64 << 1);
+pub const FILE_C: Bitboard = Bitboard(FILE_A_U64 << 2);
+pub const FILE_D: Bitboard = Bitboard(FILE_A_U64 << 3);
+pub const FILE_E: Bitboard = Bitboard(FILE_A_U64 << 4);
+pub const FILE_F: Bitboard = Bitboard(FILE_A_U64 << 5);
+pub const FILE_G: Bitboard = Bitboard(FILE_A_U64 << 6);
+pub const FILE_H: Bitboard = Bitboard(FILE_A_U64 << 7);
 
 const RANK1_U64: u64 = 0b11111111;
-const RANK2_U64: u64 = RANK1_U64 << 8;
-const RANK3_U64: u64 = RANK2_U64 << 8;
-const RANK4_U64: u64 = RANK3_U64 << 8;
-const RANK5_U64: u64 = RANK4_U64 << 8;
-const RANK6_U64: u64 = RANK5_U64 << 8;
-const RANK7_U64: u64 = RANK6_U64 << 8;
-const RANK8_U64: u64 = RANK7_U64 << 8;
-
 pub const RANK1: Bitboard = Bitboard(0b11111111);
-pub const RANK2: Bitboard = Bitboard(RANK2_U64);
-pub const RANK3: Bitboard = Bitboard(RANK3_U64);
-pub const RANK4: Bitboard = Bitboard(RANK4_U64);
-pub const RANK5: Bitboard = Bitboard(RANK5_U64);
-pub const RANK6: Bitboard = Bitboard(RANK6_U64);
-pub const RANK7: Bitboard = Bitboard(RANK7_U64);
-pub const RANK8: Bitboard = Bitboard(RANK8_U64);
+pub const RANK2: Bitboard = Bitboard(RANK1_U64 << 8);
+pub const RANK3: Bitboard = Bitboard(RANK1_U64 << 16);
+pub const RANK4: Bitboard = Bitboard(RANK1_U64 << 24);
+pub const RANK5: Bitboard = Bitboard(RANK1_U64 << 32);
+pub const RANK6: Bitboard = Bitboard(RANK1_U64 << 40);
+pub const RANK7: Bitboard = Bitboard(RANK1_U64 << 48);
+pub const RANK8: Bitboard = Bitboard(RANK1_U64 << 56);
 
 static mut KNIGHT_TABLE: [Bitboard; 64] = [Bitboard::EMPTY; 64];
 static mut KING_TABLE: [Bitboard; 64] = [Bitboard::EMPTY; 64];
@@ -67,22 +52,22 @@ pub fn init_lookup_boards() {
 #[rustfmt::skip]
 fn gen_king_attack_boards() {
     unsafe {
-        KING_TABLE.iter_mut().enumerate().for_each(|(square, moves)| {
-            let x = Square(square as u8).file();
-            let y = Square(square as u8).rank();
+        KING_TABLE.iter_mut().enumerate().for_each(|(sq, bitboard)| {
+            let x = Square(sq as u8).file();
+            let y = Square(sq as u8).rank();
             if y >= 1 {
-                if x >= 1 { *moves |= Bitboard(1 << (square as u32 - 9)); }
-                *moves |= Bitboard(1 << (square as u32 - 8));
-                if x <= 6 { *moves |= Bitboard(1 << (square as u32 - 7)); }
+                if x >= 1 { *bitboard |= Bitboard(1 << (sq as u32 - 9)); }
+                *bitboard |= Bitboard(1 << (sq as u32 - 8));
+                if x <= 6 { *bitboard |= Bitboard(1 << (sq as u32 - 7)); }
             }
 
-            if x >= 1 { *moves |= Bitboard(1 << (square as u32 - 1)); }
-            if x <= 6 { *moves |= Bitboard(1 << (square as u32 + 1)); }
+            if x >= 1 { *bitboard |= Bitboard(1 << (sq as u32 - 1)); }
+            if x <= 6 { *bitboard |= Bitboard(1 << (sq as u32 + 1)); }
 
             if y <= 6 {
-                if x >= 1 { *moves |= Bitboard(1 << (square as u32 + 7)); }
-                *moves |= Bitboard(1 << (square as u32 + 8));
-                if x <= 6 { *moves |= Bitboard(1 << (square as u32 + 9)); }
+                if x >= 1 { *bitboard |= Bitboard(1 << (sq as u32 + 7)); }
+                *bitboard |= Bitboard(1 << (sq as u32 + 8));
+                if x <= 6 { *bitboard |= Bitboard(1 << (sq as u32 + 9)); }
             }
         });
     }
@@ -121,9 +106,9 @@ impl KnightMovement {
 #[rustfmt::skip]
 fn gen_knight_attack_boards() {
     unsafe {
-        KNIGHT_TABLE.iter_mut().enumerate().for_each(|(square, moves)| {
-            let current_rank = Square(square as u8).rank();
-            let current_file = Square(square as u8).file();
+        KNIGHT_TABLE.iter_mut().enumerate().for_each(|(sq, bitboard)| {
+            let current_rank = Square(sq as u8).rank();
+            let current_file = Square(sq as u8).file();
             for mv in KnightMovement::iter() {
                 let (dir_x, dir_y) = mv.deltas();
                 if !(0..8).contains(&(current_file as i8 + dir_x)) {
@@ -132,10 +117,10 @@ fn gen_knight_attack_boards() {
                 if !(0..8).contains(&(current_rank as i8 + dir_y)) {
                     continue;
                 }
-                let new_index = (square as i32 + mv as i32) as u8;
+                let new_index = (sq as i32 + mv as i32) as u8;
 
                 if (0..64).contains(&new_index) {
-                    *moves |= Square(new_index).bitboard();
+                    *bitboard |= Square(new_index).bitboard();
                 } else {
                     continue;
                 }
@@ -155,6 +140,7 @@ fn gen_pawn_attack_boards() {
             if let Some(w2) = bb_square.checked_shift(NorthWest) {
                 w |= w2;
             }
+            PAWN_TABLE[Color::White as usize][sq.idx()] = w;
             let mut b = Bitboard::EMPTY;
             if let Some(b1) = bb_square.checked_shift(SouthWest) {
                 b |= b1;
@@ -162,7 +148,6 @@ fn gen_pawn_attack_boards() {
             if let Some(b2) = bb_square.checked_shift(SouthEast) {
                 b |= b2;
             }
-            PAWN_TABLE[Color::White as usize][sq.idx()] = w;
             PAWN_TABLE[Color::Black as usize][sq.idx()] = b;
         }
     }

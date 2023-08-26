@@ -30,7 +30,6 @@ fn get_move_type(promotion: bool, en_passant: bool, castle: bool) -> MoveType {
 
 /// Cardinal directions from the point of view of white side
 #[derive(EnumIter, Copy, Clone, Debug, PartialEq, Eq)]
-#[repr(i8)]
 pub enum Direction {
     North = 8,
     NorthWest = 7,
@@ -89,8 +88,6 @@ impl Move {
         promotion: Option<Promotion>,
         move_type: MoveType,
     ) -> Self {
-        // debug_assert!(origin.is_valid());
-        // debug_assert!(destination.is_valid());
         let promotion = match promotion {
             Some(Promotion::Queen) => 3,
             Some(Promotion::Rook) => 2,
@@ -200,11 +197,11 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
     // against letters or some other workaround
     let start_column = vec[0].to_digit(20).unwrap() - 10;
     let start_row = (vec[1].to_digit(10).unwrap() - 1) * 8;
-    let starting_idx = Square((start_row + start_column) as u8);
+    let origin_sq = Square((start_row + start_column) as u8);
 
     let end_column = vec[2].to_digit(20).unwrap() - 10;
     let end_row = (vec[3].to_digit(10).unwrap() - 1) * 8;
-    let end_idx = Square((end_row + end_column) as u8);
+    let dest_sq = Square((end_row + end_column) as u8);
 
     let mut promotion = None;
     if vec.len() > 4 {
@@ -217,19 +214,20 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
         };
     }
     let piece_moving = board
-        .piece_on_square(starting_idx)
+        .piece_at(origin_sq)
         .expect("There should be a piece here...");
+    let captured = board.piece_at(dest_sq);
     let castle = match piece_moving {
         PieceName::King => {
-            if starting_idx.dist(end_idx) != 2 {
+            if origin_sq.dist(dest_sq) != 2 {
                 Castle::None
-            } else if end_idx == Square(2) {
+            } else if dest_sq == Square(2) {
                 Castle::WhiteQueenCastle
-            } else if end_idx == Square(6) {
+            } else if dest_sq == Square(6) {
                 Castle::WhiteKingCastle
-            } else if end_idx == Square(58) {
+            } else if dest_sq == Square(58) {
                 Castle::BlackQueenCastle
-            } else if end_idx == Square(62) {
+            } else if dest_sq == Square(62) {
                 Castle::BlackKingCastle
             } else {
                 unreachable!()
@@ -238,11 +236,9 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
         _ => Castle::None,
     };
     let castle = castle != Castle::None;
-    // TODO: Implement reading en passant...
-    // BUG: Implement reading en passant...
-    let en_passant = false;
+    let en_passant = piece_moving == PieceName::Pawn && captured.is_none();
     let move_type = get_move_type(promotion.is_some(), en_passant, castle);
-    Move::new(starting_idx, end_idx, promotion, move_type)
+    Move::new(origin_sq, dest_sq, promotion, move_type)
 }
 
 #[derive(Clone, Copy, Debug, EnumIter, PartialEq)]
@@ -279,13 +275,6 @@ impl Display for Move {
         str += " End: ";
         str += &self.dest_square().to_string();
         str += " Castle: ";
-        // match self.castle {
-        //     Castle::None => str += "No Castle ",
-        //     Castle::WhiteKingCastle => str += "White King castle ",
-        //     Castle::WhiteQueenCastle => str += "white queen castle ",
-        //     Castle::BlackKingCastle => str += "black king castle ",
-        //     Castle::BlackQueenCastle => str += "black queen castle ",
-        // }
         str += &self.is_castle().to_string();
         str += " Promotion: ";
         match self.promotion() {

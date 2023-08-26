@@ -119,6 +119,9 @@ pub fn build_board(fen_string: &str) -> Board {
     iter.next();
     assert_eq!(iter.next(), None);
     board.zobrist_hash = board.generate_hash();
+    board.gen_occupancies();
+    board.gen_color_occupancies(Color::White);
+    board.gen_color_occupancies(Color::Black);
     board
 }
 

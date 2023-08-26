@@ -7,7 +7,10 @@ use crate::{
 
 use super::moves::{Direction, Direction::*};
 
-// Simple Pcg64Mcg implementation
+/// Credit for this magic bitboards implementation goes to the rustic chess engine by mvanthoor
+/// https://github.com/mvanthoor/rustic/
+
+/// Simple Pcg64Mcg implementation
 pub struct Rng(u128);
 
 impl Default for Rng {

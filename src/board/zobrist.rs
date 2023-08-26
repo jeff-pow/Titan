@@ -14,15 +14,6 @@ use crate::{
 static mut TURN_HASH: u64 = 0;
 static mut PIECE_SQUARE_HASHES: [[[u64; 64]; 6]; 2] = [[[0; 64]; 6]; 2];
 
-/// Function checks for the presence of the board in the game. If the board position will have occurred three times,
-/// returns true indicating the position would be a stalemate due to the threefold repetition rule
-pub fn check_for_3x_repetition(board: &Board) -> bool {
-    debug_assert_eq!(board.zobrist_hash, board.generate_hash());
-    let hash = board.zobrist_hash;
-    let count = board.history.iter().filter(|&&x| x == hash).count();
-    count >= 2
-}
-
 pub fn init_zobrist() {
     let mut rng = Rng::default();
     unsafe {

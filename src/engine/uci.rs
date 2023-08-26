@@ -14,7 +14,7 @@ use crate::{
     types::pieces::Color,
 };
 
-use super::perft::perft;
+use super::perft::multi_threaded_perft;
 use super::transposition::get_table;
 
 /// Main loop that handles UCI communication with GUIs
@@ -57,30 +57,26 @@ pub fn main_loop() -> ! {
             dbg!(&search_info.board);
             search_info.board.debug_bitboards();
         } else if buffer.starts_with("go") {
-            search_info.game_time = parse_time(&buffer);
+            search_info.game_time = parse_time(&buffer, &mut search_info);
+            search_info.search_type = SearchType::Infinite;
             if buffer.contains("perft") {
-                let mut iter = buffer.split_whitespace();
-                iter.next();
-                iter.next();
+                let mut iter = buffer.split_whitespace().skip(2);
                 let depth = iter.next().unwrap().parse::<i8>().unwrap();
-                perft(search_info.board.to_owned(), depth as i32);
+                multi_threaded_perft(search_info.board.to_owned(), depth);
             } else if buffer.contains("depth") {
-                let mut iter = buffer.split_whitespace();
-                iter.next();
-                iter.next();
+                let mut iter = buffer.split_whitespace().skip(2);
                 let depth = iter.next().unwrap().parse::<i8>().unwrap();
-                search_info.iter_max_depth = depth;
+                search_info.max_depth = depth;
                 search_info.search_type = SearchType::Depth;
                 println!("bestmove {}", pvs::search(&mut search_info).to_lan());
             } else {
-                search_info.search_type = SearchType::Time;
                 let m = pvs::search(&mut search_info);
                 println!("bestmove {}", m.to_lan());
             }
         } else if buffer.starts_with("stop") || buffer.starts_with("quit") {
             std::process::exit(0);
         } else if buffer.starts_with("uci") {
-            println!("id name Jeff's Chess Engine");
+            println!("id name Kraken");
             println!("id author Jeff Powell");
             println!("uciok");
         } else {
@@ -96,24 +92,28 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize) {
     }
 }
 
-fn parse_time(buff: &str) -> GameTime {
+fn parse_time(buff: &str, search_info: &mut SearchInfo) -> GameTime {
     let mut game_time = GameTime::default();
     let vec = buff.split_whitespace().skip(1).tuples::<(_, _)>();
     for entry in vec {
         match entry {
             ("wtime", wtime) => {
+                search_info.search_type = SearchType::Time;
                 game_time.time_remaining[Color::White as usize] =
                     Duration::from_millis(wtime.parse::<u64>().expect("Valid u64"))
             }
             ("btime", btime) => {
+                search_info.search_type = SearchType::Time;
                 game_time.time_remaining[Color::Black as usize] =
                     Duration::from_millis(btime.parse::<u64>().expect("Valid u64"))
             }
             ("winc", winc) => {
+                search_info.search_type = SearchType::Time;
                 game_time.time_inc[Color::White as usize] =
                     Duration::from_millis(winc.parse::<u64>().expect("Valid u64"))
             }
             ("binc", binc) => {
+                search_info.search_type = SearchType::Time;
                 game_time.time_inc[Color::Black as usize] =
                     Duration::from_millis(binc.parse::<u64>().expect("Valid u64"))
             }

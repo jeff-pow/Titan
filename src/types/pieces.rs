@@ -9,7 +9,6 @@ pub const PAWN_PTS: i32 = 100;
 pub const NUM_PIECES: usize = 6;
 
 #[derive(EnumIter, Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(u8)]
 pub enum Color {
     White = 0,
     Black = 1,
@@ -26,7 +25,6 @@ impl Color {
 }
 
 #[derive(Debug, EnumIter, Copy, Clone, PartialEq, Eq)]
-#[repr(usize)]
 pub enum PieceName {
     King = 0,
     Queen = 1,
@@ -65,11 +63,8 @@ pub struct Piece {
 }
 
 impl Piece {
-    pub fn new(piece_name: PieceName, color: Color) -> Self {
-        Self {
-            name: piece_name,
-            color,
-        }
+    pub fn new(name: PieceName, color: Color) -> Self {
+        Self { name, color }
     }
 
     #[inline(always)]

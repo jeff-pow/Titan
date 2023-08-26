@@ -18,6 +18,12 @@ use super::{
     moves::{Move, MoveType},
 };
 
+pub const WHITE_KINGSIDE_SQUARES: Bitboard = Bitboard(0b1100000);
+pub const WHITE_QUEENSIDE_SQUARES: Bitboard = Bitboard(0b1110);
+pub const BLACK_KINGSIDE_SQUARES: Bitboard = Bitboard(0x6000000000000000);
+pub const BLACK_QUEENSIDE_SQUARES: Bitboard = Bitboard(0xe00000000000000);
+
+/// Generates all moves with no respect to legality via leaving itself in check
 pub fn generate_psuedolegal_moves(board: &Board) -> MoveList {
     let mut moves = MoveList::default();
     moves.append(&generate_bitboard_moves(board, PieceName::Knight));
@@ -33,8 +39,8 @@ pub fn generate_psuedolegal_moves(board: &Board) -> MoveList {
 fn generate_castling_moves(board: &Board) -> MoveList {
     let mut moves = MoveList::default();
     let (kingside_vacancies, queenside_vacancies) = match board.to_move {
-        Color::White => (Bitboard(0b1100000), Bitboard(0b1110)),
-        Color::Black => (Bitboard(0x6000000000000000), Bitboard(0xe00000000000000)),
+        Color::White => (WHITE_KINGSIDE_SQUARES, WHITE_QUEENSIDE_SQUARES),
+        Color::Black => (BLACK_KINGSIDE_SQUARES, BLACK_QUEENSIDE_SQUARES),
     };
     let (can_kingside, can_queenside) = match board.to_move {
         Color::White => (board.white_king_castle, board.white_queen_castle),
@@ -83,6 +89,7 @@ fn generate_pawn_moves(board: &Board) -> MoveList {
     let mut moves = MoveList::default();
     let pawns = board.bitboards[board.to_move as usize][Pawn as usize];
     let vacancies = !board.occupancies();
+    let enemies = board.color_occupancies(board.to_move.opp());
     let non_promotions = match board.to_move {
         Color::White => pawns & !RANK7,
         Color::Black => pawns & !RANK2,
@@ -91,26 +98,29 @@ fn generate_pawn_moves(board: &Board) -> MoveList {
         Color::White => pawns & RANK7,
         Color::Black => pawns & RANK2,
     };
+
     let up = match board.to_move {
         Color::White => North,
         Color::Black => South,
     };
     let down = up.opp();
+
     let up_left = match board.to_move {
         Color::White => NorthWest,
         Color::Black => SouthEast,
     };
     let down_right = up_left.opp();
+
     let up_right = match board.to_move {
         Color::White => NorthEast,
         Color::Black => SouthWest,
     };
     let down_left = up_right.opp();
+
     let rank3_bb = match board.to_move {
         Color::White => RANK3,
         Color::Black => RANK6,
     };
-    let enemies = board.color_occupancies(board.to_move.opp());
 
     // Single and double pawn pushes w/o captures
     let mut push_one = vacancies & non_promotions.shift(up);
@@ -146,8 +156,8 @@ fn generate_pawn_moves(board: &Board) -> MoveList {
         }
     }
 
+    // Captures that do not lead to promotions
     if non_promotions != Bitboard::EMPTY {
-        // Captures
         let mut left_captures = non_promotions.shift(up_left) & enemies;
         let mut right_captures = non_promotions.shift(up_right) & enemies;
         while left_captures > Bitboard::EMPTY {
@@ -175,7 +185,7 @@ fn generate_pawn_moves(board: &Board) -> MoveList {
     moves
 }
 
-fn get_en_passant(board: &Board, dir: Direction) -> Option<Move> {
+pub fn get_en_passant(board: &Board, dir: Direction) -> Option<Move> {
     let sq = board.en_passant_square.checked_shift(dir)?;
     let pawn = sq.bitboard() & board.bitboards[board.to_move as usize][Pawn as usize];
     if pawn != Bitboard::EMPTY {
@@ -201,9 +211,6 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
     let mut moves = MoveList::default();
     // Don't calculate any moves if no pieces of that type exist for the given color
     let mut occ_bitboard = board.bitboards[board.to_move as usize][piece_name as usize];
-    if occ_bitboard == Bitboard::EMPTY {
-        return moves;
-    }
     while occ_bitboard != Bitboard::EMPTY {
         let sq = occ_bitboard.pop_lsb();
         let occupancies = board.occupancies();
@@ -217,8 +224,6 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
             Knight => knight_attacks(sq),
             Pawn => panic!(),
         };
-        // Tells the program that out of the selected attack squares, the piece can move to
-        // empty ones or ones where an enemy piece is
         let enemies_and_vacancies = !board.color_occupancies(board.to_move);
         let attacks = attack_bitboard & enemies_and_vacancies;
         push_moves(&mut moves, attacks, sq);
@@ -234,13 +239,14 @@ fn push_moves(moves: &mut MoveList, mut attacks: Bitboard, sq: Square) {
 
 /// Filters out moves that are silent for quiescence search
 pub fn generate_psuedolegal_captures(board: &Board) -> MoveList {
-    let legal_moves = generate_psuedolegal_moves(board);
-    legal_moves
+    let moves = generate_psuedolegal_moves(board);
+    moves
         .iter()
         .filter(|m| board.occupancies().square_is_occupied(m.dest_square()))
         .collect::<MoveList>()
 }
 
+/// Returns all legal moves
 pub fn generate_moves(board: &Board) -> MoveList {
     generate_psuedolegal_moves(board)
         .iter()

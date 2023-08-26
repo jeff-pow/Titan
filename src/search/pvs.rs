@@ -1,12 +1,10 @@
-use std::cmp::{max, min};
 use std::time::{Duration, Instant};
 
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::moves::movegenerator::generate_psuedolegal_moves;
-use crate::moves::movelist::{score_move_list, sort_next_move};
 use crate::moves::moves::Move;
-use crate::types::pieces::{value, PieceName, BISHOP_PTS, QUEEN_PTS, ROOK_PTS};
+use crate::types::pieces::{value, BISHOP_PTS, QUEEN_PTS, ROOK_PTS};
 
 use super::eval::eval;
 use super::killers::store_killer_move;
@@ -20,7 +18,6 @@ pub const INFINITY: i32 = 9999999;
 pub const MAX_SEARCH_DEPTH: i8 = 100;
 
 pub fn search(search_info: &mut SearchInfo) -> Move {
-    let max_depth;
     let mut best_move = Move::NULL;
     let mut pv_moves = Vec::new();
 
@@ -30,27 +27,23 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
             recommended_time = search_info
                 .game_time
                 .recommended_time(search_info.board.to_move);
-            max_depth = MAX_SEARCH_DEPTH;
         }
-        SearchType::Depth => {
-            max_depth = search_info.iter_max_depth;
-        }
+        SearchType::Depth => (),
         SearchType::Infinite => {
             search_info.iter_max_depth = MAX_SEARCH_DEPTH;
-            max_depth = MAX_SEARCH_DEPTH;
+            search_info.max_depth = MAX_SEARCH_DEPTH;
         }
     }
 
     search_info.search_stats.start = Instant::now();
-    let mut iter_depth = 1;
+    search_info.iter_max_depth = 1;
 
-    while iter_depth <= max_depth {
-        search_info.iter_max_depth = iter_depth;
-        search_info.sel_depth = iter_depth;
+    while search_info.iter_max_depth <= search_info.max_depth {
+        search_info.sel_depth = search_info.iter_max_depth;
 
         let board = &search_info.board.to_owned();
         let eval = pvs(
-            iter_depth,
+            search_info.iter_max_depth,
             -INFINITY,
             INFINITY,
             &mut pv_moves,
@@ -61,20 +54,8 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
         if !pv_moves.is_empty() {
             best_move = pv_moves[0];
         }
-        print!(
-            "info time {} seldepth {} depth {} nodes {} nps {} score cp {} pv ",
-            search_info.search_stats.start.elapsed().as_millis(),
-            search_info.sel_depth,
-            iter_depth,
-            search_info.search_stats.nodes_searched,
-            search_info.search_stats.nodes_searched as f64
-                / search_info.search_stats.start.elapsed().as_secs_f64(),
-            eval
-        );
-        for m in pv_moves.iter() {
-            print!("{} ", m.to_lan());
-        }
-        println!();
+        print_search_stats(search_info, eval, &pv_moves);
+
         if search_info.search_type == SearchType::Time
             && search_info
                 .game_time
@@ -82,7 +63,7 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
         {
             break;
         }
-        iter_depth += 1;
+        search_info.iter_max_depth += 1;
     }
 
     assert_ne!(best_move, Move::NULL);
@@ -90,12 +71,30 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
     best_move
 }
 
-const FUTIL_MARGIN: i32 = BISHOP_PTS;
+fn print_search_stats(search_info: &SearchInfo, eval: i32, pv: &[Move]) {
+    print!(
+        "info time {} seldepth {} depth {} nodes {} nps {} score cp {} pv ",
+        search_info.search_stats.start.elapsed().as_millis(),
+        search_info.sel_depth,
+        search_info.iter_max_depth,
+        search_info.search_stats.nodes_searched,
+        (search_info.search_stats.nodes_searched as f64
+            / search_info.search_stats.start.elapsed().as_secs_f64()) as i64,
+        eval
+    );
+    for m in pv.iter() {
+        print!("{} ", m.to_lan());
+    }
+    println!();
+}
+
+const FUTIL_MARGIN: i32 = 200;
 const FUTIL_DEPTH: i8 = 1;
 const EXT_FUTIL_MARGIN: i32 = ROOK_PTS;
 const EXT_FUTIL_DEPTH: i8 = 2;
 const RAZOR_MARGIN: i32 = QUEEN_PTS;
 const RAZORING_DEPTH: i8 = 3;
+
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
 /// to refute other variations
 fn pvs(
@@ -113,6 +112,10 @@ fn pvs(
     let mut do_pvs = false;
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
+        if board.side_in_check(board.to_move) {
+            let mut node_pvs = Vec::new();
+            return quiescence(ply, alpha, beta, &mut node_pvs, search_info, board);
+        }
         return eval(board);
     }
 
@@ -145,9 +148,9 @@ fn pvs(
         }
     }
 
-    let extend = board.side_in_check(board.to_move);
+    let in_check = board.side_in_check(board.to_move);
 
-    if extend {
+    if in_check {
         depth += 1;
     }
 
@@ -159,52 +162,55 @@ fn pvs(
 
     let mut moves = generate_psuedolegal_moves(board);
     let mut legal_moves = 0;
-    score_move_list(ply, board, &mut moves, table_move, search_info);
+    moves.score_move_list(ply, board, table_move, search_info);
 
     let mut score = -INFINITY;
     let mut entry_flag = EntryFlag::AlphaCutOff;
     let mut best_move = Move::NULL;
-    let mut fprune = false;
-    let mut pruned_moves = 0;
-    let mut fmax = -INFINITY;
 
-    let fscore = board.material_balance() + FUTIL_MARGIN;
-    if !extend && depth == FUTIL_DEPTH && fscore <= alpha {
-        fprune = true;
-        fmax = fscore;
-        score = fscore;
-        // And this shouldnt make any sense to do much of anything but... ?
-        depth -= 1;
+    if !in_check && depth == FUTIL_DEPTH && search_info.iter_max_depth > FUTIL_DEPTH {
+        let eval = eval(board);
+        if eval + FUTIL_MARGIN < alpha {
+            let mut node_pvs = Vec::new();
+            return quiescence(ply, alpha, beta, &mut node_pvs, search_info, board);
+        }
     }
 
-    let fscore = board.material_balance() + EXT_FUTIL_MARGIN;
-    if !extend && depth == EXT_FUTIL_DEPTH && fscore <= alpha {
-        fprune = true;
-        fmax = fscore;
-        score = fscore;
+    if !in_check && depth == EXT_FUTIL_DEPTH && search_info.iter_max_depth > EXT_FUTIL_DEPTH {
+        let eval = eval(board);
+        if eval + EXT_FUTIL_MARGIN < alpha {
+            let mut node_pvs = Vec::new();
+            return quiescence(ply, alpha, beta, &mut node_pvs, search_info, board);
+        }
     }
 
-    let fscore = board.material_balance() + RAZOR_MARGIN;
-    if !extend && depth == RAZORING_DEPTH && fscore <= alpha {
-        fprune = true;
-        fmax = fscore;
-        score = fscore;
-        // For some reason this line of code makes it search 1.5M extra nodes at depth 12?
-        // depth -= 1;
+    if !in_check && depth == RAZORING_DEPTH && search_info.iter_max_depth > RAZORING_DEPTH {
+        let eval = eval(board);
+        if eval + RAZOR_MARGIN < alpha {
+            let mut node_pvs = Vec::new();
+            return quiescence(ply, alpha, beta, &mut node_pvs, search_info, board);
+        }
     }
-    //  Null pruning from the psuedocode given by the chess programming wiki AEL pruning page
-    //  if (!fprune && !check(move) && null_okay(current, move) &&
-    //     try_null(alpha, beta, current, depth, move, tt_ref)) {
-    //     int null_score;
-    //     null_score = -alpha_beta_search(-beta, -beta + 1, null_move, current, depth - R_adpt(current, depth) - 1);
-    //     if (null_score >= beta) {
-    //         return null_score;
+
+    // Null pruning I haven't got around to testing yet
+    // if !fprune && !board.side_in_check(board.to_move) && null_ok(board) {
+    //     let mut node_pvs = Vec::new();
+    //     let null_eval = -pvs(
+    //         depth - 1,
+    //         -beta,
+    //         -beta + 1,
+    //         &mut node_pvs,
+    //         search_info,
+    //         board,
+    //     );
+    //     if null_eval >= beta {
+    //         return null_eval;
     //     }
     // }
 
     for i in 0..moves.len {
         let mut new_b = board.to_owned();
-        sort_next_move(&mut moves, i);
+        moves.sort_next_move(i);
         let m = moves.get_move(i);
         new_b.make_move(m);
         let _s = m.to_lan();
@@ -215,12 +221,6 @@ fn pvs(
             continue;
         }
         legal_moves += 1;
-
-        let capture = board.piece_on_square(m.dest_square());
-        if fprune && fmax + value(capture) < alpha {
-            pruned_moves += 1;
-            continue;
-        }
 
         let mut node_pvs = Vec::new();
         let mut eval;
@@ -251,7 +251,7 @@ fn pvs(
                 board.zobrist_hash,
                 TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, best_move),
             );
-            let capture = board.piece_on_square(m.dest_square());
+            let capture = board.piece_at(m.dest_square());
 
             // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
             // anyway
@@ -287,28 +287,13 @@ fn pvs(
         TableEntry::new(depth, ply, entry_flag, alpha, best_move),
     );
 
-    if pruned_moves > 0 {
-        // Handle selective pruning
-    }
-
     alpha
 }
 
-// pub(super) fn score_move(board: &Board, m: &Move, search_info: &mut SearchInfo) -> u32 {
-//     let mut score = 0;
-//     let piece_moving = board
-//         .piece_on_square(m.origin_square())
-//         .expect("There should be a piece here");
-//     let capture = board.piece_on_square(m.dest_square());
-//     if let Some(capture) = capture {
-//         score += 10 * capture.value() - piece_moving.value();
-//     }
-//     (score
-//         + match m.promotion() {
-//         Some(Promotion::Queen) => PieceName::Queen.value(),
-//         Some(Promotion::Rook) => PieceName::Rook.value(),
-//         Some(Promotion::Bishop) => PieceName::Bishop.value(),
-//         Some(Promotion::Knight) => PieceName::Knight.value(),
-//         None => 0,
-//     }) as u32
-// }
+/// Arbitrary value determining if a side is in endgame yet
+const ENDGAME_THRESHOLD: i32 = 1750;
+#[allow(dead_code)]
+fn null_ok(board: &Board) -> bool {
+    board.material_val[board.to_move as usize] > ENDGAME_THRESHOLD
+        && board.material_val[board.to_move.opp() as usize] > ENDGAME_THRESHOLD
+}

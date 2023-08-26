@@ -21,6 +21,7 @@ pub struct SearchInfo {
     pub game_time: GameTime,
     pub search_type: SearchType,
     pub iter_max_depth: i8,
+    pub max_depth: i8,
     pub killer_moves: KillerMoves,
     pub sel_depth: i8,
 }
@@ -34,8 +35,8 @@ impl Default for SearchInfo {
             game_time: Default::default(),
             search_type: Default::default(),
             iter_max_depth: 0,
+            max_depth: MAX_SEARCH_DEPTH,
             killer_moves: [[Move::NULL; NUM_KILLER_MOVES]; MAX_SEARCH_DEPTH as usize],
-
             sel_depth: 0,
         }
     }
