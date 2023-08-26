@@ -1,5 +1,6 @@
 use core::fmt;
 use smallvec::SmallVec;
+use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
@@ -18,7 +19,9 @@ use crate::{
     },
 };
 
-#[derive(Clone, Eq, PartialEq)]
+use super::zobrist::Zobrist;
+
+#[derive(Clone)]
 pub struct Board {
     pub bitboards: [[Bitboard; NUM_PIECES]; 2],
     pub color_occupancies: [Bitboard; 2],
@@ -37,6 +40,7 @@ pub struct Board {
     pub half_moves: i32,
     pub zobrist_hash: u64,
     pub history: SmallVec<[u64; 32]>,
+    pub zobrist: Arc<Zobrist>,
 }
 
 impl Default for Board {
@@ -59,6 +63,7 @@ impl Default for Board {
             half_moves: 0,
             zobrist_hash: 0,
             history: SmallVec::new(),
+            zobrist: Arc::new(Zobrist::default()),
         }
     }
 }

@@ -1,9 +1,6 @@
 use std::sync::Once;
 
-use crate::{
-    board::zobrist::init_zobrist,
-    moves::{attack_boards::init_lookup_boards, magics::init_magics},
-};
+use crate::moves::{attack_boards::init_lookup_boards, magics::init_magics};
 
 static INIT: Once = Once::new();
 
@@ -14,6 +11,5 @@ pub fn init() {
     INIT.call_once(|| {
         init_lookup_boards();
         init_magics();
-        init_zobrist();
     });
 }

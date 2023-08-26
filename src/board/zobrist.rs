@@ -11,18 +11,25 @@ use crate::{
     },
 };
 
-static mut TURN_HASH: u64 = 0;
-static mut PIECE_SQUARE_HASHES: [[[u64; 64]; 6]; 2] = [[[0; 64]; 6]; 2];
+pub struct Zobrist {
+    pub piece_square_hashes: [[[u64; 64]; 6]; 2],
+    pub turn_hash: u64,
+}
 
-pub fn init_zobrist() {
-    let mut rng = Rng::default();
-    unsafe {
-        TURN_HASH = rng.next_u64();
-        PIECE_SQUARE_HASHES
+impl Default for Zobrist {
+    fn default() -> Self {
+        let mut rng = Rng::default();
+        let turn_hash = rng.next_u64();
+        let mut piece_square_hashes = [[[0; 64]; 6]; 2];
+        piece_square_hashes
             .iter_mut()
             .flatten()
             .flatten()
             .for_each(|x| *x = rng.next_u64());
+        Self {
+            turn_hash,
+            piece_square_hashes,
+        }
     }
 }
 
@@ -36,16 +43,14 @@ impl Board {
             for piece in PieceName::iter() {
                 let mut occupancies = self.bitboards[color as usize][piece as usize];
                 while occupancies != Bitboard::EMPTY {
-                    unsafe {
-                        hash ^= PIECE_SQUARE_HASHES[color as usize][piece as usize]
-                            [occupancies.pop_lsb().idx()]
-                    }
+                    hash ^= self.zobrist.piece_square_hashes[color as usize][piece as usize]
+                        [occupancies.pop_lsb().idx()]
                 }
             }
         }
 
         if self.to_move == Color::Black {
-            hash ^= unsafe { TURN_HASH };
+            hash ^= self.zobrist.turn_hash;
         }
 
         hash

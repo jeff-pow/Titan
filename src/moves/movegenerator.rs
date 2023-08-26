@@ -13,10 +13,18 @@ use crate::{
 
 use super::{
     attack_boards::{king_attacks, knight_attacks, RANK2, RANK3, RANK6, RANK7},
-    magics::{bishop_attacks, rook_attacks},
+    magics::{bishop_attacks, rook_attacks, BISHOP_M_SIZE},
     movelist::MoveList,
     moves::{Move, MoveType},
 };
+
+pub struct MoveGenerator {
+    pub king_table: [Bitboard; 64],
+    pub knight_table: [Bitboard; 64],
+    pub pawn_table: [[Bitboard; 64]; 2],
+    pub rook_table: Vec<Bitboard>,
+    pub bishop_table: Vec<Bitboard>,
+}
 
 pub const WHITE_KINGSIDE_SQUARES: Bitboard = Bitboard(0b1100000);
 pub const WHITE_QUEENSIDE_SQUARES: Bitboard = Bitboard(0b1110);
