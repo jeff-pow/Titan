@@ -88,6 +88,70 @@ fn print_search_stats(search_info: &SearchInfo, eval: i32, pv: &[Move]) {
     println!();
 }
 
+pub fn iterative_mtdf(search_info: &mut SearchInfo) -> Move {
+    let mut best_move = Move::NULL;
+    let mut pv_moves = Vec::new();
+
+    let mut recommended_time = Duration::ZERO;
+    match search_info.search_type {
+        SearchType::Time => {
+            recommended_time = search_info
+                .game_time
+                .recommended_time(search_info.board.to_move);
+        }
+        SearchType::Depth => (),
+        SearchType::Infinite => {
+            search_info.iter_max_depth = MAX_SEARCH_DEPTH;
+            search_info.max_depth = MAX_SEARCH_DEPTH;
+        }
+    }
+
+    search_info.search_stats.start = Instant::now();
+    search_info.iter_max_depth = 2;
+
+    let mut alpha = -INFINITY;
+    let mut beta = INFINITY;
+
+    while search_info.iter_max_depth <= search_info.max_depth {
+        search_info.sel_depth = search_info.iter_max_depth;
+        let board = &search_info.board.to_owned();
+        let eval = pvs(
+            search_info.iter_max_depth,
+            alpha,
+            beta,
+            &mut pv_moves,
+            search_info,
+            board,
+        );
+        if search_info.iter_max_depth >= 2 {
+            if eval > beta {
+                beta = INFINITY;
+            } else if eval < alpha {
+                alpha = -INFINITY;
+            } else {
+                alpha = eval - 34;
+                beta = eval + 34;
+                best_move = pv_moves[0];
+                assert!(best_move != Move::NULL);
+            }
+        }
+        print_search_stats(search_info, eval, &pv_moves);
+
+        if search_info.search_type == SearchType::Time
+            && search_info
+                .game_time
+                .reached_termination(search_info.search_stats.start, recommended_time)
+        {
+            break;
+        }
+        search_info.iter_max_depth += 1;
+    }
+
+    assert_ne!(best_move, Move::NULL);
+
+    best_move
+}
+
 const FUTIL_MARGIN: i32 = 200;
 const FUTIL_DEPTH: i8 = 1;
 const EXT_FUTIL_MARGIN: i32 = ROOK_PTS;
@@ -227,6 +291,8 @@ fn pvs(
         let mut node_pvs = Vec::new();
         let mut eval;
 
+        // TODO: Test whether or not aspiration windows are worth doing with pvs search
+        // do_pvs = false;
         if do_pvs {
             eval = -pvs(
                 depth - 1,
