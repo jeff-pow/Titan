@@ -286,7 +286,7 @@ fn pvs(
 
     search_info.transpos_table.insert(
         board.zobrist_hash,
-        TableEntry::new(depth, ply, entry_flag, alpha, best_move),
+        TableEntry::new(depth, ply, entry_flag, score, best_move),
     );
 
     score
