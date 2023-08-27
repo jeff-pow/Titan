@@ -265,16 +265,12 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
             Pawn => panic!(),
         };
         let enemies_and_vacancies = !board.color_occupancies(board.to_move);
-        let attacks = attack_bitboard & enemies_and_vacancies;
-        push_moves(&mut moves, attacks, sq);
+        let mut attacks = attack_bitboard & enemies_and_vacancies;
+        while attacks != Bitboard::EMPTY {
+            moves.push(Move::new(sq, attacks.pop_lsb(), None, MoveType::Normal));
+        }
     }
     moves
-}
-
-fn push_moves(moves: &mut MoveList, mut attacks: Bitboard, sq: Square) {
-    while attacks != Bitboard::EMPTY {
-        moves.push(Move::new(sq, attacks.pop_lsb(), None, MoveType::Normal));
-    }
 }
 
 /// Filters out moves that are silent for quiescence search
