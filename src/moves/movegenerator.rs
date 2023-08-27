@@ -255,12 +255,12 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
         let occupancies = board.occupancies();
         let attack_bitboard = match piece_name {
             King => board.mg.king_attacks(sq),
-            Queen => Bitboard(
-                board.mg.magics.rook_attacks(occupancies.0, sq.0)
-                    | board.mg.magics.bishop_attacks(occupancies.0, sq.0),
-            ),
-            Rook => Bitboard(board.mg.magics.rook_attacks(occupancies.0, sq.0)),
-            Bishop => Bitboard(board.mg.magics.bishop_attacks(occupancies.0, sq.0)),
+            Queen => {
+                board.mg.magics.rook_attacks(occupancies, sq)
+                    | board.mg.magics.bishop_attacks(occupancies, sq)
+            }
+            Rook => board.mg.magics.rook_attacks(occupancies, sq),
+            Bishop => board.mg.magics.bishop_attacks(occupancies, sq),
             Knight => board.mg.knight_attacks(sq),
             Pawn => panic!(),
         };

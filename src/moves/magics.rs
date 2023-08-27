@@ -84,21 +84,23 @@ impl Default for Magics {
 
 impl Magics {
     #[inline(always)]
-    pub fn bishop_attacks(&self, mut occupied: u64, square: u8) -> u64 {
-        let magic_entry: &SMagic = unsafe { self.bishop_magics.get_unchecked(square as usize) };
+    pub fn bishop_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
+        let mut occupied = occupied.0;
+        let magic_entry: &SMagic = unsafe { self.bishop_magics.get_unchecked(square.idx()) };
         occupied &= magic_entry.mask;
         occupied = occupied.wrapping_mul(magic_entry.magic);
         occupied = occupied.wrapping_shr(magic_entry.shift);
-        unsafe { *(magic_entry.ptr as *const u64).add(occupied as usize) }
+        unsafe { Bitboard(*(magic_entry.ptr as *const u64).add(occupied as usize)) }
     }
 
     #[inline(always)]
-    pub fn rook_attacks(&self, mut occupied: u64, square: u8) -> u64 {
-        let magic_entry: &SMagic = unsafe { self.rook_magics.get_unchecked(square as usize) };
+    pub fn rook_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
+        let mut occupied = occupied.0;
+        let magic_entry: &SMagic = unsafe { self.rook_magics.get_unchecked(square.idx()) };
         occupied &= magic_entry.mask;
         occupied = occupied.wrapping_mul(magic_entry.magic);
         occupied = occupied.wrapping_shr(magic_entry.shift);
-        unsafe { *(magic_entry.ptr as *const u64).add(occupied as usize) }
+        unsafe { Bitboard(*(magic_entry.ptr as *const u64).add(occupied as usize)) }
     }
 }
 

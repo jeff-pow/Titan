@@ -162,8 +162,8 @@ impl Board {
         let occupancy = self.occupancies();
         let pawn_attacks = self.mg.pawn_attacks(sq, attacker.opp());
         let knight_attacks = self.mg.knight_attacks(sq);
-        let bishop_attacks = Bitboard(self.mg.magics.bishop_attacks(occupancy.0, sq.0));
-        let rook_attacks = Bitboard(self.mg.magics.rook_attacks(occupancy.0, sq.0));
+        let bishop_attacks = self.mg.magics.bishop_attacks(occupancy, sq);
+        let rook_attacks = self.mg.magics.rook_attacks(occupancy, sq);
         let queen_attacks = rook_attacks | bishop_attacks;
         let king_attacks = self.mg.king_attacks(sq);
 
