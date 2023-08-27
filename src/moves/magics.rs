@@ -35,25 +35,23 @@ impl Rng {
 
 /// Size of the magic rook table.
 pub const ROOK_M_SIZE: usize = 102_400;
-static mut ROOK_MAGICS: [SMagic; 64] = [SMagic::init(); 64];
-static mut ROOK_TABLE: [Bitboard; ROOK_M_SIZE] = [Bitboard::EMPTY; ROOK_M_SIZE];
+const R_DELTAS: [Direction; 4] = [North, South, East, West];
 
 /// Size of the magic bishop table.
 pub const BISHOP_M_SIZE: usize = 5248;
-static mut BISHOP_MAGICS: [SMagic; 64] = [SMagic::init(); 64];
-static mut BISHOP_TABLE: [Bitboard; BISHOP_M_SIZE] = [Bitboard::EMPTY; BISHOP_M_SIZE];
-
 const B_DELTAS: [Direction; 4] = [SouthEast, SouthWest, NorthEast, NorthWest];
-const R_DELTAS: [Direction; 4] = [North, South, East, West];
 
 pub struct Magics {
+    #[allow(dead_code)]
     rook_table: Vec<Bitboard>,
     rook_magics: [SMagic; 64],
+    #[allow(dead_code)]
     bishop_table: Vec<Bitboard>,
     bishop_magics: [SMagic; 64],
 }
 
 impl Default for Magics {
+    #[cold]
     fn default() -> Self {
         unsafe {
             let mut rook_magics = [SMagic::init(); 64];
@@ -84,34 +82,6 @@ impl Default for Magics {
     }
 }
 
-#[cold]
-pub fn init_magics() {
-    unsafe {
-        gen_magic_board(
-            BISHOP_M_SIZE,
-            &B_DELTAS,
-            BISHOP_MAGICS.as_mut_ptr(),
-            BISHOP_TABLE.as_mut_ptr(),
-        );
-        gen_magic_board(
-            ROOK_M_SIZE,
-            &R_DELTAS,
-            ROOK_MAGICS.as_mut_ptr(),
-            ROOK_TABLE.as_mut_ptr(),
-        );
-    }
-}
-
-pub fn test() {
-    let magics = Magics::default();
-    let mut rng = Rng::default();
-    for sq in Square::iter() {
-        let i = rng.next_u64();
-        assert_eq!(magics.bishop_attacks(i, sq.0), bishop_attacks(i, sq.0));
-        assert_eq!(magics.rook_attacks(i, sq.0), rook_attacks(i, sq.0));
-    }
-}
-
 impl Magics {
     #[inline(always)]
     pub fn bishop_attacks(&self, mut occupied: u64, square: u8) -> u64 {
@@ -130,23 +100,6 @@ impl Magics {
         occupied = occupied.wrapping_shr(magic_entry.shift);
         unsafe { *(magic_entry.ptr as *const u64).add(occupied as usize) }
     }
-}
-#[inline(always)]
-pub fn bishop_attacks(mut occupied: u64, square: u8) -> u64 {
-    let magic_entry: &SMagic = unsafe { BISHOP_MAGICS.get_unchecked(square as usize) };
-    occupied &= magic_entry.mask;
-    occupied = occupied.wrapping_mul(magic_entry.magic);
-    occupied = occupied.wrapping_shr(magic_entry.shift);
-    unsafe { *(magic_entry.ptr as *const u64).add(occupied as usize) }
-}
-
-#[inline(always)]
-pub fn rook_attacks(mut occupied: u64, square: u8) -> u64 {
-    let magic_entry: &SMagic = unsafe { ROOK_MAGICS.get_unchecked(square as usize) };
-    occupied &= magic_entry.mask;
-    occupied = occupied.wrapping_mul(magic_entry.magic);
-    occupied = occupied.wrapping_shr(magic_entry.shift);
-    unsafe { *(magic_entry.ptr as *const u64).add(occupied as usize) }
 }
 
 /// Structure inside a `MagicTable` for a specific hash. For a certain square,

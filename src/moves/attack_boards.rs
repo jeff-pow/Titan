@@ -25,18 +25,6 @@ pub const RANK6: Bitboard = Bitboard(RANK1_U64 << 40);
 pub const RANK7: Bitboard = Bitboard(RANK1_U64 << 48);
 pub const RANK8: Bitboard = Bitboard(RANK1_U64 << 56);
 
-static mut KNIGHT_TABLE: [Bitboard; 64] = [Bitboard::EMPTY; 64];
-static mut KING_TABLE: [Bitboard; 64] = [Bitboard::EMPTY; 64];
-static mut PAWN_TABLE: [[Bitboard; 64]; 2] = [[Bitboard::EMPTY; 64]; 2];
-
-/// Non thread safe - this functions call's have to finish running before the program will
-/// successfully run w/o undefined behavior
-pub fn init_lookup_boards() {
-    gen_king_attack_boards();
-    gen_knight_attack_boards();
-    gen_pawn_attack_boards();
-}
-
 #[rustfmt::skip]
 pub(crate) fn gen_king_attack_boards() -> [Bitboard; 64] {
     let mut arr = [Bitboard::EMPTY; 64];
@@ -145,13 +133,12 @@ pub(crate) fn gen_pawn_attack_boards() -> [[Bitboard; 64]; 2] {
 #[cfg(test)]
 mod test_attack_boards {
     use crate::{
-        moves::{attack_boards::init_lookup_boards, movegenerator::MoveGenerator},
+        moves::movegenerator::MoveGenerator,
         types::{pieces::Color, square::Square},
     };
 
     #[test]
     fn test_pawn_attacks() {
-        init_lookup_boards();
         let mg = MoveGenerator::default();
         let p_sq = Square(40);
         assert_eq!(mg.pawn_attacks(p_sq, Color::Black), Square(33).bitboard());

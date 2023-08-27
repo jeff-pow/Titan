@@ -60,11 +60,9 @@ impl Board {
 #[cfg(test)]
 mod hashing_test {
     use crate::board::fen;
-    use crate::init::init;
 
     #[test]
     fn test_hashing() {
-        init();
         let board1 = fen::build_board(fen::STARTING_FEN);
         let board2 = fen::build_board("4r3/4k3/8/4K3/8/8/8/8 w - - 0 1");
         let board3 = fen::build_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");

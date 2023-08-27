@@ -224,7 +224,7 @@ fn pvs(
 
     search_info.search_stats.nodes_searched += 1;
 
-    let mut moves = generate_psuedolegal_moves(&search_info.mg, board);
+    let mut moves = generate_psuedolegal_moves(board);
     let mut legal_moves = 0;
     moves.score_move_list(ply, board, table_move, search_info);
 

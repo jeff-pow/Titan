@@ -16,7 +16,7 @@ use super::{
         gen_king_attack_boards, gen_knight_attack_boards, gen_pawn_attack_boards, RANK2, RANK3,
         RANK6, RANK7,
     },
-    magics::{bishop_attacks, rook_attacks, Magics, BISHOP_M_SIZE},
+    magics::Magics,
     movelist::MoveList,
     moves::{Move, MoveType},
 };
@@ -63,19 +63,19 @@ impl MoveGenerator {
 }
 
 /// Generates all moves with no respect to legality via leaving itself in check
-pub fn generate_psuedolegal_moves(mg: &MoveGenerator, board: &Board) -> MoveList {
+pub fn generate_psuedolegal_moves(board: &Board) -> MoveList {
     let mut moves = MoveList::default();
-    moves.append(&generate_bitboard_moves(mg, board, PieceName::Knight));
-    moves.append(&generate_bitboard_moves(mg, board, PieceName::King));
-    moves.append(&generate_bitboard_moves(mg, board, PieceName::Queen));
-    moves.append(&generate_bitboard_moves(mg, board, PieceName::Rook));
-    moves.append(&generate_bitboard_moves(mg, board, PieceName::Bishop));
+    moves.append(&generate_bitboard_moves(board, PieceName::Knight));
+    moves.append(&generate_bitboard_moves(board, PieceName::King));
+    moves.append(&generate_bitboard_moves(board, PieceName::Queen));
+    moves.append(&generate_bitboard_moves(board, PieceName::Rook));
+    moves.append(&generate_bitboard_moves(board, PieceName::Bishop));
     moves.append(&generate_pawn_moves(board));
-    moves.append(&generate_castling_moves(mg, board));
+    moves.append(&generate_castling_moves(board));
     moves
 }
 
-fn generate_castling_moves(mg: &MoveGenerator, board: &Board) -> MoveList {
+fn generate_castling_moves(board: &Board) -> MoveList {
     let mut moves = MoveList::default();
     let (kingside_vacancies, queenside_vacancies) = match board.to_move {
         Color::White => (WHITE_KINGSIDE_SQUARES, WHITE_QUEENSIDE_SQUARES),
@@ -246,7 +246,7 @@ fn generate_promotions(dest: Square, d: Direction, moves: &mut MoveList) {
     }
 }
 
-fn generate_bitboard_moves(mg: &MoveGenerator, board: &Board, piece_name: PieceName) -> MoveList {
+fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
     let mut moves = MoveList::default();
     // Don't calculate any moves if no pieces of that type exist for the given color
     let mut occ_bitboard = board.bitboards[board.to_move as usize][piece_name as usize];
@@ -256,11 +256,11 @@ fn generate_bitboard_moves(mg: &MoveGenerator, board: &Board, piece_name: PieceN
         let attack_bitboard = match piece_name {
             King => board.mg.king_attacks(sq),
             Queen => Bitboard(
-                mg.magics.rook_attacks(occupancies.0, sq.0)
-                    | mg.magics.bishop_attacks(occupancies.0, sq.0),
+                board.mg.magics.rook_attacks(occupancies.0, sq.0)
+                    | board.mg.magics.bishop_attacks(occupancies.0, sq.0),
             ),
-            Rook => Bitboard(mg.magics.rook_attacks(occupancies.0, sq.0)),
-            Bishop => Bitboard(mg.magics.bishop_attacks(occupancies.0, sq.0)),
+            Rook => Bitboard(board.mg.magics.rook_attacks(occupancies.0, sq.0)),
+            Bishop => Bitboard(board.mg.magics.bishop_attacks(occupancies.0, sq.0)),
             Knight => board.mg.knight_attacks(sq),
             Pawn => panic!(),
         };
@@ -279,7 +279,7 @@ fn push_moves(moves: &mut MoveList, mut attacks: Bitboard, sq: Square) {
 
 /// Filters out moves that are silent for quiescence search
 pub fn generate_psuedolegal_captures(board: &Board) -> MoveList {
-    let moves = generate_psuedolegal_moves(&board.mg, board);
+    let moves = generate_psuedolegal_moves(board);
     moves
         .iter()
         .filter(|m| board.occupancies().square_is_occupied(m.dest_square()))
@@ -288,7 +288,7 @@ pub fn generate_psuedolegal_captures(board: &Board) -> MoveList {
 
 /// Returns all legal moves
 pub fn generate_moves(board: &Board) -> MoveList {
-    generate_psuedolegal_moves(&board.mg, board)
+    generate_psuedolegal_moves(board)
         .iter()
         .filter(|m| {
             let mut new_b = board.to_owned();
@@ -304,47 +304,40 @@ mod movegen_tests {
     use crate::{
         board::fen::{self, build_board},
         engine::perft::{multi_threaded_perft, perft},
-        moves::movegenerator::MoveGenerator,
     };
 
     #[test]
     fn test_starting_pos() {
-        let mg = MoveGenerator::default();
         let board = build_board(fen::STARTING_FEN);
         assert_eq!(119_060_324, multi_threaded_perft(board, 6));
     }
 
     #[test]
     fn test_position_2() {
-        let mg = MoveGenerator::default();
         let board = build_board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
         assert_eq!(193_690_690, multi_threaded_perft(board, 5));
     }
 
     #[test]
     fn test_position_3() {
-        let mg = MoveGenerator::default();
         let board = build_board("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -");
         assert_eq!(11_030_083, multi_threaded_perft(board, 6));
     }
 
     #[test]
     fn test_position_4() {
-        let mg = MoveGenerator::default();
         let board = build_board("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
         assert_eq!(706_045_033, multi_threaded_perft(board, 6));
     }
 
     #[test]
     fn test_position_5() {
-        let mg = MoveGenerator::default();
         let board = build_board("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
         assert_eq!(89_941_194, multi_threaded_perft(board, 5));
     }
 
     #[test]
     fn test_position_6() {
-        let mg = MoveGenerator::default();
         let board =
             build_board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
         assert_eq!(164_075_551, perft(board, 5));
@@ -352,7 +345,6 @@ mod movegen_tests {
 
     #[test]
     fn test_multithread() {
-        let mg = MoveGenerator::default();
         let board =
             build_board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
         assert_eq!(164_075_551, multi_threaded_perft(board, 5));
@@ -361,7 +353,6 @@ mod movegen_tests {
     // http://www.rocechess.ch/perft.html
     #[test]
     fn test_position_7() {
-        let mg = MoveGenerator::default();
         let board = build_board("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1");
         assert_eq!(71_179_139, multi_threaded_perft(board, 6));
     }
