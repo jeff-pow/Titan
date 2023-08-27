@@ -23,6 +23,7 @@ pub fn main_loop() -> ! {
     let mut buffer = String::new();
     search_info.transpos_table = get_table();
     search_info.board = build_board(fen::STARTING_FEN);
+    println!("Go!");
 
     loop {
         buffer.clear();
@@ -57,9 +58,12 @@ pub fn main_loop() -> ! {
             dbg!(&search_info.board);
             search_info.board.debug_bitboards();
         } else if buffer.starts_with("go") {
-            search_info.game_time = parse_time(&buffer, &mut search_info);
-            search_info.search_type = SearchType::Infinite;
-            if buffer.contains("perft") {
+            if buffer.contains("wtime") {
+                search_info.search_type = SearchType::Time;
+                search_info.game_time = parse_time(&buffer, &mut search_info);
+                let m = pvs::search(&mut search_info);
+                println!("bestmove {}", m.to_lan());
+            } else if buffer.contains("perft") {
                 let mut iter = buffer.split_whitespace().skip(2);
                 let depth = iter.next().unwrap().parse::<i8>().unwrap();
                 multi_threaded_perft(search_info.board.to_owned(), depth);
@@ -79,6 +83,7 @@ pub fn main_loop() -> ! {
                     pvs::iterative_mtdf(&mut search_info).to_lan()
                 );
             } else {
+                search_info.search_type = SearchType::Infinite;
                 let m = pvs::search(&mut search_info);
                 println!("bestmove {}", m.to_lan());
             }
