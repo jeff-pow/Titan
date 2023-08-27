@@ -5,11 +5,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     moves::{
-        attack_boards::{king_attacks, knight_attacks, pawn_attacks},
-        magics::{bishop_attacks, rook_attacks},
-        moves::Castle,
-        moves::Direction::*,
-        moves::Move,
+        movegenerator::MoveGenerator, moves::Castle, moves::Direction::*, moves::Move,
         moves::Promotion,
     },
     types::{
@@ -41,6 +37,7 @@ pub struct Board {
     pub zobrist_hash: u64,
     pub history: SmallVec<[u64; 32]>,
     pub zobrist: Arc<Zobrist>,
+    pub mg: Arc<MoveGenerator>,
 }
 
 impl Default for Board {
@@ -64,6 +61,7 @@ impl Default for Board {
             zobrist_hash: 0,
             history: SmallVec::new(),
             zobrist: Arc::new(Zobrist::default()),
+            mg: Arc::new(MoveGenerator::default()),
         }
     }
 }
@@ -162,12 +160,12 @@ impl Board {
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
         let attacker_occupancy = self.bitboards[attacker as usize];
         let occupancy = self.occupancies();
-        let pawn_attacks = pawn_attacks(sq, attacker.opp());
-        let knight_attacks = knight_attacks(sq);
-        let bishop_attacks = Bitboard(bishop_attacks(occupancy.0, sq.0));
-        let rook_attacks = Bitboard(rook_attacks(occupancy.0, sq.0));
+        let pawn_attacks = self.mg.pawn_attacks(sq, attacker.opp());
+        let knight_attacks = self.mg.knight_attacks(sq);
+        let bishop_attacks = Bitboard(self.mg.magics.bishop_attacks(occupancy.0, sq.0));
+        let rook_attacks = Bitboard(self.mg.magics.rook_attacks(occupancy.0, sq.0));
         let queen_attacks = rook_attacks | bishop_attacks;
-        let king_attacks = king_attacks(sq);
+        let king_attacks = self.mg.king_attacks(sq);
 
         let king_attacks_overlap = king_attacks & attacker_occupancy[PieceName::King as usize];
         let queen_attacks_overlap = queen_attacks & attacker_occupancy[PieceName::Queen as usize];

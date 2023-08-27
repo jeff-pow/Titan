@@ -3,6 +3,7 @@ use std::{io, time::Duration};
 use itertools::Itertools;
 
 use crate::board::fen::parse_fen_from_buffer;
+use crate::moves::movegenerator::MoveGenerator;
 use crate::{
     board::{
         board::Board,

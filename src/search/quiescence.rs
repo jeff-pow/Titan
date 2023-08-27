@@ -1,5 +1,4 @@
 use crate::board::board::Board;
-use crate::moves::attack_boards::pawn_attacks;
 use crate::moves::movegenerator::generate_moves;
 use crate::moves::{movegenerator::generate_psuedolegal_captures, moves::Move};
 use crate::search::pvs::STALEMATE;
@@ -108,7 +107,7 @@ fn is_bad_capture(board: &Board, m: &Move) -> bool {
 
 fn is_pawn_recapture(board: &Board, sq: Square) -> bool {
     let attacker = board.to_move.opp();
-    let pawn_attacks = pawn_attacks(sq, board.to_move);
+    let pawn_attacks = board.mg.pawn_attacks(sq, board.to_move);
     if pawn_attacks & board.bitboards[attacker as usize][PieceName::Pawn as usize]
         != Bitboard::EMPTY
     {

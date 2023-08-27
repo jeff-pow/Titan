@@ -46,6 +46,44 @@ static mut BISHOP_TABLE: [Bitboard; BISHOP_M_SIZE] = [Bitboard::EMPTY; BISHOP_M_
 const B_DELTAS: [Direction; 4] = [SouthEast, SouthWest, NorthEast, NorthWest];
 const R_DELTAS: [Direction; 4] = [North, South, East, West];
 
+pub struct Magics {
+    rook_table: Vec<Bitboard>,
+    rook_magics: [SMagic; 64],
+    bishop_table: Vec<Bitboard>,
+    bishop_magics: [SMagic; 64],
+}
+
+impl Default for Magics {
+    fn default() -> Self {
+        unsafe {
+            let mut rook_magics = [SMagic::init(); 64];
+            let mut rook_table = Vec::with_capacity(ROOK_M_SIZE);
+            gen_magic_board(
+                ROOK_M_SIZE,
+                &R_DELTAS,
+                rook_magics.as_mut_ptr(),
+                rook_table.as_mut_ptr(),
+            );
+
+            let mut bishop_magics = [SMagic::init(); 64];
+            let mut bishop_table = Vec::with_capacity(BISHOP_M_SIZE);
+            gen_magic_board(
+                BISHOP_M_SIZE,
+                &B_DELTAS,
+                bishop_magics.as_mut_ptr(),
+                bishop_table.as_mut_ptr(),
+            );
+
+            Self {
+                rook_table,
+                rook_magics,
+                bishop_table,
+                bishop_magics,
+            }
+        }
+    }
+}
+
 #[cold]
 pub fn init_magics() {
     unsafe {
@@ -64,6 +102,35 @@ pub fn init_magics() {
     }
 }
 
+pub fn test() {
+    let magics = Magics::default();
+    let mut rng = Rng::default();
+    for sq in Square::iter() {
+        let i = rng.next_u64();
+        assert_eq!(magics.bishop_attacks(i, sq.0), bishop_attacks(i, sq.0));
+        assert_eq!(magics.rook_attacks(i, sq.0), rook_attacks(i, sq.0));
+    }
+}
+
+impl Magics {
+    #[inline(always)]
+    pub fn bishop_attacks(&self, mut occupied: u64, square: u8) -> u64 {
+        let magic_entry: &SMagic = unsafe { self.bishop_magics.get_unchecked(square as usize) };
+        occupied &= magic_entry.mask;
+        occupied = occupied.wrapping_mul(magic_entry.magic);
+        occupied = occupied.wrapping_shr(magic_entry.shift);
+        unsafe { *(magic_entry.ptr as *const u64).add(occupied as usize) }
+    }
+
+    #[inline(always)]
+    pub fn rook_attacks(&self, mut occupied: u64, square: u8) -> u64 {
+        let magic_entry: &SMagic = unsafe { self.rook_magics.get_unchecked(square as usize) };
+        occupied &= magic_entry.mask;
+        occupied = occupied.wrapping_mul(magic_entry.magic);
+        occupied = occupied.wrapping_shr(magic_entry.shift);
+        unsafe { *(magic_entry.ptr as *const u64).add(occupied as usize) }
+    }
+}
 #[inline(always)]
 pub fn bishop_attacks(mut occupied: u64, square: u8) -> u64 {
     let magic_entry: &SMagic = unsafe { BISHOP_MAGICS.get_unchecked(square as usize) };
@@ -85,7 +152,7 @@ pub fn rook_attacks(mut occupied: u64, square: u8) -> u64 {
 /// Structure inside a `MagicTable` for a specific hash. For a certain square,
 /// contains a mask,  magic number, number to shift by, and a pointer into the array slice
 /// where the position is held.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct SMagic {
     ptr: usize,
     mask: u64,

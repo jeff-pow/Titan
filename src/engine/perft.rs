@@ -2,11 +2,14 @@ use std::{sync::RwLock, time::Instant};
 
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
-use crate::{board::board::Board, moves::movegenerator::generate_moves};
+use crate::{
+    board::board::Board,
+    moves::movegenerator::{generate_moves, MoveGenerator},
+};
 
 #[allow(dead_code)]
 /// Counts and times the action of generating moves to a certain depth. Prints this information
-pub fn time_move_generation(board: &Board, depth: i8) {
+pub fn time_move_generation(board: &Board, depth: i8, mg: &MoveGenerator) {
     for i in 1..=depth {
         let start = Instant::now();
         print!("{}", count_moves(i, board));

@@ -18,10 +18,5 @@ fn main() {
     // search_info.iter_max_depth = 9;
     // search_info.search_type = crate::search::SearchType::Depth;
     // crate::search::pvs::search(&mut search_info);
-    let z = board::zobrist::Zobrist::default();
-    assert_ne!(
-        z.piece_square_hashes[0][0][0],
-        z.piece_square_hashes[1][2][1]
-    );
     main_loop();
 }

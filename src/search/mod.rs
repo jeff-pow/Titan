@@ -1,5 +1,6 @@
 use rustc_hash::FxHashMap;
 
+use crate::moves::movegenerator::MoveGenerator;
 use crate::moves::moves::Move;
 use crate::search::pvs::MAX_SEARCH_DEPTH;
 use crate::{board::board::Board, engine::transposition::TableEntry};
@@ -24,6 +25,7 @@ pub struct SearchInfo {
     pub max_depth: i8,
     pub killer_moves: KillerMoves,
     pub sel_depth: i8,
+    pub mg: MoveGenerator,
 }
 
 impl Default for SearchInfo {
@@ -38,6 +40,7 @@ impl Default for SearchInfo {
             max_depth: MAX_SEARCH_DEPTH,
             killer_moves: [[Move::NULL; NUM_KILLER_MOVES]; MAX_SEARCH_DEPTH as usize],
             sel_depth: 0,
+            mg: MoveGenerator::default(),
         }
     }
 }

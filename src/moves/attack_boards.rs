@@ -29,18 +29,6 @@ static mut KNIGHT_TABLE: [Bitboard; 64] = [Bitboard::EMPTY; 64];
 static mut KING_TABLE: [Bitboard; 64] = [Bitboard::EMPTY; 64];
 static mut PAWN_TABLE: [[Bitboard; 64]; 2] = [[Bitboard::EMPTY; 64]; 2];
 
-pub fn knight_attacks(square: Square) -> Bitboard {
-    unsafe { KNIGHT_TABLE[square.0 as usize] }
-}
-
-pub fn king_attacks(square: Square) -> Bitboard {
-    unsafe { KING_TABLE[square.0 as usize] }
-}
-
-pub fn pawn_attacks(square: Square, attacker: Color) -> Bitboard {
-    unsafe { PAWN_TABLE[attacker as usize][square.idx()] }
-}
-
 /// Non thread safe - this functions call's have to finish running before the program will
 /// successfully run w/o undefined behavior
 pub fn init_lookup_boards() {
@@ -50,9 +38,9 @@ pub fn init_lookup_boards() {
 }
 
 #[rustfmt::skip]
-fn gen_king_attack_boards() {
-    unsafe {
-        KING_TABLE.iter_mut().enumerate().for_each(|(sq, bitboard)| {
+pub(crate) fn gen_king_attack_boards() -> [Bitboard; 64] {
+    let mut arr = [Bitboard::EMPTY; 64];
+        arr.iter_mut().enumerate().for_each(|(sq, bitboard)| {
             let x = Square(sq as u8).file();
             let y = Square(sq as u8).rank();
             if y >= 1 {
@@ -70,7 +58,7 @@ fn gen_king_attack_boards() {
                 if x <= 6 { *bitboard |= Bitboard(1 << (sq as u32 + 9)); }
             }
         });
-    }
+    arr
 }
 
 /// Movement chords are defined by a combination of three cardinal directions - ex West West North
@@ -104,9 +92,9 @@ impl KnightMovement {
 }
 
 #[rustfmt::skip]
-fn gen_knight_attack_boards() {
-    unsafe {
-        KNIGHT_TABLE.iter_mut().enumerate().for_each(|(sq, bitboard)| {
+pub(crate) fn gen_knight_attack_boards() -> [Bitboard; 64] {
+    let mut arr = [Bitboard::EMPTY; 64];
+        arr.iter_mut().enumerate().for_each(|(sq, bitboard)| {
             let current_rank = Square(sq as u8).rank();
             let current_file = Square(sq as u8).file();
             for mv in KnightMovement::iter() {
@@ -126,54 +114,56 @@ fn gen_knight_attack_boards() {
                 }
             }
         });
-    }
+    arr
 }
 
-fn gen_pawn_attack_boards() {
-    unsafe {
-        for sq in Square::iter() {
-            let bb_square = sq.bitboard();
-            let mut w = Bitboard::EMPTY;
-            if let Some(w1) = bb_square.checked_shift(NorthEast) {
-                w |= w1;
-            }
-            if let Some(w2) = bb_square.checked_shift(NorthWest) {
-                w |= w2;
-            }
-            PAWN_TABLE[Color::White as usize][sq.idx()] = w;
-            let mut b = Bitboard::EMPTY;
-            if let Some(b1) = bb_square.checked_shift(SouthWest) {
-                b |= b1;
-            }
-            if let Some(b2) = bb_square.checked_shift(SouthEast) {
-                b |= b2;
-            }
-            PAWN_TABLE[Color::Black as usize][sq.idx()] = b;
+pub(crate) fn gen_pawn_attack_boards() -> [[Bitboard; 64]; 2] {
+    let mut arr = [[Bitboard::EMPTY; 64]; 2];
+    for sq in Square::iter() {
+        let bb_square = sq.bitboard();
+        let mut w = Bitboard::EMPTY;
+        if let Some(w1) = bb_square.checked_shift(NorthEast) {
+            w |= w1;
         }
+        if let Some(w2) = bb_square.checked_shift(NorthWest) {
+            w |= w2;
+        }
+        arr[Color::White as usize][sq.idx()] = w;
+
+        let mut b = Bitboard::EMPTY;
+        if let Some(b1) = bb_square.checked_shift(SouthWest) {
+            b |= b1;
+        }
+        if let Some(b2) = bb_square.checked_shift(SouthEast) {
+            b |= b2;
+        }
+        arr[Color::Black as usize][sq.idx()] = b;
     }
+    arr
 }
 
 #[cfg(test)]
 mod test_attack_boards {
     use crate::{
-        moves::attack_boards::{init_lookup_boards, pawn_attacks},
+        moves::{attack_boards::init_lookup_boards, movegenerator::MoveGenerator},
         types::{pieces::Color, square::Square},
     };
 
     #[test]
     fn test_pawn_attacks() {
         init_lookup_boards();
+        let mg = MoveGenerator::default();
         let p_sq = Square(40);
-        assert_eq!(pawn_attacks(p_sq, Color::Black), Square(33).bitboard());
-        assert_eq!(pawn_attacks(p_sq, Color::White), Square(49).bitboard());
+        assert_eq!(mg.pawn_attacks(p_sq, Color::Black), Square(33).bitboard());
+        assert_eq!(mg.pawn_attacks(p_sq, Color::White), Square(49).bitboard());
 
         let p_sq = Square(19);
         assert_eq!(
-            pawn_attacks(p_sq, Color::Black),
+            mg.pawn_attacks(p_sq, Color::Black),
             (Square(10).bitboard() | Square(12).bitboard())
         );
         assert_eq!(
-            pawn_attacks(p_sq, Color::White),
+            mg.pawn_attacks(p_sq, Color::White),
             (Square(26).bitboard() | Square(28).bitboard())
         );
     }
