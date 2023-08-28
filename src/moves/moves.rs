@@ -236,15 +236,11 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
         _ => Castle::None,
     };
     let castle = castle != Castle::None;
-    let en_passant = {
-        piece_moving == PieceName::Pawn
-            && captured.is_none()
-        && start_column != end_column
-    };
+    let en_passant =
+        { piece_moving == PieceName::Pawn && captured.is_none() && start_column != end_column };
     let move_type = get_move_type(promotion.is_some(), en_passant, castle);
     Move::new(origin_sq, dest_sq, promotion, move_type)
 }
-
 
 #[derive(Clone, Copy, Debug, EnumIter, PartialEq)]
 pub enum Promotion {

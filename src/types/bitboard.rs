@@ -29,7 +29,6 @@ impl Bitboard {
     }
 
     #[inline(always)]
-    #[allow(dead_code)]
     pub fn square_is_empty(&self, sq: Square) -> bool {
         !self.square_is_occupied(sq)
     }
