@@ -109,8 +109,9 @@ pub fn asp_windows(search_info: &mut SearchInfo) -> Move {
     search_info.search_stats.start = Instant::now();
     search_info.iter_max_depth = 2;
 
-    let mut alpha = -INFINITY;
-    let mut beta = INFINITY;
+    let eval = eval(&search_info.board);
+    let mut alpha = eval - 34;
+    let mut beta = eval + 34;
 
     while search_info.iter_max_depth <= search_info.max_depth {
         search_info.sel_depth = search_info.iter_max_depth;
@@ -123,7 +124,7 @@ pub fn asp_windows(search_info: &mut SearchInfo) -> Move {
             search_info,
             board,
         );
-        // let eval = mtdf::alpha_beta(
+        // let eval = crate::search::mtdf::alpha_beta(
         //     search_info.iter_max_depth,
         //     alpha,
         //     beta,
@@ -131,16 +132,23 @@ pub fn asp_windows(search_info: &mut SearchInfo) -> Move {
         //     search_info,
         //     board,
         // );
+
         if search_info.iter_max_depth >= 2 {
             if eval > beta {
                 beta = INFINITY;
             } else if eval < alpha {
                 alpha = -INFINITY;
             } else {
-                alpha = eval - 34;
-                beta = eval + 34;
-                best_move = pv_moves[0];
-                assert!(best_move != Move::NULL);
+                if pv_moves.is_empty() {
+                    alpha = -INFINITY;
+                    beta = INFINITY;
+                    continue;
+                } else if !pv_moves.is_empty() && pv_moves[0] != Move::NULL {
+                    alpha = eval - 34;
+                    beta = eval + 34;
+                    best_move = pv_moves[0];
+                }
+                search_info.iter_max_depth += 1;
             }
         }
         print_search_stats(search_info, eval, &pv_moves);
@@ -152,7 +160,6 @@ pub fn asp_windows(search_info: &mut SearchInfo) -> Move {
         {
             break;
         }
-        search_info.iter_max_depth += 1;
     }
 
     assert_ne!(best_move, Move::NULL);
