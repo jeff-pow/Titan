@@ -15,6 +15,7 @@ pub mod mtdf;
 pub(crate) mod pvs;
 pub(crate) mod quiescence;
 pub(crate) mod search_stats;
+mod alpha_beta;
 
 pub struct SearchInfo {
     pub board: Board,

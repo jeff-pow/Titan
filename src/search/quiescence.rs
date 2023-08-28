@@ -57,8 +57,6 @@ pub fn quiescence(
         moves.sort_next_move(i);
         let m = moves.get_move(i);
         new_b.make_move(m);
-        // Just generate psuedolegal moves to save computation time on checks for moves that will be
-        // pruned
         if new_b.side_in_check(board.to_move) {
             continue;
         }

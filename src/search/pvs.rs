@@ -17,7 +17,7 @@ pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 9999999;
 pub const MAX_SEARCH_DEPTH: i8 = 100;
 
-pub fn search(search_info: &mut SearchInfo) -> Move {
+pub fn iterative_deepening(search_info: &mut SearchInfo) -> Move {
     let mut best_move = Move::NULL;
     let mut pv_moves = Vec::new();
 
@@ -71,7 +71,7 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
     best_move
 }
 
-fn print_search_stats(search_info: &SearchInfo, eval: i32, pv: &[Move]) {
+pub fn print_search_stats(search_info: &SearchInfo, eval: i32, pv: &[Move]) {
     print!(
         "info time {} seldepth {} depth {} nodes {} nps {} score cp {} pv ",
         search_info.search_stats.start.elapsed().as_millis(),
@@ -167,12 +167,12 @@ pub fn asp_windows(search_info: &mut SearchInfo) -> Move {
     best_move
 }
 
-const FUTIL_MARGIN: i32 = 200;
-const FUTIL_DEPTH: i8 = 1;
-const EXT_FUTIL_MARGIN: i32 = ROOK_PTS;
-const EXT_FUTIL_DEPTH: i8 = 2;
-const RAZOR_MARGIN: i32 = QUEEN_PTS;
-const RAZORING_DEPTH: i8 = 3;
+pub const FUTIL_MARGIN: i32 = 200;
+pub const FUTIL_DEPTH: i8 = 1;
+pub const EXT_FUTIL_MARGIN: i32 = ROOK_PTS;
+pub const EXT_FUTIL_DEPTH: i8 = 2;
+pub const RAZOR_MARGIN: i32 = QUEEN_PTS;
+pub const RAZORING_DEPTH: i8 = 3;
 
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
 /// to refute other variations
@@ -192,16 +192,15 @@ fn pvs(
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
         if board.side_in_check(board.to_move) {
-            let mut node_pvs = Vec::new();
-            return quiescence(ply, alpha, beta, &mut node_pvs, search_info, board);
+            return quiescence(ply, alpha, beta, pv, search_info, board);
         }
         return eval(board);
     }
 
+    if board.is_draw() {
+        return STALEMATE;
+    }
     if ply > 0 {
-        if board.is_draw() {
-            return STALEMATE;
-        }
 
         // Determines if there is a faster path to checkmate than evaluating the current node, and
         // if there is, it returns early
@@ -250,24 +249,21 @@ fn pvs(
     if !in_check && depth == FUTIL_DEPTH && search_info.iter_max_depth > FUTIL_DEPTH {
         let eval = eval(board);
         if eval + FUTIL_MARGIN < alpha {
-            let mut node_pvs = Vec::new();
-            return quiescence(ply, alpha, beta, &mut node_pvs, search_info, board);
+            return quiescence(ply, alpha, beta, pv, search_info, board);
         }
     }
 
     if !in_check && depth == EXT_FUTIL_DEPTH && search_info.iter_max_depth > EXT_FUTIL_DEPTH {
         let eval = eval(board);
         if eval + EXT_FUTIL_MARGIN < alpha {
-            let mut node_pvs = Vec::new();
-            return quiescence(ply, alpha, beta, &mut node_pvs, search_info, board);
+            return quiescence(ply, alpha, beta, pv, search_info, board);
         }
     }
 
     if !in_check && depth == RAZORING_DEPTH && search_info.iter_max_depth > RAZORING_DEPTH {
         let eval = eval(board);
         if eval + RAZOR_MARGIN < alpha {
-            let mut node_pvs = Vec::new();
-            return quiescence(ply, alpha, beta, &mut node_pvs, search_info, board);
+            return quiescence(ply, alpha, beta, pv, search_info, board);
         }
     }
 
@@ -306,8 +302,6 @@ fn pvs(
         let mut node_pvs = Vec::new();
         let mut eval;
 
-        // TODO: Test whether or not aspiration windows are worth doing with pvs search
-        // do_pvs = false;
         if do_pvs {
             eval = -pvs(
                 depth - 1,
@@ -375,7 +369,6 @@ fn pvs(
 
 /// Arbitrary value determining if a side is in endgame yet
 const ENDGAME_THRESHOLD: i32 = 1750;
-#[allow(dead_code)]
 fn null_ok(board: &Board) -> bool {
     board.material_val[board.to_move as usize] > ENDGAME_THRESHOLD
         && board.material_val[board.to_move.opp() as usize] > ENDGAME_THRESHOLD
