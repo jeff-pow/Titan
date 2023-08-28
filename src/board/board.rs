@@ -225,8 +225,6 @@ impl Board {
             }
         }
 
-        let d = m.origin_square();
-        let x = m.dest_square();
         let piece_moving = self
             .piece_at(m.origin_square())
             .expect("There should be a piece here");

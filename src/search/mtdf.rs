@@ -36,25 +36,25 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
     }
 
     search_info.search_stats.start = Instant::now();
-    search_info.iter_max_depth = 1;
+    search_info.iter_max_depth = 2;
+    let mut prev_iter_score = 0;
 
     while search_info.iter_max_depth <= search_info.max_depth {
         search_info.sel_depth = search_info.iter_max_depth;
 
         let board = &search_info.board.to_owned();
-        let eval = pvs(
+        let g = mtdf(
+            prev_iter_score,
             search_info.iter_max_depth,
-            -INFINITY,
-            INFINITY,
             &mut pv_moves,
-            search_info,
             board,
+            search_info,
         );
-
+        prev_iter_score = g;
         if !pv_moves.is_empty() {
             best_move = pv_moves[0];
         }
-        print_search_stats(search_info, eval, &pv_moves);
+        print_search_stats(search_info, g, &pv_moves);
 
         if search_info.search_type == SearchType::Time
             && search_info
@@ -69,6 +69,31 @@ pub fn search(search_info: &mut SearchInfo) -> Move {
     assert_ne!(best_move, Move::NULL);
 
     best_move
+}
+
+fn mtdf(
+    guess: i32,
+    depth: i8,
+    pv: &mut Vec<Move>,
+    board: &Board,
+    search_info: &mut SearchInfo,
+) -> i32 {
+    let mut g = guess;
+    let mut upperbound = INFINITY;
+    let mut lowerbound = -INFINITY;
+    loop {
+        let beta = if g == lowerbound { g + 1 } else { g };
+        g = alpha_beta(depth, beta - 1, beta, pv, search_info, board);
+        if g < beta {
+            upperbound = g
+        } else {
+            lowerbound = g
+        };
+        if lowerbound >= upperbound {
+            break;
+        }
+    }
+    g
 }
 
 fn print_search_stats(search_info: &SearchInfo, eval: i32, pv: &[Move]) {
@@ -88,78 +113,6 @@ fn print_search_stats(search_info: &SearchInfo, eval: i32, pv: &[Move]) {
     println!();
 }
 
-pub fn asp_windows(search_info: &mut SearchInfo) -> Move {
-    let mut best_move = Move::NULL;
-    let mut pv_moves = Vec::new();
-
-    let mut recommended_time = Duration::ZERO;
-    match search_info.search_type {
-        SearchType::Time => {
-            recommended_time = search_info
-                .game_time
-                .recommended_time(search_info.board.to_move);
-        }
-        SearchType::Depth => (),
-        SearchType::Infinite => {
-            search_info.iter_max_depth = MAX_SEARCH_DEPTH;
-            search_info.max_depth = MAX_SEARCH_DEPTH;
-        }
-    }
-
-    search_info.search_stats.start = Instant::now();
-    search_info.iter_max_depth = 2;
-
-    let mut alpha = -INFINITY;
-    let mut beta = INFINITY;
-
-    while search_info.iter_max_depth <= search_info.max_depth {
-        search_info.sel_depth = search_info.iter_max_depth;
-        let board = &search_info.board.to_owned();
-        let eval = pvs(
-            search_info.iter_max_depth,
-            alpha,
-            beta,
-            &mut pv_moves,
-            search_info,
-            board,
-        );
-        // let eval = mtdf::alpha_beta(
-        //     search_info.iter_max_depth,
-        //     alpha,
-        //     beta,
-        //     &mut pv_moves,
-        //     search_info,
-        //     board,
-        // );
-        if search_info.iter_max_depth >= 2 {
-            if eval > beta {
-                beta = INFINITY;
-            } else if eval < alpha {
-                alpha = -INFINITY;
-            } else {
-                alpha = eval - 34;
-                beta = eval + 34;
-                best_move = pv_moves[0];
-                assert!(best_move != Move::NULL);
-            }
-        }
-        print_search_stats(search_info, eval, &pv_moves);
-
-        if search_info.search_type == SearchType::Time
-            && search_info
-                .game_time
-                .reached_termination(search_info.search_stats.start, recommended_time)
-        {
-            break;
-        }
-        search_info.iter_max_depth += 1;
-    }
-
-    assert_ne!(best_move, Move::NULL);
-
-    best_move
-}
-
 const FUTIL_MARGIN: i32 = 200;
 const FUTIL_DEPTH: i8 = 1;
 const EXT_FUTIL_MARGIN: i32 = ROOK_PTS;
@@ -169,7 +122,7 @@ const RAZORING_DEPTH: i8 = 3;
 
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
 /// to refute other variations
-fn pvs(
+pub(super) fn alpha_beta(
     mut depth: i8,
     mut alpha: i32,
     beta: i32,
@@ -180,8 +133,6 @@ fn pvs(
     let ply = search_info.iter_max_depth - depth;
     let is_root = ply == 0;
     search_info.sel_depth = search_info.sel_depth.max(ply);
-    // Don't do pvs unless you have a pv - otherwise you're wasting time
-    let mut do_pvs = false;
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
         if board.side_in_check(board.to_move) {
@@ -287,8 +238,6 @@ fn pvs(
         moves.sort_next_move(i);
         let m = moves.get_move(i);
         new_b.make_move(m);
-        let _s = m.to_lan();
-        let _c = moves.get_score(i);
         // Just generate psuedolegal moves to save computation time on legality for moves that will be
         // pruned
         if new_b.side_in_check(board.to_move) {
@@ -297,25 +246,8 @@ fn pvs(
         legal_moves += 1;
 
         let mut node_pvs = Vec::new();
-        let mut eval;
 
-        // TODO: Test whether or not aspiration windows are worth doing with pvs search
-        // do_pvs = false;
-        if do_pvs {
-            eval = -pvs(
-                depth - 1,
-                -alpha - 1,
-                -alpha,
-                &mut node_pvs,
-                search_info,
-                &new_b,
-            );
-            if eval > alpha && alpha < beta {
-                eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
-            }
-        } else {
-            eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
-        }
+        let eval = -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
 
         if eval > score {
             score = eval;
@@ -341,7 +273,6 @@ fn pvs(
             alpha = eval;
             entry_flag = EntryFlag::Exact;
             // A principal variation has been found, so we can do pvs on the remaining nodes of this level
-            do_pvs = true;
             pv.clear();
             pv.push(*m);
             pv.append(&mut node_pvs);

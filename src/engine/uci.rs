@@ -3,6 +3,7 @@ use std::{io, time::Duration};
 use itertools::Itertools;
 
 use crate::board::fen::parse_fen_from_buffer;
+use crate::search::mtdf;
 use crate::{
     board::{
         board::Board,
@@ -57,6 +58,9 @@ pub fn main_loop() -> ! {
         } else if buffer.eq("dbg\n") {
             dbg!(&search_info.board);
             search_info.board.debug_bitboards();
+        } else if buffer.starts_with("clear") {
+            search_info.transpos_table.clear();
+            println!("Transposition table cleared");
         } else if buffer.starts_with("go") {
             if buffer.contains("wtime") {
                 search_info.search_type = SearchType::Time;
@@ -78,10 +82,13 @@ pub fn main_loop() -> ! {
                 let depth = iter.next().unwrap().parse::<i8>().unwrap();
                 search_info.max_depth = depth;
                 search_info.search_type = SearchType::Depth;
-                println!(
-                    "bestmove {}",
-                    pvs::iterative_mtdf(&mut search_info).to_lan()
-                );
+                println!("bestmove {}", mtdf::search(&mut search_info).to_lan());
+            } else if buffer.contains("asp") {
+                let mut iter = buffer.split_whitespace().skip(2);
+                let depth = iter.next().unwrap().parse::<i8>().unwrap();
+                search_info.max_depth = depth;
+                search_info.search_type = SearchType::Depth;
+                println!("bestmove {}", pvs::asp_windows(&mut search_info).to_lan());
             } else {
                 search_info.search_type = SearchType::Infinite;
                 let m = pvs::search(&mut search_info);
