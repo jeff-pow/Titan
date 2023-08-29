@@ -76,7 +76,10 @@ pub fn main_loop() -> ! {
                 let depth = iter.next().unwrap().parse::<i8>().unwrap();
                 search_info.max_depth = depth;
                 search_info.search_type = SearchType::Depth;
-                println!("bestmove {}", pvs::iterative_deepening(&mut search_info).to_lan());
+                println!(
+                    "bestmove {}",
+                    pvs::iterative_deepening(&mut search_info).to_lan()
+                );
             } else if buffer.contains("mtdf") {
                 let mut iter = buffer.split_whitespace().skip(2);
                 let depth = iter.next().unwrap().parse::<i8>().unwrap();

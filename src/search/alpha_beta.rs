@@ -4,7 +4,10 @@ use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::moves::Move;
 use crate::search::eval::eval;
 use crate::search::killers::store_killer_move;
-use crate::search::pvs::{CHECKMATE, EXT_FUTIL_DEPTH, EXT_FUTIL_MARGIN, FUTIL_DEPTH, FUTIL_MARGIN, INFINITY, MAX_SEARCH_DEPTH, RAZOR_MARGIN, RAZORING_DEPTH, STALEMATE};
+use crate::search::pvs::{
+    CHECKMATE, EXT_FUTIL_DEPTH, EXT_FUTIL_MARGIN, FUTIL_DEPTH, FUTIL_MARGIN, INFINITY,
+    MAX_SEARCH_DEPTH, RAZORING_DEPTH, RAZOR_MARGIN, STALEMATE,
+};
 use crate::search::quiescence::quiescence;
 use crate::search::SearchInfo;
 

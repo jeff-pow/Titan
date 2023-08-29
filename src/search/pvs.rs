@@ -201,7 +201,6 @@ fn pvs(
         return STALEMATE;
     }
     if ply > 0 {
-
         // Determines if there is a faster path to checkmate than evaluating the current node, and
         // if there is, it returns early
         let alpha = alpha.max(-CHECKMATE + ply as i32);

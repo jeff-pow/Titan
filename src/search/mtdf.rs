@@ -5,7 +5,7 @@ use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::moves::Move;
 use crate::search::alpha_beta::alpha_beta;
-use crate::search::pvs::{INFINITY, MAX_SEARCH_DEPTH, print_search_stats};
+use crate::search::pvs::{print_search_stats, INFINITY, MAX_SEARCH_DEPTH};
 use crate::types::pieces::{QUEEN_PTS, ROOK_PTS};
 
 use super::eval::eval;
