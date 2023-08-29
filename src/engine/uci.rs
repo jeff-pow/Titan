@@ -3,7 +3,8 @@ use std::{io, time::Duration};
 use itertools::Itertools;
 
 use crate::board::fen::parse_fen_from_buffer;
-use crate::search::mtdf;
+use crate::search::mtdf::{self, mtdf_pvs};
+use crate::search::pvs::{asp_alpha_beta, asp_pvs};
 use crate::{
     board::{
         board::Board,
@@ -65,7 +66,7 @@ pub fn main_loop() -> ! {
             if buffer.contains("wtime") {
                 search_info.search_type = SearchType::Time;
                 search_info.game_time = parse_time(&buffer, &mut search_info);
-                let m = pvs::iterative_deepening(&mut search_info);
+                let m = pvs::pvs_search(&mut search_info);
                 println!("bestmove {}", m.to_lan());
             } else if buffer.contains("perft") {
                 let mut iter = buffer.split_whitespace().skip(2);
@@ -76,25 +77,34 @@ pub fn main_loop() -> ! {
                 let depth = iter.next().unwrap().parse::<i8>().unwrap();
                 search_info.max_depth = depth;
                 search_info.search_type = SearchType::Depth;
-                println!(
-                    "bestmove {}",
-                    pvs::iterative_deepening(&mut search_info).to_lan()
-                );
-            } else if buffer.contains("mtdf") {
+                println!("bestmove {}", pvs::pvs_search(&mut search_info).to_lan());
+            } else if buffer.contains("mtdfpvs") {
                 let mut iter = buffer.split_whitespace().skip(2);
                 let depth = iter.next().unwrap().parse::<i8>().unwrap();
                 search_info.max_depth = depth;
                 search_info.search_type = SearchType::Depth;
-                println!("bestmove {}", mtdf::search(&mut search_info).to_lan());
-            } else if buffer.contains("asp") {
+                println!("bestmove {}", mtdf_pvs(&mut search_info).to_lan());
+            } else if buffer.contains("mtdfalpha") {
                 let mut iter = buffer.split_whitespace().skip(2);
                 let depth = iter.next().unwrap().parse::<i8>().unwrap();
                 search_info.max_depth = depth;
                 search_info.search_type = SearchType::Depth;
-                println!("bestmove {}", pvs::asp_windows(&mut search_info).to_lan());
+                println!("bestmove {}", mtdf::mtdf_search(&mut search_info).to_lan());
+            } else if buffer.contains("aspalpha") {
+                let mut iter = buffer.split_whitespace().skip(2);
+                let depth = iter.next().unwrap().parse::<i8>().unwrap();
+                search_info.max_depth = depth;
+                search_info.search_type = SearchType::Depth;
+                println!("bestmove {}", asp_alpha_beta(&mut search_info).to_lan());
+            } else if buffer.contains("asppvs") {
+                let mut iter = buffer.split_whitespace().skip(2);
+                let depth = iter.next().unwrap().parse::<i8>().unwrap();
+                search_info.max_depth = depth;
+                search_info.search_type = SearchType::Depth;
+                println!("bestmove {}", asp_pvs(&mut search_info).to_lan());
             } else {
                 search_info.search_type = SearchType::Infinite;
-                let m = pvs::iterative_deepening(&mut search_info);
+                let m = pvs::pvs_search(&mut search_info);
                 println!("bestmove {}", m.to_lan());
             }
         } else if buffer.starts_with("stop") || buffer.starts_with("quit") {

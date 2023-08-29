@@ -114,11 +114,8 @@ pub fn alpha_beta(
         legal_moves += 1;
 
         let mut node_pvs = Vec::new();
-        let mut eval;
 
-        // TODO: Test whether or not aspiration windows are worth doing with pvs search
-        // do_pvs = false;
-        eval = -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
+        let eval = -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
 
         if eval > score {
             score = eval;

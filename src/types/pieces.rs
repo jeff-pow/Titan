@@ -44,7 +44,7 @@ pub fn value(piece_name: Option<PieceName>) -> i32 {
 
 impl PieceName {
     #[inline(always)]
-    pub fn value(&self) -> i32 {
+    pub const fn value(&self) -> i32 {
         match self {
             PieceName::King => KING_PTS,
             PieceName::Queen => QUEEN_PTS,

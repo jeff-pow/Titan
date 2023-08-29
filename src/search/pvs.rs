@@ -4,7 +4,8 @@ use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::moves::Move;
-use crate::types::pieces::{QUEEN_PTS, ROOK_PTS};
+use crate::search::alpha_beta;
+use crate::types::pieces::{PieceName, QUEEN_PTS, ROOK_PTS};
 
 use super::eval::eval;
 use super::killers::store_killer_move;
@@ -17,7 +18,7 @@ pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 9999999;
 pub const MAX_SEARCH_DEPTH: i8 = 100;
 
-pub fn iterative_deepening(search_info: &mut SearchInfo) -> Move {
+pub fn pvs_search(search_info: &mut SearchInfo) -> Move {
     let mut best_move = Move::NULL;
     let mut pv_moves = Vec::new();
 
@@ -88,7 +89,78 @@ pub fn print_search_stats(search_info: &SearchInfo, eval: i32, pv: &[Move]) {
     println!();
 }
 
-pub fn asp_windows(search_info: &mut SearchInfo) -> Move {
+pub fn asp_alpha_beta(search_info: &mut SearchInfo) -> Move {
+    let mut best_move = Move::NULL;
+    let mut pv_moves = Vec::new();
+
+    let mut recommended_time = Duration::ZERO;
+    match search_info.search_type {
+        SearchType::Time => {
+            recommended_time = search_info
+                .game_time
+                .recommended_time(search_info.board.to_move);
+        }
+        SearchType::Depth => (),
+        SearchType::Infinite => {
+            search_info.iter_max_depth = MAX_SEARCH_DEPTH;
+            search_info.max_depth = MAX_SEARCH_DEPTH;
+        }
+    }
+
+    search_info.search_stats.start = Instant::now();
+    search_info.iter_max_depth = 2;
+
+    let eval = eval(&search_info.board);
+    let mut alpha = eval - 34;
+    let mut beta = eval + 34;
+
+    while search_info.iter_max_depth <= search_info.max_depth {
+        search_info.sel_depth = search_info.iter_max_depth;
+        let board = &search_info.board.to_owned();
+        let eval = alpha_beta::alpha_beta(
+            search_info.iter_max_depth,
+            alpha,
+            beta,
+            &mut pv_moves,
+            search_info,
+            board,
+        );
+
+        if search_info.iter_max_depth >= 2 {
+            if eval > beta {
+                beta = INFINITY;
+            } else if eval < alpha {
+                alpha = -INFINITY;
+            } else {
+                if pv_moves.is_empty() {
+                    alpha = -INFINITY;
+                    beta = INFINITY;
+                    continue;
+                } else if !pv_moves.is_empty() && pv_moves[0] != Move::NULL {
+                    alpha = eval - 34;
+                    beta = eval + 34;
+                    best_move = pv_moves[0];
+                }
+                search_info.iter_max_depth += 1;
+            }
+        }
+        print_search_stats(search_info, eval, &pv_moves);
+
+        if search_info.search_type == SearchType::Time
+            && search_info
+                .game_time
+                .reached_termination(search_info.search_stats.start, recommended_time)
+        {
+            break;
+        }
+    }
+
+    assert_ne!(best_move, Move::NULL);
+
+    best_move
+}
+
+pub fn asp_pvs(search_info: &mut SearchInfo) -> Move {
     let mut best_move = Move::NULL;
     let mut pv_moves = Vec::new();
 
@@ -124,14 +196,6 @@ pub fn asp_windows(search_info: &mut SearchInfo) -> Move {
             search_info,
             board,
         );
-        // let eval = crate::search::mtdf::alpha_beta(
-        //     search_info.iter_max_depth,
-        //     alpha,
-        //     beta,
-        //     &mut pv_moves,
-        //     search_info,
-        //     board,
-        // );
 
         if search_info.iter_max_depth >= 2 {
             if eval > beta {
@@ -176,7 +240,7 @@ pub const RAZORING_DEPTH: i8 = 3;
 
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
 /// to refute other variations
-fn pvs(
+pub(crate) fn pvs(
     mut depth: i8,
     mut alpha: i32,
     beta: i32,
@@ -367,7 +431,8 @@ fn pvs(
 }
 
 /// Arbitrary value determining if a side is in endgame yet
-const ENDGAME_THRESHOLD: i32 = 1750;
+const ENDGAME_THRESHOLD: i32 =
+    PieceName::Queen.value() + PieceName::Rook.value() + PieceName::Bishop.value();
 fn null_ok(board: &Board) -> bool {
     board.material_val[board.to_move as usize] > ENDGAME_THRESHOLD
         && board.material_val[board.to_move.opp() as usize] > ENDGAME_THRESHOLD
