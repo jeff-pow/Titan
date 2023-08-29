@@ -4,7 +4,7 @@ use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::moves::Move;
-use crate::search::alpha_beta;
+use crate::search::{alpha_beta, eval};
 use crate::types::pieces::{PieceName, QUEEN_PTS, ROOK_PTS};
 
 use super::eval::eval;
@@ -181,13 +181,27 @@ pub fn asp_pvs(search_info: &mut SearchInfo) -> Move {
     search_info.search_stats.start = Instant::now();
     search_info.iter_max_depth = 2;
 
-    let eval = eval(&search_info.board);
-    let mut alpha = eval - 34;
-    let mut beta = eval + 34;
+    let score = eval(&search_info.board);
+    let mut prev = score;
+    let mut alpha = score - 34;
+    let mut beta = score + 34;
 
     while search_info.iter_max_depth <= search_info.max_depth {
         search_info.sel_depth = search_info.iter_max_depth;
         let board = &search_info.board.to_owned();
+        let delta = if !pv_moves.is_empty() {
+            let mut b = board.to_owned();
+            pv_moves
+                .iter()
+                .map(|m| {
+                    b.make_move(m);
+                    eval(&b) as f64
+                })
+                .sum::<f64>()
+                / pv_moves.len() as f64
+        } else {
+            0.0
+        };
         let eval = pvs(
             search_info.iter_max_depth,
             alpha,
