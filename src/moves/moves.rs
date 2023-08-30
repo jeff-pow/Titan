@@ -107,6 +107,11 @@ impl Move {
     }
 
     #[inline(always)]
+    pub fn is_capture(&self, board: &Board) -> bool {
+        board.occupancies().square_is_occupied(self.dest_square())
+    }
+
+    #[inline(always)]
     pub fn is_castle(&self) -> bool {
         let castle_flag = (self.0 >> 14) & 0b11;
         castle_flag == 3

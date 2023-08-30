@@ -3,8 +3,7 @@ use std::{io, time::Duration};
 use itertools::Itertools;
 
 use crate::board::fen::parse_fen_from_buffer;
-use crate::search::mtdf::{self, mtdf_pvs};
-use crate::search::pvs::{asp_alpha_beta, asp_pvs};
+use crate::search::pvs::asp_pvs;
 use crate::{
     board::{
         board::Board,
@@ -79,30 +78,11 @@ pub fn main_loop() -> ! {
                 search_info.max_depth = depth;
                 search_info.search_type = SearchType::Depth;
                 println!("bestmove {}", pvs::pvs_search(&mut search_info).to_lan());
-            } else if buffer.contains("mtdfpvs") {
-                let mut iter = buffer.split_whitespace().skip(2);
-                let depth = iter.next().unwrap().parse::<i8>().unwrap();
-                search_info.max_depth = depth;
-                search_info.search_type = SearchType::Depth;
-                println!("bestmove {}", mtdf_pvs(&mut search_info).to_lan());
-            } else if buffer.contains("mtdfalpha") {
-                let mut iter = buffer.split_whitespace().skip(2);
-                let depth = iter.next().unwrap().parse::<i8>().unwrap();
-                search_info.max_depth = depth;
-                search_info.search_type = SearchType::Depth;
-                println!("bestmove {}", mtdf::mtdf_search(&mut search_info).to_lan());
-            } else if buffer.contains("aspalpha") {
-                let mut iter = buffer.split_whitespace().skip(2);
-                let depth = iter.next().unwrap().parse::<i8>().unwrap();
-                search_info.max_depth = depth;
-                search_info.search_type = SearchType::Depth;
-                println!("bestmove {}", asp_alpha_beta(&mut search_info).to_lan());
             } else if buffer.contains("asppvs") {
                 let mut iter = buffer.split_whitespace().skip(2);
                 let depth = iter.next().unwrap().parse::<i8>().unwrap();
-                search_info.max_depth = depth;
                 search_info.search_type = SearchType::Depth;
-                println!("bestmove {}", asp_pvs(&mut search_info).to_lan());
+                println!("bestmove {}", asp_pvs(&mut search_info, depth).to_lan());
             } else {
                 search_info.search_type = SearchType::Infinite;
                 let m = pvs::pvs_search(&mut search_info);
