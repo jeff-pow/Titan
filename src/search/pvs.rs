@@ -18,6 +18,8 @@ pub const STALEMATE: i32 = 0;
 pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 32000;
 pub const MAX_SEARCH_DEPTH: i8 = 100;
+/// Initial aspiration window value
+pub const INIT_ASP: i32 = 10;
 
 pub fn pvs_search(search_info: &mut SearchInfo) -> Move {
     let mut best_move = Move::NULL;
@@ -128,7 +130,7 @@ pub fn asp_pvs(search_info: &mut SearchInfo, mut max_depth: i8) -> Move {
         } else {
             -INFINITY as f64
         };
-        let mut delta = 10 + (prev_avg * prev_avg * 6.25e-4) as i32;
+        let mut delta = INIT_ASP + (prev_avg * prev_avg * 6.25e-4) as i32;
         alpha = max(prev_avg as i32 - delta, -INFINITY);
         beta = min(prev_avg as i32 + delta, INFINITY);
 
@@ -197,25 +199,27 @@ pub(crate) fn pvs(
     let is_root = ply == 0;
     let in_check = board.side_in_check(board.to_move);
     let can_prune = !in_check;
+    // Is a zero width search if alpha and beta are one
+    let is_pv_search = (beta - alpha).abs() != 1;
     search_info.sel_depth = search_info.sel_depth.max(ply);
     // Don't do pvs unless you have a pv - otherwise you're wasting time
     let mut do_pvs = false;
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
+        if board.is_draw() {
+            return STALEMATE;
+        }
         if board.side_in_check(board.to_move) {
             return quiescence(ply, alpha, beta, pv, search_info, board);
         }
         return eval(board);
     }
 
-    if board.is_draw() {
-        return STALEMATE;
-    }
     if ply > 0 {
         // Determines if there is a faster path to checkmate than evaluating the current node, and
         // if there is, it returns early
         let alpha = alpha.max(-CHECKMATE + ply as i32);
-        let beta = beta.min(CHECKMATE - ply as i32);
+        let beta = beta.min(CHECKMATE - ply as i32 - 1);
         if alpha >= beta {
             return alpha;
         }
@@ -237,10 +241,12 @@ pub(crate) fn pvs(
     }
     // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval, isn't a
     // PV node, and is a cutNode(?)
-    else if depth >= 4 {
+    // Maybe or maybe don't include the can_prune check
+    else if depth >= 4 && !is_pv_search && can_prune {
         depth -= 2;
     }
 
+    // Check extension
     if in_check {
         depth += 1;
     }
@@ -252,6 +258,16 @@ pub(crate) fn pvs(
     let mut best_score = -INFINITY;
     let mut entry_flag = EntryFlag::AlphaCutOff;
     let mut best_move = Move::NULL;
+
+    // Reverse futility pruning
+    if !is_pv_search && !in_check {
+        let eval = eval(board);
+        if depth <= 8 && eval < CHECKMATE && eval >= beta && eval - 69 * depth as i32 + 112 >= beta
+        {
+            // TODO: Maybe return quiescence?
+            return eval;
+        }
+    }
 
     // Futility pruning
     if can_prune && depth == FUTIL_DEPTH && search_info.iter_max_depth > FUTIL_DEPTH {
@@ -282,6 +298,7 @@ pub(crate) fn pvs(
         let mut node_pvs = Vec::new();
         let mut new_b = board.to_owned();
         new_b.to_move = new_b.to_move.opp();
+        // TODO: Experiment with variable depth reductions
         let null_eval = -pvs(
             depth - 1,
             -beta,
@@ -295,12 +312,12 @@ pub(crate) fn pvs(
         }
     }
 
-    search_info.search_stats.nodes_searched += 1;
     // Just generate psuedolegal moves to save computation time on legality for moves that will be
     // pruned
     let mut moves = generate_psuedolegal_moves(board);
     let mut legal_moves_searched = 0;
     moves.score_move_list(ply, board, table_move, search_info);
+    search_info.search_stats.nodes_searched += 1;
 
     // Start of search
     for i in 0..moves.len {
@@ -335,7 +352,7 @@ pub(crate) fn pvs(
                 do_full_search = true;
             }
         }
-        if do_pvs && do_full_search {
+        if do_pvs && !do_full_search {
             eval = -pvs(
                 depth - 1,
                 -alpha - 1,
@@ -353,33 +370,63 @@ pub(crate) fn pvs(
 
         if eval > best_score {
             best_score = eval;
-        }
 
-        if eval >= beta {
-            search_info.transpos_table.insert(
-                board.zobrist_hash,
-                TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, best_move),
-            );
-            let capture = board.piece_at(m.dest_square());
-
-            // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
-            // anyway
-            if capture.is_none() {
-                store_killer_move(ply, m, search_info);
+            if eval > alpha {
+                alpha = eval;
+                best_move = *m;
+                entry_flag = EntryFlag::Exact;
+                // A principal variation has been found, so we can do pvs on the remaining nodes of this level
+                do_pvs = true;
+                pv.clear();
+                pv.push(*m);
+                pv.append(&mut node_pvs);
             }
-            return eval;
+
+            if alpha >= beta {
+                search_info.transpos_table.insert(
+                    board.zobrist_hash,
+                    TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, best_move),
+                );
+                let capture = board.piece_at(m.dest_square());
+
+                // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
+                // anyway
+                if capture.is_none() {
+                    store_killer_move(ply, m, search_info);
+                }
+                return eval;
+            }
         }
 
-        if eval > alpha {
-            alpha = eval;
-            best_move = *m;
-            entry_flag = EntryFlag::Exact;
-            // A principal variation has been found, so we can do pvs on the remaining nodes of this level
-            do_pvs = true;
-            pv.clear();
-            pv.push(*m);
-            pv.append(&mut node_pvs);
-        }
+        // if eval > best_score {
+        //      best_score = eval;
+        // }
+        //
+        // if eval >= beta {
+        //     search_info.transpos_table.insert(
+        //         board.zobrist_hash,
+        //         TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, best_move),
+        //     );
+        //     let capture = board.piece_at(m.dest_square());
+        //
+        //     // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
+        //     // anyway
+        //     if capture.is_none() {
+        //         store_killer_move(ply, m, search_info);
+        //     }
+        //     return eval;
+        // }
+        //
+        // if eval > alpha {
+        //     alpha = eval;
+        //     best_move = *m;
+        //     entry_flag = EntryFlag::Exact;
+        //     // A principal variation has been found, so we can do pvs on the remaining nodes of this level
+        //     do_pvs = true;
+        //     pv.clear();
+        //     pv.push(*m);
+        //     pv.append(&mut node_pvs);
+        // }
     }
 
     if legal_moves_searched == 0 {
