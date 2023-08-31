@@ -183,6 +183,7 @@ fn pvs(
             (None, Move::NULL)
         }
     };
+    let (table_value, table_move) = (None, Move::NULL);
     if let Some(eval) = table_value {
         if !is_root {
             // This can cut off evals in certain cases, but it's easy to implement :)
