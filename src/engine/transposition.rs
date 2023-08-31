@@ -11,6 +11,7 @@ pub struct TableEntry {
     best_move: Move,
 }
 
+#[derive(PartialEq)]
 pub enum EntryFlag {
     Exact,
     AlphaCutOff,
