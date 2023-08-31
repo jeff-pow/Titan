@@ -88,6 +88,7 @@ pub fn search(search_info: &mut SearchInfo, mut max_depth: i8) -> Move {
                 &mut pv_moves,
                 search_info,
                 board,
+                false,
             );
             if score <= alpha {
                 beta = (alpha + beta) / 2;
@@ -143,13 +144,13 @@ fn pvs(
     pv: &mut Vec<Move>,
     search_info: &mut SearchInfo,
     board: &Board,
+    cut_node: bool,
 ) -> i32 {
     let ply = search_info.iter_max_depth - depth;
     let is_root = ply == 0;
-    let in_check = board.side_in_check(board.to_move);
     let can_prune = can_prune(board);
     // Is a zero width search if alpha and beta are one
-    let is_pv_search = (beta - alpha).abs() != 1;
+    let is_pv_node = (beta - alpha).abs() != 1;
     search_info.sel_depth = search_info.sel_depth.max(ply);
     // Don't do pvs unless you have a pv - otherwise you're wasting time
     let mut do_pvs = false;
@@ -191,15 +192,10 @@ fn pvs(
         }
     }
     // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval, isn't a
-    // PV node, and is a cutNode(?)
+    // PV node, and is a cutNode
     // Maybe or maybe don't include the can_prune check
-    else if depth >= 4 && !is_pv_search && can_prune {
+    else if depth >= 4 && !is_pv_node && cut_node {
         depth -= 2;
-    }
-
-    // Check extension
-    if in_check {
-        depth += 1;
     }
 
     if depth <= 0 {
@@ -208,17 +204,7 @@ fn pvs(
 
     let mut best_score = -INFINITY;
     let mut entry_flag = EntryFlag::AlphaCutOff;
-    let mut best_move = Move::NULL;
-
-    // Reverse futility pruning
-    if !is_pv_search && !in_check {
-        let eval = eval(board);
-        if depth <= 8 && eval < CHECKMATE && eval >= beta && eval - 69 * depth as i32 + 112 >= beta
-        {
-            // TODO: Maybe return quiescence?
-            return eval;
-        }
-    }
+    let best_move = Move::NULL;
 
     // Futility pruning
     if can_prune && depth == FUTIL_DEPTH && search_info.iter_max_depth > FUTIL_DEPTH {
@@ -257,6 +243,7 @@ fn pvs(
             &mut node_pvs,
             search_info,
             &new_b,
+            !cut_node,
         );
         if null_eval >= beta {
             return null_eval;
@@ -287,17 +274,18 @@ fn pvs(
         // LMR
         let mut do_full_search = true;
         if depth > 2
-            && legal_moves_searched > 4 // TODO: Mess with that value <-
-            && (!(m.is_capture(&new_b) || m.promotion().is_some()))
+            && legal_moves_searched > 1
+            && (!((m.is_capture(&new_b) || m.promotion().is_some()) && is_pv_node))
         {
-            let depth = depth - 2;
+            let r = 2;
             eval = -pvs(
-                depth,
+                depth - r,
                 -alpha - 1,
                 -alpha,
                 &mut Vec::new(),
                 search_info,
                 &new_b,
+                !cut_node,
             );
             if eval > alpha {
                 do_full_search = true;
@@ -312,12 +300,29 @@ fn pvs(
                     &mut node_pvs,
                     search_info,
                     &new_b,
+                    !cut_node,
                 );
                 if eval > alpha && alpha < beta {
-                    eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
+                    eval = -pvs(
+                        depth - 1,
+                        -beta,
+                        -alpha,
+                        &mut node_pvs,
+                        search_info,
+                        &new_b,
+                        !cut_node,
+                    );
                 }
             } else {
-                eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
+                eval = -pvs(
+                    depth - 1,
+                    -beta,
+                    -alpha,
+                    &mut node_pvs,
+                    search_info,
+                    &new_b,
+                    false,
+                );
             }
         }
 
