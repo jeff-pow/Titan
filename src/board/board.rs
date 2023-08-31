@@ -195,10 +195,6 @@ impl Board {
         self.history.push(self.zobrist_hash);
     }
 
-    pub fn remove_from_history(&mut self) {
-        self.history.pop();
-    }
-
     #[inline(always)]
     pub fn material_balance(&self) -> i32 {
         match self.to_move {
@@ -376,11 +372,19 @@ impl Board {
 /// Function checks for the presence of the board in the game. If the board position will have occurred three times,
 /// returns true indicating the position would be a stalemate due to the threefold repetition rule
 pub fn check_for_3x_repetition(board: &Board) -> bool {
+    // TODO: Check if this is correct. If not, just set offset to be 1 and 0 respectively
+    let offset = if board.to_move == Color::Black {
+        1 + board.half_moves as usize
+        // W B W B W B W B W B W B
+    } else {
+        board.half_moves as usize
+    };
     board
         .history
         .iter()
+        .skip(offset)
         .step_by(2)
-        .filter(|&&x| x == board.zobrist_hash)
+        .filter(|x| &&board.zobrist_hash == x)
         .count()
         >= 2
 }

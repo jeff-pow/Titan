@@ -21,8 +21,6 @@ use super::transposition::get_table;
 pub fn main_loop() -> ! {
     let mut search_info = SearchInfo::default();
     let mut buffer = String::new();
-    search_info.transpos_table = get_table();
-    search_info.board = build_board(fen::STARTING_FEN);
     println!("Go!");
 
     loop {
