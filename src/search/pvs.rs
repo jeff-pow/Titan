@@ -153,7 +153,6 @@ fn pvs(
     let is_pv_node = (beta - alpha).abs() != 1;
     search_info.sel_depth = search_info.sel_depth.max(ply);
     // Don't do pvs unless you have a pv - otherwise you're wasting time
-    let mut do_pvs = false;
 
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
@@ -204,7 +203,7 @@ fn pvs(
 
     let mut best_score = -INFINITY;
     let mut entry_flag = EntryFlag::AlphaCutOff;
-    let best_move = Move::NULL;
+    let mut best_move = Move::NULL;
 
     // Futility pruning
     if can_prune && depth == FUTIL_DEPTH && search_info.iter_max_depth > FUTIL_DEPTH {
@@ -272,7 +271,7 @@ fn pvs(
         let mut eval = -INFINITY;
 
         // LMR
-        let mut do_full_search = true;
+        let do_full_search;
         if depth > 2
             && legal_moves_searched > 1
             && (!((m.is_capture(&new_b) || m.promotion().is_some()) && is_pv_node))
@@ -287,43 +286,35 @@ fn pvs(
                 &new_b,
                 !cut_node,
             );
-            if eval > alpha {
-                do_full_search = true;
-            }
+            do_full_search = eval > alpha && eval > 1;
+        } else {
+            do_full_search = !is_pv_node || legal_moves_searched > 1;
         }
+
         if do_full_search {
-            if do_pvs {
-                eval = -pvs(
-                    depth - 1,
-                    -alpha - 1,
-                    -alpha,
-                    &mut node_pvs,
-                    search_info,
-                    &new_b,
-                    !cut_node,
-                );
-                if eval > alpha && alpha < beta {
-                    eval = -pvs(
-                        depth - 1,
-                        -beta,
-                        -alpha,
-                        &mut node_pvs,
-                        search_info,
-                        &new_b,
-                        !cut_node,
-                    );
-                }
-            } else {
-                eval = -pvs(
-                    depth - 1,
-                    -beta,
-                    -alpha,
-                    &mut node_pvs,
-                    search_info,
-                    &new_b,
-                    false,
-                );
-            }
+            node_pvs.clear();
+            eval = -pvs(
+                depth - 1,
+                -alpha - 1,
+                -alpha,
+                &mut node_pvs,
+                search_info,
+                &new_b,
+                !cut_node,
+            );
+        }
+
+        if is_pv_node && (legal_moves_searched == 1 || (eval > alpha && (is_root || eval < beta))) {
+            node_pvs.clear();
+            eval = -pvs(
+                depth - 1,
+                -beta,
+                -alpha,
+                &mut node_pvs,
+                search_info,
+                &new_b,
+                false,
+            );
         }
 
         // There's some funky stuff going on here with returning alpha or best_score
@@ -338,33 +329,29 @@ fn pvs(
 
         if eval > best_score {
             best_score = eval;
-            // best_move = *m;
-        }
 
-        if eval >= beta {
-            // Store the move that caused a beta cutoff in the transposition table
-            search_info.transpos_table.insert(
-                board.zobrist_hash,
-                TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, *m),
-            );
-
-            let capture = board.piece_at(m.dest_square());
-            // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
-            if capture.is_none() {
-                store_killer_move(ply, m, search_info);
+            if eval > alpha {
+                alpha = eval;
+                best_move = *m;
+                pv.clear();
+                pv.push(*m);
+                pv.append(&mut node_pvs);
+                entry_flag = EntryFlag::Exact;
             }
-            return eval;
-        }
 
-        if eval > alpha {
-            alpha = eval;
-            entry_flag = EntryFlag::Exact;
-            // A principal variation has been found, so we can do pvs on the remaining nodes of this level
-            // best_move = *m;
-            do_pvs = true;
-            pv.clear();
-            pv.push(*m);
-            pv.append(&mut node_pvs);
+            if alpha >= beta {
+                search_info.transpos_table.insert(
+                    board.zobrist_hash,
+                    TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, *m),
+                );
+
+                let capture = board.piece_at(m.dest_square());
+                // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
+                if capture.is_none() {
+                    store_killer_move(ply, m, search_info);
+                }
+                return eval;
+            }
         }
     }
 
@@ -380,10 +367,9 @@ fn pvs(
 
     search_info.transpos_table.insert(
         board.zobrist_hash,
-        TableEntry::new(depth, ply, entry_flag, best_score, best_move),
+        TableEntry::new(depth, ply, entry_flag, alpha, best_move),
     );
-
-    best_score
+    alpha
 }
 
 /// Arbitrary value determining if a side is in endgame yet
