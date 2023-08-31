@@ -24,7 +24,6 @@ pub fn main_loop() -> ! {
     search_info.transpos_table = get_table();
     search_info.board = build_board(fen::STARTING_FEN);
     println!("Go!");
-    println!("mtdfpvs, ptdfalpha, aspalpha, asppvs, depth");
 
     loop {
         buffer.clear();
