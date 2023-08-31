@@ -375,7 +375,6 @@ pub fn check_for_3x_repetition(board: &Board) -> bool {
     // TODO: Check if this is correct. If not, just set offset to be 1 and 0 respectively
     let offset = if board.to_move == Color::Black {
         1 + board.half_moves as usize
-        // W B W B W B W B W B W B
     } else {
         board.half_moves as usize
     };

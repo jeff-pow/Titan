@@ -207,7 +207,7 @@ fn pvs(
     let mut best_move = Move::NULL;
 
     // Futility pruning
-    if can_prune && depth == FUTIL_DEPTH && search_info.iter_max_depth > FUTIL_DEPTH {
+    if (can_prune || cut_node) && depth == FUTIL_DEPTH && search_info.iter_max_depth > FUTIL_DEPTH {
         let eval = eval(board);
         if eval + FUTIL_MARGIN < alpha {
             return quiescence(ply, alpha, beta, pv, search_info, board);
@@ -215,7 +215,10 @@ fn pvs(
     }
 
     // Extended futility pruning
-    if can_prune && depth == EXT_FUTIL_DEPTH && search_info.iter_max_depth > EXT_FUTIL_DEPTH {
+    if (can_prune || cut_node)
+        && depth == EXT_FUTIL_DEPTH
+        && search_info.iter_max_depth > EXT_FUTIL_DEPTH
+    {
         let eval = eval(board);
         if eval + EXT_FUTIL_MARGIN < alpha {
             return quiescence(ply, alpha, beta, pv, search_info, board);
@@ -223,7 +226,10 @@ fn pvs(
     }
 
     // Razoring
-    if can_prune && depth == RAZORING_DEPTH && search_info.iter_max_depth > RAZORING_DEPTH {
+    if (can_prune || cut_node)
+        && depth == RAZORING_DEPTH
+        && search_info.iter_max_depth > RAZORING_DEPTH
+    {
         let eval = eval(board);
         if eval + RAZOR_MARGIN < alpha {
             return quiescence(ply, alpha, beta, pv, search_info, board);
@@ -231,7 +237,7 @@ fn pvs(
     }
 
     // Null pruning
-    if can_prune && !board.side_in_check(board.to_move) && null_ok(board) {
+    if (can_prune || cut_node) && null_ok(board) {
         let mut node_pvs = Vec::new();
         let mut new_b = board.to_owned();
         new_b.to_move = new_b.to_move.opp();
