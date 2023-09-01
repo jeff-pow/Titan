@@ -36,7 +36,7 @@ pub struct Board {
     pub half_moves: i32,
     pub zobrist_hash: u64,
     pub history: SmallVec<[u64; 32]>,
-    pub zobrist: Arc<Zobrist>,
+    pub zobrist_consts: Arc<Zobrist>,
     pub mg: Arc<MoveGenerator>,
 }
 
@@ -60,7 +60,7 @@ impl Default for Board {
             half_moves: 0,
             zobrist_hash: 0,
             history: SmallVec::new(),
-            zobrist: Arc::new(Zobrist::default()),
+            zobrist_consts: Arc::new(Zobrist::default()),
             mg: Arc::new(MoveGenerator::default()),
         }
     }
