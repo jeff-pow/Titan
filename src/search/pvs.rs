@@ -271,9 +271,10 @@ fn pvs(
         let do_full_search;
         if depth > 2
             && legal_moves_searched > 1
-            && (!((m.is_capture(&new_b) || m.promotion().is_some()) && !is_pv_node))
+            && !((m.is_capture(&new_b) && m.promotion().is_some()) && is_pv_node)
         {
             let r = 2;
+            node_pvs.clear();
             eval = -pvs(
                 depth - r,
                 -alpha - 1,
@@ -283,7 +284,7 @@ fn pvs(
                 &new_b,
                 !cut_node,
             );
-            do_full_search = eval > alpha && legal_moves_searched > 1;
+            do_full_search = eval > alpha;
         } else {
             do_full_search = !is_pv_node || legal_moves_searched > 1;
         }
