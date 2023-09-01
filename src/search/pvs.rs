@@ -175,7 +175,7 @@ fn pvs(
         }
     }
 
-    let (table_value, table_move) = {
+    let (_table_value, _table_move) = {
         let entry = search_info.transpos_table.get(&board.zobrist_hash);
         if let Some(entry) = entry {
             entry.get(depth, ply, alpha, beta)
