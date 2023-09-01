@@ -48,6 +48,13 @@ impl MoveList {
     }
 
     #[inline(always)]
+    /// Sorts next move into position and then returns a reference to the move
+    pub fn get_next_move(&mut self, idx: usize) -> &Move {
+        self.sort_next_move(idx);
+        self.get_move(idx)
+    }
+
+    #[inline(always)]
     pub fn get_move(&self, idx: usize) -> &Move {
         &self.arr[idx].0
     }

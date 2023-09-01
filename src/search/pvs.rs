@@ -205,35 +205,26 @@ fn pvs(
     let mut best_score = -INFINITY;
     let mut entry_flag = EntryFlag::AlphaCutOff;
     let mut best_move = Move::NULL;
+    let eval = eval(board);
+
+    // Reverse futility pruning
+    if can_prune && depth <= 8 && eval - futil_margin(depth) >= beta {
+        return eval;
+    }
 
     // Futility pruning
-    if (can_prune || cut_node) && depth == FUTIL_DEPTH && search_info.iter_max_depth > FUTIL_DEPTH {
-        let eval = eval(board);
-        if eval + FUTIL_MARGIN < alpha {
-            return quiescence(ply, alpha, beta, pv, search_info, board);
-        }
+    if can_prune && depth == FUTIL_DEPTH && eval + FUTIL_MARGIN < alpha {
+        return quiescence(ply, alpha, beta, pv, search_info, board);
     }
 
     // Extended futility pruning
-    if (can_prune || cut_node)
-        && depth == EXT_FUTIL_DEPTH
-        && search_info.iter_max_depth > EXT_FUTIL_DEPTH
-    {
-        let eval = eval(board);
-        if eval + EXT_FUTIL_MARGIN < alpha {
-            return quiescence(ply, alpha, beta, pv, search_info, board);
-        }
+    if can_prune && depth == EXT_FUTIL_DEPTH && eval + EXT_FUTIL_MARGIN < alpha {
+        return quiescence(ply, alpha, beta, pv, search_info, board);
     }
 
     // Razoring
-    if (can_prune || cut_node)
-        && depth == RAZORING_DEPTH
-        && search_info.iter_max_depth > RAZORING_DEPTH
-    {
-        let eval = eval(board);
-        if eval + RAZOR_MARGIN < alpha {
-            return quiescence(ply, alpha, beta, pv, search_info, board);
-        }
+    if can_prune && depth == RAZORING_DEPTH && eval + RAZOR_MARGIN < alpha {
+        return quiescence(ply, alpha, beta, pv, search_info, board);
     }
 
     // Null pruning
@@ -266,8 +257,7 @@ fn pvs(
     // Start of search
     for i in 0..moves.len {
         let mut new_b = board.to_owned();
-        moves.sort_next_move(i);
-        let m = moves.get_move(i);
+        let m = moves.get_next_move(i);
         new_b.make_move(m);
         if new_b.side_in_check(board.to_move) {
             continue;
@@ -277,11 +267,11 @@ fn pvs(
         let mut node_pvs = Vec::new();
         let mut eval = -INFINITY;
 
-        // LMR
+        // LMR (Late Move Reduction)
         let do_full_search;
         if depth > 2
             && legal_moves_searched > 1
-            && (!((m.is_capture(&new_b) || m.promotion().is_some()) && is_pv_node))
+            && (!((m.is_capture(&new_b) || m.promotion().is_some()) && !is_pv_node))
         {
             let r = 2;
             eval = -pvs(
@@ -293,7 +283,7 @@ fn pvs(
                 &new_b,
                 !cut_node,
             );
-            do_full_search = eval > alpha && eval > 1;
+            do_full_search = eval > alpha && legal_moves_searched > 1;
         } else {
             do_full_search = !is_pv_node || legal_moves_searched > 1;
         }
@@ -385,4 +375,8 @@ const ENDGAME_THRESHOLD: i32 =
 fn null_ok(board: &Board) -> bool {
     board.material_val[board.to_move as usize] > ENDGAME_THRESHOLD
         && board.material_val[board.to_move.opp() as usize] > ENDGAME_THRESHOLD
+}
+
+fn futil_margin(depth: i8) -> i32 {
+    depth as i32 * 100
 }
