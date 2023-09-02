@@ -68,6 +68,8 @@ pub fn search(search_info: &mut SearchInfo, mut max_depth: i8) -> Move {
         search_info.sel_depth = 0;
         let board = &search_info.board.to_owned();
 
+        // We assume the average eval for the board from two iterations ago is a good estimate for
+        // the next iteration
         let prev_avg = if search_info.iter_max_depth >= 2 {
             *score_history
                 .get(search_info.iter_max_depth as usize - 2)
@@ -268,7 +270,7 @@ fn pvs(
         let mut eval = -INFINITY;
 
         // LMR (Late Move Reduction)
-        let do_full_search;
+        let do_zero_window_search;
         if depth > 2
             && legal_moves_searched > 1
             && !((m.is_capture(&new_b) && m.promotion().is_some()) && is_pv_node)
@@ -284,12 +286,12 @@ fn pvs(
                 &new_b,
                 !cut_node,
             );
-            do_full_search = eval > alpha;
+            do_zero_window_search = eval > alpha;
         } else {
-            do_full_search = !is_pv_node || legal_moves_searched > 1;
+            do_zero_window_search = !is_pv_node || legal_moves_searched > 1;
         }
 
-        if do_full_search {
+        if do_zero_window_search {
             node_pvs.clear();
             eval = -pvs(
                 depth - 1,
