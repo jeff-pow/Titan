@@ -3,10 +3,7 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
-    moves::{
-        movegenerator::MoveGenerator, moves::Castle, moves::Direction::*, moves::Move,
-        moves::Promotion,
-    },
+    moves::{movegenerator::MoveGenerator, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName, NUM_PIECES},
@@ -92,11 +89,7 @@ impl Board {
 
     #[inline(always)]
     pub fn gen_occupancies(&mut self) {
-        self.occupancies = self
-            .bitboards
-            .iter()
-            .flatten()
-            .fold(Bitboard::EMPTY, |a, b| a ^ *b)
+        self.occupancies = self.bitboards.iter().flatten().fold(Bitboard::EMPTY, |a, b| a ^ *b)
     }
 
     #[inline(always)]
@@ -169,10 +162,8 @@ impl Board {
         let king_attacks_overlap = king_attacks & attacker_occupancy[PieceName::King as usize];
         let queen_attacks_overlap = queen_attacks & attacker_occupancy[PieceName::Queen as usize];
         let rook_attacks_overlap = rook_attacks & attacker_occupancy[PieceName::Rook as usize];
-        let bishop_attacks_overlap =
-            bishop_attacks & attacker_occupancy[PieceName::Bishop as usize];
-        let knight_attacks_overlap =
-            knight_attacks & attacker_occupancy[PieceName::Knight as usize];
+        let bishop_attacks_overlap = bishop_attacks & attacker_occupancy[PieceName::Bishop as usize];
+        let knight_attacks_overlap = knight_attacks & attacker_occupancy[PieceName::Knight as usize];
         let pawn_attacks_overlap = pawn_attacks & attacker_occupancy[PieceName::Pawn as usize];
 
         let is_king_attack = king_attacks_overlap != Bitboard::EMPTY;
@@ -182,12 +173,7 @@ impl Board {
         let is_knight_attack = knight_attacks_overlap != Bitboard::EMPTY;
         let is_pawn_attack = pawn_attacks_overlap != Bitboard::EMPTY;
 
-        is_king_attack
-            || is_queen_attack
-            || is_rook_attack
-            || is_bishop_attack
-            || is_knight_attack
-            || is_pawn_attack
+        is_king_attack || is_queen_attack || is_rook_attack || is_bishop_attack || is_knight_attack || is_pawn_attack
     }
 
     pub fn add_to_history(&mut self) {
@@ -197,12 +183,8 @@ impl Board {
     #[inline(always)]
     pub fn material_balance(&self) -> i32 {
         match self.to_move {
-            Color::White => {
-                self.material_val[Color::White as usize] - self.material_val[Color::Black as usize]
-            }
-            Color::Black => {
-                self.material_val[Color::Black as usize] - self.material_val[Color::White as usize]
-            }
+            Color::White => self.material_val[Color::White as usize] - self.material_val[Color::Black as usize],
+            Color::Black => self.material_val[Color::Black as usize] - self.material_val[Color::White as usize],
         }
     }
 
@@ -220,9 +202,7 @@ impl Board {
             }
         }
 
-        let piece_moving = self
-            .piece_at(m.origin_square())
-            .expect("There should be a piece here");
+        let piece_moving = self.piece_at(m.origin_square()).expect("There should be a piece here");
         let capture = self.piece_at(m.dest_square());
         self.remove_piece(m.dest_square());
         self.place_piece(piece_moving, self.to_move, m.dest_square());

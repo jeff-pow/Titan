@@ -69,8 +69,5 @@ const TARGET_TABLE_SIZE_MB: usize = 64;
 const BYTES_PER_MB: usize = 1024 * 1024;
 pub fn get_table() -> FxHashMap<u64, TableEntry> {
     let entry_size = mem::size_of::<TableEntry>();
-    FxHashMap::with_capacity_and_hasher(
-        TARGET_TABLE_SIZE_MB * BYTES_PER_MB / entry_size,
-        Default::default(),
-    )
+    FxHashMap::with_capacity_and_hasher(TARGET_TABLE_SIZE_MB * BYTES_PER_MB / entry_size, Default::default())
 }
