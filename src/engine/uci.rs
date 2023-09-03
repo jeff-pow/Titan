@@ -3,6 +3,7 @@ use std::{io, time::Duration};
 use itertools::Itertools;
 
 use crate::board::fen::parse_fen_from_buffer;
+use crate::search::eval::eval;
 use crate::search::pvs::{search, MAX_SEARCH_DEPTH};
 use crate::{
     board::{
@@ -15,14 +16,11 @@ use crate::{
 };
 
 use super::perft::multi_threaded_perft;
-use super::transposition::get_table;
 
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
     let mut search_info = SearchInfo::default();
     let mut buffer = String::new();
-    search_info.transpos_table = get_table();
-    search_info.board = build_board(fen::STARTING_FEN);
     println!("Go!");
 
     loop {
@@ -36,6 +34,8 @@ pub fn main_loop() -> ! {
             println!("info string debug on");
         } else if buffer.starts_with("ucinewgame") {
             search_info.board = build_board(fen::STARTING_FEN);
+        } else if buffer.starts_with("eval") {
+            println!("{} cp", eval(&search_info.board));
         } else if buffer.starts_with("position") {
             let vec: Vec<&str> = buffer.split_whitespace().collect();
 

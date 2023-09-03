@@ -45,12 +45,13 @@ impl Board {
                 while occupancies != Bitboard::EMPTY {
                     hash ^=
                         self.zobrist.piece_square_hashes[color as usize][piece as usize][occupancies.pop_lsb().idx()]
+
                 }
             }
         }
 
         if self.to_move == Color::Black {
-            hash ^= self.zobrist.turn_hash;
+            hash ^= self.zobrist_consts.turn_hash;
         }
 
         hash

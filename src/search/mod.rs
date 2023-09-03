@@ -1,5 +1,7 @@
 use rustc_hash::FxHashMap;
 
+use crate::board::fen::{build_board, STARTING_FEN};
+use crate::engine::transposition::get_table;
 use crate::moves::movegenerator::MoveGenerator;
 use crate::moves::moves::Move;
 use crate::search::pvs::MAX_SEARCH_DEPTH;
@@ -32,8 +34,8 @@ pub struct SearchInfo {
 impl Default for SearchInfo {
     fn default() -> Self {
         Self {
-            board: Default::default(),
-            transpos_table: Default::default(),
+            board: build_board(STARTING_FEN),
+            transpos_table: get_table(),
             search_stats: Default::default(),
             game_time: Default::default(),
             search_type: Default::default(),

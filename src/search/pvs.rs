@@ -69,6 +69,8 @@ pub fn search(search_info: &mut SearchInfo, mut max_depth: i8) -> Move {
         search_info.sel_depth = 0;
         let board = &search_info.board.to_owned();
 
+        // We assume the average eval for the board from two iterations ago is a good estimate for
+        // the next iteration
         let prev_avg = if search_info.iter_max_depth >= 2 {
             *score_history.get(search_info.iter_max_depth as usize - 2).unwrap() as f64
         } else {
@@ -166,7 +168,7 @@ fn pvs(
         }
     }
 
-    let (table_value, table_move) = {
+    let (_table_value, _table_move) = {
         let entry = search_info.transpos_table.get(&board.zobrist_hash);
         if let Some(entry) = entry {
             entry.get(depth, ply, alpha, beta)
@@ -195,30 +197,28 @@ fn pvs(
     let mut best_score = -INFINITY;
     let mut entry_flag = EntryFlag::AlphaCutOff;
     let mut best_move = Move::NULL;
+    let eval = eval(board);
+
+    // Reverse futility pruning
+    if can_prune && depth <= 8 && eval - futil_margin(depth) >= beta {
+        return eval;
+    }
 
     // Futility pruning
-    if can_prune && depth == FUTIL_DEPTH && search_info.iter_max_depth > FUTIL_DEPTH {
-        let eval = eval(board);
-        if eval + FUTIL_MARGIN < alpha {
-            return quiescence(ply, alpha, beta, pv, search_info, board);
-        }
+    if can_prune && depth == FUTIL_DEPTH && eval + FUTIL_MARGIN < alpha {
+        return quiescence(ply, alpha, beta, pv, search_info, board);
     }
 
     // Extended futility pruning
-    if can_prune && depth == EXT_FUTIL_DEPTH && search_info.iter_max_depth > EXT_FUTIL_DEPTH {
-        let eval = eval(board);
-        if eval + EXT_FUTIL_MARGIN < alpha {
-            return quiescence(ply, alpha, beta, pv, search_info, board);
-        }
+    if can_prune && depth == EXT_FUTIL_DEPTH && eval + EXT_FUTIL_MARGIN < alpha {
+        return quiescence(ply, alpha, beta, pv, search_info, board);
     }
 
     // Razoring
-    if can_prune && depth == RAZORING_DEPTH && search_info.iter_max_depth > RAZORING_DEPTH {
-        let eval = eval(board);
-        if eval + RAZOR_MARGIN < alpha {
-            return quiescence(ply, alpha, beta, pv, search_info, board);
-        }
+    if can_prune && depth == RAZORING_DEPTH && eval + RAZOR_MARGIN < alpha {
+        return quiescence(ply, alpha, beta, pv, search_info, board);
     }
+
 
     if !is_pv_node {
         let eval = eval(board);
@@ -237,6 +237,7 @@ fn pvs(
             if null_eval >= beta {
                 return null_eval;
             }
+
         }
     }
 
@@ -262,6 +263,7 @@ fn pvs(
         let mut node_pvs = Vec::new();
         let mut eval = -INFINITY;
 
+
         // Late move pruning
         if !is_root && !is_pv_node && depth < 9 && is_quiet && legal_moves_searched > (3 + depth * depth) / 2 {
             continue;
@@ -283,11 +285,12 @@ fn pvs(
             r = min(depth - 1, max(r, 1));
             eval = -pvs(depth - r, -alpha - 1, -alpha, &mut Vec::new(), search_info, &new_b, !cut_node);
             do_full_search = eval > alpha && r != 1;
+
         } else {
-            do_full_search = !is_pv_node || legal_moves_searched > 1;
+            do_zero_window_search = !is_pv_node || legal_moves_searched > 1;
         }
 
-        if do_full_search {
+        if do_zero_window_search {
             node_pvs.clear();
             eval = -pvs(depth - 1, -alpha - 1, -alpha, &mut node_pvs, search_info, &new_b, !cut_node);
         }
@@ -367,4 +370,8 @@ fn null_ok(board: &Board) -> bool {
     board.material_val[board.to_move as usize] > ENDGAME_THRESHOLD
         && board.material_val[board.to_move.opp() as usize] > ENDGAME_THRESHOLD
         && board.bitboards[board.to_move as usize][PieceName::Pawn as usize] != Bitboard::EMPTY
+}
+
+fn futil_margin(depth: i8) -> i32 {
+    depth as i32 * 100
 }

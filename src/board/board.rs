@@ -1,5 +1,4 @@
 use core::fmt;
-use smallvec::SmallVec;
 use std::sync::Arc;
 use strum::IntoEnumIterator;
 
@@ -12,7 +11,7 @@ use crate::{
     },
 };
 
-use super::zobrist::Zobrist;
+use super::{history::History, zobrist::Zobrist};
 
 #[derive(Clone)]
 pub struct Board {
@@ -32,8 +31,8 @@ pub struct Board {
     pub num_moves: i32,
     pub half_moves: i32,
     pub zobrist_hash: u64,
-    pub history: SmallVec<[u64; 32]>,
-    pub zobrist: Arc<Zobrist>,
+    pub history: History,
+    pub zobrist_consts: Arc<Zobrist>,
     pub mg: Arc<MoveGenerator>,
 }
 
@@ -56,8 +55,8 @@ impl Default for Board {
             num_moves: 0,
             half_moves: 0,
             zobrist_hash: 0,
-            history: SmallVec::new(),
-            zobrist: Arc::new(Zobrist::default()),
+            history: History::default(),
+            zobrist_consts: Arc::new(Zobrist::default()),
             mg: Arc::new(MoveGenerator::default()),
         }
     }
@@ -179,10 +178,6 @@ impl Board {
 
     pub fn add_to_history(&mut self) {
         self.history.push(self.zobrist_hash);
-    }
-
-    pub fn remove_from_history(&mut self) {
-        self.history.pop();
     }
 
     #[inline(always)]
@@ -356,11 +351,18 @@ impl Board {
 /// Function checks for the presence of the board in the game. If the board position will have occurred three times,
 /// returns true indicating the position would be a stalemate due to the threefold repetition rule
 pub fn check_for_3x_repetition(board: &Board) -> bool {
+    // TODO: Check if this is correct. If not, just set offset to be 1 and 0 respectively
+    let offset = if board.to_move == Color::Black {
+        1 + board.half_moves as usize
+    } else {
+        board.half_moves as usize
+    };
     board
         .history
         .iter()
+        .skip(offset)
         .step_by(2)
-        .filter(|&&x| x == board.zobrist_hash)
+        .filter(|x| &board.zobrist_hash == x)
         .count()
         >= 2
 }
