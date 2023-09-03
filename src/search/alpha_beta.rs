@@ -1,7 +1,7 @@
 use crate::board::board::Board;
 use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::moves::Move;
-use crate::search::eval::eval;
+use crate::search::eval::evaluate;
 use crate::search::pvs::{MAX_SEARCH_DEPTH, STALEMATE};
 use crate::search::quiescence::quiescence;
 use crate::search::SearchInfo;
@@ -20,7 +20,7 @@ pub fn alpha_beta(
     let ply = search_info.iter_max_depth - depth;
     search_info.sel_depth = search_info.sel_depth.max(ply);
     if ply >= MAX_SEARCH_DEPTH {
-        return eval(board);
+        return evaluate(board);
     }
 
     if ply > 0 {

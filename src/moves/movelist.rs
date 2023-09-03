@@ -1,7 +1,6 @@
 use crate::{
     board::board::Board,
     search::{killers::NUM_KILLER_MOVES, SearchInfo},
-    types::pieces::PieceName,
 };
 use std::mem::MaybeUninit;
 

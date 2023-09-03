@@ -3,7 +3,7 @@ use std::{io, time::Duration};
 use itertools::Itertools;
 
 use crate::board::fen::parse_fen_from_buffer;
-use crate::search::eval::eval;
+use crate::search::eval::evaluate;
 use crate::search::pvs::{search, MAX_SEARCH_DEPTH};
 use crate::{
     board::{
@@ -21,7 +21,7 @@ use super::perft::multi_threaded_perft;
 pub fn main_loop() -> ! {
     let mut search_info = SearchInfo::default();
     let mut buffer = String::new();
-    println!("Go!");
+    println!("Ready to go!");
 
     loop {
         buffer.clear();
@@ -35,7 +35,7 @@ pub fn main_loop() -> ! {
         } else if buffer.starts_with("ucinewgame") {
             search_info.board = build_board(fen::STARTING_FEN);
         } else if buffer.starts_with("eval") {
-            println!("{} cp", eval(&search_info.board));
+            println!("{} cp", evaluate(&search_info.board));
         } else if buffer.starts_with("position") {
             let vec: Vec<&str> = buffer.split_whitespace().collect();
 

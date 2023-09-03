@@ -43,9 +43,8 @@ impl Board {
             for piece in PieceName::iter() {
                 let mut occupancies = self.bitboards[color as usize][piece as usize];
                 while occupancies != Bitboard::EMPTY {
-                    hash ^=
-                        self.zobrist.piece_square_hashes[color as usize][piece as usize][occupancies.pop_lsb().idx()]
-
+                    hash ^= self.zobrist_consts.piece_square_hashes[color as usize][piece as usize]
+                        [occupancies.pop_lsb().idx()]
                 }
             }
         }

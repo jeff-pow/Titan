@@ -1,16 +1,14 @@
 use std::cmp::{max, min};
-use std::ptr::null;
 use std::time::{Duration, Instant};
 
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::moves::Move;
-use crate::search::alpha_beta::alpha_beta;
 use crate::types::bitboard::Bitboard;
 use crate::types::pieces::{PieceName, QUEEN_PTS, ROOK_PTS};
 
-use super::eval::eval;
+use super::eval::evaluate;
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
 use super::{SearchInfo, SearchType};
@@ -62,7 +60,7 @@ pub fn search(search_info: &mut SearchInfo, mut max_depth: i8) -> Move {
     // The previous eval from this side (two moves ago) is a good place to estimate the next
     // aspiration window around. First depth will not have an estimate, and we will do a full
     // window search
-    let mut score_history = vec![eval(&search_info.board)];
+    let mut score_history = vec![evaluate(&search_info.board)];
     search_info.iter_max_depth = 1;
 
     while search_info.iter_max_depth <= max_depth {
@@ -152,7 +150,7 @@ fn pvs(
         if board.side_in_check(board.to_move) {
             return quiescence(ply, alpha, beta, pv, search_info, board);
         }
-        return eval(board);
+        return evaluate(board);
     }
 
     if ply > 0 {
@@ -197,7 +195,7 @@ fn pvs(
     let mut best_score = -INFINITY;
     let mut entry_flag = EntryFlag::AlphaCutOff;
     let mut best_move = Move::NULL;
-    let eval = eval(board);
+    let eval = evaluate(board);
 
     // Reverse futility pruning
     if can_prune && depth <= 8 && eval - futil_margin(depth) >= beta {
@@ -219,9 +217,8 @@ fn pvs(
         return quiescence(ply, alpha, beta, pv, search_info, board);
     }
 
-
     if !is_pv_node {
-        let eval = eval(board);
+        let eval = evaluate(board);
         // Reverse futility pruning
         if depth < 9 && eval - 66 * depth as i32 >= beta && eval.abs() < NEAR_CHECKMATE {
             return eval;
@@ -237,7 +234,6 @@ fn pvs(
             if null_eval >= beta {
                 return null_eval;
             }
-
         }
     }
 
@@ -263,7 +259,6 @@ fn pvs(
         let mut node_pvs = Vec::new();
         let mut eval = -INFINITY;
 
-
         // Late move pruning
         if !is_root && !is_pv_node && depth < 9 && is_quiet && legal_moves_searched > (3 + depth * depth) / 2 {
             continue;
@@ -285,12 +280,11 @@ fn pvs(
             r = min(depth - 1, max(r, 1));
             eval = -pvs(depth - r, -alpha - 1, -alpha, &mut Vec::new(), search_info, &new_b, !cut_node);
             do_full_search = eval > alpha && r != 1;
-
         } else {
-            do_zero_window_search = !is_pv_node || legal_moves_searched > 1;
+            do_full_search = !is_pv_node || legal_moves_searched > 1;
         }
 
-        if do_zero_window_search {
+        if do_full_search {
             node_pvs.clear();
             eval = -pvs(depth - 1, -alpha - 1, -alpha, &mut node_pvs, search_info, &new_b, !cut_node);
         }

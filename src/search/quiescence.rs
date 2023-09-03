@@ -7,7 +7,7 @@ use crate::types::pieces::{value, PieceName};
 use crate::types::square::Square;
 
 use super::pvs::{CHECKMATE, INFINITY};
-use super::{eval::eval, pvs::MAX_SEARCH_DEPTH, SearchInfo};
+use super::{eval::evaluate, pvs::MAX_SEARCH_DEPTH, SearchInfo};
 
 pub fn quiescence(
     ply: i8,
@@ -23,13 +23,14 @@ pub fn quiescence(
 
     search_info.sel_depth = search_info.sel_depth.max(ply);
     search_info.search_stats.nodes_searched += 1;
+
     if ply >= MAX_SEARCH_DEPTH {
-        return eval(board);
+        return evaluate(board);
     }
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
     // TODO: Experiment with removing these
-    let eval = eval(board);
+    let eval = evaluate(board);
     if eval >= beta {
         return eval;
     }
