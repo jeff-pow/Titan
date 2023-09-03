@@ -2,8 +2,8 @@ use std::ops;
 
 use crate::moves::{
     attack_boards::{
-        FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, RANK1, RANK2, RANK3, RANK4,
-        RANK5, RANK6, RANK7, RANK8,
+        FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, RANK1, RANK2, RANK3, RANK4, RANK5, RANK6,
+        RANK7, RANK8,
     },
     moves::Direction,
 };
@@ -118,10 +118,7 @@ impl Square {
     }
 
     pub fn iter() -> SquareIter {
-        SquareIter {
-            current: 0,
-            end: 63,
-        }
+        SquareIter { current: 0, end: 63 }
     }
 }
 

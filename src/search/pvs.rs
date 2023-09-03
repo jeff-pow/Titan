@@ -1,10 +1,13 @@
 use std::cmp::{max, min};
+use std::ptr::null;
 use std::time::{Duration, Instant};
 
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::moves::Move;
+use crate::search::alpha_beta::alpha_beta;
+use crate::types::bitboard::Bitboard;
 use crate::types::pieces::{PieceName, QUEEN_PTS, ROOK_PTS};
 
 use super::eval::eval;
@@ -27,8 +30,8 @@ pub fn print_search_stats(search_info: &SearchInfo, eval: i32, pv: &[Move], iter
         search_info.sel_depth,
         iter_depth,
         search_info.search_stats.nodes_searched,
-        (search_info.search_stats.nodes_searched as f64
-            / search_info.search_stats.start.elapsed().as_secs_f64()) as i64,
+        (search_info.search_stats.nodes_searched as f64 / search_info.search_stats.start.elapsed().as_secs_f64())
+            as i64,
         eval
     );
     for m in pv.iter() {
@@ -44,9 +47,7 @@ pub fn search(search_info: &mut SearchInfo, mut max_depth: i8) -> Move {
     let mut recommended_time = Duration::ZERO;
     match search_info.search_type {
         SearchType::Time => {
-            recommended_time = search_info
-                .game_time
-                .recommended_time(search_info.board.to_move);
+            recommended_time = search_info.game_time.recommended_time(search_info.board.to_move);
         }
         SearchType::Depth => (),
         SearchType::Infinite => {
@@ -69,9 +70,7 @@ pub fn search(search_info: &mut SearchInfo, mut max_depth: i8) -> Move {
         let board = &search_info.board.to_owned();
 
         let prev_avg = if search_info.iter_max_depth >= 2 {
-            *score_history
-                .get(search_info.iter_max_depth as usize - 2)
-                .unwrap() as f64
+            *score_history.get(search_info.iter_max_depth as usize - 2).unwrap() as f64
         } else {
             -INFINITY as f64
         };
@@ -81,15 +80,7 @@ pub fn search(search_info: &mut SearchInfo, mut max_depth: i8) -> Move {
 
         let mut score;
         loop {
-            score = pvs(
-                search_info.iter_max_depth,
-                alpha,
-                beta,
-                &mut pv_moves,
-                search_info,
-                board,
-                false,
-            );
+            score = pvs(search_info.iter_max_depth, alpha, beta, &mut pv_moves, search_info, board, false);
             if score <= alpha {
                 beta = (alpha + beta) / 2;
                 alpha = max(score - delta, -INFINITY);
@@ -193,9 +184,8 @@ fn pvs(
     }
     // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval, isn't a
     // PV node, and is a cutNode
-    // Maybe or maybe don't include the can_prune check
     else if depth >= 4 && !is_pv_node && cut_node {
-        depth -= 2;
+        depth -= 1;
     }
 
     if depth <= 0 {
@@ -230,23 +220,23 @@ fn pvs(
         }
     }
 
-    // Null pruning
-    if can_prune && !board.side_in_check(board.to_move) && null_ok(board) {
-        let mut node_pvs = Vec::new();
-        let mut new_b = board.to_owned();
-        new_b.to_move = new_b.to_move.opp();
-        // TODO: Experiment with variable depth reductions
-        let null_eval = -pvs(
-            depth - 1,
-            -beta,
-            -beta + 1,
-            &mut node_pvs,
-            search_info,
-            &new_b,
-            !cut_node,
-        );
-        if null_eval >= beta {
-            return null_eval;
+    if !is_pv_node {
+        let eval = eval(board);
+        // Reverse futility pruning
+        if depth < 9 && eval - 66 * depth as i32 >= beta && eval.abs() < NEAR_CHECKMATE {
+            return eval;
+        }
+
+        // Null pruning
+        if null_ok(board) && eval >= beta && cut_node {
+            let mut node_pvs = Vec::new();
+            let mut new_b = board.to_owned();
+            new_b.to_move = new_b.to_move.opp();
+            let r = 3 + depth / 3 + min((eval - beta) / 200, 3) as i8;
+            let null_eval = -pvs(depth - r, -beta, -beta + 1, &mut node_pvs, search_info, &new_b, !cut_node);
+            if null_eval >= beta {
+                return null_eval;
+            }
         }
     }
 
@@ -262,6 +252,7 @@ fn pvs(
         let mut new_b = board.to_owned();
         moves.sort_next_move(i);
         let m = moves.get_move(i);
+        let is_quiet = !m.is_capture(board);
         new_b.make_move(m);
         if new_b.side_in_check(board.to_move) {
             continue;
@@ -271,51 +262,39 @@ fn pvs(
         let mut node_pvs = Vec::new();
         let mut eval = -INFINITY;
 
+        // Late move pruning
+        if !is_root && !is_pv_node && depth < 9 && is_quiet && legal_moves_searched > (3 + depth * depth) / 2 {
+            continue;
+        }
+
         // LMR
         let do_full_search;
-        if depth > 2
-            && legal_moves_searched > 1
-            && (!((m.is_capture(&new_b) || m.promotion().is_some()) && is_pv_node))
-        {
-            let r = 2;
-            eval = -pvs(
-                depth - r,
-                -alpha - 1,
-                -alpha,
-                &mut Vec::new(),
-                search_info,
-                &new_b,
-                !cut_node,
-            );
-            do_full_search = eval > alpha && eval > 1;
+        if depth > 2 && legal_moves_searched > 1 {
+            let mut r = 1;
+            if is_quiet || !is_pv_node {
+                r = reduction(depth, ply);
+                if !is_pv_node {
+                    r += 1;
+                }
+                if cut_node {
+                    r += 2;
+                }
+            }
+            r = min(depth - 1, max(r, 1));
+            eval = -pvs(depth - r, -alpha - 1, -alpha, &mut Vec::new(), search_info, &new_b, !cut_node);
+            do_full_search = eval > alpha && r != 1;
         } else {
             do_full_search = !is_pv_node || legal_moves_searched > 1;
         }
 
         if do_full_search {
             node_pvs.clear();
-            eval = -pvs(
-                depth - 1,
-                -alpha - 1,
-                -alpha,
-                &mut node_pvs,
-                search_info,
-                &new_b,
-                !cut_node,
-            );
+            eval = -pvs(depth - 1, -alpha - 1, -alpha, &mut node_pvs, search_info, &new_b, !cut_node);
         }
 
         if is_pv_node && (legal_moves_searched == 1 || (eval > alpha && (is_root || eval < beta))) {
             node_pvs.clear();
-            eval = -pvs(
-                depth - 1,
-                -beta,
-                -alpha,
-                &mut node_pvs,
-                search_info,
-                &new_b,
-                false,
-            );
+            eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b, false);
         }
 
         // There's some funky stuff going on here with returning alpha or best_score
@@ -341,17 +320,16 @@ fn pvs(
             }
 
             if alpha >= beta {
-                search_info.transpos_table.insert(
-                    board.zobrist_hash,
-                    TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, *m),
-                );
+                search_info
+                    .transpos_table
+                    .insert(board.zobrist_hash, TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, *m));
 
                 let capture = board.piece_at(m.dest_square());
                 // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
                 if capture.is_none() {
                     store_killer_move(ply, m, search_info);
                 }
-                return eval;
+                return alpha;
             }
         }
     }
@@ -366,17 +344,27 @@ fn pvs(
         return STALEMATE;
     }
 
-    search_info.transpos_table.insert(
-        board.zobrist_hash,
-        TableEntry::new(depth, ply, entry_flag, alpha, best_move),
-    );
+    search_info
+        .transpos_table
+        .insert(board.zobrist_hash, TableEntry::new(depth, ply, entry_flag, alpha, best_move));
     alpha
 }
 
+#[inline(always)]
+fn reduction(depth: i8, ply: i8) -> i8 {
+    if depth == 0 || ply == 0 {
+        return 0;
+    }
+    let depth = depth as f32;
+    let ply = ply as f32;
+    let ret = 1. + depth.log10() * ply.log10() / 2.;
+    ret as i8
+}
+
 /// Arbitrary value determining if a side is in endgame yet
-const ENDGAME_THRESHOLD: i32 =
-    PieceName::Queen.value() + PieceName::Rook.value() + PieceName::Bishop.value();
+const ENDGAME_THRESHOLD: i32 = PieceName::Queen.value() + PieceName::Rook.value() + PieceName::Bishop.value();
 fn null_ok(board: &Board) -> bool {
     board.material_val[board.to_move as usize] > ENDGAME_THRESHOLD
         && board.material_val[board.to_move.opp() as usize] > ENDGAME_THRESHOLD
+        && board.bitboards[board.to_move as usize][PieceName::Pawn as usize] != Bitboard::EMPTY
 }

@@ -56,21 +56,11 @@ impl Default for Magics {
         unsafe {
             let mut rook_magics = [SMagic::init(); 64];
             let mut rook_table = Vec::with_capacity(ROOK_M_SIZE);
-            gen_magic_board(
-                ROOK_M_SIZE,
-                &R_DELTAS,
-                rook_magics.as_mut_ptr(),
-                rook_table.as_mut_ptr(),
-            );
+            gen_magic_board(ROOK_M_SIZE, &R_DELTAS, rook_magics.as_mut_ptr(), rook_table.as_mut_ptr());
 
             let mut bishop_magics = [SMagic::init(); 64];
             let mut bishop_table = Vec::with_capacity(BISHOP_M_SIZE);
-            gen_magic_board(
-                BISHOP_M_SIZE,
-                &B_DELTAS,
-                bishop_magics.as_mut_ptr(),
-                bishop_table.as_mut_ptr(),
-            );
+            gen_magic_board(BISHOP_M_SIZE, &B_DELTAS, bishop_magics.as_mut_ptr(), bishop_table.as_mut_ptr());
 
             Self {
                 rook_table,
@@ -206,8 +196,7 @@ unsafe fn gen_magic_board(
         // e.g. sq A1 is on FileA and Rank1, so edges = bitboard of FileH and Rank8
         // mask = occupancy mask of square s
         // let edges: u64 = ((RANK1.0 | RANK8.0) & !get_rank_bitboard(s))
-        let edges = ((RANK1 | RANK8) & !(s.get_rank_bitboard()))
-            | ((FILE_A | FILE_H) & !(s.get_file_bitboard()));
+        let edges = ((RANK1 | RANK8) & !(s.get_rank_bitboard())) | ((FILE_A | FILE_H) & !(s.get_file_bitboard()));
         let mask = sliding_attack(deltas, s, Bitboard::EMPTY) & !edges;
 
         // Shift = number of bits in 64 - bits in mask = log2(size)
@@ -251,9 +240,7 @@ unsafe fn gen_magic_board(
             // Filling the attacks Vector up to size digits
             while i < size {
                 // Magic part! The index is = ((occupancy[s] & mask) * magic >> shift)
-                let index: usize = (occupancy[i] & mask.0)
-                    .wrapping_mul(magic)
-                    .wrapping_shr(shift) as usize;
+                let index: usize = (occupancy[i] & mask.0).wrapping_mul(magic).wrapping_shr(shift) as usize;
 
                 // Checking to see if we have visited this index already with a lower current number
                 if age[index] < current {
@@ -261,9 +248,7 @@ unsafe fn gen_magic_board(
                     // as this current is higher and has gone through more passes
                     age[index] = current;
                     *attacks.add(pre_sq_table[s.idx()].start + index) = Bitboard(reference[i]);
-                } else if *attacks.add(pre_sq_table[s.idx()].start + index)
-                    != Bitboard(reference[i])
-                {
+                } else if *attacks.add(pre_sq_table[s.idx()].start + index) != Bitboard(reference[i]) {
                     // If a magic maps to the same index but different result, either magic is bad or we are done
                     break;
                 }

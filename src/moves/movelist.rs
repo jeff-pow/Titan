@@ -1,10 +1,11 @@
 use crate::{
     board::board::Board,
     search::{killers::NUM_KILLER_MOVES, SearchInfo},
+    types::pieces::PieceName,
 };
 use std::mem::MaybeUninit;
 
-use super::moves::Move;
+use super::moves::{Move, Promotion};
 
 pub const MAX_LEN: usize = 218;
 #[derive(Copy, Clone, Debug)]
@@ -70,20 +71,20 @@ impl MoveList {
         }
         v
     }
-    pub fn score_move_list(
-        &mut self,
-        ply: i8,
-        board: &Board,
-        table_move: Move,
-        search_info: &SearchInfo,
-    ) {
+
+    pub fn score_move_list(&mut self, ply: i8, board: &Board, table_move: Move, search_info: &SearchInfo) {
         for i in 0..self.len {
             let (m, m_score) = self.get_mut(i);
             let piece_moving = board.piece_at(m.origin_square()).unwrap();
             let capture = board.piece_at(m.dest_square());
+            let promotion = m.promotion();
             let mut score = 0;
             if m == &table_move {
                 score = SCORED_MOVE_OFFSET + TTMOVE_SORT_VAL;
+            } else if let Some(promotion) = promotion {
+                if promotion == Promotion::Queen {
+                    score = SCORED_MOVE_OFFSET + QUEEN_PROMOTION;
+                }
             } else if let Some(capture) = capture {
                 score = SCORED_MOVE_OFFSET + MVV_LVA[capture as usize][piece_moving as usize];
             } else {
@@ -113,6 +114,7 @@ impl MoveList {
 
 const KILLER_VAL: u32 = 10;
 const SCORED_MOVE_OFFSET: u32 = 1000;
+const QUEEN_PROMOTION: u32 = 67;
 const TTMOVE_SORT_VAL: u32 = 70;
 // Most valuable victim, least valuable attacker
 // Table is addressed from table[victim][capturer]

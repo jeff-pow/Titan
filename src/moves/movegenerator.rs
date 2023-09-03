@@ -13,8 +13,7 @@ use crate::{
 
 use super::{
     attack_boards::{
-        gen_king_attack_boards, gen_knight_attack_boards, gen_pawn_attack_boards, RANK2, RANK3,
-        RANK6, RANK7,
+        gen_king_attack_boards, gen_knight_attack_boards, gen_pawn_attack_boards, RANK2, RANK3, RANK6, RANK7,
     },
     magics::Magics,
     movelist::MoveList,
@@ -237,12 +236,7 @@ pub fn get_en_passant(board: &Board, dir: Direction) -> Option<Move> {
 
 fn generate_promotions(dest: Square, d: Direction, moves: &mut MoveList) {
     for p in Promotion::iter() {
-        moves.push(Move::new(
-            dest.checked_shift(d).unwrap(),
-            dest,
-            Some(p),
-            MoveType::Promotion,
-        ));
+        moves.push(Move::new(dest.checked_shift(d).unwrap(), dest, Some(p), MoveType::Promotion));
     }
 }
 
@@ -255,10 +249,7 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
         let occupancies = board.occupancies();
         let attack_bitboard = match piece_name {
             King => board.mg.king_attacks(sq),
-            Queen => {
-                board.mg.magics.rook_attacks(occupancies, sq)
-                    | board.mg.magics.bishop_attacks(occupancies, sq)
-            }
+            Queen => board.mg.magics.rook_attacks(occupancies, sq) | board.mg.magics.bishop_attacks(occupancies, sq),
             Rook => board.mg.magics.rook_attacks(occupancies, sq),
             Bishop => board.mg.magics.bishop_attacks(occupancies, sq),
             Knight => board.mg.knight_attacks(sq),
@@ -334,15 +325,13 @@ mod movegen_tests {
 
     #[test]
     fn test_position_6() {
-        let board =
-            build_board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
+        let board = build_board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
         assert_eq!(164_075_551, perft(board, 5));
     }
 
     #[test]
     fn test_multithread() {
-        let board =
-            build_board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
+        let board = build_board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
         assert_eq!(164_075_551, multi_threaded_perft(board, 5));
     }
 
