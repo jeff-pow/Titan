@@ -161,15 +161,13 @@ fn generate_pawn_moves(board: &Board) -> MoveList {
     };
 
     // Single and double pawn pushes w/o captures
-    let mut push_one = vacancies & non_promotions.shift(up);
-    let mut push_two = vacancies & (push_one & rank3_bb).shift(up);
-    while push_one != Bitboard::EMPTY {
-        let dest = push_one.pop_lsb();
+    let push_one = vacancies & non_promotions.shift(up);
+    let push_two = vacancies & (push_one & rank3_bb).shift(up);
+    for dest in push_one {
         let src = dest.checked_shift(down).expect("Valid shift");
         moves.push(Move::new(src, dest, None, MoveType::Normal));
     }
-    while push_two != Bitboard::EMPTY {
-        let dest = push_two.pop_lsb();
+    for dest in push_two {
         let src = dest
             .checked_shift(down)
             .expect("Valid shift")
@@ -180,17 +178,17 @@ fn generate_pawn_moves(board: &Board) -> MoveList {
 
     // Promotions - captures and straight pushes
     if promotions != Bitboard::EMPTY {
-        let mut no_capture_promotions = promotions.shift(up) & vacancies;
-        let mut left_capture_promotions = promotions.shift(up_left) & enemies;
-        let mut right_capture_promotions = promotions.shift(up_right) & enemies;
-        while no_capture_promotions != Bitboard::EMPTY {
-            generate_promotions(no_capture_promotions.pop_lsb(), down, &mut moves);
+        let no_capture_promotions = promotions.shift(up) & vacancies;
+        let left_capture_promotions = promotions.shift(up_left) & enemies;
+        let right_capture_promotions = promotions.shift(up_right) & enemies;
+        for dest in no_capture_promotions {
+            generate_promotions(dest, down, &mut moves);
         }
-        while left_capture_promotions != Bitboard::EMPTY {
-            generate_promotions(left_capture_promotions.pop_lsb(), down_right, &mut moves);
+        for dest in left_capture_promotions {
+            generate_promotions(dest, down_right, &mut moves);
         }
-        while right_capture_promotions != Bitboard::EMPTY {
-            generate_promotions(right_capture_promotions.pop_lsb(), down_left, &mut moves);
+        for dest in right_capture_promotions {
+            generate_promotions(dest, down_left, &mut moves);
         }
     }
 
@@ -243,9 +241,8 @@ fn generate_promotions(dest: Square, d: Direction, moves: &mut MoveList) {
 fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
     let mut moves = MoveList::default();
     // Don't calculate any moves if no pieces of that type exist for the given color
-    let mut occ_bitboard = board.bitboards[board.to_move as usize][piece_name as usize];
-    while occ_bitboard != Bitboard::EMPTY {
-        let sq = occ_bitboard.pop_lsb();
+    let occ_bitboard = board.bitboards[board.to_move as usize][piece_name as usize];
+    for sq in occ_bitboard {
         let occupancies = board.occupancies();
         let attack_bitboard = match piece_name {
             King => board.mg.king_attacks(sq),
@@ -256,9 +253,9 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
             Pawn => panic!(),
         };
         let enemies_and_vacancies = !board.color_occupancies(board.to_move);
-        let mut attacks = attack_bitboard & enemies_and_vacancies;
-        while attacks != Bitboard::EMPTY {
-            moves.push(Move::new(sq, attacks.pop_lsb(), None, MoveType::Normal));
+        let attacks = attack_bitboard & enemies_and_vacancies;
+        for dest in attacks {
+            moves.push(Move::new(sq, dest, None, MoveType::Normal));
         }
     }
     moves

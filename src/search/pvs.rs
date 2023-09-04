@@ -3,12 +3,12 @@ use std::time::{Duration, Instant};
 
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
+use crate::eval::eval::evaluate;
 use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::moves::Move;
 use crate::types::bitboard::Bitboard;
 use crate::types::pieces::{PieceName, QUEEN_PTS, ROOK_PTS};
 
-use super::eval::evaluate;
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
 use super::{SearchInfo, SearchType};
@@ -129,7 +129,7 @@ pub const RAZORING_DEPTH: i8 = 3;
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
 /// to refute other variations
 fn pvs(
-    mut depth: i8,
+    depth: i8,
     mut alpha: i32,
     beta: i32,
     pv: &mut Vec<Move>,
@@ -184,9 +184,9 @@ fn pvs(
     }
     // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval, isn't a
     // PV node, and is a cutNode
-    else if depth >= 4 && !is_pv_node && cut_node {
-        depth -= 1;
-    }
+    // else if depth >= 4 && !is_pv_node && cut_node {
+    //     depth -= 1;
+    // }
 
     if depth <= 0 {
         return quiescence(ply, alpha, beta, pv, search_info, board);
@@ -247,8 +247,8 @@ fn pvs(
     // Start of search
     for i in 0..moves.len {
         let mut new_b = board.to_owned();
-        moves.sort_next_move(i);
-        let m = moves.get_move(i);
+        let m = moves.get_next_move(i);
+        let _s = m.to_lan();
         let is_quiet = !m.is_capture(board);
         new_b.make_move(m);
         if new_b.side_in_check(board.to_move) {
@@ -344,6 +344,7 @@ fn pvs(
     search_info
         .transpos_table
         .insert(board.zobrist_hash, TableEntry::new(depth, ply, entry_flag, alpha, best_move));
+
     alpha
 }
 

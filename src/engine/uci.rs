@@ -3,7 +3,7 @@ use std::{io, time::Duration};
 use itertools::Itertools;
 
 use crate::board::fen::parse_fen_from_buffer;
-use crate::search::eval::evaluate;
+use crate::eval::eval::evaluate;
 use crate::search::pvs::{search, MAX_SEARCH_DEPTH};
 use crate::{
     board::{

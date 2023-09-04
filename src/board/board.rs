@@ -3,6 +3,7 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
+    eval::nnue::{NnueAccumulator, M},
     moves::{movegenerator::MoveGenerator, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
     types::{
         bitboard::Bitboard,
@@ -34,6 +35,7 @@ pub struct Board {
     pub history: History,
     pub zobrist_consts: Arc<Zobrist>,
     pub mg: Arc<MoveGenerator>,
+    pub accumulator: NnueAccumulator,
 }
 
 impl Default for Board {
@@ -58,6 +60,7 @@ impl Default for Board {
             history: History::default(),
             zobrist_consts: Arc::new(Zobrist::default()),
             mg: Arc::new(MoveGenerator::default()),
+            accumulator: NnueAccumulator { v: [[0; M]; 2] },
         }
     }
 }
@@ -352,19 +355,15 @@ impl Board {
 /// returns true indicating the position would be a stalemate due to the threefold repetition rule
 pub fn check_for_3x_repetition(board: &Board) -> bool {
     // TODO: Check if this is correct. If not, just set offset to be 1 and 0 respectively
-    let offset = if board.to_move == Color::Black {
-        1 + board.half_moves as usize
-    } else {
-        board.half_moves as usize
-    };
+    let _offset = if board.to_move == Color::Black { 1 } else { 0 };
     board
         .history
         .iter()
-        .skip(offset)
-        .step_by(2)
+        // .skip(offset)
+        // .step_by(2)
         .filter(|x| &board.zobrist_hash == x)
         .count()
-        >= 2
+        > 1
 }
 
 impl fmt::Display for Board {

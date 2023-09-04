@@ -1,7 +1,7 @@
 use crate::board::board::Board;
+use crate::eval::eval::evaluate;
 use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::moves::Move;
-use crate::search::eval::evaluate;
 use crate::search::pvs::{MAX_SEARCH_DEPTH, STALEMATE};
 use crate::search::quiescence::quiescence;
 use crate::search::SearchInfo;

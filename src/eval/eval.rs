@@ -4,10 +4,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     board::board::Board,
-    types::{
-        bitboard::Bitboard,
-        pieces::{Color, PieceName},
-    },
+    types::pieces::{Color, PieceName},
 };
 
 /// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
@@ -19,9 +16,8 @@ pub fn evaluate(board: &Board) -> i32 {
     let mut game_phase = 0;
 
     for piece in PieceName::iter() {
-        let mut bb = board.bitboards[Color::White as usize][piece as usize];
-        while bb != Bitboard::EMPTY {
-            let sq = bb.pop_lsb();
+        let bb = board.bitboards[Color::White as usize][piece as usize];
+        for sq in bb {
             game_phase += game_phase_value(piece);
             // We flip the index of white pieces because the const boards are indexed with square
             // A8 being arr[63]
@@ -30,9 +26,8 @@ pub fn evaluate(board: &Board) -> i32 {
         }
     }
     for piece in PieceName::iter() {
-        let mut bb = board.bitboards[Color::Black as usize][piece as usize];
-        while bb != Bitboard::EMPTY {
-            let sq = bb.pop_lsb();
+        let bb = board.bitboards[Color::Black as usize][piece as usize];
+        for sq in bb {
             game_phase += game_phase_value(piece);
             black_mg += get_mg_table(piece)[sq.idx()] + piece.value();
             black_eg += get_eg_table(piece)[sq.idx()] + piece.value();
