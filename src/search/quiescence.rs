@@ -42,7 +42,12 @@ pub fn quiescence(
     } else {
         generate_psuedolegal_captures(board)
     };
-    let mut legal_moves_searched = 0;
+    if in_check && moves.len == 0 {
+        if in_check {
+            return -CHECKMATE + ply as i32;
+        }
+        return STALEMATE;
+    }
     moves.score_move_list(ply, board, Move::NULL, search_info);
     let mut best_score = -INFINITY;
 
@@ -55,11 +60,10 @@ pub fn quiescence(
         if new_b.side_in_check(board.to_move) {
             continue;
         }
-        legal_moves_searched += 1;
 
         // TODO: Implement delta pruning here
 
-        if is_bad_capture(board, m) && m.promotion().is_none() {
+        if !in_check && is_bad_capture(board, m) && m.promotion().is_none() {
             continue;
         }
 
@@ -89,12 +93,7 @@ pub fn quiescence(
             }
         }
     }
-    if legal_moves_searched == 0 {
-        if in_check {
-            return -CHECKMATE + ply as i32;
-        }
-        return STALEMATE;
-    }
+
 
     alpha
 }
