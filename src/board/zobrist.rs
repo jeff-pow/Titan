@@ -5,10 +5,7 @@ use strum::IntoEnumIterator;
 use crate::{
     board::board::Board,
     moves::magics::Rng,
-    types::{
-        bitboard::Bitboard,
-        pieces::{Color, PieceName},
-    },
+    types::pieces::{Color, PieceName},
 };
 
 pub struct Zobrist {
@@ -41,10 +38,9 @@ impl Board {
 
         for color in Color::iter() {
             for piece in PieceName::iter() {
-                let mut occupancies = self.bitboards[color as usize][piece as usize];
-                while occupancies != Bitboard::EMPTY {
-                    hash ^= self.zobrist_consts.piece_square_hashes[color as usize][piece as usize]
-                        [occupancies.pop_lsb().idx()]
+                let occupancies = self.bitboards[color as usize][piece as usize];
+                for sq in occupancies {
+                    hash ^= self.zobrist_consts.piece_square_hashes[color as usize][piece as usize][sq.idx()]
                 }
             }
         }

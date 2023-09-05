@@ -11,7 +11,6 @@ use self::killers::{KillerMoves, NUM_KILLER_MOVES};
 use self::{game_time::GameTime, search_stats::SearchStats};
 
 mod alpha_beta;
-pub(crate) mod eval;
 pub(crate) mod game_time;
 pub mod killers;
 pub(crate) mod pvs;

@@ -121,6 +121,18 @@ impl Bitboard {
     }
 }
 
+impl Iterator for Bitboard {
+    type Item = Square;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if *self == Bitboard::EMPTY {
+            None
+        } else {
+            Some(self.pop_lsb())
+        }
+    }
+}
+
 impl fmt::Debug for Bitboard {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for row in (0..8).rev() {

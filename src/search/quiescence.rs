@@ -1,4 +1,5 @@
 use crate::board::board::Board;
+use crate::eval::eval::evaluate;
 use crate::moves::movegenerator::generate_moves;
 use crate::moves::{movegenerator::generate_psuedolegal_captures, moves::Move};
 use crate::search::pvs::STALEMATE;
@@ -7,7 +8,7 @@ use crate::types::pieces::{value, PieceName};
 use crate::types::square::Square;
 
 use super::pvs::{CHECKMATE, INFINITY};
-use super::{eval::evaluate, pvs::MAX_SEARCH_DEPTH, SearchInfo};
+use super::{pvs::MAX_SEARCH_DEPTH, SearchInfo};
 
 pub fn quiescence(
     ply: i8,
@@ -54,8 +55,7 @@ pub fn quiescence(
     for i in 0..moves.len {
         let mut node_pvs = Vec::new();
         let mut new_b = board.to_owned();
-        moves.sort_next_move(i);
-        let m = moves.get_move(i);
+        let m = moves.get_next_move(i);
         new_b.make_move(m);
         if new_b.side_in_check(board.to_move) {
             continue;
