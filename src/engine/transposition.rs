@@ -14,7 +14,7 @@ pub struct TableEntry {
 #[derive(PartialEq)]
 pub enum EntryFlag {
     Exact,
-    AlphaCutOff,
+    AlphaUnchanged,
     BetaCutOff,
 }
 
@@ -49,7 +49,7 @@ impl TableEntry {
 
                     eval = Some(value);
                 }
-                EntryFlag::AlphaCutOff => {
+                EntryFlag::AlphaUnchanged => {
                     if self.eval <= alpha {
                         eval = Some(alpha);
                     }

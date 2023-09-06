@@ -94,7 +94,6 @@ pub fn quiescence(
         }
     }
 
-
     alpha
 }
 

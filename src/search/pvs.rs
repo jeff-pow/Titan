@@ -193,7 +193,7 @@ fn pvs(
     }
 
     let mut best_score = -INFINITY;
-    let mut entry_flag = EntryFlag::AlphaCutOff;
+    let mut entry_flag = EntryFlag::AlphaUnchanged;
     let mut best_move = Move::NULL;
     let eval = evaluate(board);
 
