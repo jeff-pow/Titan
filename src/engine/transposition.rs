@@ -53,11 +53,13 @@ impl TableEntry {
                     if self.eval <= alpha {
                         eval = Some(alpha);
                     }
+                    // eval = Some(eval.min(beta))
                 }
                 EntryFlag::BetaCutOff => {
                     if self.eval >= beta {
                         eval = Some(beta);
                     }
+                    // eval = Some(eval.max(alpha))
                 }
             }
         }
