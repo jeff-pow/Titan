@@ -33,7 +33,7 @@ pub fn main_loop() -> ! {
         } else if buffer.starts_with("debug on") {
             println!("info string debug on");
         } else if buffer.starts_with("ucinewgame") {
-            search_info.board = build_board(fen::STARTING_FEN);
+            search_info = SearchInfo::default();
         } else if buffer.starts_with("eval") {
             println!("{} cp", evaluate(&search_info.board));
         } else if buffer.starts_with("position") {
