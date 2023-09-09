@@ -76,7 +76,7 @@ impl Magics {
     #[inline(always)]
     pub fn bishop_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
         let mut occupied = occupied.0;
-        let magic_entry: &SMagic = unsafe { self.bishop_magics.get_unchecked(square.idx()) };
+        let magic_entry: &SMagic = &self.bishop_magics[square.idx()];
         occupied &= magic_entry.mask;
         occupied = occupied.wrapping_mul(magic_entry.magic);
         occupied = occupied.wrapping_shr(magic_entry.shift);
@@ -86,7 +86,7 @@ impl Magics {
     #[inline(always)]
     pub fn rook_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
         let mut occupied = occupied.0;
-        let magic_entry: &SMagic = unsafe { self.rook_magics.get_unchecked(square.idx()) };
+        let magic_entry: &SMagic = &self.rook_magics[square.idx()];
         occupied &= magic_entry.mask;
         occupied = occupied.wrapping_mul(magic_entry.magic);
         occupied = occupied.wrapping_shr(magic_entry.shift);
@@ -138,9 +138,7 @@ impl PreSMagic {
     }
 
     // creates an array of PreSMagic
-    pub unsafe fn init64() -> [PreSMagic; 64] {
-        //let arr: [PreSMagic; 64] = mem::MaybeUninit::uninit().assume_init();
-        // arr
+    pub fn init64() -> [PreSMagic; 64] {
         [PreSMagic::init(); 64]
     }
 
