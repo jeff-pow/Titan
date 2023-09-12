@@ -3,7 +3,7 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
-    eval::nnue::{NnueAccumulator, M},
+    eval::nnue::{NnueAccumulator, INPUT_SIZE},
     moves::{movegenerator::MoveGenerator, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
     types::{
         bitboard::Bitboard,
@@ -60,7 +60,9 @@ impl Default for Board {
             history: History::default(),
             zobrist_consts: Arc::new(Zobrist::default()),
             mg: Arc::new(MoveGenerator::default()),
-            accumulator: NnueAccumulator { v: [[0; M]; 2] },
+            accumulator: NnueAccumulator {
+                v: [[0; INPUT_SIZE]; 2],
+            },
         }
     }
 }

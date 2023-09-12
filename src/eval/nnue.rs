@@ -3,20 +3,19 @@ use strum::IntoEnumIterator;
 use crate::{
     board::board::Board,
     types::{
-        bitboard::Bitboard,
         pieces::{Color, PieceName},
         square::Square,
     },
 };
 
-pub const M: usize = 768;
+pub const INPUT_SIZE: usize = 768;
 #[derive(Clone, Copy)]
 pub struct NnueAccumulator {
-    pub v: [[i16; M]; 2],
+    pub v: [[i16; INPUT_SIZE]; 2],
 }
 
 impl NnueAccumulator {
-    fn get(&self, color: Color) -> [i16; M] {
+    fn get(&self, color: Color) -> [i16; INPUT_SIZE] {
         self.v[color as usize]
     }
 }
@@ -24,13 +23,26 @@ impl NnueAccumulator {
 struct LinearLayer {
     pub input_size: usize,
     pub output_size: usize,
-    pub weight: Vec<Vec<i16>>,
+    pub weights: Vec<Vec<i16>>,
     pub bias: Vec<i16>,
 }
 
-fn create_accumulator(perspective: Color, board: Board) -> [i32; M] {
+impl LinearLayer {
+    fn new(input_size: usize, output_size: usize) -> LinearLayer {
+        let bias = vec![0; output_size];
+        let weights = vec![vec![0; input_size]; output_size];
+        Self {
+            input_size,
+            output_size,
+            weights,
+            bias,
+        }
+    }
+}
+
+fn create_accumulator(perspective: Color, board: Board) -> [i32; INPUT_SIZE] {
     let mut idx = 0;
-    let mut arr = [0; M];
+    let mut arr = [0; INPUT_SIZE];
 
     for piece in PieceName::iter() {
         let bb = board.bitboards[perspective as usize][piece as usize];
@@ -48,21 +60,23 @@ fn create_accumulator(perspective: Color, board: Board) -> [i32; M] {
 }
 
 fn calc_accumulator_idx(color: Color, piece: PieceName, sq: Square) -> usize {
-    let c = color as usize * M / 2;
-    let p = piece as usize * M / 2 / 6;
+    let c = color as usize * INPUT_SIZE / 2;
+    let p = piece as usize * INPUT_SIZE / 2 / 6;
     let s = sq.idx();
     c + p + s
 }
 
 fn refresh_accumulator(perspective: Color, layer: &LinearLayer, active_features: &[i32]) -> NnueAccumulator {
-    let mut new_acc = NnueAccumulator { v: [[0; M]; 2] };
-    for i in 0..M {
+    let mut new_acc = NnueAccumulator {
+        v: [[0; INPUT_SIZE]; 2],
+    };
+    for i in 0..INPUT_SIZE {
         new_acc.v[perspective as usize][i] = layer.bias[i];
     }
 
     for a in active_features {
-        for i in 0..M {
-            new_acc.v[perspective as usize][i] += layer.weight[*a as usize][i];
+        for i in 0..INPUT_SIZE {
+            new_acc.v[perspective as usize][i] += layer.weights[*a as usize][i];
         }
     }
     new_acc
@@ -75,22 +89,24 @@ fn update_accumulator(
     added_features: &[i32],
     perspective: Color,
 ) -> NnueAccumulator {
-    let mut new_acc = NnueAccumulator { v: [[0; M]; 2] };
+    let mut new_acc = NnueAccumulator {
+        v: [[0; INPUT_SIZE]; 2],
+    };
     let perspective = perspective as usize;
 
-    for i in 0..M {
+    for i in 0..INPUT_SIZE {
         new_acc.v[perspective][i] = prev_acc.v[perspective][i];
     }
 
     for r in removed_features {
-        for i in 0..M {
-            new_acc.v[perspective][i] -= layer.weight[*r as usize][i];
+        for i in 0..INPUT_SIZE {
+            new_acc.v[perspective][i] -= layer.weights[*r as usize][i];
         }
     }
 
     for a in added_features {
-        for i in 0..M {
-            new_acc.v[perspective][i] += layer.weight[*a as usize][i];
+        for i in 0..INPUT_SIZE {
+            new_acc.v[perspective][i] += layer.weights[*a as usize][i];
         }
     }
 
@@ -105,7 +121,7 @@ fn linear(layer: &LinearLayer, input: &[f32]) -> Vec<f32> {
 
     for i in 0..layer.input_size {
         for j in 0..layer.output_size {
-            output[j] += input[i] * layer.weight[i][j] as f32;
+            output[j] += input[i] * layer.weights[i][j] as f32;
         }
     }
     output
@@ -120,7 +136,7 @@ fn crelu(size: usize, input: &[f32]) -> Vec<f32> {
 }
 
 fn nnue_evaluate(board: &Board) -> i32 {
-    let mut input = [0.; M];
+    let mut input = [0.; INPUT_SIZE];
     let stm = board.to_move;
     // for i in 0..M {
     //     input[i] = pos.accumulator[stm as usize][i];
