@@ -363,7 +363,7 @@ pub fn check_for_3x_repetition(board: &Board) -> bool {
         // .step_by(2)
         .filter(|x| &board.zobrist_hash == x)
         .count()
-        > 1
+        >= 3
 }
 
 impl fmt::Display for Board {

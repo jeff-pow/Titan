@@ -61,21 +61,21 @@ pub fn main_loop() -> ! {
             search_info.transpos_table.clear();
             println!("Transposition table cleared");
         } else if buffer.starts_with("go") {
-            if buffer.contains("wtime") {
-                search_info.search_type = SearchType::Time;
-                search_info.game_time = parse_time(&buffer, &mut search_info);
-                let m = search(&mut search_info, MAX_SEARCH_DEPTH);
-                println!("bestmove {}", m.to_lan());
-            } else if buffer.contains("perft") {
-                let mut iter = buffer.split_whitespace().skip(2);
-                let depth = iter.next().unwrap().parse::<i8>().unwrap();
-                multi_threaded_perft(search_info.board.to_owned(), depth);
-            } else if buffer.contains("depth") {
+            if buffer.contains("depth") {
                 let mut iter = buffer.split_whitespace().skip(2);
                 let depth = iter.next().unwrap().parse::<i8>().unwrap();
                 search_info.max_depth = depth;
                 search_info.search_type = SearchType::Depth;
                 println!("bestmove {}", search(&mut search_info, depth).to_lan());
+            } else if buffer.contains("perft") {
+                let mut iter = buffer.split_whitespace().skip(2);
+                let depth = iter.next().unwrap().parse::<i8>().unwrap();
+                multi_threaded_perft(search_info.board.to_owned(), depth);
+            } else if buffer.contains("wtime") {
+                search_info.search_type = SearchType::Time;
+                search_info.game_time = parse_time(&buffer, &mut search_info);
+                let m = search(&mut search_info, MAX_SEARCH_DEPTH);
+                println!("bestmove {}", m.to_lan());
             } else if buffer.contains("asppvs") {
                 let mut iter = buffer.split_whitespace().skip(2);
                 let depth = iter.next().unwrap().parse::<i8>().unwrap();
