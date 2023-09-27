@@ -1,4 +1,4 @@
-use std::{fmt, ops};
+use std::{arch::x86_64::_tzcnt_u64, fmt, ops};
 
 use crate::moves::{
     attack_boards::{FILE_A, FILE_H},
@@ -17,9 +17,15 @@ impl Bitboard {
     /// Returns the index of the lowest bit of a bitboard, and modifies the bitboard to exclude
     /// that bit
     pub fn pop_lsb(&mut self) -> Square {
-        let lsb = self.0 & self.0.wrapping_neg();
-        self.0 ^= lsb;
-        Square(lsb.trailing_zeros() as u8)
+        let sq = self.0.trailing_zeros() as u64;
+        self.0 ^= 1 << sq;
+        Square(sq as u8)
+        // let lsb;
+        // unsafe {
+        //     lsb = _tzcnt_u64(self.0);
+        // }
+        // self.0 ^= 1 << lsb;
+        // Square(lsb as u8)
     }
 
     #[inline(always)]
