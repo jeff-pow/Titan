@@ -21,6 +21,7 @@ dependencies = [
  "float-ord",
  "itertools",
  "log",
+ "microbench",
  "rayon",
  "rustc-hash",
  "strum",
@@ -123,6 +124,12 @@ checksum = "5a634b1c61a95585bd15607c6ab0c4e5b226e695ff2800ba0cdccddf208c406c"
 dependencies = [
  "autocfg",
 ]
+
+[[package]]
+name = "microbench"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4c44e40aee4e6fd2f4257bb91e5948ce79285aeb949129448889cf2fbf6da0b"
 
 [[package]]
 name = "num_cpus"
