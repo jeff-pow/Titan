@@ -198,7 +198,7 @@ fn pvs(
     let eval = evaluate(board);
 
     // Reverse futility pruning
-    if can_prune && depth <= 8 && eval - futil_margin(depth) >= beta {
+    if can_prune && depth >= 8 && eval - reverse_futil_margin(depth) >= beta {
         return eval;
     }
 
@@ -367,6 +367,6 @@ fn null_ok(board: &Board) -> bool {
         && board.bitboards[board.to_move as usize][PieceName::Pawn as usize] != Bitboard::EMPTY
 }
 
-fn futil_margin(depth: i8) -> i32 {
-    depth as i32 * 100
+fn reverse_futil_margin(depth: i8) -> i32 {
+    100 * depth as i32
 }
