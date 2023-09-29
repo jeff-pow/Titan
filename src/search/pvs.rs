@@ -8,15 +8,16 @@ use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::moves::Move;
 use crate::types::bitboard::Bitboard;
 use crate::types::pieces::{PieceName, QUEEN_PTS, ROOK_PTS};
+use crate::types::square::Square;
 
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
 use super::{SearchInfo, SearchType};
 
-pub const CHECKMATE: i32 = 25000;
+pub const CHECKMATE: i32 = 30000;
 pub const STALEMATE: i32 = 0;
 pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
-pub const INFINITY: i32 = 32000;
+pub const INFINITY: i32 = 50000;
 pub const MAX_SEARCH_DEPTH: i8 = 100;
 /// Initial aspiration window value
 pub const INIT_ASP: i32 = 10;
@@ -224,11 +225,12 @@ fn pvs(
             return eval;
         }
 
-        // Null pruning
-        if null_ok(board) && eval >= beta && cut_node {
+        // Null move pruning
+        if null_ok(board) && depth >= 4 && eval >= beta && cut_node {
             let mut node_pvs = Vec::new();
             let mut new_b = board.to_owned();
             new_b.to_move = new_b.to_move.opp();
+            new_b.en_passant_square = Square::INVALID;
             let r = 3 + depth / 3 + min((eval - beta) / 200, 3) as i8;
             let null_eval = -pvs(depth - r, -beta, -beta + 1, &mut node_pvs, search_info, &new_b, !cut_node);
             if null_eval >= beta {
