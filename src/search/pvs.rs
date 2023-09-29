@@ -221,7 +221,7 @@ fn pvs(
     if !is_pv_node {
         let eval = evaluate(board);
         // Reverse futility pruning
-        if depth < 9 && eval - 66 * depth as i32 >= beta && eval.abs() < NEAR_CHECKMATE {
+        if eval - 70 * depth as i32 >= beta && depth < 9 && eval.abs() < NEAR_CHECKMATE {
             return eval;
         }
 
