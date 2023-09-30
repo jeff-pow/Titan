@@ -10,15 +10,16 @@ use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::moves::Move;
 use crate::types::bitboard::Bitboard;
 use crate::types::pieces::{PieceName, QUEEN_PTS, ROOK_PTS};
+use crate::types::square::Square;
 
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
 use super::{SearchInfo, SearchType};
 
-pub const CHECKMATE: i32 = 25000;
+pub const CHECKMATE: i32 = 30000;
 pub const STALEMATE: i32 = 0;
 pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
-pub const INFINITY: i32 = 32000;
+pub const INFINITY: i32 = 50000;
 pub const MAX_SEARCH_DEPTH: i8 = 100;
 /// Initial aspiration window value
 pub const INIT_ASP: i32 = 10;
@@ -208,7 +209,7 @@ fn pvs(
     let eval = evaluate(board);
 
     // Reverse futility pruning
-    if can_prune && depth <= 8 && eval - futil_margin(depth) >= beta {
+    if can_prune && depth >= 8 && eval - reverse_futil_margin(depth) >= beta {
         return eval;
     }
 
@@ -230,15 +231,16 @@ fn pvs(
     if !is_pv_node {
         let eval = evaluate(board);
         // Reverse futility pruning
-        if depth < 9 && eval - 66 * depth as i32 >= beta && eval.abs() < NEAR_CHECKMATE {
+        if eval - 70 * depth as i32 >= beta && depth < 9 && eval.abs() < NEAR_CHECKMATE {
             return eval;
         }
 
-        // Null pruning
-        if null_ok(board) && eval >= beta && cut_node {
+        // Null move pruning
+        if null_ok(board) && depth >= 4 && eval >= beta && cut_node {
             let mut node_pvs = Vec::new();
             let mut new_b = board.to_owned();
             new_b.to_move = new_b.to_move.opp();
+            new_b.en_passant_square = Square::INVALID;
             let r = 3 + depth / 3 + min((eval - beta) / 200, 3) as i8;
             let null_eval =
                 -pvs(depth - r, -beta, -beta + 1, &mut node_pvs, search_info, &new_b, !cut_node, halt.clone());
@@ -378,6 +380,6 @@ fn null_ok(board: &Board) -> bool {
         && board.bitboards[board.to_move as usize][PieceName::Pawn as usize] != Bitboard::EMPTY
 }
 
-fn futil_margin(depth: i8) -> i32 {
-    depth as i32 * 100
+fn reverse_futil_margin(depth: i8) -> i32 {
+    100 * depth as i32
 }
