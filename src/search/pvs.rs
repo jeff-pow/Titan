@@ -1,4 +1,5 @@
 use std::cmp::{max, min};
+use std::ffi::NulError;
 use std::ptr::null;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -149,6 +150,7 @@ fn pvs(
     let ply = search_info.iter_max_depth - depth;
     let is_root = ply == 0;
     let can_prune = can_prune(board);
+    let in_check = board.side_in_check(board.to_move);
     // Is a zero width search if alpha and beta are one
     let is_pv_node = (beta - alpha).abs() != 1;
     search_info.sel_depth = search_info.sel_depth.max(ply);
@@ -215,17 +217,29 @@ fn pvs(
             return eval;
         }
 
-        // Null move pruning
+        // Null move pruning (NMP)
         if null_ok(board) && depth >= 4 && eval >= beta && cut_node {
             let mut node_pvs = Vec::new();
             let mut new_b = board.to_owned();
             new_b.to_move = new_b.to_move.opp();
             new_b.en_passant_square = Square::INVALID;
             let r = 3 + depth / 3 + min((eval - beta) / 200, 3) as i8;
-            let null_eval =
+            let mut null_eval =
                 -pvs(depth - r, -beta, -beta + 1, &mut node_pvs, search_info, &new_b, !cut_node, halt.clone());
             if null_eval >= beta {
-                return null_eval;
+                if null_eval > NEAR_CHECKMATE {
+                    null_eval = beta;
+                }
+                if search_info.nmp_plies == 0 || depth < 10 {
+                    return null_eval;
+                }
+                search_info.nmp_plies = ply + (depth - r) / 3;
+                let null_eval =
+                    pvs(depth - r, beta - 1, beta, &mut Vec::new(), search_info, board, false, halt.clone());
+                search_info.nmp_plies = 0;
+                if null_eval >= beta {
+                    return null_eval;
+                }
             }
         }
     }
@@ -254,6 +268,7 @@ fn pvs(
 
         // Late move pruning
         if !is_root && !is_pv_node && depth < 9 && is_quiet && legal_moves_searched > (3 + depth * depth) / 2 {
+            // TODO: break instead of continue
             continue;
         }
 
