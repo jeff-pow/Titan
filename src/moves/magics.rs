@@ -41,6 +41,7 @@ const R_DELTAS: [Direction; 4] = [North, South, East, West];
 pub const BISHOP_M_SIZE: usize = 5248;
 const B_DELTAS: [Direction; 4] = [SouthEast, SouthWest, NorthEast, NorthWest];
 
+#[derive(Clone)]
 pub struct Magics {
     #[allow(dead_code)]
     rook_table: Vec<Bitboard>,

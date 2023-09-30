@@ -1,3 +1,6 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread::{self, JoinHandle, Thread};
 use std::{io, time::Duration};
 
 use itertools::Itertools;
@@ -22,6 +25,8 @@ pub fn main_loop() -> ! {
     let mut search_info = SearchInfo::default();
     let mut buffer = String::new();
     println!("Ready to go!");
+    let halt = Arc::new(AtomicBool::new(false));
+    let mut handle = None;
 
     loop {
         buffer.clear();
@@ -58,15 +63,20 @@ pub fn main_loop() -> ! {
             dbg!(&search_info.board);
             search_info.board.debug_bitboards();
         } else if buffer.starts_with("clear") {
-            search_info.transpos_table.clear();
+            // search_info.transpos_table.clear();
             println!("Transposition table cleared");
         } else if buffer.starts_with("go") {
+            halt.store(false, Ordering::SeqCst);
             if buffer.contains("depth") {
                 let mut iter = buffer.split_whitespace().skip(2);
                 let depth = iter.next().unwrap().parse::<i8>().unwrap();
                 search_info.max_depth = depth;
                 search_info.search_type = SearchType::Depth;
-                println!("bestmove {}", search(&mut search_info, depth).to_lan());
+                let mut s = search_info.clone();
+                let h = halt.clone();
+                handle = Some(thread::spawn(move || {
+                    println!("bestmove {}", search(&mut s, depth, h).to_lan());
+                }));
             } else if buffer.contains("perft") {
                 let mut iter = buffer.split_whitespace().skip(2);
                 let depth = iter.next().unwrap().parse::<i8>().unwrap();
@@ -74,19 +84,23 @@ pub fn main_loop() -> ! {
             } else if buffer.contains("wtime") {
                 search_info.search_type = SearchType::Time;
                 search_info.game_time = parse_time(&buffer, &mut search_info);
-                let m = search(&mut search_info, MAX_SEARCH_DEPTH);
-                println!("bestmove {}", m.to_lan());
-            } else if buffer.contains("asppvs") {
-                let mut iter = buffer.split_whitespace().skip(2);
-                let depth = iter.next().unwrap().parse::<i8>().unwrap();
-                search_info.search_type = SearchType::Depth;
-                println!("bestmove {}", search(&mut search_info, depth).to_lan());
+                let mut s = search_info.clone();
+                let h = halt.clone();
+                handle = Some(thread::spawn(move || {
+                    println!("bestmove {}", search(&mut s, MAX_SEARCH_DEPTH, h).to_lan());
+                }));
             } else {
                 search_info.search_type = SearchType::Infinite;
-                let m = search(&mut search_info, MAX_SEARCH_DEPTH);
-                println!("bestmove {}", m.to_lan());
+                // let m = search(&mut search_info, MAX_SEARCH_DEPTH);
+                // println!("bestmove {}", m.to_lan());
             }
-        } else if buffer.starts_with("stop") || buffer.starts_with("quit") {
+        } else if buffer.starts_with("stop") {
+            halt.store(true, Ordering::SeqCst);
+            if let Some(h) = handle.take() {
+                let _ = h.join();
+            }
+            halt.store(false, Ordering::SeqCst);
+        } else if buffer.starts_with("quit") {
             std::process::exit(0);
         } else if buffer.starts_with("uci") {
             println!("id name Kraken");

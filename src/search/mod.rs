@@ -17,9 +17,10 @@ pub(crate) mod pvs;
 pub(crate) mod quiescence;
 pub(crate) mod search_stats;
 
+#[derive(Clone)]
 pub struct SearchInfo {
     pub board: Board,
-    pub transpos_table: FxHashMap<u64, TableEntry>,
+    // pub transpos_table: FxHashMap<u64, TableEntry>,
     pub search_stats: SearchStats,
     pub game_time: GameTime,
     pub search_type: SearchType,
@@ -34,7 +35,7 @@ impl Default for SearchInfo {
     fn default() -> Self {
         Self {
             board: build_board(STARTING_FEN),
-            transpos_table: get_table(),
+            // transpos_table: get_table(),
             search_stats: Default::default(),
             game_time: Default::default(),
             search_type: Default::default(),

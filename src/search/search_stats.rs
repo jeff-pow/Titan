@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+#[derive(Clone)]
 pub struct SearchStats {
     pub nodes_searched: u64,
     pub start: Instant,

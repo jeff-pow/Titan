@@ -25,6 +25,7 @@ pub const WHITE_QUEENSIDE_SQUARES: Bitboard = Bitboard(0b1110);
 pub const BLACK_KINGSIDE_SQUARES: Bitboard = Bitboard(0x6000000000000000);
 pub const BLACK_QUEENSIDE_SQUARES: Bitboard = Bitboard(0xe00000000000000);
 
+#[derive(Clone)]
 pub struct MoveGenerator {
     pub king_table: [Bitboard; 64],
     pub knight_table: [Bitboard; 64],
