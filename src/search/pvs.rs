@@ -1,4 +1,5 @@
 use std::cmp::{max, min};
+use std::ptr::null;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -208,28 +209,7 @@ fn pvs(
     let mut best_move = Move::NULL;
     let eval = evaluate(board);
 
-    // Reverse futility pruning
-    if can_prune && depth >= 8 && eval - reverse_futil_margin(depth) >= beta {
-        return eval;
-    }
-
-    // Futility pruning
-    if can_prune && depth == FUTIL_DEPTH && eval + FUTIL_MARGIN < alpha {
-        return quiescence(ply, alpha, beta, pv, search_info, board);
-    }
-
-    // Extended futility pruning
-    if can_prune && depth == EXT_FUTIL_DEPTH && eval + EXT_FUTIL_MARGIN < alpha {
-        return quiescence(ply, alpha, beta, pv, search_info, board);
-    }
-
-    // Razoring
-    if can_prune && depth == RAZORING_DEPTH && eval + RAZOR_MARGIN < alpha {
-        return quiescence(ply, alpha, beta, pv, search_info, board);
-    }
-
     if !is_pv_node {
-        let eval = evaluate(board);
         // Reverse futility pruning
         if eval - 70 * depth as i32 >= beta && depth < 9 && eval.abs() < NEAR_CHECKMATE {
             return eval;
@@ -377,9 +357,5 @@ const ENDGAME_THRESHOLD: i32 = PieceName::Queen.value() + PieceName::Rook.value(
 fn null_ok(board: &Board) -> bool {
     board.material_val[board.to_move as usize] > ENDGAME_THRESHOLD
         && board.material_val[board.to_move.opp() as usize] > ENDGAME_THRESHOLD
-        && board.bitboards[board.to_move as usize][PieceName::Pawn as usize] != Bitboard::EMPTY
-}
-
-fn reverse_futil_margin(depth: i8) -> i32 {
-    100 * depth as i32
+        && board.has_non_pawns(board.to_move)
 }

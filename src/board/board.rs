@@ -118,6 +118,14 @@ impl Board {
     }
 
     #[inline(always)]
+    pub fn has_non_pawns(&self, side: Color) -> bool {
+        self.occupancies()
+            ^ self.bitboards[side as usize][PieceName::King as usize]
+            ^ self.bitboards[side as usize][PieceName::King as usize]
+            != Bitboard::EMPTY
+    }
+
+    #[inline(always)]
     pub fn place_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
         self.bitboards[color as usize][piece_type as usize] |= sq.bitboard();
         self.array_board[sq.idx()] = Some(Piece::new(piece_type, color));
