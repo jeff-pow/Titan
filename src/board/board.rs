@@ -36,6 +36,7 @@ pub struct Board {
     pub zobrist_consts: Arc<Zobrist>,
     pub mg: Arc<MoveGenerator>,
     pub accumulator: NnueAccumulator,
+    pub prev_move: Move,
 }
 
 impl Default for Board {
@@ -63,6 +64,7 @@ impl Default for Board {
             accumulator: NnueAccumulator {
                 v: [[0; INPUT_SIZE]; 2],
             },
+            prev_move: Move::NULL,
         }
     }
 }
