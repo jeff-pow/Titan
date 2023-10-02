@@ -1,4 +1,5 @@
 use std::cmp::{max, min};
+use std::ffi::NulError;
 use std::ptr::null;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -123,10 +124,6 @@ pub fn search(search_info: &mut SearchInfo, mut max_depth: i8, halt: Arc<AtomicB
     best_move
 }
 
-fn can_prune(board: &Board) -> bool {
-    !board.side_in_check(board.to_move)
-}
-
 pub const FUTIL_MARGIN: i32 = 200;
 pub const FUTIL_DEPTH: i8 = 1;
 pub const EXT_FUTIL_MARGIN: i32 = ROOK_PTS;
@@ -137,7 +134,7 @@ pub const RAZORING_DEPTH: i8 = 3;
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
 /// to refute other variations
 fn pvs(
-    depth: i8,
+    mut depth: i8,
     mut alpha: i32,
     beta: i32,
     pv: &mut Vec<Move>,
@@ -148,8 +145,8 @@ fn pvs(
 ) -> i32 {
     let ply = search_info.iter_max_depth - depth;
     let is_root = ply == 0;
-    let can_prune = can_prune(board);
-    // Is a zero width search if alpha and beta are one
+    let in_check = board.side_in_check(board.to_move);
+    // Is a zero width search if alpha and beta are one apart
     let is_pv_node = (beta - alpha).abs() != 1;
     search_info.sel_depth = search_info.sel_depth.max(ply);
     // Don't do pvs unless you have a pv - otherwise you're wasting time
@@ -157,6 +154,9 @@ fn pvs(
         return evaluate(board);
     }
 
+    if in_check {
+        depth += 1;
+    }
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
         if board.side_in_check(board.to_move) {
@@ -196,9 +196,9 @@ fn pvs(
     }
     // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval, isn't a
     // PV node, and is a cutNode
-    // else if depth >= 4 && !is_pv_node && cut_node {
-    //     depth -= 1;
-    // }
+    else if depth >= 4 && !is_pv_node {
+        depth -= 1;
+    }
 
     if depth <= 0 {
         return quiescence(ply, alpha, beta, pv, search_info, board);
@@ -209,23 +209,36 @@ fn pvs(
     let mut best_move = Move::NULL;
     let eval = evaluate(board);
 
-    if !is_pv_node {
+    if !is_pv_node && !in_check {
         // Reverse futility pruning
         if eval - 70 * depth as i32 >= beta && depth < 9 && eval.abs() < NEAR_CHECKMATE {
             return eval;
         }
 
-        // Null move pruning
-        if null_ok(board) && depth >= 4 && eval >= beta && cut_node {
+        // Null move pruning (NMP)
+        if board.has_non_pawns(board.to_move) && depth >= 3 && eval >= beta && board.prev_move != Move::NULL {
             let mut node_pvs = Vec::new();
             let mut new_b = board.to_owned();
             new_b.to_move = new_b.to_move.opp();
             new_b.en_passant_square = Square::INVALID;
+            new_b.prev_move = Move::NULL;
             let r = 3 + depth / 3 + min((eval - beta) / 200, 3) as i8;
-            let null_eval =
+            let mut null_eval =
                 -pvs(depth - r, -beta, -beta + 1, &mut node_pvs, search_info, &new_b, !cut_node, halt.clone());
             if null_eval >= beta {
-                return null_eval;
+                if null_eval > NEAR_CHECKMATE {
+                    null_eval = beta;
+                }
+                if search_info.nmp_plies == 0 || depth < 10 {
+                    return null_eval;
+                }
+                search_info.nmp_plies = ply + (depth - r) / 3;
+                let null_eval =
+                    pvs(depth - r, beta - 1, beta, &mut Vec::new(), search_info, board, false, halt.clone());
+                search_info.nmp_plies = 0;
+                if null_eval >= beta {
+                    return null_eval;
+                }
             }
         }
     }
@@ -240,29 +253,29 @@ fn pvs(
     // Start of search
     for i in 0..moves.len {
         let mut new_b = board.to_owned();
-        let m = moves.get_next_move(i);
-        let _s = m.to_lan();
-        let is_quiet = !m.is_capture(board);
+        let m = moves.pick_move(i);
+        let is_quiet = m.is_quiet(board);
+
+        // Late move pruning
+        if !is_root && !is_pv_node && depth < 6 && is_quiet && legal_moves_searched > (3 + depth * depth) / 2 {
+            break;
+        }
+
         new_b.make_move(m);
+        new_b.prev_move = *m;
         if new_b.side_in_check(board.to_move) {
             continue;
         }
         legal_moves_searched += 1;
-
         let mut node_pvs = Vec::new();
         let mut eval = -INFINITY;
-
-        // Late move pruning
-        if !is_root && !is_pv_node && depth < 9 && is_quiet && legal_moves_searched > (3 + depth * depth) / 2 {
-            continue;
-        }
 
         // LMR
         let do_full_search;
         if depth > 2 && legal_moves_searched > 1 {
             let mut r = 1;
             if is_quiet || !is_pv_node {
-                r = reduction(depth, ply);
+                r = reduction(depth, legal_moves_searched);
                 if !is_pv_node {
                     r += 1;
                 }
@@ -270,11 +283,11 @@ fn pvs(
                     r += 2;
                 }
             }
-            r = min(depth - 1, max(r, 1));
+            r = r.clamp(1, depth - 1);
             eval = -pvs(depth - r, -alpha - 1, -alpha, &mut Vec::new(), search_info, &new_b, !cut_node, halt.clone());
             do_full_search = eval > alpha && r != 1;
         } else {
-            do_full_search = !is_pv_node || legal_moves_searched > 1;
+            do_full_search = !is_pv_node || legal_moves_searched < 2;
         }
 
         if do_full_search {
@@ -299,6 +312,7 @@ fn pvs(
 
         if eval > best_score {
             best_score = eval;
+            best_move = *m;
 
             if eval > alpha {
                 alpha = eval;
@@ -341,21 +355,15 @@ fn pvs(
     alpha
 }
 
+/// Begin LMR if more than this many moves have been searched
+const REDUCTION_THRESHOLD: i8 = 2;
 #[inline(always)]
-fn reduction(depth: i8, ply: i8) -> i8 {
-    if depth == 0 || ply == 0 {
+fn reduction(depth: i8, moves_played: i8) -> i8 {
+    if depth == 0 || moves_played < REDUCTION_THRESHOLD {
         return 0;
     }
     let depth = depth as f32;
-    let ply = ply as f32;
-    let ret = 1. + depth.log10() * ply.log10() / 2.;
+    let ply = moves_played as f32;
+    let ret = 1. + depth.ln() * ply.ln() / 2.;
     ret as i8
-}
-
-/// Arbitrary value determining if a side is in endgame yet
-const ENDGAME_THRESHOLD: i32 = PieceName::Queen.value() + PieceName::Rook.value() + PieceName::Bishop.value();
-fn null_ok(board: &Board) -> bool {
-    board.material_val[board.to_move as usize] > ENDGAME_THRESHOLD
-        && board.material_val[board.to_move.opp() as usize] > ENDGAME_THRESHOLD
-        && board.has_non_pawns(board.to_move)
 }

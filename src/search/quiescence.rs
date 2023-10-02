@@ -55,7 +55,7 @@ pub fn quiescence(
     for i in 0..moves.len {
         let mut node_pvs = Vec::new();
         let mut new_b = board.to_owned();
-        let m = moves.get_next_move(i);
+        let m = moves.pick_move(i);
         new_b.make_move(m);
         if new_b.side_in_check(board.to_move) {
             continue;
