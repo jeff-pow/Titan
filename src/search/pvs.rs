@@ -122,6 +122,7 @@ pub fn search(search_info: &mut SearchInfo, mut max_depth: i8, halt: Arc<AtomicB
 
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
 /// to refute other variations
+#[allow(clippy::too_many_arguments)]
 fn pvs(
     mut depth: i8,
     mut alpha: i32,
