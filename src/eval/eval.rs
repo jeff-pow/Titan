@@ -40,7 +40,7 @@ pub fn evaluate(board: &Board) -> i32 {
     let mut game_phase = 0;
 
     for piece in PieceName::iter() {
-        let bb = board.bitboards[Color::White as usize][piece as usize];
+        let bb = board.bitboard(Color::White, piece);
         for sq in bb {
             game_phase += game_phase_value(piece);
             // We flip the index of white pieces because the const boards are indexed with square
@@ -50,7 +50,7 @@ pub fn evaluate(board: &Board) -> i32 {
         }
     }
     for piece in PieceName::iter() {
-        let bb = board.bitboards[Color::Black as usize][piece as usize];
+        let bb = board.bitboard(Color::Black, piece);
         for sq in bb {
             game_phase += game_phase_value(piece);
             black_mg += get_mg_table(piece)[sq.idx()] + piece.value();

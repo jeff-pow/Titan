@@ -38,7 +38,7 @@ impl Board {
 
         for color in Color::iter() {
             for piece in PieceName::iter() {
-                let occupancies = self.bitboards[color as usize][piece as usize];
+                let occupancies = self.bitboard(color, piece);
                 for sq in occupancies {
                     hash ^= self.zobrist_consts.piece_square_hashes[color as usize][piece as usize][sq.idx()]
                 }

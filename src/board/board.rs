@@ -16,7 +16,7 @@ use super::{history::History, zobrist::Zobrist};
 
 #[derive(Clone)]
 pub struct Board {
-    pub bitboards: [[Bitboard; NUM_PIECES]; 2],
+    bitboards: [[Bitboard; NUM_PIECES]; 2],
     pub color_occupancies: [Bitboard; 2],
     pub occupancies: Bitboard,
     pub array_board: [Option<Piece>; 64],
@@ -73,6 +73,11 @@ impl Board {
     #[inline(always)]
     pub fn can_en_passant(&self) -> bool {
         self.en_passant_square != Square::INVALID
+    }
+
+    #[inline(always)]
+    pub fn bitboard(&self, side: Color, piece: PieceName) -> Bitboard {
+        self.bitboards[side as usize][piece as usize]
     }
 
     #[inline(always)]

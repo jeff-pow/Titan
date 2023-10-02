@@ -118,7 +118,7 @@ fn is_bad_capture(board: &Board, m: &Move) -> bool {
 fn is_pawn_recapture(board: &Board, sq: Square) -> bool {
     let attacker = board.to_move.opp();
     let pawn_attacks = board.mg.pawn_attacks(sq, board.to_move);
-    if pawn_attacks & board.bitboards[attacker as usize][PieceName::Pawn as usize] != Bitboard::EMPTY {
+    if pawn_attacks & board.bitboard(attacker, PieceName::Pawn) != Bitboard::EMPTY {
         return true;
     }
     false

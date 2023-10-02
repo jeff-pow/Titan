@@ -1,22 +1,18 @@
 use std::cmp::{max, min};
-use std::ffi::NulError;
-use std::ptr::null;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::board::board::Board;
-use crate::engine::transposition::{EntryFlag, TableEntry};
+use crate::engine::transposition::EntryFlag;
 use crate::eval::eval::evaluate;
 use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::moves::Move;
-use crate::types::bitboard::Bitboard;
-use crate::types::pieces::{PieceName, QUEEN_PTS, ROOK_PTS};
 use crate::types::square::Square;
 
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
-use super::{SearchInfo, SearchType};
+use super::{get_reduction, SearchInfo, SearchType};
 
 pub const CHECKMATE: i32 = 30000;
 pub const STALEMATE: i32 = 0;
@@ -123,13 +119,6 @@ pub fn search(search_info: &mut SearchInfo, mut max_depth: i8, halt: Arc<AtomicB
 
     best_move
 }
-
-pub const FUTIL_MARGIN: i32 = 200;
-pub const FUTIL_DEPTH: i8 = 1;
-pub const EXT_FUTIL_MARGIN: i32 = ROOK_PTS;
-pub const EXT_FUTIL_DEPTH: i8 = 2;
-pub const RAZOR_MARGIN: i32 = QUEEN_PTS;
-pub const RAZORING_DEPTH: i8 = 3;
 
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
 /// to refute other variations
@@ -275,7 +264,7 @@ fn pvs(
         if depth > 2 && legal_moves_searched > 1 {
             let mut r = 1;
             if is_quiet || !is_pv_node {
-                r = reduction(depth, legal_moves_searched);
+                r = get_reduction(search_info, depth, legal_moves_searched);
                 if !is_pv_node {
                     r += 1;
                 }
@@ -353,17 +342,4 @@ fn pvs(
     //     .insert(board.zobrist_hash, TableEntry::new(depth, ply, entry_flag, alpha, best_move));
 
     alpha
-}
-
-/// Begin LMR if more than this many moves have been searched
-const REDUCTION_THRESHOLD: i8 = 2;
-#[inline(always)]
-fn reduction(depth: i8, moves_played: i8) -> i8 {
-    if depth == 0 || moves_played < REDUCTION_THRESHOLD {
-        return 0;
-    }
-    let depth = depth as f32;
-    let ply = moves_played as f32;
-    let ret = 1. + depth.ln() * ply.ln() / 2.;
-    ret as i8
 }
