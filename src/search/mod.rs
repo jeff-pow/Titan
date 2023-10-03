@@ -3,6 +3,7 @@ use rustc_hash::FxHashMap;
 use crate::board::fen::{build_board, STARTING_FEN};
 use crate::engine::transposition::get_table;
 use crate::moves::movegenerator::MoveGenerator;
+use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
 use crate::search::pvs::MAX_SEARCH_DEPTH;
 use crate::{board::board::Board, engine::transposition::TableEntry};
@@ -30,7 +31,7 @@ pub struct SearchInfo {
     pub killer_moves: KillerMoves,
     pub sel_depth: i8,
     pub mg: MoveGenerator,
-    pub lmr_reductions: [[i8; 40]; MAX_SEARCH_DEPTH as usize],
+    pub lmr_reductions: [[i8; MAX_LEN]; MAX_SEARCH_DEPTH as usize],
 }
 
 impl Default for SearchInfo {
@@ -62,12 +63,12 @@ pub enum SearchType {
 
 /// Begin LMR if more than this many moves have been searched
 const REDUCTION_THRESHOLD: i8 = 2;
-fn lmr_reductions() -> [[i8; 40]; MAX_SEARCH_DEPTH as usize] {
-    let mut arr = [[0; 40]; MAX_SEARCH_DEPTH as usize];
+fn lmr_reductions() -> [[i8; MAX_LEN]; MAX_SEARCH_DEPTH as usize] {
+    let mut arr = [[0; MAX_LEN]; MAX_SEARCH_DEPTH as usize];
     for depth in 0..MAX_SEARCH_DEPTH {
-        for moves_played in 0..40 {
-            if depth == 0 || moves_played < REDUCTION_THRESHOLD {
-                arr[depth as usize][moves_played as usize] = 0;
+        for moves_played in 0..MAX_LEN {
+            if depth == 0 || moves_played < REDUCTION_THRESHOLD as usize {
+                arr[depth as usize][moves_played] = 0;
                 continue;
             }
             let depth = depth as f32;
