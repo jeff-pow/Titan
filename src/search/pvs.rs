@@ -12,7 +12,7 @@ use crate::types::square::Square;
 
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
-use super::{get_reduction, SearchInfo, SearchType};
+use super::{get_reduction, reduction, SearchInfo, SearchType};
 
 pub const CHECKMATE: i32 = 30000;
 pub const STALEMATE: i32 = 0;
@@ -265,7 +265,7 @@ fn pvs(
         if depth > 2 && legal_moves_searched > 1 {
             let mut r = 1;
             if is_quiet || !is_pv_node {
-                r = get_reduction(search_info, depth, legal_moves_searched);
+                r = reduction(depth, legal_moves_searched);
                 if !is_pv_node {
                     r += 1;
                 }
