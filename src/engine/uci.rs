@@ -69,7 +69,7 @@ pub fn main_loop() -> ! {
             halt.store(false, Ordering::SeqCst);
             if buffer.contains("depth") {
                 let mut iter = buffer.split_whitespace().skip(2);
-                let depth = iter.next().unwrap().parse::<i8>().unwrap();
+                let depth = iter.next().unwrap().parse::<i32>().unwrap();
                 search_info.max_depth = depth;
                 search_info.search_type = SearchType::Depth;
                 let mut s = search_info.clone();
@@ -79,7 +79,7 @@ pub fn main_loop() -> ! {
                 }));
             } else if buffer.contains("perft") {
                 let mut iter = buffer.split_whitespace().skip(2);
-                let depth = iter.next().unwrap().parse::<i8>().unwrap();
+                let depth = iter.next().unwrap().parse::<i32>().unwrap();
                 multi_threaded_perft(search_info.board.to_owned(), depth);
             } else if buffer.contains("wtime") {
                 search_info.search_type = SearchType::Time;

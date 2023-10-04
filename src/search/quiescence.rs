@@ -11,7 +11,7 @@ use super::pvs::{CHECKMATE, INFINITY};
 use super::{pvs::MAX_SEARCH_DEPTH, SearchInfo};
 
 pub fn quiescence(
-    ply: i8,
+    ply: i32,
     mut alpha: i32,
     beta: i32,
     pvs: &mut Vec<Move>,

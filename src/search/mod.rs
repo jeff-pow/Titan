@@ -25,11 +25,11 @@ pub struct SearchInfo {
     pub search_stats: SearchStats,
     pub game_time: GameTime,
     pub search_type: SearchType,
-    pub iter_max_depth: i8,
-    pub max_depth: i8,
-    pub nmp_plies: i8,
+    pub iter_max_depth: i32,
+    pub max_depth: i32,
+    pub nmp_plies: i32,
     pub killer_moves: KillerMoves,
-    pub sel_depth: i8,
+    pub sel_depth: i32,
     pub mg: MoveGenerator,
     pub lmr_reductions: LmrReductions,
 }
@@ -62,29 +62,29 @@ pub enum SearchType {
 }
 
 /// Begin LMR if more than this many moves have been searched
-const REDUCTION_THRESHOLD: i8 = 2;
-type LmrReductions = [[i8; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
+const REDUCTION_THRESHOLD: i32 = 2;
+type LmrReductions = [[i32; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
 fn lmr_reductions() -> LmrReductions {
     let mut arr = [[0; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
     for depth in 0..MAX_SEARCH_DEPTH + 1 {
         for moves_played in 0..MAX_LEN + 1 {
-            arr[depth as usize][moves_played] = reduction(depth, moves_played as i8);
+            arr[depth as usize][moves_played] = reduction(depth, moves_played as i32);
         }
     }
     arr
 }
 
-pub fn get_reduction(search_info: &SearchInfo, depth: i8, moves_played: i8) -> i8 {
+pub fn get_reduction(search_info: &SearchInfo, depth: i32, moves_played: i32) -> i32 {
     search_info.lmr_reductions[depth as usize][moves_played as usize]
 }
 
 #[inline(always)]
-pub fn reduction(depth: i8, moves_played: i8) -> i8 {
+pub fn reduction(depth: i32, moves_played: i32) -> i32 {
     if depth == 0 || moves_played < REDUCTION_THRESHOLD {
         return 0;
     }
     let depth = depth as f32;
     let ply = moves_played as f32;
     let ret = 1. + depth.ln() * ply.ln() / 2.;
-    ret as i8
+    ret as i32
 }

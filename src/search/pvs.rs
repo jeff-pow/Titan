@@ -12,17 +12,17 @@ use crate::types::square::Square;
 
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
-use super::{get_reduction, reduction, SearchInfo, SearchType};
+use super::{reduction, SearchInfo, SearchType};
 
 pub const CHECKMATE: i32 = 30000;
 pub const STALEMATE: i32 = 0;
 pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 50000;
-pub const MAX_SEARCH_DEPTH: i8 = 100;
+pub const MAX_SEARCH_DEPTH: i32 = 100;
 /// Initial aspiration window value
 pub const INIT_ASP: i32 = 10;
 
-pub fn print_search_stats(search_info: &SearchInfo, eval: i32, pv: &[Move], iter_depth: i8) {
+pub fn print_search_stats(search_info: &SearchInfo, eval: i32, pv: &[Move], iter_depth: i32) {
     print!(
         "info time {} seldepth {} depth {} nodes {} nps {} score cp {} pv ",
         search_info.search_stats.start.elapsed().as_millis(),
@@ -39,7 +39,7 @@ pub fn print_search_stats(search_info: &SearchInfo, eval: i32, pv: &[Move], iter
     println!();
 }
 
-pub fn search(search_info: &mut SearchInfo, mut max_depth: i8, halt: Arc<AtomicBool>) -> Move {
+pub fn search(search_info: &mut SearchInfo, mut max_depth: i32, halt: Arc<AtomicBool>) -> Move {
     let mut best_move = Move::NULL;
     let mut pv_moves = Vec::new();
 
@@ -124,7 +124,7 @@ pub fn search(search_info: &mut SearchInfo, mut max_depth: i8, halt: Arc<AtomicB
 /// to refute other variations
 #[allow(clippy::too_many_arguments)]
 fn pvs(
-    mut depth: i8,
+    mut depth: i32,
     mut alpha: i32,
     beta: i32,
     pv: &mut Vec<Move>,
@@ -212,7 +212,7 @@ fn pvs(
             new_b.to_move = new_b.to_move.opp();
             new_b.en_passant_square = Square::INVALID;
             new_b.prev_move = Move::NULL;
-            let r = 3 + depth / 3 + min((eval - beta) / 200, 3) as i8;
+            let r = 3 + depth / 3 + min((eval - beta) / 200, 3);
             let mut null_eval =
                 -pvs(depth - r, -beta, -beta + 1, &mut node_pvs, search_info, &new_b, !cut_node, halt.clone());
             if null_eval >= beta {

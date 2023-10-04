@@ -78,7 +78,7 @@ impl MoveList {
         v
     }
 
-    pub fn score_move_list(&mut self, ply: i8, board: &Board, table_move: Move, search_info: &SearchInfo) {
+    pub fn score_move_list(&mut self, ply: i32, board: &Board, table_move: Move, search_info: &SearchInfo) {
         for i in 0..self.len {
             let (m, m_score) = self.get_mut(i);
             let piece_moving = board.piece_at(m.origin_square()).unwrap();

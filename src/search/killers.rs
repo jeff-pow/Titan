@@ -6,7 +6,7 @@ pub type KillerMoves = [[Move; NUM_KILLER_MOVES]; MAX_SEARCH_DEPTH as usize];
 
 pub const NUM_KILLER_MOVES: usize = 2;
 
-pub fn store_killer_move(ply: i8, m: &Move, search_info: &mut SearchInfo) {
+pub fn store_killer_move(ply: i32, m: &Move, search_info: &mut SearchInfo) {
     let first_killer = search_info.killer_moves[ply as usize][0];
 
     if &first_killer != m {

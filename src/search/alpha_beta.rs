@@ -10,7 +10,7 @@ use super::pvs::{CHECKMATE, INFINITY};
 
 #[allow(dead_code)]
 pub fn alpha_beta(
-    depth: i8,
+    depth: i32,
     mut alpha: i32,
     beta: i32,
     pv: &mut Vec<Move>,
