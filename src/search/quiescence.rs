@@ -45,7 +45,7 @@ pub fn quiescence(
     };
     if in_check && moves.len == 0 {
         if in_check {
-            return -CHECKMATE + ply as i32;
+            return -CHECKMATE + ply;
         }
         return STALEMATE;
     }

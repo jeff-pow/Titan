@@ -267,7 +267,7 @@ pub fn generate_psuedolegal_captures(board: &Board) -> MoveList {
     let moves = generate_psuedolegal_moves(board);
     moves
         .iter()
-        .filter(|m| board.occupancies().square_is_occupied(m.dest_square()))
+        .filter(|m| board.occupancies().square_occupied(m.dest_square()))
         .collect::<MoveList>()
 }
 

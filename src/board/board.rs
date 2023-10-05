@@ -82,8 +82,8 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn square_contains_piece(&self, piece_type: PieceName, color: Color, sq: Square) -> bool {
-        self.bitboards[color as usize][piece_type as usize].square_is_occupied(sq)
+    pub fn square_occupied(&self, piece_type: PieceName, color: Color, sq: Square) -> bool {
+        self.bitboards[color as usize][piece_type as usize].square_occupied(sq)
     }
 
     #[inline(always)]
@@ -113,6 +113,27 @@ impl Board {
     #[inline(always)]
     pub fn color_at(&self, sq: Square) -> Option<Color> {
         self.array_board[sq.idx()].map(|piece| piece.color)
+    }
+
+    #[inline(always)]
+    pub fn name_by_bitboards(&self, sq: Square) -> Option<PieceName> {
+        if sq.bitboard() & self.occupancies() == Bitboard::EMPTY {
+            return None;
+        }
+        let color = if sq.bitboard() & self.color_occupancies(Color::White) != Bitboard::EMPTY {
+            Color::White
+        } else {
+            Color::Black
+        };
+        for p in PieceName::iter().rev() {
+            let bb = self.bitboard(color, p);
+            for s in bb {
+                if sq.bitboard() & s.bitboard() != Bitboard::EMPTY {
+                    return Some(p);
+                }
+            }
+        }
+        unreachable!()
     }
 
     #[inline(always)]
@@ -366,6 +387,8 @@ impl Board {
         self.zobrist_hash = self.generate_hash();
 
         self.add_to_history();
+
+        self.prev_move = *m;
     }
 
     #[allow(dead_code)]
@@ -407,29 +430,29 @@ impl fmt::Display for Board {
                 let idx = row * 8 + col;
 
                 // Append piece characters for white pieces
-                if self.square_contains_piece(PieceName::King, Color::White, Square(idx)) {
+                if self.square_occupied(PieceName::King, Color::White, Square(idx)) {
                     str += "K"
-                } else if self.square_contains_piece(PieceName::Queen, Color::White, Square(idx)) {
+                } else if self.square_occupied(PieceName::Queen, Color::White, Square(idx)) {
                     str += "Q"
-                } else if self.square_contains_piece(PieceName::Rook, Color::White, Square(idx)) {
+                } else if self.square_occupied(PieceName::Rook, Color::White, Square(idx)) {
                     str += "R"
-                } else if self.square_contains_piece(PieceName::Bishop, Color::White, Square(idx)) {
+                } else if self.square_occupied(PieceName::Bishop, Color::White, Square(idx)) {
                     str += "B"
-                } else if self.square_contains_piece(PieceName::Knight, Color::White, Square(idx)) {
+                } else if self.square_occupied(PieceName::Knight, Color::White, Square(idx)) {
                     str += "N"
-                } else if self.square_contains_piece(PieceName::Pawn, Color::White, Square(idx)) {
+                } else if self.square_occupied(PieceName::Pawn, Color::White, Square(idx)) {
                     str += "P"
-                } else if self.square_contains_piece(PieceName::King, Color::Black, Square(idx)) {
+                } else if self.square_occupied(PieceName::King, Color::Black, Square(idx)) {
                     str += "k"
-                } else if self.square_contains_piece(PieceName::Queen, Color::Black, Square(idx)) {
+                } else if self.square_occupied(PieceName::Queen, Color::Black, Square(idx)) {
                     str += "q"
-                } else if self.square_contains_piece(PieceName::Rook, Color::Black, Square(idx)) {
+                } else if self.square_occupied(PieceName::Rook, Color::Black, Square(idx)) {
                     str += "r"
-                } else if self.square_contains_piece(PieceName::Bishop, Color::Black, Square(idx)) {
+                } else if self.square_occupied(PieceName::Bishop, Color::Black, Square(idx)) {
                     str += "b"
-                } else if self.square_contains_piece(PieceName::Knight, Color::Black, Square(idx)) {
+                } else if self.square_occupied(PieceName::Knight, Color::Black, Square(idx)) {
                     str += "n"
-                } else if self.square_contains_piece(PieceName::Pawn, Color::Black, Square(idx)) {
+                } else if self.square_occupied(PieceName::Pawn, Color::Black, Square(idx)) {
                     str += "p"
                 } else {
                     str += "_"
@@ -486,7 +509,7 @@ mod board_tests {
     fn test_place_piece() {
         let mut board = Board::default();
         board.place_piece(Rook, Color::White, Square(0));
-        assert!(board.bitboards[Color::White as usize][Rook as usize].square_is_occupied(Square(0)));
+        assert!(board.bitboards[Color::White as usize][Rook as usize].square_occupied(Square(0)));
     }
 
     #[test]

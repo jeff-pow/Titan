@@ -102,7 +102,7 @@ impl Move {
 
     #[inline(always)]
     pub fn is_capture(&self, board: &Board) -> bool {
-        board.occupancies().square_is_occupied(self.dest_square())
+        board.occupancies().square_occupied(self.dest_square())
     }
 
     #[inline(always)]

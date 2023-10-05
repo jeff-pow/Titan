@@ -23,14 +23,14 @@ impl Bitboard {
     }
 
     #[inline(always)]
-    pub fn square_is_occupied(&self, sq: Square) -> bool {
+    pub fn square_occupied(&self, sq: Square) -> bool {
         debug_assert!(sq.is_valid());
         self.0 & (1 << sq.0) != 0
     }
 
     #[inline(always)]
     pub fn square_is_empty(&self, sq: Square) -> bool {
-        !self.square_is_occupied(sq)
+        !self.square_occupied(sq)
     }
 
     #[inline(always)]

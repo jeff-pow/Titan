@@ -249,13 +249,13 @@ fn pvs(
 
         if !is_root && !is_pv_node {
             if is_quiet {
-                // Late move pruning
-                if depth < 6 && legal_moves_searched > (3 + depth * depth) / 2 {
+                // Late move pruning (LMP)
+                if depth < 6 && !in_check && legal_moves_searched > (3 + depth * depth) / 2 {
                     break;
                 }
 
                 // Quiet SEE pruning
-                if depth <= 8 && !see(board, m, -70 * depth) {
+                if depth <= 8 && !see(board, m, -50 * depth) {
                     continue;
                 }
             } else {
@@ -267,7 +267,6 @@ fn pvs(
         }
 
         new_b.make_move(m);
-        new_b.prev_move = *m;
         if new_b.side_in_check(board.to_move) {
             continue;
         }
@@ -287,9 +286,9 @@ fn pvs(
                 if cut_node {
                     r += 2;
                 }
-                if is_quiet && !see(&new_b, m, -50 * depth) {
-                    depth += 1;
-                }
+                // if is_quiet && !see(&new_b, m, -50 * depth) {
+                //     depth += 1;
+                // }
             }
             r = r.clamp(1, depth - 1);
             eval = -pvs(depth - r, -alpha - 1, -alpha, &mut Vec::new(), search_info, &new_b, !cut_node, halt.clone());
