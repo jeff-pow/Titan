@@ -12,6 +12,7 @@ use crate::types::square::Square;
 
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
+use super::see::see;
 use super::{reduction, SearchInfo, SearchType};
 
 pub const CHECKMATE: i32 = 30000;
@@ -246,9 +247,23 @@ fn pvs(
         let m = moves.pick_move(i);
         let is_quiet = m.is_quiet(board);
 
-        // Late move pruning
-        if !is_root && !is_pv_node && depth < 6 && is_quiet && legal_moves_searched > (3 + depth * depth) / 2 {
-            break;
+        if !is_root && !is_pv_node {
+            if is_quiet {
+                // Late move pruning
+                if depth < 6 && legal_moves_searched > (3 + depth * depth) / 2 {
+                    break;
+                }
+
+                // Quiet SEE pruning
+                if depth <= 8 && !see(board, m, -70 * depth) {
+                    continue;
+                }
+            } else {
+                // Capture SEE pruning
+                if depth <= 6 && !see(board, m, -15 * depth * depth) {
+                    continue;
+                }
+            }
         }
 
         new_b.make_move(m);
@@ -271,6 +286,9 @@ fn pvs(
                 }
                 if cut_node {
                     r += 2;
+                }
+                if is_quiet && !see(&new_b, m, -50 * depth) {
+                    depth += 1;
                 }
             }
             r = r.clamp(1, depth - 1);
