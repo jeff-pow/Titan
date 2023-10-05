@@ -220,6 +220,11 @@ impl ops::BitOrAssign for Bitboard {
         self.0 |= rhs.0;
     }
 }
+impl ops::BitXorAssign for Bitboard {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        self.0 ^= rhs.0
+    }
+}
 impl ops::BitXor for Bitboard {
     type Output = Self;
 

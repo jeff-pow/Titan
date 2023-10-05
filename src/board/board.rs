@@ -3,7 +3,6 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
-    eval::nnue::{NnueAccumulator, INPUT_SIZE},
     moves::{movegenerator::MoveGenerator, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
     types::{
         bitboard::Bitboard,
@@ -35,14 +34,14 @@ pub struct Board {
     pub history: History,
     pub zobrist_consts: Arc<Zobrist>,
     pub mg: Arc<MoveGenerator>,
-    pub accumulator: NnueAccumulator,
     pub prev_move: Move,
 }
 
 impl Default for Board {
     fn default() -> Self {
+        let bitboards = [[Bitboard::EMPTY; 6]; 2];
         Board {
-            bitboards: [[Bitboard::EMPTY; 6]; 2],
+            bitboards,
             color_occupancies: [Bitboard::EMPTY; 2],
             occupancies: Bitboard::EMPTY,
             array_board: [None; 64],
@@ -61,9 +60,6 @@ impl Default for Board {
             history: History::default(),
             zobrist_consts: Arc::new(Zobrist::default()),
             mg: Arc::new(MoveGenerator::default()),
-            accumulator: NnueAccumulator {
-                v: [[0; INPUT_SIZE]; 2],
-            },
             prev_move: Move::NULL,
         }
     }
@@ -128,7 +124,7 @@ impl Board {
     pub fn has_non_pawns(&self, side: Color) -> bool {
         self.occupancies()
             ^ self.bitboards[side as usize][PieceName::King as usize]
-            ^ self.bitboards[side as usize][PieceName::King as usize]
+            ^ self.bitboards[side as usize][PieceName::Pawn as usize]
             != Bitboard::EMPTY
     }
 
@@ -165,6 +161,22 @@ impl Board {
             Color::Black => self.black_king_square,
         };
         self.square_under_attack(side.opp(), king_square)
+    }
+
+    #[inline(always)]
+    pub fn attackers(&self, sq: Square, occupancy: Bitboard) -> Bitboard {
+        self.attackers_for_side(Color::White, sq, occupancy) | self.attackers_for_side(Color::Black, sq, occupancy)
+    }
+
+    #[inline(always)]
+    pub fn attackers_for_side(&self, attacker: Color, sq: Square, occupancy: Bitboard) -> Bitboard {
+        let pawn_attacks = self.mg.pawn_attacks(sq, attacker.opp()) & self.bitboard(attacker, PieceName::Pawn);
+        let knight_attacks = self.mg.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
+        let bishop_attacks = self.mg.magics.bishop_attacks(occupancy, sq) & self.bitboard(attacker, PieceName::Bishop);
+        let rook_attacks = self.mg.magics.rook_attacks(occupancy, sq) & self.bitboard(attacker, PieceName::Rook);
+        let queen_attacks = (rook_attacks | bishop_attacks) & self.bitboard(attacker, PieceName::Queen);
+        let king_attacks = self.mg.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
+        pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | queen_attacks | king_attacks
     }
 
     #[inline(always)]
