@@ -8,6 +8,7 @@ use crate::types::pieces::{value, PieceName};
 use crate::types::square::Square;
 
 use super::pvs::{CHECKMATE, INFINITY};
+use super::see::see;
 use super::{pvs::MAX_SEARCH_DEPTH, SearchInfo};
 
 pub fn quiescence(
@@ -56,6 +57,11 @@ pub fn quiescence(
         let mut node_pvs = Vec::new();
         let mut new_b = board.to_owned();
         let m = moves.pick_move(i);
+
+        if !see(board, m, 1) {
+            continue;
+        }
+
         new_b.make_move(m);
         if new_b.side_in_check(board.to_move) {
             continue;
