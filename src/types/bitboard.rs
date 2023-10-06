@@ -23,14 +23,14 @@ impl Bitboard {
     }
 
     #[inline(always)]
-    pub fn square_is_occupied(&self, sq: Square) -> bool {
+    pub fn square_occupied(&self, sq: Square) -> bool {
         debug_assert!(sq.is_valid());
         self.0 & (1 << sq.0) != 0
     }
 
     #[inline(always)]
     pub fn square_is_empty(&self, sq: Square) -> bool {
-        !self.square_is_occupied(sq)
+        !self.square_occupied(sq)
     }
 
     #[inline(always)]
@@ -218,6 +218,11 @@ impl ops::BitOr for Bitboard {
 impl ops::BitOrAssign for Bitboard {
     fn bitor_assign(&mut self, rhs: Self) {
         self.0 |= rhs.0;
+    }
+}
+impl ops::BitXorAssign for Bitboard {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        self.0 ^= rhs.0
     }
 }
 impl ops::BitXor for Bitboard {

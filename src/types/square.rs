@@ -64,6 +64,11 @@ impl Square {
         self.0 >> 3
     }
 
+    #[inline(always)]
+    pub fn flip_vertical(&self) -> Square {
+        Square(self.0 ^ 56)
+    }
+
     /// File is the vertical column of the piece (x-coord)
     #[inline(always)]
     pub fn file(&self) -> u8 {

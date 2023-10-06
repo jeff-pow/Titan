@@ -1,12 +1,11 @@
 use rustc_hash::FxHashMap;
 
+use crate::board::board::Board;
 use crate::board::fen::{build_board, STARTING_FEN};
-use crate::engine::transposition::get_table;
 use crate::moves::movegenerator::MoveGenerator;
 use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
 use crate::search::pvs::MAX_SEARCH_DEPTH;
-use crate::{board::board::Board, engine::transposition::TableEntry};
 
 use self::killers::{KillerMoves, NUM_KILLER_MOVES};
 use self::{game_time::GameTime, search_stats::SearchStats};
@@ -17,6 +16,7 @@ pub mod killers;
 pub(crate) mod pvs;
 pub(crate) mod quiescence;
 pub(crate) mod search_stats;
+mod see;
 
 #[derive(Clone)]
 pub struct SearchInfo {
