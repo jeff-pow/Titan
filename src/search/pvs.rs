@@ -247,7 +247,7 @@ fn pvs(
         let m = moves.pick_move(i);
         let is_quiet = m.is_quiet(board);
 
-        if !is_root && !is_pv_node {
+        if !is_root && !is_pv_node && best_score >= -NEAR_CHECKMATE {
             if is_quiet {
                 // Late move pruning (LMP)
                 if depth < 6 && !in_check && legal_moves_searched > (3 + depth * depth) / 2 {
