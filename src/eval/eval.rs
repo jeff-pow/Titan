@@ -1,35 +1,11 @@
-use std::cmp::{max, min};
+use std::cmp::min;
 
 use strum::IntoEnumIterator;
 
 use crate::{
     board::board::Board,
-    types::{
-        pieces::{Color, PieceName},
-        square::Square,
-    },
+    types::pieces::{Color, PieceName},
 };
-
-fn king_to_corner(to_move_king_sq: Square, opp_king_sq: Square, end_game_weight: i32) -> i32 {
-    let mut eval = 0;
-
-    let opp_king_file = opp_king_sq.file() as i8;
-    let opp_king_rank = opp_king_sq.rank() as i8;
-    let opp_king_dist_to_center_file = max(3 - opp_king_file, opp_king_file - 4);
-    let opp_king_dist_to_center_rank = max(3 - opp_king_rank, opp_king_rank - 4);
-    let opp_king_dist_from_center = opp_king_dist_to_center_file + opp_king_dist_to_center_rank;
-    eval -= opp_king_dist_from_center;
-
-    let to_move_king_file = to_move_king_sq.file() as i8;
-    let to_move_king_rank = to_move_king_sq.rank() as i8;
-
-    let dist_bt_kings_file = to_move_king_file.abs_diff(opp_king_file) as i8;
-    let dist_bt_kings_rank = to_move_king_rank.abs_diff(opp_king_rank) as i8;
-    let dist_bt_kings = dist_bt_kings_file + dist_bt_kings_rank;
-
-    eval += 14 - dist_bt_kings;
-    eval as i32 * end_game_weight / 2
-}
 
 /// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 pub fn evaluate(board: &Board) -> i32 {

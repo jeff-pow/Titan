@@ -162,8 +162,8 @@ fn pvs(
         }
         // Determines if there is a faster path to checkmate than evaluating the current node, and
         // if there is, it returns early
-        let alpha = alpha.max(-CHECKMATE + ply as i32);
-        let beta = beta.min(CHECKMATE - ply as i32 - 1);
+        let alpha = alpha.max(-CHECKMATE + ply);
+        let beta = beta.min(CHECKMATE - ply - 1);
         if alpha >= beta {
             return alpha;
         }
@@ -202,7 +202,7 @@ fn pvs(
 
     if !is_pv_node && !in_check {
         // Reverse futility pruning
-        if eval - 70 * depth as i32 >= beta && depth < 9 && eval.abs() < NEAR_CHECKMATE {
+        if eval - 70 * depth >= beta && depth < 9 && eval.abs() < NEAR_CHECKMATE {
             return eval;
         }
 
@@ -350,7 +350,7 @@ fn pvs(
         if board.side_in_check(board.to_move) {
             // Distance from root is returned in order for other recursive calls to determine
             // shortest viable checkmate path
-            return -CHECKMATE + ply as i32;
+            return -CHECKMATE + ply;
         }
         return STALEMATE;
     }

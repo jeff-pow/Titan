@@ -29,8 +29,8 @@ pub fn alpha_beta(
         }
         // Determines if there is a faster path to checkmate than evaluating the current node, and
         // if there is, it returns early
-        let alpha = alpha.max(-CHECKMATE + ply as i32);
-        let beta = beta.min(CHECKMATE - ply as i32 - 1);
+        let alpha = alpha.max(-CHECKMATE + ply);
+        let beta = beta.min(CHECKMATE - ply - 1);
         if alpha >= beta {
             return alpha;
         }
@@ -86,7 +86,7 @@ pub fn alpha_beta(
         if board.side_in_check(board.to_move) {
             // Distance from root is returned in order for other recursive calls to determine
             // shortest viable checkmate path
-            return -CHECKMATE + ply as i32;
+            return -CHECKMATE + ply;
         }
         return STALEMATE;
     }
