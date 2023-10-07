@@ -193,8 +193,8 @@ impl Board {
     pub fn attackers_for_side(&self, attacker: Color, sq: Square, occupancy: Bitboard) -> Bitboard {
         let pawn_attacks = self.mg.pawn_attacks(sq, attacker.opp()) & self.bitboard(attacker, PieceName::Pawn);
         let knight_attacks = self.mg.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
-        let bishop_attacks = self.mg.magics.bishop_attacks(occupancy, sq) & self.bitboard(attacker, PieceName::Bishop);
-        let rook_attacks = self.mg.magics.rook_attacks(occupancy, sq) & self.bitboard(attacker, PieceName::Rook);
+        let bishop_attacks = self.mg.bishop_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Bishop);
+        let rook_attacks = self.mg.rook_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Rook);
         let queen_attacks = (rook_attacks | bishop_attacks) & self.bitboard(attacker, PieceName::Queen);
         let king_attacks = self.mg.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
         pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | queen_attacks | king_attacks
@@ -207,8 +207,8 @@ impl Board {
         let occupancy = self.occupancies();
         let pawn_attacks = self.mg.pawn_attacks(sq, attacker.opp());
         let knight_attacks = self.mg.knight_attacks(sq);
-        let bishop_attacks = self.mg.magics.bishop_attacks(occupancy, sq);
-        let rook_attacks = self.mg.magics.rook_attacks(occupancy, sq);
+        let bishop_attacks = self.mg.bishop_attacks(sq, occupancy);
+        let rook_attacks = self.mg.rook_attacks(sq, occupancy);
         let queen_attacks = rook_attacks | bishop_attacks;
         let king_attacks = self.mg.king_attacks(sq);
 

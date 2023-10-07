@@ -79,10 +79,10 @@ pub fn see(board: &Board, m: &Move, threshold: i32) -> bool {
         let next_piece = next_attacker(board, &mut occupied, my_attackers, to_move);
 
         if next_piece == PieceName::Pawn || next_piece == PieceName::Bishop || next_piece == PieceName::Queen {
-            attackers |= board.mg.magics.bishop_attacks(occupied, dest) & bishops;
+            attackers |= board.mg.bishop_attacks(dest, occupied) & bishops;
         }
         if next_piece == PieceName::Rook || next_piece == PieceName::Queen {
-            attackers |= board.mg.magics.rook_attacks(occupied, dest) & rooks;
+            attackers |= board.mg.rook_attacks(dest, occupied) & rooks;
         }
 
         attackers &= occupied;

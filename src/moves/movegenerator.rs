@@ -27,10 +27,10 @@ pub const BLACK_QUEENSIDE_SQUARES: Bitboard = Bitboard(0xe00000000000000);
 
 #[derive(Clone)]
 pub struct MoveGenerator {
-    pub king_table: [Bitboard; 64],
-    pub knight_table: [Bitboard; 64],
-    pub pawn_table: [[Bitboard; 64]; 2],
-    pub magics: Magics,
+    king_table: [Bitboard; 64],
+    knight_table: [Bitboard; 64],
+    pawn_table: [[Bitboard; 64]; 2],
+    magics: Magics,
 }
 
 impl Default for MoveGenerator {
@@ -49,6 +49,16 @@ impl Default for MoveGenerator {
 }
 
 impl MoveGenerator {
+    #[inline(always)]
+    pub fn bishop_attacks(&self, square: Square, occupied: Bitboard) -> Bitboard {
+        self.magics.bishop_attacks(occupied, square)
+    }
+
+    #[inline(always)]
+    pub fn rook_attacks(&self, square: Square, occupied: Bitboard) -> Bitboard {
+        self.magics.rook_attacks(occupied, square)
+    }
+
     pub fn knight_attacks(&self, square: Square) -> Bitboard {
         self.knight_table[square.0 as usize]
     }

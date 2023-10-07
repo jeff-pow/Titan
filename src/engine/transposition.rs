@@ -24,7 +24,7 @@ impl TableEntry {
 
         if eval.abs() > NEAR_CHECKMATE {
             let sign = eval.signum();
-            v = (eval * sign + ply as i32) * sign;
+            v = (eval * sign + ply) * sign;
         }
 
         Self {
@@ -44,7 +44,7 @@ impl TableEntry {
 
                     if value.abs() > NEAR_CHECKMATE {
                         let sign = value.signum();
-                        value = (self.eval * sign - ply as i32) * sign;
+                        value = self.eval * sign - ply
                     }
 
                     eval = Some(value);
