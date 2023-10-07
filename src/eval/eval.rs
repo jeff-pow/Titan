@@ -7,7 +7,7 @@ use crate::{
     types::pieces::{Color, PieceName},
 };
 
-/// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
+// https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 pub fn evaluate(board: &Board) -> i32 {
     let mut white_mg = 0;
     let mut white_eg = 0;

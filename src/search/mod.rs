@@ -1,7 +1,10 @@
+use std::sync::{Arc, RwLock};
+
 use rustc_hash::FxHashMap;
 
 use crate::board::board::Board;
 use crate::board::fen::{build_board, STARTING_FEN};
+use crate::engine::transposition::{get_table, TableEntry};
 use crate::moves::movegenerator::MoveGenerator;
 use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
@@ -21,7 +24,7 @@ mod see;
 #[derive(Clone)]
 pub struct SearchInfo {
     pub board: Board,
-    // pub transpos_table: FxHashMap<u64, TableEntry>,
+    pub transpos_table: Arc<RwLock<FxHashMap<u64, TableEntry>>>,
     pub search_stats: SearchStats,
     pub game_time: GameTime,
     pub search_type: SearchType,
@@ -38,7 +41,7 @@ impl Default for SearchInfo {
     fn default() -> Self {
         Self {
             board: build_board(STARTING_FEN),
-            // transpos_table: get_table(),
+            transpos_table: Arc::new(RwLock::new(get_table())),
             search_stats: Default::default(),
             game_time: Default::default(),
             search_type: Default::default(),

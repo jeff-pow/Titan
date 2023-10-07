@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::board::board::Board;
-use crate::engine::transposition::EntryFlag;
+use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::eval::eval::evaluate;
 use crate::moves::movegenerator::generate_psuedolegal_moves;
 use crate::moves::moves::Move;
@@ -169,15 +169,13 @@ fn pvs(
         }
     }
 
-    // let (_table_value, _table_move) = {
-    //     let entry = search_info.transpos_table.get(&board.zobrist_hash);
-    //     if let Some(entry) = entry {
-    //         entry.get(depth, ply, alpha, beta)
-    //     } else {
-    //         (None, Move::NULL)
-    //     }
-    // };
-    let (table_value, table_move) = (None, Move::NULL);
+    let (table_value, table_move) = {
+        if let Some(entry) = search_info.transpos_table.read().unwrap().get(&board.zobrist_hash) {
+            entry.get(depth, ply, alpha, beta)
+        } else {
+            (None, Move::NULL)
+        }
+    };
     if let Some(eval) = table_value {
         if !is_root {
             // This can cut off evals in certain cases, but it's easy to implement :)
@@ -331,9 +329,11 @@ fn pvs(
             }
 
             if alpha >= beta {
-                // search_info
-                //     .transpos_table
-                //     .insert(board.zobrist_hash, TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, *m));
+                search_info
+                    .transpos_table
+                    .write()
+                    .unwrap()
+                    .insert(board.zobrist_hash, TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, *m));
 
                 let capture = board.piece_at(m.dest_square());
                 // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
@@ -355,9 +355,11 @@ fn pvs(
         return STALEMATE;
     }
 
-    // search_info
-    //     .transpos_table
-    //     .insert(board.zobrist_hash, TableEntry::new(depth, ply, entry_flag, alpha, best_move));
+    search_info
+        .transpos_table
+        .write()
+        .unwrap()
+        .insert(board.zobrist_hash, TableEntry::new(depth, ply, entry_flag, alpha, best_move));
 
     alpha
 }
