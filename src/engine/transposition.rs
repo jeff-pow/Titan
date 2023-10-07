@@ -5,7 +5,7 @@ use crate::search::pvs::NEAR_CHECKMATE;
 use rustc_hash::FxHashMap;
 
 pub struct TableEntry {
-    depth: i8,
+    depth: i32,
     flag: EntryFlag,
     eval: i32,
     best_move: Move,
@@ -19,7 +19,7 @@ pub enum EntryFlag {
 }
 
 impl TableEntry {
-    pub fn new(depth: i8, ply: i8, flag: EntryFlag, eval: i32, best_move: Move) -> Self {
+    pub fn new(depth: i32, ply: i32, flag: EntryFlag, eval: i32, best_move: Move) -> Self {
         let mut v = eval;
 
         if eval.abs() > NEAR_CHECKMATE {
@@ -35,7 +35,7 @@ impl TableEntry {
         }
     }
 
-    pub fn get(&self, depth: i8, ply: i8, alpha: i32, beta: i32) -> (Option<i32>, Move) {
+    pub fn get(&self, depth: i32, ply: i32, alpha: i32, beta: i32) -> (Option<i32>, Move) {
         let mut eval: Option<i32> = None;
         if self.depth >= depth {
             match self.flag {
