@@ -1,7 +1,4 @@
-use crate::{
-    board::board::Board,
-    search::killers::{KillerMoves, NUM_KILLER_MOVES},
-};
+use crate::{board::board::Board, search::killers::NUM_KILLER_MOVES};
 use std::mem::MaybeUninit;
 
 use super::moves::{Move, Promotion};

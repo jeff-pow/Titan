@@ -84,12 +84,12 @@ impl MoveGenerator {
 /// Generates all moves with no respect to legality via leaving itself in check
 pub fn generate_psuedolegal_moves(board: &Board, gen_type: MGT) -> MoveList {
     let mut moves = MoveList::default();
-    moves.append(&generate_bitboard_moves(board, PieceName::Knight));
-    moves.append(&generate_bitboard_moves(board, PieceName::King));
-    moves.append(&generate_bitboard_moves(board, PieceName::Queen));
-    moves.append(&generate_bitboard_moves(board, PieceName::Rook));
-    moves.append(&generate_bitboard_moves(board, PieceName::Bishop));
-    moves.append(&generate_pawn_moves(board));
+    moves.append(&generate_bitboard_moves(board, PieceName::Knight, gen_type));
+    moves.append(&generate_bitboard_moves(board, PieceName::King, gen_type));
+    moves.append(&generate_bitboard_moves(board, PieceName::Queen, gen_type));
+    moves.append(&generate_bitboard_moves(board, PieceName::Rook, gen_type));
+    moves.append(&generate_bitboard_moves(board, PieceName::Bishop, gen_type));
+    moves.append(&generate_pawn_moves(board, gen_type));
     moves.append(&generate_castling_moves(board));
     moves
 }
@@ -143,7 +143,7 @@ fn generate_castling_moves(board: &Board) -> MoveList {
     moves
 }
 
-fn generate_pawn_moves(board: &Board) -> MoveList {
+fn generate_pawn_moves(board: &Board, gen_type: MGT) -> MoveList {
     let mut moves = MoveList::default();
     let pawns = board.bitboard(board.to_move, Pawn);
     let vacancies = !board.occupancies();
@@ -180,20 +180,22 @@ fn generate_pawn_moves(board: &Board) -> MoveList {
         Color::Black => RANK6,
     };
 
-    // Single and double pawn pushes w/o captures
-    let push_one = vacancies & non_promotions.shift(up);
-    let push_two = vacancies & (push_one & rank3_bb).shift(up);
-    for dest in push_one {
-        let src = dest.checked_shift(down).expect("Valid shift");
-        moves.push(Move::new(src, dest, None, MoveType::Normal));
-    }
-    for dest in push_two {
-        let src = dest
-            .checked_shift(down)
-            .expect("Valid shift")
-            .checked_shift(down)
-            .expect("Valid shift");
-        moves.push(Move::new(src, dest, None, MoveType::Normal));
+    if matches!(gen_type, MGT::All | MGT::QuietsOnly) {
+        // Single and double pawn pushes w/o captures
+        let push_one = vacancies & non_promotions.shift(up);
+        let push_two = vacancies & (push_one & rank3_bb).shift(up);
+        for dest in push_one {
+            let src = dest.checked_shift(down).expect("Valid shift");
+            moves.push(Move::new(src, dest, None, MoveType::Normal));
+        }
+        for dest in push_two {
+            let src = dest
+                .checked_shift(down)
+                .expect("Valid shift")
+                .checked_shift(down)
+                .expect("Valid shift");
+            moves.push(Move::new(src, dest, None, MoveType::Normal));
+        }
     }
 
     // Promotions - captures and straight pushes
@@ -201,40 +203,46 @@ fn generate_pawn_moves(board: &Board) -> MoveList {
         let no_capture_promotions = promotions.shift(up) & vacancies;
         let left_capture_promotions = promotions.shift(up_left) & enemies;
         let right_capture_promotions = promotions.shift(up_right) & enemies;
-        for dest in no_capture_promotions {
-            generate_promotions(dest, down, &mut moves);
+        if matches!(gen_type, MGT::All | MGT::QuietsOnly) {
+            for dest in no_capture_promotions {
+                generate_promotions(dest, down, &mut moves);
+            }
         }
-        for dest in left_capture_promotions {
-            generate_promotions(dest, down_right, &mut moves);
-        }
-        for dest in right_capture_promotions {
-            generate_promotions(dest, down_left, &mut moves);
-        }
-    }
-
-    // Captures that do not lead to promotions
-    if non_promotions != Bitboard::EMPTY {
-        let mut left_captures = non_promotions.shift(up_left) & enemies;
-        let mut right_captures = non_promotions.shift(up_right) & enemies;
-        while left_captures > Bitboard::EMPTY {
-            let dest = left_captures.pop_lsb();
-            let src = dest.checked_shift(down_right).expect("Valid shift");
-            moves.push(Move::new(src, dest, None, MoveType::Normal));
-        }
-        while right_captures > Bitboard::EMPTY {
-            let dest = right_captures.pop_lsb();
-            let src = dest.checked_shift(down_left).expect("Valid shift");
-            moves.push(Move::new(src, dest, None, MoveType::Normal));
+        if matches!(gen_type, MGT::All | MGT::CapturesOnly) {
+            for dest in left_capture_promotions {
+                generate_promotions(dest, down_right, &mut moves);
+            }
+            for dest in right_capture_promotions {
+                generate_promotions(dest, down_left, &mut moves);
+            }
         }
     }
 
-    // En Passant
-    if board.can_en_passant() {
-        if let Some(x) = get_en_passant(board, down_right) {
-            moves.push(x)
+    if matches!(gen_type, MGT::All | MGT::CapturesOnly) {
+        // Captures that do not lead to promotions
+        if non_promotions != Bitboard::EMPTY {
+            let mut left_captures = non_promotions.shift(up_left) & enemies;
+            let mut right_captures = non_promotions.shift(up_right) & enemies;
+            while left_captures > Bitboard::EMPTY {
+                let dest = left_captures.pop_lsb();
+                let src = dest.checked_shift(down_right).expect("Valid shift");
+                moves.push(Move::new(src, dest, None, MoveType::Normal));
+            }
+            while right_captures > Bitboard::EMPTY {
+                let dest = right_captures.pop_lsb();
+                let src = dest.checked_shift(down_left).expect("Valid shift");
+                moves.push(Move::new(src, dest, None, MoveType::Normal));
+            }
         }
-        if let Some(x) = get_en_passant(board, down_left) {
-            moves.push(x)
+
+        // En Passant
+        if board.can_en_passant() {
+            if let Some(x) = get_en_passant(board, down_right) {
+                moves.push(x)
+            }
+            if let Some(x) = get_en_passant(board, down_left) {
+                moves.push(x)
+            }
         }
     }
 
@@ -258,7 +266,7 @@ fn generate_promotions(dest: Square, d: Direction, moves: &mut MoveList) {
     }
 }
 
-fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
+fn generate_bitboard_moves(board: &Board, piece_name: PieceName, gen_type: MGT) -> MoveList {
     let mut moves = MoveList::default();
     // Don't calculate any moves if no pieces of that type exist for the given color
     let occ_bitboard = board.bitboard(board.to_move, piece_name);
@@ -273,6 +281,11 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
             Pawn => panic!(),
         };
         let enemies_and_vacancies = !board.color_occupancies(board.to_move);
+        let attacks = match gen_type {
+            MoveGenerationType::CapturesOnly => attack_bitboard & board.color_occupancies(!board.to_move),
+            MoveGenerationType::QuietsOnly => attack_bitboard & !board.occupancies(),
+            MoveGenerationType::All => attack_bitboard & enemies_and_vacancies,
+        };
         let attacks = attack_bitboard & enemies_and_vacancies;
         for dest in attacks {
             moves.push(Move::new(sq, dest, None, MoveType::Normal));

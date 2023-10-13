@@ -40,7 +40,7 @@ impl<'a> Iterator for MovePicker<'a> {
         if self.phase == MovePickerPhase::CapturesInit {
             self.phase = MovePickerPhase::Captures;
             self.processed_idx = 0;
-            self.moves = generate_psuedolegal_moves(self.board, MGT::CapturesOnly);
+            self.moves = generate_psuedolegal_moves(self.board, MGT::All);
             self.moves.score_move_list(self.board, self.tt_move, &self.killers);
         }
 
@@ -91,20 +91,21 @@ impl<'a> Iterator for MovePicker<'a> {
         if self.phase == MovePickerPhase::QuietsInit {
             self.phase = MovePickerPhase::Quiets;
             self.processed_idx = 0;
-            self.moves = generate_psuedolegal_moves(self.board, MGT::QuietsOnly);
+            self.moves = generate_psuedolegal_moves(self.board, MGT::All);
             self.moves.score_move_list(self.board, self.tt_move, &self.killers);
         }
 
         if self.phase == MovePickerPhase::Quiets {
-            if self.processed_idx == self.moves.len {
-                return None;
-            }
-            assert_ne!(0, self.moves.len);
-            let m = self.moves.next().unwrap();
-            assert_ne!(m, Move::NULL);
-            assert!(m.is_valid(self.board));
-            self.processed_idx += 1;
-            return Some(m);
+            // if self.processed_idx == self.moves.len {
+            //     return None;
+            // }
+            // assert_ne!(0, self.moves.len);
+            // let m = self.moves.next().unwrap();
+            // assert_ne!(m, Move::NULL);
+            // assert!(m.is_valid(self.board));
+            // self.processed_idx += 1;
+            // return Some(m);
+            return self.moves.next();
         }
 
         unreachable!()
