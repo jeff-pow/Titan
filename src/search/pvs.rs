@@ -7,6 +7,7 @@ use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::eval::eval::evaluate;
 use crate::moves::movegenerator::generate_psuedolegal_moves;
+use crate::moves::movepicker::MovePicker;
 use crate::moves::moves::Move;
 use crate::types::square::Square;
 
@@ -238,6 +239,7 @@ fn pvs(
     let mut legal_moves_searched = 0;
     moves.score_move_list(board, table_move, &search_info.killer_moves[ply as usize]);
     search_info.search_stats.nodes_searched += 1;
+    let moves = MovePicker::new(board, ply, table_move, &search_info.killer_moves);
 
     // Start of search
     for m in moves {
