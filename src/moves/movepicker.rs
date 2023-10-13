@@ -1,3 +1,4 @@
+use crate::engine::perft::count_moves;
 use crate::moves::movegenerator::MGT;
 use crate::search::killers::{KillerMoves, NUM_KILLER_MOVES};
 use crate::{board::board::Board, moves::movegenerator::generate_psuedolegal_moves};
@@ -148,5 +149,87 @@ impl<'a> MovePicker<'a> {
             processed_idx: 0,
             gen_quiets: true,
         }
+    }
+}
+
+#[allow(dead_code)]
+fn perft(board: &Board, depth: i32) -> usize {
+    let mut total = 0;
+    let moves = MovePicker::qsearch(board, Move::NULL, true);
+    for m in moves {
+        let mut new_b = board.to_owned();
+        new_b.make_move(m);
+        let count = count_moves(depth - 1, &new_b);
+        total += count;
+        println!("{}: {}", m.to_lan(), count);
+    }
+    println!("\nNodes searched: {}", total);
+    total
+}
+
+#[cfg(test)]
+mod move_picker_tests {
+    use crate::{
+        board::fen::{self, build_board},
+        moves::{
+            movelist::MoveList,
+            movepicker::{perft, MovePicker},
+            moves::{from_lan, Move},
+        },
+        search::killers::NUM_KILLER_MOVES,
+    };
+
+    #[test]
+    fn test_movegenerator() {
+        let board = build_board(fen::STARTING_FEN);
+        let gen = MovePicker::dummy(&board);
+        let mut count = 0;
+        for m in gen {
+            assert_ne!(m, Move::NULL);
+            assert!(m.is_valid(&board));
+            dbg!(m.to_lan());
+            count += 1;
+        }
+        assert_eq!(20, count);
+    }
+
+    #[test]
+    fn full_generator() {
+        let board = build_board("k7/2r3n1/8/3q1b2/4P3/8/3N4/KR6 w - - 0 1");
+        let gen = MovePicker {
+            phase: super::MovePickerPhase::TTMove,
+            moves: MoveList::default(),
+            processed_idx: 0,
+            tt_move: from_lan("e4d5", &board),
+            board: &board,
+            killers: [from_lan("b1b5", &board), from_lan("b1c1", &board)],
+            gen_quiets: true,
+        };
+        for m in gen {
+            assert!(m.is_valid(&board));
+        }
+    }
+
+    #[test]
+    fn null_moves() {
+        let board = build_board("k7/2r3n1/8/3q1b2/8/8/3N4/KR6 w - - 0 1");
+        let gen = MovePicker {
+            phase: super::MovePickerPhase::TTMove,
+            moves: MoveList::default(),
+            processed_idx: 0,
+            tt_move: Move::NULL,
+            board: &board,
+            killers: [Move::NULL; NUM_KILLER_MOVES],
+            gen_quiets: true,
+        };
+        for m in gen {
+            assert!(m.is_valid(&board));
+        }
+    }
+
+    #[test]
+    fn movepicker_perft() {
+        let board = build_board(fen::STARTING_FEN);
+        assert_eq!(119_060_324, perft(&board, 6));
     }
 }

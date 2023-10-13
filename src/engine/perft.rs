@@ -47,7 +47,7 @@ pub fn perft(board: Board, depth: i32) -> usize {
 }
 
 /// Recursively counts the number of moves down to a certain depth
-fn count_moves(depth: i32, board: &Board) -> usize {
+pub fn count_moves(depth: i32, board: &Board) -> usize {
     let mut count = 0;
     let moves = generate_moves(board);
     if depth == 1 {
