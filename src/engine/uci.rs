@@ -7,6 +7,7 @@ use itertools::Itertools;
 
 use crate::board::fen::parse_fen_from_buffer;
 use crate::eval::eval::evaluate;
+use crate::search::killers::empty_killers;
 use crate::search::pvs::{search, MAX_SEARCH_DEPTH};
 use crate::{
     board::{
@@ -63,7 +64,8 @@ pub fn main_loop() -> ! {
             dbg!(&search_info.board);
             search_info.board.debug_bitboards();
         } else if buffer.starts_with("clear") {
-            // search_info.transpos_table.clear();
+            search_info.transpos_table.write().unwrap().clear();
+            search_info.killer_moves = empty_killers();
             println!("Transposition table cleared");
         } else if buffer.starts_with("go") {
             halt.store(false, Ordering::SeqCst);
@@ -91,8 +93,11 @@ pub fn main_loop() -> ! {
                 }));
             } else {
                 search_info.search_type = SearchType::Infinite;
-                // let m = search(&mut search_info, MAX_SEARCH_DEPTH);
-                // println!("bestmove {}", m.to_lan());
+                let mut s = search_info.clone();
+                let h = halt.clone();
+                handle = Some(thread::spawn(move || {
+                    search(&mut s, MAX_SEARCH_DEPTH, h);
+                }));
             }
         } else if buffer.starts_with("stop") {
             halt.store(true, Ordering::SeqCst);

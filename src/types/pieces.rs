@@ -1,3 +1,5 @@
+use std::ops;
+
 use strum_macros::EnumIter;
 
 pub const KING_PTS: i32 = 0;
@@ -14,9 +16,9 @@ pub enum Color {
     Black = 1,
 }
 
-impl Color {
-    /// Returns the opposite color
-    pub fn opp(&self) -> Color {
+impl ops::Not for Color {
+    type Output = Color;
+    fn not(self) -> Self::Output {
         match self {
             Color::White => Color::Black,
             Color::Black => Color::White,

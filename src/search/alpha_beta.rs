@@ -44,7 +44,7 @@ pub fn alpha_beta(
 
     let mut moves = generate_psuedolegal_moves(board);
     let mut legal_moves = 0;
-    moves.score_move_list(ply, board, Move::NULL, search_info);
+    moves.score_move_list(ply, board, Move::NULL, &search_info.killer_moves);
 
     let mut score = -INFINITY;
 
@@ -55,7 +55,7 @@ pub fn alpha_beta(
         new_b.make_move(m);
         // Just generate psuedolegal moves to save computation time on legality for moves that will be
         // pruned
-        if new_b.side_in_check(board.to_move) {
+        if new_b.in_check(board.to_move) {
             continue;
         }
         legal_moves += 1;
@@ -83,7 +83,7 @@ pub fn alpha_beta(
 
     if legal_moves == 0 {
         // Checkmate
-        if board.side_in_check(board.to_move) {
+        if board.in_check(board.to_move) {
             // Distance from root is returned in order for other recursive calls to determine
             // shortest viable checkmate path
             return -CHECKMATE + ply;

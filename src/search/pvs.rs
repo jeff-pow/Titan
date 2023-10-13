@@ -136,7 +136,7 @@ fn pvs(
 ) -> i32 {
     let ply = search_info.iter_max_depth - depth;
     let is_root = ply == 0;
-    let in_check = board.side_in_check(board.to_move);
+    let in_check = board.in_check(board.to_move);
     // Is a zero width search if alpha and beta are one apart
     let is_pv_node = (beta - alpha).abs() != 1;
     search_info.sel_depth = search_info.sel_depth.max(ply);
@@ -145,12 +145,12 @@ fn pvs(
         return evaluate(board);
     }
 
-    if in_check {
-        depth += 1;
-    }
+    // if in_check {
+    //     depth += 1;
+    // }
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
-        if board.side_in_check(board.to_move) {
+        if board.in_check(board.to_move) {
             return quiescence(ply, alpha, beta, pv, search_info, board);
         }
         return evaluate(board);
@@ -208,7 +208,7 @@ fn pvs(
         if board.has_non_pawns(board.to_move) && depth >= 3 && eval >= beta && board.prev_move != Move::NULL {
             let mut node_pvs = Vec::new();
             let mut new_b = board.to_owned();
-            new_b.to_move = new_b.to_move.opp();
+            new_b.to_move = !new_b.to_move;
             new_b.en_passant_square = Square::INVALID;
             new_b.prev_move = Move::NULL;
             let r = 3 + depth / 3 + min((eval - beta) / 200, 3);
@@ -236,13 +236,12 @@ fn pvs(
     // pruned
     let mut moves = generate_psuedolegal_moves(board);
     let mut legal_moves_searched = 0;
-    moves.score_move_list(ply, board, table_move, search_info);
+    moves.score_move_list(ply, board, table_move, &search_info.killer_moves);
     search_info.search_stats.nodes_searched += 1;
 
     // Start of search
-    for i in 0..moves.len {
+    for m in moves {
         let mut new_b = board.to_owned();
-        let m = moves.pick_move(i);
         let is_quiet = m.is_quiet(board);
 
         if !is_root && !is_pv_node && best_score >= -NEAR_CHECKMATE {
@@ -265,7 +264,7 @@ fn pvs(
         }
 
         new_b.make_move(m);
-        if new_b.side_in_check(board.to_move) {
+        if new_b.in_check(board.to_move) {
             continue;
         }
         legal_moves_searched += 1;
@@ -347,7 +346,7 @@ fn pvs(
 
     if legal_moves_searched == 0 {
         // Checkmate
-        if board.side_in_check(board.to_move) {
+        if board.in_check(board.to_move) {
             // Distance from root is returned in order for other recursive calls to determine
             // shortest viable checkmate path
             return -CHECKMATE + ply;

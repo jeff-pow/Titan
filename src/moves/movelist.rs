@@ -1,6 +1,6 @@
 use crate::{
     board::board::Board,
-    search::{killers::NUM_KILLER_MOVES, SearchInfo},
+    search::killers::{KillerMoves, NUM_KILLER_MOVES},
 };
 use std::mem::MaybeUninit;
 
@@ -20,6 +20,7 @@ impl MoveList {
     #[inline(always)]
     pub fn push(&mut self, m: Move) {
         debug_assert!(self.len < MAX_LEN);
+        debug_assert_ne!(m, Move::NULL);
         self.arr[self.len] = (m, 0);
         self.len += 1;
     }
@@ -71,7 +72,7 @@ impl MoveList {
         v
     }
 
-    pub fn score_move_list(&mut self, ply: i32, board: &Board, table_move: Move, search_info: &SearchInfo) {
+    pub fn score_move_list(&mut self, ply: i32, board: &Board, table_move: Move, killers: &KillerMoves) {
         for i in 0..self.len {
             let (m, m_score) = self.get_mut(i);
             let piece_moving = board.piece_at(m.origin_square()).unwrap();
@@ -89,7 +90,7 @@ impl MoveList {
             } else {
                 let mut n = 0;
                 while n < NUM_KILLER_MOVES && score == 0 {
-                    let killer_move = search_info.killer_moves[ply as usize][n];
+                    let killer_move = killers[ply as usize][n];
                     if *m == killer_move {
                         score = SCORED_MOVE_OFFSET - ((i as u32 + 1) * KILLER_VAL);
                     }

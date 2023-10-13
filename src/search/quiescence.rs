@@ -38,7 +38,7 @@ pub fn quiescence(
     }
     alpha = alpha.max(eval);
 
-    let in_check = board.side_in_check(board.to_move);
+    let in_check = board.in_check(board.to_move);
     let mut moves = if in_check {
         generate_moves(board)
     } else {
@@ -50,20 +50,19 @@ pub fn quiescence(
         }
         return STALEMATE;
     }
-    moves.score_move_list(ply, board, Move::NULL, search_info);
+    moves.score_move_list(ply, board, Move::NULL, &search_info.killer_moves);
     let mut best_score = -INFINITY;
 
-    for i in 0..moves.len {
+    for m in moves {
         let mut node_pvs = Vec::new();
         let mut new_b = board.to_owned();
-        let m = moves.pick_move(i);
 
         if !see(board, m, 1) {
             continue;
         }
 
         new_b.make_move(m);
-        if new_b.side_in_check(board.to_move) {
+        if new_b.in_check(board.to_move) {
             continue;
         }
 
@@ -75,16 +74,6 @@ pub fn quiescence(
 
         let eval = -quiescence(ply + 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
 
-        if eval >= beta {
-            return eval;
-        }
-
-        if eval > alpha {
-            alpha = eval;
-            pvs.clear();
-            pvs.push(m);
-            pvs.append(&mut node_pvs);
-        }
         if eval > best_score {
             best_score = eval;
 
@@ -122,7 +111,7 @@ fn is_bad_capture(board: &Board, m: Move) -> bool {
 }
 
 fn is_pawn_recapture(board: &Board, sq: Square) -> bool {
-    let attacker = board.to_move.opp();
+    let attacker = !board.to_move;
     let pawn_attacks = board.mg.pawn_attacks(sq, board.to_move);
     if pawn_attacks & board.bitboard(attacker, PieceName::Pawn) != Bitboard::EMPTY {
         return true;

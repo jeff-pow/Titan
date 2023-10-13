@@ -176,12 +176,12 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn side_in_check(&self, side: Color) -> bool {
+    pub fn in_check(&self, side: Color) -> bool {
         let king_square = match side {
             Color::White => self.white_king_square,
             Color::Black => self.black_king_square,
         };
-        self.square_under_attack(side.opp(), king_square)
+        self.square_under_attack(!side, king_square)
     }
 
     #[inline(always)]
@@ -191,7 +191,7 @@ impl Board {
 
     #[inline(always)]
     pub fn attackers_for_side(&self, attacker: Color, sq: Square, occupancy: Bitboard) -> Bitboard {
-        let pawn_attacks = self.mg.pawn_attacks(sq, attacker.opp()) & self.bitboard(attacker, PieceName::Pawn);
+        let pawn_attacks = self.mg.pawn_attacks(sq, !attacker) & self.bitboard(attacker, PieceName::Pawn);
         let knight_attacks = self.mg.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
         let bishop_attacks = self.mg.bishop_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Bishop);
         let rook_attacks = self.mg.rook_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Rook);
@@ -205,7 +205,7 @@ impl Board {
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
         let attacker_occupancy = self.bitboards[attacker as usize];
         let occupancy = self.occupancies();
-        let pawn_attacks = self.mg.pawn_attacks(sq, attacker.opp());
+        let pawn_attacks = self.mg.pawn_attacks(sq, !attacker);
         let knight_attacks = self.mg.knight_attacks(sq);
         let bishop_attacks = self.mg.bishop_attacks(sq, occupancy);
         let rook_attacks = self.mg.rook_attacks(sq, occupancy);
@@ -380,7 +380,7 @@ impl Board {
         }
 
         // Change the side to move after making a move
-        self.to_move = self.to_move.opp();
+        self.to_move = !self.to_move;
 
         self.num_moves += 1;
 
@@ -389,6 +389,14 @@ impl Board {
         self.add_to_history();
 
         self.prev_move = m;
+
+        assert_eq!(Bitboard::EMPTY, self.color_occupancies(Color::White) & self.color_occupancies(Color::Black));
+        let w = self.color_occupancies(Color::White);
+        let b = self.color_occupancies(Color::Black);
+        self.gen_color_occupancies(Color::White);
+        self.gen_color_occupancies(Color::Black);
+        assert_eq!(w, self.color_occupancies(Color::White));
+        assert_eq!(b, self.color_occupancies(Color::Black));
     }
 
     #[allow(dead_code)]

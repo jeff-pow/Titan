@@ -110,7 +110,7 @@ fn generate_castling_moves(board: &Board) -> MoveList {
                 Color::Black => 60..=62,
             };
             for check_sq in range {
-                if board.square_under_attack(board.to_move.opp(), Square(check_sq)) {
+                if board.square_under_attack(!board.to_move, Square(check_sq)) {
                     break 'kingside;
                 }
             }
@@ -124,7 +124,7 @@ fn generate_castling_moves(board: &Board) -> MoveList {
                 Color::Black => 58..=60,
             };
             for check_sq in range {
-                if board.square_under_attack(board.to_move.opp(), Square(check_sq)) {
+                if board.square_under_attack(!board.to_move, Square(check_sq)) {
                     break 'queenside;
                 }
             }
@@ -138,7 +138,7 @@ fn generate_pawn_moves(board: &Board) -> MoveList {
     let mut moves = MoveList::default();
     let pawns = board.bitboard(board.to_move, Pawn);
     let vacancies = !board.occupancies();
-    let enemies = board.color_occupancies(board.to_move.opp());
+    let enemies = board.color_occupancies(!board.to_move);
     let non_promotions = match board.to_move {
         Color::White => pawns & !RANK7,
         Color::Black => pawns & !RANK2,
@@ -288,7 +288,7 @@ pub fn generate_moves(board: &Board) -> MoveList {
         .filter(|m| {
             let mut new_b = board.to_owned();
             new_b.make_move(*m);
-            !new_b.side_in_check(board.to_move)
+            !new_b.in_check(board.to_move)
         })
         .collect()
 }

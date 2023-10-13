@@ -170,6 +170,29 @@ impl Move {
         str
     }
 
+    #[inline(always)]
+    pub fn is_valid(&self, board: &Board) -> bool {
+        // *self != Move::NULL && board.color_at(self.origin_square()) == Some(board.to_move)
+        if *self == Move::NULL {
+            return false;
+        }
+        let o = board.color_at(self.origin_square());
+        let d = board.color_at(self.dest_square());
+        if o.is_some() && d.is_some() {
+            let o = o.unwrap();
+            let d = d.unwrap();
+            if d == o {
+                return false;
+            }
+        }
+        board.piece_at(self.origin_square()).is_some()
+        // && match (o, d) {
+        //     (Some(a), Some(b)) => a != b,
+        //     _ => true,
+        // }
+    }
+
+    #[inline(always)]
     pub fn castle_type(&self) -> Castle {
         debug_assert!(self.is_castle());
         if self.dest_square().dist(self.origin_square()) != 2 {
