@@ -176,6 +176,7 @@ impl Move {
         if *self == Move::NULL {
             return false;
         }
+        assert!(self.origin_square().is_valid() && self.dest_square().is_valid());
         let o = board.color_at(self.origin_square());
         let d = board.color_at(self.dest_square());
         if o.is_some() && d.is_some() {

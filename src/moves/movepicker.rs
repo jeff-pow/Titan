@@ -37,6 +37,11 @@ impl<'a> Iterator for MovePicker<'a> {
                 return Some(self.tt_move);
             }
         }
+        if self.moves.is_empty() {
+            self.moves = generate_psuedolegal_moves(self.board, MGT::All);
+            self.moves.score_move_list(self.board, self.tt_move, &self.killers);
+        }
+        return self.moves.next();
 
         if self.phase == MovePickerPhase::CapturesInit {
             self.phase = MovePickerPhase::Captures;

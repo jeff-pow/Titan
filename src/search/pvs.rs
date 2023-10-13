@@ -6,10 +6,9 @@ use std::time::{Duration, Instant};
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::eval::eval::evaluate;
-use crate::moves::movegenerator::generate_psuedolegal_moves;
+use crate::moves::movegenerator::{generate_psuedolegal_moves, MGT};
 use crate::moves::movepicker::MovePicker;
 use crate::moves::moves::Move;
-use crate::types::square::Square;
 
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
@@ -235,7 +234,7 @@ fn pvs(
 
     // Just generate psuedolegal moves to save computation time on legality for moves that will be
     // pruned
-    let mut moves = generate_psuedolegal_moves(board, crate::moves::movegenerator::MoveGenerationType::All);
+    let mut moves = generate_psuedolegal_moves(board, MGT::All);
     let mut legal_moves_searched = 0;
     moves.score_move_list(board, table_move, &search_info.killer_moves[ply as usize]);
     search_info.search_stats.nodes_searched += 1;
