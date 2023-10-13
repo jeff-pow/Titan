@@ -51,7 +51,7 @@ pub fn count_moves(depth: i32, board: &Board) -> usize {
     let mut count = 0;
     let moves = generate_moves(board);
     if depth == 1 {
-        return moves.len;
+        return moves.len();
     }
     for m in moves {
         let mut new_b = board.to_owned();

@@ -47,7 +47,7 @@ impl<'a> Iterator for MovePicker<'a> {
 
         'captures: {
             if self.phase == MovePickerPhase::Captures {
-                if self.processed_idx == self.moves.len {
+                if !self.moves.has_next() {
                     self.phase = MovePickerPhase::KillerMovesInit;
                     break 'captures;
                 }
@@ -77,7 +77,7 @@ impl<'a> Iterator for MovePicker<'a> {
 
         'killers: {
             if self.phase == MovePickerPhase::KillerMoves {
-                if self.processed_idx == self.moves.len {
+                if !self.moves.has_next() {
                     self.phase = MovePickerPhase::QuietsInit;
                     break 'killers;
                 }

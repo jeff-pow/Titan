@@ -26,9 +26,9 @@ pub const BLACK_KINGSIDE_SQUARES: Bitboard = Bitboard(0x6000000000000000);
 pub const BLACK_QUEENSIDE_SQUARES: Bitboard = Bitboard(0xe00000000000000);
 
 #[allow(clippy::upper_case_acronyms)]
-pub(crate) type MGT = MoveGenerationType;
+pub type MGT = MoveGenerationType;
 #[derive(Copy, Clone, PartialEq)]
-pub(crate) enum MoveGenerationType {
+pub enum MoveGenerationType {
     CapturesOnly,
     QuietsOnly,
     All,

@@ -8,8 +8,8 @@ pub const MAX_LEN: usize = 218;
 /// Movelist elements contains a move and an i32 where a score can be stored later to be used in move ordering
 /// for efficient search pruning
 pub struct MoveList {
-    pub arr: [(Move, u32); MAX_LEN],
-    pub len: usize,
+    arr: [(Move, u32); MAX_LEN],
+    len: usize,
     current_idx: usize,
 }
 
@@ -20,6 +20,21 @@ impl MoveList {
         debug_assert_ne!(m, Move::NULL);
         self.arr[self.len] = (m, 0);
         self.len += 1;
+    }
+
+    #[inline(always)]
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    #[inline(always)]
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    #[inline(always)]
+    pub fn has_next(&self) -> bool {
+        self.current_idx < self.len
     }
 
     #[inline(always)]
@@ -62,11 +77,7 @@ impl MoveList {
 
     #[inline(always)]
     pub fn into_vec(self) -> Vec<Move> {
-        let mut v = Vec::new();
-        for i in 0..self.len {
-            v.push(self.get_move(i));
-        }
-        v
+        self.collect()
     }
 
     pub fn score_move_list(&mut self, board: &Board, table_move: Move, killers: &[Move; NUM_KILLER_MOVES]) {
@@ -124,6 +135,12 @@ pub const MVV_LVA: [[u32; 6]; 6] = [
     [20, 21, 22, 23, 24, 25], // victim K
     [10, 11, 12, 13, 14, 15], // victim P
 ];
+
+impl ExactSizeIterator for MoveList {
+    fn len(&self) -> usize {
+        self.len
+    }
+}
 
 impl Iterator for MoveList {
     type Item = Move;

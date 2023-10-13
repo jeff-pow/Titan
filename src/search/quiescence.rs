@@ -44,7 +44,7 @@ pub fn quiescence(
     } else {
         generate_psuedolegal_captures(board)
     };
-    if in_check && moves.len == 0 {
+    if in_check && moves.is_empty() {
         if in_check {
             return -CHECKMATE + ply;
         }
