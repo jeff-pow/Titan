@@ -23,6 +23,12 @@ impl Bitboard {
     }
 
     #[inline(always)]
+    pub fn get_lsb(&self) -> Square {
+        let lsb = self.0 & self.0.wrapping_neg();
+        Square(lsb.trailing_zeros() as u8)
+    }
+
+    #[inline(always)]
     pub fn square_occupied(&self, sq: Square) -> bool {
         debug_assert!(sq.is_valid());
         self.0 & (1 << sq.0) != 0

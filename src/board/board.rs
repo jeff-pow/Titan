@@ -177,12 +177,15 @@ impl Board {
 
     #[inline(always)]
     pub fn king_square(&self, color: Color) -> Square {
-        self.bitboard(color, PieceName::King).pop_lsb()
+        self.bitboard(color, PieceName::King).get_lsb()
     }
 
     #[inline(always)]
     pub fn in_check(&self, side: Color) -> bool {
         let king_square = self.king_square(side);
+        if !king_square.is_valid() {
+            return true;
+        }
         self.square_under_attack(!side, king_square)
     }
 
