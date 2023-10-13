@@ -209,7 +209,7 @@ fn pvs(
             let mut node_pvs = Vec::new();
             let mut new_b = board.to_owned();
             new_b.to_move = !new_b.to_move;
-            new_b.en_passant_square = Square::INVALID;
+            new_b.en_passant_square = None;
             new_b.prev_move = Move::NULL;
             let r = 3 + depth / 3 + min((eval - beta) / 200, 3);
             let mut null_eval =

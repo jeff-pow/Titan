@@ -17,7 +17,7 @@ use super::{
     },
     magics::Magics,
     movelist::MoveList,
-    moves::{Move, MoveType},
+    moves::{Castle, Move, MoveType},
 };
 
 pub const WHITE_KINGSIDE_SQUARES: Bitboard = Bitboard(0b1100000);
@@ -101,17 +101,14 @@ fn generate_castling_moves(board: &Board) -> MoveList {
         Color::Black => (BLACK_KINGSIDE_SQUARES, BLACK_QUEENSIDE_SQUARES),
     };
     let (can_kingside, can_queenside) = match board.to_move {
-        Color::White => (board.white_king_castle, board.white_queen_castle),
-        Color::Black => (board.black_king_castle, board.black_queen_castle),
+        Color::White => (board.castling(Castle::WhiteKingCastle), board.castling(Castle::WhiteQueenCastle)),
+        Color::Black => (board.castling(Castle::BlackKingCastle), board.castling(Castle::BlackQueenCastle)),
     };
     let (kingside_dest, queenside_dest) = match board.to_move {
         Color::White => (Square(6), Square(2)),
         Color::Black => (Square(62), Square(58)),
     };
-    let king_sq = match board.to_move {
-        Color::White => board.white_king_square,
-        Color::Black => board.black_king_square,
-    };
+    let king_sq = board.king_square(board.to_move);
     'kingside: {
         if can_kingside && (kingside_vacancies & board.occupancies()) == Bitboard::EMPTY {
             let range = match board.to_move {
@@ -250,10 +247,10 @@ fn generate_pawn_moves(board: &Board, gen_type: MGT) -> MoveList {
 }
 
 pub fn get_en_passant(board: &Board, dir: Direction) -> Option<Move> {
-    let sq = board.en_passant_square.checked_shift(dir)?;
+    let sq = board.en_passant_square?.checked_shift(dir)?;
     let pawn = sq.bitboard() & board.bitboard(board.to_move, Pawn);
     if pawn != Bitboard::EMPTY {
-        let dest = board.en_passant_square;
+        let dest = board.en_passant_square?;
         let src = dest.checked_shift(dir)?;
         return Some(Move::new(src, dest, None, MoveType::EnPassant));
     }

@@ -47,15 +47,19 @@ impl<'a> Iterator for MovePicker<'a> {
 
         'captures: {
             if self.phase == MovePickerPhase::Captures {
-                if !self.moves.has_next() {
-                    self.phase = MovePickerPhase::KillerMovesInit;
-                    break 'captures;
+                let m = self.moves.next();
+                match m {
+                    None => {
+                        self.phase = MovePickerPhase::KillerMovesInit;
+                        break 'captures;
+                    }
+                    Some(m) => {
+                        assert_ne!(m, Move::NULL);
+                        assert!(m.is_valid(self.board));
+                        self.processed_idx += 1;
+                        return Some(m);
+                    }
                 }
-                let m = self.moves.next().unwrap();
-                assert_ne!(m, Move::NULL);
-                assert!(m.is_valid(self.board));
-                self.processed_idx += 1;
-                return Some(m);
             }
         }
 
@@ -77,15 +81,19 @@ impl<'a> Iterator for MovePicker<'a> {
 
         'killers: {
             if self.phase == MovePickerPhase::KillerMoves {
-                if !self.moves.has_next() {
-                    self.phase = MovePickerPhase::QuietsInit;
-                    break 'killers;
+                let m = self.moves.next();
+                match m {
+                    None => {
+                        self.phase = MovePickerPhase::QuietsInit;
+                        break 'killers;
+                    }
+                    Some(m) => {
+                        assert_ne!(m, Move::NULL);
+                        assert!(m.is_valid(self.board));
+                        self.processed_idx += 1;
+                        return Some(m);
+                    }
                 }
-                let m = self.moves.next().unwrap();
-                assert_ne!(m, Move::NULL);
-                assert!(m.is_valid(self.board));
-                self.processed_idx += 1;
-                return Some(m);
             }
         }
 
@@ -97,15 +105,6 @@ impl<'a> Iterator for MovePicker<'a> {
         }
 
         if self.phase == MovePickerPhase::Quiets {
-            // if self.processed_idx == self.moves.len {
-            //     return None;
-            // }
-            // assert_ne!(0, self.moves.len);
-            // let m = self.moves.next().unwrap();
-            // assert_ne!(m, Move::NULL);
-            // assert!(m.is_valid(self.board));
-            // self.processed_idx += 1;
-            // return Some(m);
             return self.moves.next();
         }
 

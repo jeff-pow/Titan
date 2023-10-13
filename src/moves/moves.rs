@@ -280,11 +280,11 @@ pub enum EnPassant {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Castle {
-    None,
     WhiteKingCastle,
     WhiteQueenCastle,
     BlackKingCastle,
     BlackQueenCastle,
+    None,
 }
 
 impl Display for Move {

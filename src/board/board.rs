@@ -21,13 +21,8 @@ pub struct Board {
     pub array_board: [Option<Piece>; 64],
     pub material_val: [i32; 2],
     pub to_move: Color,
-    pub black_king_castle: bool,
-    pub black_queen_castle: bool,
-    pub white_king_castle: bool,
-    pub white_queen_castle: bool,
-    pub en_passant_square: Square,
-    pub black_king_square: Square,
-    pub white_king_square: Square,
+    castling: [bool; 4],
+    pub en_passant_square: Option<Square>,
     pub num_moves: i32,
     pub half_moves: i32,
     pub zobrist_hash: u64,
@@ -46,14 +41,9 @@ impl Default for Board {
             occupancies: Bitboard::EMPTY,
             array_board: [None; 64],
             material_val: [0; 2],
-            black_king_castle: false,
-            black_queen_castle: false,
-            white_king_castle: false,
-            white_queen_castle: false,
+            castling: [false; 4],
             to_move: Color::White,
-            en_passant_square: Square::INVALID,
-            white_king_square: Square::INVALID,
-            black_king_square: Square::INVALID,
+            en_passant_square: None,
             num_moves: 0,
             half_moves: 0,
             zobrist_hash: 0,
@@ -68,7 +58,23 @@ impl Default for Board {
 impl Board {
     #[inline(always)]
     pub fn can_en_passant(&self) -> bool {
-        self.en_passant_square != Square::INVALID
+        self.en_passant_square.is_some()
+    }
+
+    #[inline(always)]
+    pub fn castling(&self, c: Castle) -> bool {
+        match c {
+            Castle::None => panic!(),
+            _ => self.castling[c as usize],
+        }
+    }
+
+    #[inline(always)]
+    pub fn set_castling(&mut self, c: Castle, b: bool) {
+        match c {
+            Castle::None => panic!(),
+            _ => self.castling[c as usize] = b,
+        }
     }
 
     #[inline(always)]
@@ -156,12 +162,6 @@ impl Board {
         self.material_val[color as usize] += piece_type.value();
         self.occupancies |= sq.bitboard();
         self.color_occupancies[color as usize] |= sq.bitboard();
-        if piece_type == PieceName::King {
-            match color {
-                Color::White => self.white_king_square = sq,
-                Color::Black => self.black_king_square = sq,
-            }
-        }
     }
 
     #[inline(always)]
@@ -176,11 +176,13 @@ impl Board {
     }
 
     #[inline(always)]
+    pub fn king_square(&self, color: Color) -> Square {
+        self.bitboard(color, PieceName::King).pop_lsb()
+    }
+
+    #[inline(always)]
     pub fn in_check(&self, side: Color) -> bool {
-        let king_square = match side {
-            Color::White => self.white_king_square,
-            Color::Black => self.black_king_square,
-        };
+        let king_square = self.king_square(side);
         self.square_under_attack(!side, king_square)
     }
 
@@ -267,26 +269,26 @@ impl Board {
                 Castle::WhiteKingCastle => {
                     self.place_piece(PieceName::Rook, self.to_move, Square(5));
                     self.remove_piece(Square(7));
-                    self.white_queen_castle = false;
-                    self.white_king_castle = false;
+                    self.set_castling(Castle::WhiteQueenCastle, false);
+                    self.set_castling(Castle::WhiteKingCastle, false);
                 }
                 Castle::WhiteQueenCastle => {
                     self.place_piece(PieceName::Rook, self.to_move, Square(3));
                     self.remove_piece(Square(0));
-                    self.white_queen_castle = false;
-                    self.white_king_castle = false;
+                    self.set_castling(Castle::WhiteQueenCastle, false);
+                    self.set_castling(Castle::WhiteKingCastle, false);
                 }
                 Castle::BlackKingCastle => {
                     self.place_piece(PieceName::Rook, self.to_move, Square(61));
                     self.remove_piece(Square(63));
-                    self.black_queen_castle = false;
-                    self.black_king_castle = false;
+                    self.set_castling(Castle::BlackQueenCastle, false);
+                    self.set_castling(Castle::BlackKingCastle, false);
                 }
                 Castle::BlackQueenCastle => {
                     self.place_piece(PieceName::Rook, self.to_move, Square(59));
                     self.remove_piece(Square(56));
-                    self.black_queen_castle = false;
-                    self.black_king_castle = false;
+                    self.set_castling(Castle::BlackQueenCastle, false);
+                    self.set_castling(Castle::BlackKingCastle, false);
                 }
                 Castle::None => (),
             }
@@ -315,24 +317,22 @@ impl Board {
         if piece_moving == PieceName::King {
             match self.to_move {
                 Color::White => {
-                    self.white_king_castle = false;
-                    self.white_queen_castle = false;
-                    self.white_king_square = m.dest_square();
+                    self.set_castling(Castle::WhiteQueenCastle, false);
+                    self.set_castling(Castle::WhiteKingCastle, false);
                 }
                 Color::Black => {
-                    self.black_queen_castle = false;
-                    self.black_king_castle = false;
-                    self.black_king_square = m.dest_square();
+                    self.set_castling(Castle::BlackQueenCastle, false);
+                    self.set_castling(Castle::BlackKingCastle, false);
                 }
             }
         }
         // If a rook moves, castling to that side is no longer possible
         if piece_moving == PieceName::Rook {
             match m.origin_square().0 {
-                0 => self.white_queen_castle = false,
-                7 => self.white_king_castle = false,
-                56 => self.black_queen_castle = false,
-                63 => self.black_king_castle = false,
+                0 => self.set_castling(Castle::WhiteQueenCastle, false),
+                7 => self.set_castling(Castle::WhiteKingCastle, false),
+                56 => self.set_castling(Castle::BlackQueenCastle, false),
+                63 => self.set_castling(Castle::BlackKingCastle, false),
                 _ => (),
             }
         }
@@ -340,10 +340,10 @@ impl Board {
         if let Some(cap) = capture {
             if cap == PieceName::Rook {
                 match m.dest_square().0 {
-                    0 => self.white_queen_castle = false,
-                    7 => self.white_king_castle = false,
-                    56 => self.black_queen_castle = false,
-                    63 => self.black_king_castle = false,
+                    0 => self.set_castling(Castle::WhiteQueenCastle, false),
+                    7 => self.set_castling(Castle::WhiteKingCastle, false),
+                    56 => self.set_castling(Castle::BlackQueenCastle, false),
+                    63 => self.set_castling(Castle::BlackKingCastle, false),
                     _ => (),
                 }
             }
@@ -355,20 +355,20 @@ impl Board {
                 Color::White => {
                     if m.origin_square() == m.dest_square().shift(South).shift(South) {
                         en_passant = true;
-                        self.en_passant_square = m.dest_square().shift(South);
+                        self.en_passant_square = Some(m.dest_square().shift(South));
                     }
                 }
                 Color::Black => {
                     if m.dest_square().shift(North).shift(North) == m.origin_square() {
                         en_passant = true;
-                        self.en_passant_square = m.origin_square().shift(South);
+                        self.en_passant_square = Some(m.origin_square().shift(South));
                     }
                 }
             }
         }
         // If this move did not create a new en passant opportunity, the ability to do it goes away
         if !en_passant {
-            self.en_passant_square = Square::INVALID;
+            self.en_passant_square = None;
         }
 
         // If a piece isn't captured or a pawn isn't moved, increment the half move clock.
@@ -487,21 +487,23 @@ impl fmt::Debug for Board {
         };
         str += &self.to_string();
         str += "Castles available: ";
-        if self.white_king_castle {
+        if self.castling(Castle::WhiteKingCastle) {
             str += "K"
         };
-        if self.white_queen_castle {
+        if self.castling(Castle::WhiteQueenCastle) {
             str += "Q"
         };
-        if self.black_king_castle {
+        if self.castling(Castle::BlackKingCastle) {
             str += "k"
         };
-        if self.black_queen_castle {
+        if self.castling(Castle::BlackQueenCastle) {
             str += "q"
         };
         str += "\n";
-        str += "En Passant Square: ";
-        str += &self.en_passant_square.0.to_string();
+        if let Some(s) = &self.en_passant_square {
+            str += "En Passant Square: ";
+            str += &s.to_string();
+        }
         str += "\n";
         str += "Num moves made: ";
         str += &self.num_moves.to_string();

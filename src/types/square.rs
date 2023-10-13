@@ -15,7 +15,7 @@ pub struct Square(pub u8);
 
 impl Square {
     /// Declaration of an invalid square used as the equivalent of null
-    pub const INVALID: Square = Square(64);
+    // pub const INVALID: Square = Square(64);
 
     /// Function checks whether a shift is valid before executing it
     #[inline(always)]
