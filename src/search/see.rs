@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-fn gain(board: &Board, m: &Move) -> i32 {
+fn gain(board: &Board, m: Move) -> i32 {
     if m.is_castle() {
         return 0;
     }
@@ -44,7 +44,7 @@ fn next_attacker(board: &Board, occupied: &mut Bitboard, attackers: Bitboard, si
     unreachable!()
 }
 
-pub fn see(board: &Board, m: &Move, threshold: i32) -> bool {
+pub fn see(board: &Board, m: Move, threshold: i32) -> bool {
     let dest = m.dest_square();
     let src = m.origin_square();
 

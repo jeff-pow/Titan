@@ -317,13 +317,13 @@ fn pvs(
 
         if eval > best_score {
             best_score = eval;
-            best_move = *m;
+            best_move = m;
 
             if eval > alpha {
                 alpha = eval;
-                best_move = *m;
+                best_move = m;
                 pv.clear();
-                pv.push(*m);
+                pv.push(m);
                 pv.append(&mut node_pvs);
                 entry_flag = EntryFlag::Exact;
             }
@@ -333,7 +333,7 @@ fn pvs(
                     .transpos_table
                     .write()
                     .unwrap()
-                    .insert(board.zobrist_hash, TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, *m));
+                    .insert(board.zobrist_hash, TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, m));
 
                 let capture = board.piece_at(m.dest_square());
                 // Store a killer move if it is not a capture, but good enough to cause a beta cutoff

@@ -242,7 +242,7 @@ impl Board {
     }
 
     /// Function makes a move and modifies board state to reflect the move that just happened
-    pub fn make_move(&mut self, m: &Move) {
+    pub fn make_move(&mut self, m: Move) {
         // Special case if the move is an en_passant
         if m.is_en_passant() {
             match self.to_move {
@@ -388,7 +388,7 @@ impl Board {
 
         self.add_to_history();
 
-        self.prev_move = *m;
+        self.prev_move = m;
     }
 
     #[allow(dead_code)]

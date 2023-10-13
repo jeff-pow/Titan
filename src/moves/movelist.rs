@@ -13,6 +13,7 @@ pub const MAX_LEN: usize = 218;
 pub struct MoveList {
     pub arr: [(Move, u32); MAX_LEN],
     pub len: usize,
+    current_idx: usize,
 }
 
 impl MoveList {
@@ -40,23 +41,15 @@ impl MoveList {
     }
 
     #[inline(always)]
-    pub fn iter(&self) -> MoveIter {
-        MoveIter {
-            movelist: self,
-            curr: 0,
-        }
-    }
-
-    #[inline(always)]
     /// Sorts next move into position and then returns a reference to the move
-    pub fn pick_move(&mut self, idx: usize) -> &Move {
+    pub fn pick_move(&mut self, idx: usize) -> Move {
         self.sort_next_move(idx);
         self.get_move(idx)
     }
 
     #[inline(always)]
-    pub fn get_move(&self, idx: usize) -> &Move {
-        &self.arr[idx].0
+    pub fn get_move(&self, idx: usize) -> Move {
+        self.arr[idx].0
     }
 
     #[inline(always)]
@@ -73,7 +66,7 @@ impl MoveList {
     pub fn into_vec(self) -> Vec<Move> {
         let mut v = Vec::new();
         for i in 0..self.len {
-            v.push(*self.get_move(i));
+            v.push(self.get_move(i));
         }
         v
     }
@@ -134,21 +127,16 @@ pub const MVV_LVA: [[u32; 6]; 6] = [
     [10, 11, 12, 13, 14, 15], // victim P
 ];
 
-pub struct MoveIter<'a> {
-    movelist: &'a MoveList,
-    curr: usize,
-}
-
-impl Iterator for MoveIter<'_> {
+impl Iterator for MoveList {
     type Item = Move;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.curr >= self.movelist.len {
+        if self.current_idx >= self.len {
             None
         } else {
-            let m = self.movelist.arr[self.curr];
-            self.curr += 1;
-            Some(m.0)
+            let m = self.pick_move(self.current_idx);
+            self.current_idx += 1;
+            Some(m)
         }
     }
 }
@@ -172,6 +160,7 @@ impl Default for MoveList {
         Self {
             arr: unsafe { arr.assume_init() },
             len: 0,
+            current_idx: 0,
         }
     }
 }

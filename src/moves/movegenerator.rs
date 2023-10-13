@@ -276,7 +276,7 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
 pub fn generate_psuedolegal_captures(board: &Board) -> MoveList {
     let moves = generate_psuedolegal_moves(board);
     moves
-        .iter()
+        .into_iter()
         .filter(|m| board.occupancies().square_occupied(m.dest_square()))
         .collect::<MoveList>()
 }
@@ -284,10 +284,10 @@ pub fn generate_psuedolegal_captures(board: &Board) -> MoveList {
 /// Returns all legal moves
 pub fn generate_moves(board: &Board) -> MoveList {
     generate_psuedolegal_moves(board)
-        .iter()
+        .into_iter()
         .filter(|m| {
             let mut new_b = board.to_owned();
-            new_b.make_move(m);
+            new_b.make_move(*m);
             !new_b.side_in_check(board.to_move)
         })
         .collect()

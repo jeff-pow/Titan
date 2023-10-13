@@ -82,7 +82,7 @@ pub fn quiescence(
         if eval > alpha {
             alpha = eval;
             pvs.clear();
-            pvs.push(*m);
+            pvs.push(m);
             pvs.append(&mut node_pvs);
         }
         if eval > best_score {
@@ -91,7 +91,7 @@ pub fn quiescence(
             if eval > alpha {
                 alpha = eval;
                 pvs.clear();
-                pvs.push(*m);
+                pvs.push(m);
                 pvs.append(&mut node_pvs);
             }
             if alpha >= beta {
@@ -103,7 +103,7 @@ pub fn quiescence(
     alpha
 }
 
-fn is_bad_capture(board: &Board, m: &Move) -> bool {
+fn is_bad_capture(board: &Board, m: Move) -> bool {
     let moving_piece = board.piece_at(m.origin_square()).unwrap();
     let capture = board.piece_at(m.dest_square());
     if moving_piece == PieceName::Pawn {

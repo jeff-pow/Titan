@@ -76,7 +76,7 @@ pub fn alpha_beta(
             alpha = eval;
             // A principal variation has been found, so we can do pvs on the remaining nodes of this level
             pv.clear();
-            pv.push(*m);
+            pv.push(m);
             pv.append(&mut node_pvs);
         }
     }
