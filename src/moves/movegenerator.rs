@@ -25,6 +25,15 @@ pub const WHITE_QUEENSIDE_SQUARES: Bitboard = Bitboard(0b1110);
 pub const BLACK_KINGSIDE_SQUARES: Bitboard = Bitboard(0x6000000000000000);
 pub const BLACK_QUEENSIDE_SQUARES: Bitboard = Bitboard(0xe00000000000000);
 
+#[allow(clippy::upper_case_acronyms)]
+pub(crate) type MGT = MoveGenerationType;
+#[derive(Copy, Clone, PartialEq)]
+pub(crate) enum MoveGenerationType {
+    CapturesOnly,
+    QuietsOnly,
+    All,
+}
+
 #[derive(Clone)]
 pub struct MoveGenerator {
     king_table: [Bitboard; 64],
@@ -73,7 +82,7 @@ impl MoveGenerator {
 }
 
 /// Generates all moves with no respect to legality via leaving itself in check
-pub fn generate_psuedolegal_moves(board: &Board) -> MoveList {
+pub fn generate_psuedolegal_moves(board: &Board, gen_type: MGT) -> MoveList {
     let mut moves = MoveList::default();
     moves.append(&generate_bitboard_moves(board, PieceName::Knight));
     moves.append(&generate_bitboard_moves(board, PieceName::King));
@@ -274,7 +283,7 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName) -> MoveList {
 
 /// Filters out moves that are silent for quiescence search
 pub fn generate_psuedolegal_captures(board: &Board) -> MoveList {
-    let moves = generate_psuedolegal_moves(board);
+    let moves = generate_psuedolegal_moves(board, MGT::CapturesOnly);
     moves
         .into_iter()
         .filter(|m| board.occupancies().square_occupied(m.dest_square()))
@@ -283,7 +292,7 @@ pub fn generate_psuedolegal_captures(board: &Board) -> MoveList {
 
 /// Returns all legal moves
 pub fn generate_moves(board: &Board) -> MoveList {
-    generate_psuedolegal_moves(board)
+    generate_psuedolegal_moves(board, MGT::All)
         .into_iter()
         .filter(|m| {
             let mut new_b = board.to_owned();

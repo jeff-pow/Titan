@@ -43,7 +43,7 @@ impl MoveList {
 
     #[inline(always)]
     /// Sorts next move into position and then returns a reference to the move
-    pub fn pick_move(&mut self, idx: usize) -> Move {
+    fn pick_move(&mut self, idx: usize) -> Move {
         self.sort_next_move(idx);
         self.get_move(idx)
     }
@@ -72,7 +72,7 @@ impl MoveList {
         v
     }
 
-    pub fn score_move_list(&mut self, ply: i32, board: &Board, table_move: Move, killers: &KillerMoves) {
+    pub fn score_move_list(&mut self, board: &Board, table_move: Move, killers: &[Move; NUM_KILLER_MOVES]) {
         for i in 0..self.len {
             let (m, m_score) = self.get_mut(i);
             let piece_moving = board.piece_at(m.origin_square()).unwrap();
@@ -90,7 +90,7 @@ impl MoveList {
             } else {
                 let mut n = 0;
                 while n < NUM_KILLER_MOVES && score == 0 {
-                    let killer_move = killers[ply as usize][n];
+                    let killer_move = killers[n];
                     if *m == killer_move {
                         score = SCORED_MOVE_OFFSET - ((i as u32 + 1) * KILLER_VAL);
                     }

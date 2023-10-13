@@ -12,7 +12,6 @@ use crate::search::pvs::MAX_SEARCH_DEPTH;
 use self::killers::{empty_killers, KillerMoves};
 use self::{game_time::GameTime, search_stats::SearchStats};
 
-mod alpha_beta;
 pub(crate) mod game_time;
 pub mod killers;
 pub(crate) mod pvs;

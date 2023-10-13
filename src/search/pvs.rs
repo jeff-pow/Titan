@@ -234,9 +234,9 @@ fn pvs(
 
     // Just generate psuedolegal moves to save computation time on legality for moves that will be
     // pruned
-    let mut moves = generate_psuedolegal_moves(board);
+    let mut moves = generate_psuedolegal_moves(board, crate::moves::movegenerator::MoveGenerationType::All);
     let mut legal_moves_searched = 0;
-    moves.score_move_list(ply, board, table_move, &search_info.killer_moves);
+    moves.score_move_list(board, table_move, &search_info.killer_moves[ply as usize]);
     search_info.search_stats.nodes_searched += 1;
 
     // Start of search

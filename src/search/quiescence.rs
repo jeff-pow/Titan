@@ -50,7 +50,7 @@ pub fn quiescence(
         }
         return STALEMATE;
     }
-    moves.score_move_list(ply, board, Move::NULL, &search_info.killer_moves);
+    moves.score_move_list(board, Move::NULL, &search_info.killer_moves[ply as usize]);
     let mut best_score = -INFINITY;
 
     for m in moves {
