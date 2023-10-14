@@ -89,6 +89,7 @@ pub fn quiescence(
         }
     }
 
+    // TODO: Fail soft instead of this mess...
     alpha
 }
 
