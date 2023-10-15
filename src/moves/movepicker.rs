@@ -44,7 +44,6 @@ impl<'a> Iterator for MovePicker<'a> {
         // return self.moves.next();
         if self.phase == MovePickerPhase::CapturesInit {
             self.phase = MovePickerPhase::Captures;
-            self.processed_idx = 0;
             debug_assert_eq!(0, self.moves.len());
             self.moves = generate_psuedolegal_moves(self.board, MGT::CapturesOnly);
             self.moves.score_move_list(self.board, self.tt_move, &self.killers);
@@ -86,7 +85,9 @@ impl<'a> Iterator for MovePicker<'a> {
         }
 
         if self.phase == MovePickerPhase::Quiets {
-            return self.moves.get_one(self.processed_idx).map(|entry| entry.m);
+            let m = self.moves.get_one(self.processed_idx).map(|entry| entry.m);
+            self.processed_idx += 1;
+            return m;
         }
 
         unreachable!()

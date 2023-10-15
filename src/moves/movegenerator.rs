@@ -283,7 +283,7 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName, gen_type: MGT) 
             MoveGenerationType::QuietsOnly => attack_bitboard & !board.occupancies(),
             MoveGenerationType::All => attack_bitboard & enemies_and_vacancies,
         };
-        let attacks = attack_bitboard & enemies_and_vacancies;
+        // let attacks = attack_bitboard & enemies_and_vacancies;
         for dest in attacks {
             moves.push(Move::new(sq, dest, None, MoveType::Normal));
         }

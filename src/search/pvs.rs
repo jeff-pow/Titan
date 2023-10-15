@@ -239,7 +239,7 @@ fn pvs(
     let mut legal_moves_searched = 0;
     moves.score_move_list(board, table_move, &search_info.killer_moves[ply as usize]);
     search_info.search_stats.nodes_searched += 1;
-    // let moves = MovePicker::new(board, ply, table_move, &search_info.killer_moves);
+    let moves = MovePicker::new(board, ply, table_move, &search_info.killer_moves);
 
     // Start of search
     for m in moves {

@@ -70,7 +70,7 @@ impl MoveList {
         if !self.has_next() {
             return None;
         }
-        let e = self.pick_move(self.current_idx);
+        let e = self.pick_move(idx);
         Some(e)
     }
 
