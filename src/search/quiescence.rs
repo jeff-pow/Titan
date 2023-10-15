@@ -32,11 +32,11 @@ pub fn quiescence(
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
     // TODO: Experiment with removing these
-    let eval = evaluate(board);
-    if eval >= beta {
-        return eval;
+    let stand_pat = evaluate(board);
+    if stand_pat >= beta {
+        return stand_pat;
     }
-    alpha = alpha.max(eval);
+    alpha = alpha.max(stand_pat);
 
     let in_check = board.in_check(board.to_move);
     let mut moves = if in_check {
@@ -45,13 +45,10 @@ pub fn quiescence(
         generate_psuedolegal_captures(board)
     };
     if in_check && moves.is_empty() {
-        if in_check {
-            return -CHECKMATE + ply;
-        }
-        return STALEMATE;
+        return -CHECKMATE + ply;
     }
     moves.score_move_list(board, Move::NULL, &search_info.killer_moves[ply as usize]);
-    let mut best_score = -INFINITY;
+    let mut best_score = stand_pat;
 
     for m in moves {
         let mut node_pvs = Vec::new();
@@ -90,7 +87,7 @@ pub fn quiescence(
     }
 
     // TODO: Fail soft instead of this mess...
-    alpha
+    best_score
 }
 
 fn is_bad_capture(board: &Board, m: Move) -> bool {

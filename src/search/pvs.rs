@@ -196,22 +196,23 @@ fn pvs(
     let mut best_score = -INFINITY;
     let mut entry_flag = EntryFlag::AlphaUnchanged;
     let mut best_move = Move::NULL;
-    let eval = evaluate(board);
+    let static_eval = evaluate(board);
 
+    // TODO: Make sure we aren't at root here as well
     if !is_pv_node && !in_check {
         // Reverse futility pruning
-        if eval - 70 * depth >= beta && depth < 9 && eval.abs() < NEAR_CHECKMATE {
-            return eval;
+        if static_eval - 70 * depth >= beta && depth < 9 && static_eval.abs() < NEAR_CHECKMATE {
+            return static_eval;
         }
 
         // Null move pruning (NMP)
-        if board.has_non_pawns(board.to_move) && depth >= 3 && eval >= beta && board.prev_move != Move::NULL {
+        if board.has_non_pawns(board.to_move) && depth >= 3 && static_eval >= beta && board.prev_move != Move::NULL {
             let mut node_pvs = Vec::new();
             let mut new_b = board.to_owned();
             new_b.to_move = !new_b.to_move;
             new_b.en_passant_square = None;
             new_b.prev_move = Move::NULL;
-            let r = 3 + depth / 3 + min((eval - beta) / 200, 3);
+            let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
             let mut null_eval =
                 -pvs(depth - r, -beta, -beta + 1, &mut node_pvs, search_info, &new_b, !cut_node, halt.clone());
             if null_eval >= beta {
@@ -248,6 +249,8 @@ fn pvs(
         if !is_root && !is_pv_node && best_score >= -NEAR_CHECKMATE {
             if is_quiet {
                 // Late move pruning (LMP)
+                // By now all quiets have been searched.
+                // TODO: Move the !is_pv_node to this check so SEE can be done on all nodes
                 if depth < 6 && !in_check && legal_moves_searched > (3 + depth * depth) / 2 {
                     break;
                 }
@@ -281,6 +284,7 @@ fn pvs(
                 if !is_pv_node {
                     r += 1;
                 }
+                // r += i32::from(!is_pv_node);
                 if cut_node {
                     r += 2;
                 }
@@ -362,5 +366,5 @@ fn pvs(
         .insert(board.zobrist_hash, TableEntry::new(depth, ply, entry_flag, alpha, best_move));
 
     // TODO: Fail soft instead of this mess...
-    alpha
+    best_score
 }
