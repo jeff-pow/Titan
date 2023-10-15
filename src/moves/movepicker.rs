@@ -52,7 +52,7 @@ impl<'a> Iterator for MovePicker<'a> {
 
         if self.phase == MovePickerPhase::Captures {
             if let Some(e) = self.moves.get_one(self.processed_idx) {
-                if e.score >= 1 {
+                if e.score >= 0 {
                     self.processed_idx += 1;
                     return Some(e.m);
                 }
@@ -139,8 +139,8 @@ impl<'a> MovePicker<'a> {
 #[allow(dead_code)]
 pub fn perft(board: Board, depth: i32) -> usize {
     let mut total = 0;
-    let moves = MovePicker::new(&board, 0, Move::NULL, &empty_killers());
-    for m in moves {
+    let mut moves = MovePicker::new(&board, 0, Move::NULL, &empty_killers());
+    while let Some(m) = moves.next() {
         let mut new_b = board.to_owned();
         new_b.make_move(m);
         if new_b.in_check(board.to_move) {
