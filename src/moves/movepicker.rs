@@ -11,8 +11,8 @@ enum MovePickerPhase {
     TTMove,
     CapturesInit,
     Captures,
-    KillerMovesInit,
-    KillerMoves,
+    Killer1,
+    Killer2,
     QuietsInit,
     Quiets,
 }
@@ -37,80 +37,56 @@ impl<'a> Iterator for MovePicker<'a> {
                 return Some(self.tt_move);
             }
         }
-        if self.moves.is_empty() {
-            self.moves = generate_psuedolegal_moves(self.board, MGT::All);
-            self.moves.score_move_list(self.board, self.tt_move, &self.killers);
-        }
-        return self.moves.next();
-
+        // if self.moves.is_empty() {
+        //     self.moves = generate_psuedolegal_moves(self.board, MGT::All);
+        //     self.moves.score_move_list(self.board, self.tt_move, &self.killers);
+        // }
+        // return self.moves.next();
         if self.phase == MovePickerPhase::CapturesInit {
             self.phase = MovePickerPhase::Captures;
             self.processed_idx = 0;
-            self.moves = generate_psuedolegal_moves(self.board, MGT::All);
+            debug_assert_eq!(0, self.moves.len());
+            self.moves = generate_psuedolegal_moves(self.board, MGT::CapturesOnly);
             self.moves.score_move_list(self.board, self.tt_move, &self.killers);
         }
 
-        'captures: {
-            if self.phase == MovePickerPhase::Captures {
-                let m = self.moves.next();
-                match m {
-                    None => {
-                        self.phase = MovePickerPhase::KillerMovesInit;
-                        break 'captures;
-                    }
-                    Some(m) => {
-                        assert_ne!(m, Move::NULL);
-                        assert!(m.is_valid(self.board));
-                        self.processed_idx += 1;
-                        return Some(m);
-                    }
+        if self.phase == MovePickerPhase::Captures {
+            if let Some(e) = self.moves.get_one(self.processed_idx) {
+                if e.score >= 1 {
+                    self.processed_idx += 1;
+                    return Some(e.m);
                 }
             }
+            self.phase = MovePickerPhase::Killer1;
         }
 
         if !self.gen_quiets {
             return None;
         }
 
-        if self.phase == MovePickerPhase::KillerMovesInit {
-            self.phase = MovePickerPhase::KillerMoves;
-            self.moves = MoveList::default();
-            self.processed_idx = 0;
-            for m in self.killers {
-                if m.is_valid(self.board) {
-                    self.moves.push(m);
-                }
+        if self.phase == MovePickerPhase::Killer1 {
+            self.phase = MovePickerPhase::Killer2;
+            if self.killers[0].is_valid(self.board) && self.killers[0] != self.tt_move {
+                return Some(self.killers[0]);
             }
-            self.moves.score_move_list(self.board, self.tt_move, &self.killers);
         }
 
-        'killers: {
-            if self.phase == MovePickerPhase::KillerMoves {
-                let m = self.moves.next();
-                match m {
-                    None => {
-                        self.phase = MovePickerPhase::QuietsInit;
-                        break 'killers;
-                    }
-                    Some(m) => {
-                        assert_ne!(m, Move::NULL);
-                        assert!(m.is_valid(self.board));
-                        self.processed_idx += 1;
-                        return Some(m);
-                    }
-                }
+        if self.phase == MovePickerPhase::Killer2 {
+            self.phase = MovePickerPhase::QuietsInit;
+            if self.killers[1].is_valid(self.board) && self.killers[1] != self.tt_move {
+                return Some(self.killers[1]);
             }
         }
 
         if self.phase == MovePickerPhase::QuietsInit {
             self.phase = MovePickerPhase::Quiets;
-            self.processed_idx = 0;
-            self.moves = generate_psuedolegal_moves(self.board, MGT::All);
+            self.processed_idx = self.moves.len();
+            self.moves = generate_psuedolegal_moves(self.board, MGT::QuietsOnly);
             self.moves.score_move_list(self.board, self.tt_move, &self.killers);
         }
 
         if self.phase == MovePickerPhase::Quiets {
-            return self.moves.next();
+            return self.moves.get_one(self.processed_idx).map(|entry| entry.m);
         }
 
         unreachable!()
