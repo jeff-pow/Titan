@@ -1,5 +1,3 @@
-use std::sync::RwLock;
-use crate::engine::perft::count_moves;
 use crate::moves::movegenerator::MGT;
 use crate::search::killers::{empty_killers, KillerMoves, NUM_KILLER_MOVES};
 use crate::{board::board::Board, moves::movegenerator::generate_psuedolegal_moves};
@@ -47,7 +45,8 @@ impl<'a> Iterator for MovePicker<'a> {
             self.phase = MovePickerPhase::Captures;
             debug_assert_eq!(0, self.moves.len());
             // self.moves = generate_psuedolegal_moves(self.board, MGT::CapturesOnly);
-            self.moves.append(&generate_psuedolegal_moves(self.board, MGT::CapturesOnly));
+            self.moves
+                .append(&generate_psuedolegal_moves(self.board, MGT::CapturesOnly));
             self.moves.score_move_list(self.board, self.tt_move, &self.killers);
         }
 
@@ -83,7 +82,8 @@ impl<'a> Iterator for MovePicker<'a> {
             self.phase = MovePickerPhase::Quiets;
             self.processed_idx = self.moves.len();
             // self.moves = generate_psuedolegal_moves(self.board, MGT::QuietsOnly);
-            self.moves.append(&generate_psuedolegal_moves(self.board, MGT::QuietsOnly));
+            self.moves
+                .append(&generate_psuedolegal_moves(self.board, MGT::QuietsOnly));
             self.moves.score_move_list(self.board, self.tt_move, &self.killers);
         }
 
@@ -137,18 +137,39 @@ impl<'a> MovePicker<'a> {
 }
 
 #[allow(dead_code)]
-fn perft(board: Board, depth: i32) -> usize {
+pub fn perft(board: Board, depth: i32) -> usize {
     let mut total = 0;
     let moves = MovePicker::new(&board, 0, Move::NULL, &empty_killers());
     for m in moves {
         let mut new_b = board.to_owned();
         new_b.make_move(m);
+        if new_b.in_check(board.to_move) {
+            continue;
+        }
         let count = count_moves(depth - 1, &new_b);
         total += count;
         println!("{}: {}", m.to_lan(), count);
     }
     println!("\nNodes searched: {}", total);
     total
+}
+
+/// Recursively counts the number of moves down to a certain depth
+fn count_moves(depth: i32, board: &Board) -> usize {
+    if depth == 0 {
+        return 1;
+    }
+    let mut count = 0;
+    let moves = MovePicker::new(board, 0, Move::NULL, &empty_killers());
+    for m in moves {
+        let mut new_b = board.to_owned();
+        new_b.make_move(m);
+        if new_b.in_check(board.to_move) {
+            continue;
+        }
+        count += count_moves(depth - 1, &new_b);
+    }
+    count
 }
 
 #[cfg(test)]
@@ -243,12 +264,6 @@ mod move_picker_tests {
 
     #[test]
     fn test_position_6() {
-        let board = build_board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
-        assert_eq!(164_075_551, perft(board, 5));
-    }
-
-    #[test]
-    fn test_multithread() {
         let board = build_board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
         assert_eq!(164_075_551, perft(board, 5));
     }
