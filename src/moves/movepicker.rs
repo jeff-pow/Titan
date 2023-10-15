@@ -1,7 +1,7 @@
 use std::sync::RwLock;
 use crate::engine::perft::count_moves;
 use crate::moves::movegenerator::MGT;
-use crate::search::killers::{KillerMoves, NUM_KILLER_MOVES};
+use crate::search::killers::{empty_killers, KillerMoves, NUM_KILLER_MOVES};
 use crate::{board::board::Board, moves::movegenerator::generate_psuedolegal_moves};
 
 use super::{movelist::MoveList, moves::Move};
@@ -139,7 +139,7 @@ impl<'a> MovePicker<'a> {
 #[allow(dead_code)]
 fn perft(board: Board, depth: i32) -> usize {
     let mut total = 0;
-    let moves = MovePicker::qsearch(&board, Move::NULL, true);
+    let moves = MovePicker::new(&board, 0, Move::NULL, &empty_killers());
     for m in moves {
         let mut new_b = board.to_owned();
         new_b.make_move(m);
