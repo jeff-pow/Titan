@@ -118,6 +118,15 @@ impl Move {
     }
 
     #[inline(always)]
+    pub fn is_normal(&self, board: &Board) -> bool {
+        self.promotion().is_none()
+            && !self.is_castle()
+            && !self.is_en_passant()
+            && !self.is_castle()
+            && !self.is_capture(board)
+    }
+
+    #[inline(always)]
     pub fn promotion(&self) -> Option<Promotion> {
         let promotion_flag = (self.0 >> 14) & 0b11;
         if promotion_flag != 1 {

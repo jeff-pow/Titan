@@ -1,4 +1,5 @@
 use crate::moves::movegenerator::MGT;
+use crate::moves::moves::MoveType;
 use crate::search::killers::{empty_killers, KillerMoves, NUM_KILLER_MOVES};
 use crate::{board::board::Board, moves::movegenerator::generate_psuedolegal_moves};
 
@@ -66,14 +67,20 @@ impl<'a> Iterator for MovePicker<'a> {
 
         if self.phase == MovePickerPhase::Killer1 {
             self.phase = MovePickerPhase::Killer2;
-            if self.killers[0].is_valid(self.board) && self.killers[0] != self.tt_move {
+            if self.killers[0].is_valid(self.board)
+                && self.killers[0].is_normal(self.board)
+                && self.killers[0] != self.tt_move
+            {
                 return Some(self.killers[0]);
             }
         }
 
         if self.phase == MovePickerPhase::Killer2 {
             self.phase = MovePickerPhase::QuietsInit;
-            if self.killers[1].is_valid(self.board) && self.killers[1] != self.tt_move {
+            if self.killers[1].is_valid(self.board)
+                && self.killers[1].is_normal(self.board)
+                && self.killers[1] != self.tt_move
+            {
                 return Some(self.killers[1]);
             }
         }

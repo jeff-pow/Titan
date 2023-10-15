@@ -90,7 +90,9 @@ pub fn generate_psuedolegal_moves(board: &Board, gen_type: MGT) -> MoveList {
     moves.append(&generate_bitboard_moves(board, PieceName::Rook, gen_type));
     moves.append(&generate_bitboard_moves(board, PieceName::Bishop, gen_type));
     moves.append(&generate_pawn_moves(board, gen_type));
-    moves.append(&generate_castling_moves(board));
+    if gen_type == MGT::QuietsOnly || gen_type == MGT::All {
+        moves.append(&generate_castling_moves(board));
+    }
     moves
 }
 
