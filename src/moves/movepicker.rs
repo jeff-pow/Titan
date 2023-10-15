@@ -1,3 +1,4 @@
+use std::sync::RwLock;
 use crate::engine::perft::count_moves;
 use crate::moves::movegenerator::MGT;
 use crate::search::killers::{KillerMoves, NUM_KILLER_MOVES};
@@ -45,7 +46,8 @@ impl<'a> Iterator for MovePicker<'a> {
         if self.phase == MovePickerPhase::CapturesInit {
             self.phase = MovePickerPhase::Captures;
             debug_assert_eq!(0, self.moves.len());
-            self.moves = generate_psuedolegal_moves(self.board, MGT::CapturesOnly);
+            // self.moves = generate_psuedolegal_moves(self.board, MGT::CapturesOnly);
+            self.moves.append(&generate_psuedolegal_moves(self.board, MGT::CapturesOnly));
             self.moves.score_move_list(self.board, self.tt_move, &self.killers);
         }
 
@@ -80,7 +82,8 @@ impl<'a> Iterator for MovePicker<'a> {
         if self.phase == MovePickerPhase::QuietsInit {
             self.phase = MovePickerPhase::Quiets;
             self.processed_idx = self.moves.len();
-            self.moves = generate_psuedolegal_moves(self.board, MGT::QuietsOnly);
+            // self.moves = generate_psuedolegal_moves(self.board, MGT::QuietsOnly);
+            self.moves.append(&generate_psuedolegal_moves(self.board, MGT::QuietsOnly));
             self.moves.score_move_list(self.board, self.tt_move, &self.killers);
         }
 
@@ -134,9 +137,9 @@ impl<'a> MovePicker<'a> {
 }
 
 #[allow(dead_code)]
-fn perft(board: &Board, depth: i32) -> usize {
+fn perft(board: Board, depth: i32) -> usize {
     let mut total = 0;
-    let moves = MovePicker::qsearch(board, Move::NULL, true);
+    let moves = MovePicker::qsearch(&board, Move::NULL, true);
     for m in moves {
         let mut new_b = board.to_owned();
         new_b.make_move(m);
@@ -209,8 +212,51 @@ mod move_picker_tests {
     }
 
     #[test]
-    fn movepicker_perft() {
+    fn test_starting_pos() {
         let board = build_board(fen::STARTING_FEN);
-        assert_eq!(119_060_324, perft(&board, 6));
+        assert_eq!(119_060_324, perft(board, 6));
+    }
+
+    #[test]
+    fn test_position_2() {
+        let board = build_board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
+        assert_eq!(193_690_690, perft(board, 5));
+    }
+
+    #[test]
+    fn test_position_3() {
+        let board = build_board("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -");
+        assert_eq!(11_030_083, perft(board, 6));
+    }
+
+    #[test]
+    fn test_position_4() {
+        let board = build_board("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
+        assert_eq!(706_045_033, perft(board, 6));
+    }
+
+    #[test]
+    fn test_position_5() {
+        let board = build_board("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
+        assert_eq!(89_941_194, perft(board, 5));
+    }
+
+    #[test]
+    fn test_position_6() {
+        let board = build_board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
+        assert_eq!(164_075_551, perft(board, 5));
+    }
+
+    #[test]
+    fn test_multithread() {
+        let board = build_board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
+        assert_eq!(164_075_551, perft(board, 5));
+    }
+
+    // http://www.rocechess.ch/perft.html
+    #[test]
+    fn test_position_7() {
+        let board = build_board("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1");
+        assert_eq!(71_179_139, perft(board, 6));
     }
 }

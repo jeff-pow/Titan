@@ -67,7 +67,7 @@ impl MoveList {
 
     #[inline(always)]
     pub fn get_one(&mut self, idx: usize) -> Option<MoveListEntry> {
-        if !self.has_next() {
+        if idx >= self.len {
             return None;
         }
         let e = self.pick_move(idx);

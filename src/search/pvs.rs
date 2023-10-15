@@ -245,6 +245,7 @@ fn pvs(
     for m in moves {
         let mut new_b = board.to_owned();
         let is_quiet = m.is_quiet(board);
+        let s = m.to_lan();
 
         if !is_root && !is_pv_node && best_score >= -NEAR_CHECKMATE {
             if is_quiet {
