@@ -27,10 +27,10 @@ pub const INIT_ASP: i32 = 10;
 /// Begin LMR if more than this many moves have been searched
 pub const LMR_THRESHOLD: i32 = 2;
 pub const MIN_LMR_DEPTH: i32 = 2;
-const CAPTURE_SEE_DEPTH: i32 = 6;
-const CAPTURE_SEE_COEFFICIENT: i32 = -15;
-const QUIET_SEE_DEPTH: i32 = 8;
-const QUIET_SEE_COEFFICIENT: i32 = -50;
+const MAX_CAPTURE_SEE_DEPTH: i32 = 6;
+const CAPTURE_SEE_COEFFICIENT: i32 = 15;
+const MAX_QUIET_SEE_DEPTH: i32 = 8;
+const QUIET_SEE_COEFFICIENT: i32 = 50;
 const MAX_LMP_DEPTH: i32 = 6;
 const LMP_DIVISOR: i32 = 2;
 const LMP_CONST: i32 = 3;
@@ -212,8 +212,7 @@ fn pvs(
     let original_alpha = alpha;
     let static_eval = evaluate(board);
 
-    // TODO: Make sure we aren't at root here as well
-    if !is_pv_node && !in_check {
+    if !is_root && !is_pv_node && !in_check {
         // Reverse futility pruning
         if static_eval - RFP_MULTIPLIER * depth >= beta && depth < MAX_RFP_DEPTH && static_eval.abs() < NEAR_CHECKMATE {
             return static_eval;
@@ -275,12 +274,12 @@ fn pvs(
                 }
 
                 // Quiet SEE pruning
-                if depth <= QUIET_SEE_DEPTH && !see(board, m, QUIET_SEE_COEFFICIENT * depth) {
+                if depth <= MAX_QUIET_SEE_DEPTH && !see(board, m, -QUIET_SEE_COEFFICIENT * depth) {
                     continue;
                 }
             } else {
                 // Capture SEE pruning
-                if depth <= CAPTURE_SEE_DEPTH && !see(board, m, CAPTURE_SEE_COEFFICIENT * depth * depth) {
+                if depth <= MAX_CAPTURE_SEE_DEPTH && !see(board, m, -CAPTURE_SEE_COEFFICIENT * depth * depth) {
                     continue;
                 }
             }

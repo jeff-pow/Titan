@@ -7,6 +7,7 @@ pub const MAX_LEN: usize = 500;
 pub struct History {
     pub arr: [u64; MAX_LEN],
     pub len: usize,
+    curr: usize,
 }
 
 impl History {
@@ -26,29 +27,16 @@ impl History {
             self.push(other.arr[idx]);
         }
     }
-
-    #[inline(always)]
-    pub fn iter(&self) -> HistoryIter {
-        HistoryIter {
-            movelist: self,
-            curr: 0,
-        }
-    }
 }
 
-pub struct HistoryIter<'a> {
-    movelist: &'a History,
-    curr: usize,
-}
-
-impl Iterator for HistoryIter<'_> {
+impl Iterator for History {
     type Item = u64;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.curr >= self.movelist.len {
+        if self.curr >= self.len {
             None
         } else {
-            let m = self.movelist.arr[self.curr];
+            let m = self.arr[self.curr];
             self.curr += 1;
             Some(m)
         }

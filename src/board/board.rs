@@ -452,8 +452,8 @@ impl Board {
         let b = self.color_occupancies(Color::Black);
         self.gen_color_occupancies(Color::White);
         self.gen_color_occupancies(Color::Black);
-        assert_eq!(w, self.color_occupancies(Color::White));
-        assert_eq!(b, self.color_occupancies(Color::Black));
+        debug_assert_eq!(w, self.color_occupancies(Color::White));
+        debug_assert_eq!(b, self.color_occupancies(Color::Black));
     }
 
     #[allow(dead_code)]
@@ -471,16 +471,7 @@ impl Board {
 /// Function checks for the presence of the board in the game. If the board position will have occurred three times,
 /// returns true indicating the position would be a stalemate due to the threefold repetition rule
 pub fn check_for_3x_repetition(board: &Board) -> bool {
-    // TODO: Check if this is correct. If not, just set offset to be 1 and 0 respectively
-    let _offset = if board.to_move == Color::Black { 1 } else { 0 };
-    board
-        .history
-        .iter()
-        // .skip(offset)
-        // .step_by(2)
-        .filter(|x| &board.zobrist_hash == x)
-        .count()
-        >= 3
+    board.history.into_iter().filter(|x| &board.zobrist_hash == x).count() >= 3
 }
 
 impl fmt::Display for Board {
