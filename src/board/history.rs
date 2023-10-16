@@ -62,6 +62,7 @@ impl Default for History {
         Self {
             arr: unsafe { arr.assume_init() },
             len: 0,
+            curr: 0,
         }
     }
 }
