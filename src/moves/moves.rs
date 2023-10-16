@@ -108,13 +108,13 @@ impl Move {
     #[inline(always)]
     pub fn is_castle(&self) -> bool {
         let castle_flag = (self.0 >> 14) & 0b11;
-        castle_flag == 3
+        castle_flag == MoveType::Castle as u16
     }
 
     #[inline(always)]
     pub fn is_en_passant(&self) -> bool {
         let en_passant_flag = (self.0 >> 14) & 0b11;
-        en_passant_flag == 2
+        en_passant_flag == MoveType::EnPassant as u16
     }
 
     #[inline(always)]
@@ -129,7 +129,7 @@ impl Move {
     #[inline(always)]
     pub fn promotion(&self) -> Option<Promotion> {
         let promotion_flag = (self.0 >> 14) & 0b11;
-        if promotion_flag != 1 {
+        if promotion_flag != MoveType::Promotion as u16 {
             return None;
         }
         match (self.0 >> 12) & 0b11 {

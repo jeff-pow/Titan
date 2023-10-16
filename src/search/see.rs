@@ -44,6 +44,9 @@ fn next_attacker(board: &Board, occupied: &mut Bitboard, attackers: Bitboard, si
     unreachable!()
 }
 
+/// Function that returns true if the side to move of the board would come out on top directly
+/// trading pieces, and false if they would come out behind in piece value
+// Based off implementation in Stormphrax, which got its implementation from Weiss
 pub fn see(board: &Board, m: Move, threshold: i32) -> bool {
     let dest = m.dest_square();
     let src = m.origin_square();

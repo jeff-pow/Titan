@@ -116,6 +116,8 @@ impl MoveList {
             } else if let Some(promotion) = promotion {
                 if promotion == Promotion::Queen {
                     score = SCORED_MOVE_OFFSET + QUEEN_PROMOTION;
+                } else {
+                    score = SCORED_MOVE_OFFSET + 15;
                 }
             } else if let Some(capture) = capture {
                 score = SCORED_MOVE_OFFSET + MVV_LVA[capture as usize][piece_moving as usize];

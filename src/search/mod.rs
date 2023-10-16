@@ -11,6 +11,7 @@ use crate::moves::moves::Move;
 use crate::search::pvs::MAX_SEARCH_DEPTH;
 
 use self::killers::{empty_killers, KillerMoves};
+use self::pvs::{LMR_THRESHOLD, MIN_LMR_DEPTH};
 use self::{game_time::GameTime, search_stats::SearchStats};
 
 pub(crate) mod game_time;
@@ -63,8 +64,6 @@ pub enum SearchType {
     Infinite, // Search forever
 }
 
-/// Begin LMR if more than this many moves have been searched
-const REDUCTION_THRESHOLD: i32 = 2;
 type LmrReductions = [[i32; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
 fn lmr_reductions() -> LmrReductions {
     let mut arr = [[0; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
@@ -76,13 +75,13 @@ fn lmr_reductions() -> LmrReductions {
     arr
 }
 
-pub fn get_reduction(search_info: &SearchInfo, depth: i32, moves_played: i32) -> i32 {
-    search_info.lmr_reductions[depth as usize][moves_played as usize]
+pub fn get_reduction(info: &SearchInfo, depth: i32, moves_played: i32) -> i32 {
+    info.lmr_reductions[depth as usize][moves_played as usize]
 }
 
 #[inline(always)]
 pub fn reduction(depth: i32, moves_played: i32) -> i32 {
-    if depth == 0 || moves_played < REDUCTION_THRESHOLD {
+    if depth <= MIN_LMR_DEPTH || moves_played < LMR_THRESHOLD {
         return 0;
     }
     let depth = depth as f32;

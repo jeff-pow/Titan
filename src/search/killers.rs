@@ -10,15 +10,15 @@ pub fn empty_killers() -> KillerMoves {
     [[Move::NULL; NUM_KILLER_MOVES]; MAX_SEARCH_DEPTH as usize]
 }
 
-pub fn store_killer_move(ply: i32, m: Move, search_info: &mut SearchInfo) {
-    let first_killer = search_info.killer_moves[ply as usize][0];
+pub fn store_killer_move(ply: i32, m: Move, info: &mut SearchInfo) {
+    let first_killer = info.killer_moves[ply as usize][0];
 
     if first_killer != m {
         for i in (1..NUM_KILLER_MOVES).rev() {
             let n = i;
-            let previous = search_info.killer_moves[ply as usize][n - 1];
-            search_info.killer_moves[ply as usize][n] = previous;
+            let previous = info.killer_moves[ply as usize][n - 1];
+            info.killer_moves[ply as usize][n] = previous;
         }
-        search_info.killer_moves[ply as usize][0] = m;
+        info.killer_moves[ply as usize][0] = m;
     }
 }

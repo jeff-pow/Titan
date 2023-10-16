@@ -36,17 +36,9 @@ pub enum PieceName {
     Pawn = 5,
 }
 
-#[inline(always)]
-pub fn value(piece_name: Option<PieceName>) -> i32 {
-    if let Some(p) = piece_name {
-        return p.value();
-    }
-    0
-}
-
 impl PieceName {
     #[inline(always)]
-    pub const fn value(&self) -> i32 {
+    pub fn value(&self) -> i32 {
         match self {
             PieceName::King => KING_PTS,
             PieceName::Queen => QUEEN_PTS,

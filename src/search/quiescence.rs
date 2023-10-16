@@ -1,11 +1,9 @@
 use crate::board::board::Board;
+use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::eval::eval::evaluate;
 use crate::moves::movegenerator::{generate_psuedolegal_moves, MGT};
 use crate::moves::moves::Move;
 use crate::search::pvs::STALEMATE;
-use crate::types::bitboard::Bitboard;
-use crate::types::pieces::{value, PieceName};
-use crate::types::square::Square;
 
 use super::pvs::{CHECKMATE, INFINITY};
 use super::see::see;
@@ -17,25 +15,35 @@ pub fn quiescence(
     mut alpha: i32,
     beta: i32,
     pvs: &mut Vec<Move>,
-    search_info: &mut SearchInfo,
+    info: &mut SearchInfo,
     board: &Board,
 ) -> i32 {
     if board.is_draw() {
         return STALEMATE;
     }
 
-    search_info.sel_depth = search_info.sel_depth.max(ply);
-    search_info.search_stats.nodes_searched += 1;
+    info.sel_depth = info.sel_depth.max(ply);
+    info.search_stats.nodes_searched += 1;
 
     if ply >= MAX_SEARCH_DEPTH {
         return evaluate(board);
     }
+
+    let (_, table_move) = {
+        // Returning an eval from this is weird to handle, but we can definitely get a best move
+        if let Some(entry) = info.transpos_table.read().unwrap().get(&board.zobrist_hash) {
+            entry.get(0, ply, alpha, beta)
+        } else {
+            (None, Move::NULL)
+        }
+    };
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
     let stand_pat = evaluate(board);
     if stand_pat >= beta {
         return stand_pat;
     }
+    let original_alpha = alpha;
     alpha = alpha.max(stand_pat);
 
     let in_check = board.in_check(board.to_move);
@@ -44,8 +52,9 @@ pub fn quiescence(
     } else {
         generate_psuedolegal_moves(board, MGT::CapturesOnly)
     };
-    moves.score_move_list(board, Move::NULL, &search_info.killer_moves[ply as usize]);
+    moves.score_move_list(board, table_move, &info.killer_moves[ply as usize]);
     let mut best_score = if in_check { -INFINITY } else { evaluate(board) };
+    let mut best_move = Move::NULL;
     let mut moves_searched = 0;
 
     for m in moves {
@@ -64,19 +73,33 @@ pub fn quiescence(
 
         // TODO: Implement delta pruning
 
-        let eval = -quiescence(ply + 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
+        let eval = -quiescence(ply + 1, -beta, -alpha, &mut node_pvs, info, &new_b);
 
         if eval > best_score {
             best_score = eval;
+            best_move = m;
             if eval > alpha {
                 alpha = eval;
                 store_pv(pvs, &mut node_pvs, m);
             }
             if alpha >= beta {
-                return alpha;
+                break;
             }
         }
     }
+
+    let entry_flag = if best_score >= beta {
+        EntryFlag::BetaCutOff
+    } else if best_score > original_alpha {
+        EntryFlag::Exact
+    } else {
+        EntryFlag::AlphaUnchanged
+    };
+
+    info.transpos_table
+        .write()
+        .unwrap()
+        .insert(board.zobrist_hash, TableEntry::new(0, ply, entry_flag, best_score, best_move));
 
     if in_check && moves_searched == 0 {
         return -CHECKMATE + ply;
