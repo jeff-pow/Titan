@@ -1,10 +1,10 @@
 use core::fmt;
-use std::fmt::Display;
+use std::{fmt::Display, ops::BitOrAssign};
 
 use crate::{
     board::board::Board,
     moves::moves::Direction::*,
-    types::{pieces::PieceName, square::Square},
+    types::{bitboard::Bitboard, pieces::PieceName, square::Square},
 };
 
 use strum_macros::EnumIter;
@@ -181,26 +181,103 @@ impl Move {
 
     #[inline(always)]
     pub fn is_valid(&self, board: &Board) -> bool {
-        // *self != Move::NULL && board.color_at(self.origin_square()) == Some(board.to_move)
         if *self == Move::NULL {
             return false;
         }
-        assert!(self.origin_square().is_valid() && self.dest_square().is_valid());
-        let o = board.color_at(self.origin_square());
-        let d = board.color_at(self.dest_square());
-        if o.is_some() && d.is_some() {
-            let o = o.unwrap();
-            let d = d.unwrap();
-            if d == o {
-                return false;
-            }
+        debug_assert!(self.origin_square().is_valid() && self.dest_square().is_valid());
+
+        let origin = self.origin_square();
+        let dest = self.dest_square();
+        let color = board.color_at(origin);
+        let piece = board.piece_at(origin);
+        if piece.is_none() {
+            return false;
         }
-        board.piece_at(self.origin_square()).is_some()
-        // && match (o, d) {
-        //     (Some(a), Some(b)) => a != b,
-        //     _ => true,
-        // }
+
+        let color = color.unwrap();
+        let dest_color = board.color_at(dest);
+
+        if dest_color.is_some() && dest_color.unwrap() == color {
+            return false;
+        }
+
+        let occupancies = board.occupancies();
+        let attack_bitboard = match piece.unwrap() {
+            PieceName::Pawn => {
+                if self.is_quiet(board) {
+                    // BUG: This doesn't really account for double pushing through a filled square
+                    // lol
+                    return board.occupancies().square_is_empty(dest);
+                } else {
+                    let attacks = board.mg.pawn_attacks(origin, color);
+                    let enemy_color = board.color_at(origin).unwrap();
+                    return attacks & dest.bitboard() & board.color_occupancies(!enemy_color) != Bitboard::EMPTY;
+                }
+            }
+            PieceName::King => board.mg.king_attacks(origin),
+            PieceName::Queen => {
+                board.mg.rook_attacks(origin, occupancies) | board.mg.bishop_attacks(origin, occupancies)
+            }
+            PieceName::Rook => board.mg.rook_attacks(origin, occupancies),
+            PieceName::Bishop => board.mg.bishop_attacks(origin, occupancies),
+            PieceName::Knight => board.mg.knight_attacks(origin),
+        };
+
+        let enemy_occupancies = !board.color_occupancies(board.to_move);
+        let attacks = attack_bitboard & enemy_occupancies;
+
+        attacks & dest.bitboard() != Bitboard::EMPTY
     }
+
+    // #[inline(always)]
+    // pub fn is_valid(&self, board: &Board) -> bool {
+    //     // *self != Move::NULL && board.color_at(self.origin_square()) == Some(board.to_move)
+    //     if *self == Move::NULL {
+    //         return false;
+    //     }
+    //     assert!(self.origin_square().is_valid() && self.dest_square().is_valid());
+    //     if board.piece_at(self.origin_square()).is_none() {
+    //         return false;
+    //     }
+    //     let o = board.color_at(self.origin_square());
+    //     let d = board.color_at(self.dest_square());
+    //     if o.is_some() && d.is_some() {
+    //         let o = o.unwrap();
+    //         let d = d.unwrap();
+    //         if d == o {
+    //             return false;
+    //         }
+    //     }
+    //     let occupancies = board.occupancies();
+    //     let piece = board.piece_at(self.origin_square()).expect("There is a piece here");
+    //     if piece == PieceName::Pawn {
+    //         if self.is_quiet(board) {
+    //             return board.occupancies().square_is_empty(self.dest_square());
+    //         } else {
+    //             let attacks = board.mg.pawn_attacks(self.origin_square(), o.unwrap());
+    //             let color = board.color_at(self.origin_square()).unwrap();
+    //             return attacks & self.dest_square().bitboard() & board.color_occupancies(!color) != Bitboard::EMPTY;
+    //         }
+    //     } else {
+    //         let attack_bitboard = match piece {
+    //             PieceName::King => board.mg.king_attacks(self.origin_square()),
+    //             PieceName::Queen => {
+    //                 board.mg.rook_attacks(self.origin_square(), occupancies)
+    //                     | board.mg.bishop_attacks(self.origin_square(), occupancies)
+    //             }
+    //             PieceName::Rook => board.mg.rook_attacks(self.origin_square(), occupancies),
+    //             PieceName::Bishop => board.mg.bishop_attacks(self.origin_square(), occupancies),
+    //             PieceName::Knight => board.mg.knight_attacks(self.origin_square()),
+    //             PieceName::Pawn => panic!(),
+    //         };
+    //         let enemies_and_vacancies = !board.color_occupancies(board.to_move);
+    //         let attacks = attack_bitboard & enemies_and_vacancies;
+    //         if attacks & self.dest_square().bitboard() == Bitboard::EMPTY {
+    //             return false;
+    //         }
+    //     }
+    //     true
+    // }
 
     #[inline(always)]
     pub fn castle_type(&self) -> Castle {

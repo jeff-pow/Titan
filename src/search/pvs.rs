@@ -10,10 +10,10 @@ use crate::moves::movegenerator::{generate_psuedolegal_moves, MGT};
 use crate::moves::movepicker::MovePicker;
 use crate::moves::moves::Move;
 
-use super::killers::store_killer_move;
+use super::killers::{empty_killers, store_killer_move};
 use super::quiescence::quiescence;
 use super::see::see;
-use super::{reduction, SearchInfo, SearchType};
+use super::{reduction, search_stats, SearchInfo, SearchType};
 
 pub const CHECKMATE: i32 = 30000;
 pub const STALEMATE: i32 = 0;
