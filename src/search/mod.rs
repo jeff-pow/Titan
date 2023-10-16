@@ -7,13 +7,11 @@ use crate::board::fen::{build_board, STARTING_FEN};
 use crate::engine::transposition::{get_table, TableEntry};
 use crate::moves::movegenerator::MoveGenerator;
 use crate::moves::movelist::MAX_LEN;
-use crate::moves::moves::Move;
 use crate::search::pvs::MAX_SEARCH_DEPTH;
 
-use self::killers::{KillerMoves, NUM_KILLER_MOVES};
+use self::killers::{empty_killers, KillerMoves};
 use self::{game_time::GameTime, search_stats::SearchStats};
 
-mod alpha_beta;
 pub(crate) mod game_time;
 pub mod killers;
 pub(crate) mod pvs;
@@ -48,7 +46,7 @@ impl Default for SearchInfo {
             iter_max_depth: 0,
             nmp_plies: 0,
             max_depth: MAX_SEARCH_DEPTH,
-            killer_moves: [[Move::NULL; NUM_KILLER_MOVES]; MAX_SEARCH_DEPTH as usize],
+            killer_moves: empty_killers(),
             sel_depth: 0,
             mg: MoveGenerator::default(),
             lmr_reductions: lmr_reductions(),

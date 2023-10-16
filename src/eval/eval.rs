@@ -52,7 +52,7 @@ pub fn evaluate(board: &Board) -> i32 {
     let mg_phase = min(game_phase, 24);
     let eg_phase = 24 - mg_phase;
     let mut eval = (mg_pts * mg_phase + eg_pts * eg_phase) / 24;
-    if board.side_in_check(board.to_move.opp()) {
+    if board.in_check(!board.to_move) {
         eval += 90;
     }
     // match board.to_move {

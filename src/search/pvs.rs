@@ -6,9 +6,9 @@ use std::time::{Duration, Instant};
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::eval::eval::evaluate;
-use crate::moves::movegenerator::generate_psuedolegal_moves;
+use crate::moves::movegenerator::{generate_psuedolegal_moves, MGT};
+use crate::moves::movepicker::MovePicker;
 use crate::moves::moves::Move;
-use crate::types::square::Square;
 
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
@@ -136,7 +136,7 @@ fn pvs(
 ) -> i32 {
     let ply = search_info.iter_max_depth - depth;
     let is_root = ply == 0;
-    let in_check = board.side_in_check(board.to_move);
+    let in_check = board.in_check(board.to_move);
     // Is a zero width search if alpha and beta are one apart
     let is_pv_node = (beta - alpha).abs() != 1;
     search_info.sel_depth = search_info.sel_depth.max(ply);
@@ -145,12 +145,12 @@ fn pvs(
         return evaluate(board);
     }
 
-    if in_check {
-        depth += 1;
-    }
+    // if in_check {
+    //     depth += 1;
+    // }
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
-        if board.side_in_check(board.to_move) {
+        if board.in_check(board.to_move) {
             return quiescence(ply, alpha, beta, pv, search_info, board);
         }
         return evaluate(board);
@@ -196,22 +196,23 @@ fn pvs(
     let mut best_score = -INFINITY;
     let mut entry_flag = EntryFlag::AlphaUnchanged;
     let mut best_move = Move::NULL;
-    let eval = evaluate(board);
+    let static_eval = evaluate(board);
 
+    // TODO: Make sure we aren't at root here as well
     if !is_pv_node && !in_check {
         // Reverse futility pruning
-        if eval - 70 * depth >= beta && depth < 9 && eval.abs() < NEAR_CHECKMATE {
-            return eval;
+        if static_eval - 70 * depth >= beta && depth < 9 && static_eval.abs() < NEAR_CHECKMATE {
+            return static_eval;
         }
 
         // Null move pruning (NMP)
-        if board.has_non_pawns(board.to_move) && depth >= 3 && eval >= beta && board.prev_move != Move::NULL {
+        if board.has_non_pawns(board.to_move) && depth >= 3 && static_eval >= beta && board.prev_move != Move::NULL {
             let mut node_pvs = Vec::new();
             let mut new_b = board.to_owned();
-            new_b.to_move = new_b.to_move.opp();
-            new_b.en_passant_square = Square::INVALID;
+            new_b.to_move = !new_b.to_move;
+            new_b.en_passant_square = None;
             new_b.prev_move = Move::NULL;
-            let r = 3 + depth / 3 + min((eval - beta) / 200, 3);
+            let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
             let mut null_eval =
                 -pvs(depth - r, -beta, -beta + 1, &mut node_pvs, search_info, &new_b, !cut_node, halt.clone());
             if null_eval >= beta {
@@ -234,20 +235,23 @@ fn pvs(
 
     // Just generate psuedolegal moves to save computation time on legality for moves that will be
     // pruned
-    let mut moves = generate_psuedolegal_moves(board);
+    let mut moves = generate_psuedolegal_moves(board, MGT::All);
     let mut legal_moves_searched = 0;
-    moves.score_move_list(ply, board, table_move, search_info);
+    moves.score_move_list(board, table_move, &search_info.killer_moves[ply as usize]);
     search_info.search_stats.nodes_searched += 1;
+    let moves = MovePicker::new(board, ply, table_move, &search_info.killer_moves);
 
     // Start of search
-    for i in 0..moves.len {
+    for m in moves {
         let mut new_b = board.to_owned();
-        let m = moves.pick_move(i);
         let is_quiet = m.is_quiet(board);
+        let s = m.to_lan();
 
         if !is_root && !is_pv_node && best_score >= -NEAR_CHECKMATE {
             if is_quiet {
                 // Late move pruning (LMP)
+                // By now all quiets have been searched.
+                // TODO: Move the !is_pv_node to this check so SEE can be done on all nodes
                 if depth < 6 && !in_check && legal_moves_searched > (3 + depth * depth) / 2 {
                     break;
                 }
@@ -265,7 +269,7 @@ fn pvs(
         }
 
         new_b.make_move(m);
-        if new_b.side_in_check(board.to_move) {
+        if new_b.in_check(board.to_move) {
             continue;
         }
         legal_moves_searched += 1;
@@ -281,6 +285,7 @@ fn pvs(
                 if !is_pv_node {
                     r += 1;
                 }
+                // r += i32::from(!is_pv_node);
                 if cut_node {
                     r += 2;
                 }
@@ -317,13 +322,13 @@ fn pvs(
 
         if eval > best_score {
             best_score = eval;
-            best_move = *m;
+            best_move = m;
 
             if eval > alpha {
                 alpha = eval;
-                best_move = *m;
+                best_move = m;
                 pv.clear();
-                pv.push(*m);
+                pv.push(m);
                 pv.append(&mut node_pvs);
                 entry_flag = EntryFlag::Exact;
             }
@@ -333,7 +338,7 @@ fn pvs(
                     .transpos_table
                     .write()
                     .unwrap()
-                    .insert(board.zobrist_hash, TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, *m));
+                    .insert(board.zobrist_hash, TableEntry::new(depth, ply, EntryFlag::BetaCutOff, eval, m));
 
                 let capture = board.piece_at(m.dest_square());
                 // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
@@ -347,7 +352,7 @@ fn pvs(
 
     if legal_moves_searched == 0 {
         // Checkmate
-        if board.side_in_check(board.to_move) {
+        if board.in_check(board.to_move) {
             // Distance from root is returned in order for other recursive calls to determine
             // shortest viable checkmate path
             return -CHECKMATE + ply;
@@ -361,5 +366,6 @@ fn pvs(
         .unwrap()
         .insert(board.zobrist_hash, TableEntry::new(depth, ply, entry_flag, alpha, best_move));
 
-    alpha
+    // TODO: Fail soft instead of this mess...
+    best_score
 }

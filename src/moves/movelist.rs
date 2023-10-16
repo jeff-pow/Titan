@@ -1,7 +1,4 @@
-use crate::{
-    board::board::Board,
-    search::{killers::NUM_KILLER_MOVES, SearchInfo},
-};
+use crate::{board::board::Board, search::killers::NUM_KILLER_MOVES};
 use std::mem::MaybeUninit;
 
 use super::moves::{Move, Promotion};
@@ -11,76 +8,106 @@ pub const MAX_LEN: usize = 218;
 /// Movelist elements contains a move and an i32 where a score can be stored later to be used in move ordering
 /// for efficient search pruning
 pub struct MoveList {
-    pub arr: [(Move, u32); MAX_LEN],
-    pub len: usize,
+    arr: [MoveListEntry; MAX_LEN],
+    len: usize,
+    current_idx: usize,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct MoveListEntry {
+    pub m: Move,
+    pub score: u32,
+}
+
+impl MoveListEntry {
+    fn new(m: Move, score: u32) -> Self {
+        MoveListEntry { m, score }
+    }
 }
 
 impl MoveList {
     #[inline(always)]
     pub fn push(&mut self, m: Move) {
         debug_assert!(self.len < MAX_LEN);
-        self.arr[self.len] = (m, 0);
+        debug_assert_ne!(m, Move::NULL);
+        self.arr[self.len] = MoveListEntry::new(m, 0);
         self.len += 1;
+    }
+
+    #[inline(always)]
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    #[inline(always)]
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    #[inline(always)]
+    pub fn has_next(&self) -> bool {
+        self.current_idx < self.len
     }
 
     #[inline(always)]
     pub fn append(&mut self, other: &MoveList) {
         for idx in 0..other.len {
-            self.push(other.arr[idx].0);
+            self.push(other.arr[idx].m);
         }
     }
 
     #[inline(always)]
     pub fn swap(&mut self, a: usize, b: usize) {
         unsafe {
-            let ptr_a: *mut (Move, u32) = &mut self.arr[a];
-            let ptr_b: *mut (Move, u32) = &mut self.arr[b];
+            let ptr_a: *mut MoveListEntry = &mut self.arr[a];
+            let ptr_b: *mut MoveListEntry = &mut self.arr[b];
             std::ptr::swap(ptr_a, ptr_b);
         }
     }
 
     #[inline(always)]
-    pub fn iter(&self) -> MoveIter {
-        MoveIter {
-            movelist: self,
-            curr: 0,
+    pub fn get_one(&mut self, idx: usize) -> Option<MoveListEntry> {
+        if idx >= self.len {
+            return None;
         }
+        let e = self.pick_move(idx);
+        Some(e)
     }
 
     #[inline(always)]
     /// Sorts next move into position and then returns a reference to the move
-    pub fn pick_move(&mut self, idx: usize) -> &Move {
+    fn pick_move(&mut self, idx: usize) -> MoveListEntry {
         self.sort_next_move(idx);
         self.get_move(idx)
     }
 
     #[inline(always)]
-    pub fn get_move(&self, idx: usize) -> &Move {
-        &self.arr[idx].0
+    pub fn get_move(&self, idx: usize) -> MoveListEntry {
+        self.arr[idx]
     }
 
     #[inline(always)]
     pub fn get_score(&self, idx: usize) -> u32 {
-        self.arr[idx].1
+        self.arr[idx].score
     }
 
     #[inline(always)]
-    pub fn get_mut(&mut self, idx: usize) -> &mut (Move, u32) {
+    pub fn get_mut(&mut self, idx: usize) -> &mut MoveListEntry {
         &mut self.arr[idx]
     }
 
     #[inline(always)]
     pub fn into_vec(self) -> Vec<Move> {
         let mut v = Vec::new();
-        for i in 0..self.len {
-            v.push(*self.get_move(i));
-        }
+        self.into_iter().for_each(|x| v.push(x));
         v
     }
 
-    pub fn score_move_list(&mut self, ply: i32, board: &Board, table_move: Move, search_info: &SearchInfo) {
+    pub fn score_move_list(&mut self, board: &Board, table_move: Move, killers: &[Move; NUM_KILLER_MOVES]) {
         for i in 0..self.len {
-            let (m, m_score) = self.get_mut(i);
+            let entry = self.get_mut(i);
+            let m = &mut entry.m;
+            let m_score = &mut entry.score;
             let piece_moving = board.piece_at(m.origin_square()).unwrap();
             let capture = board.piece_at(m.dest_square());
             let promotion = m.promotion();
@@ -96,7 +123,7 @@ impl MoveList {
             } else {
                 let mut n = 0;
                 while n < NUM_KILLER_MOVES && score == 0 {
-                    let killer_move = search_info.killer_moves[ply as usize][n];
+                    let killer_move = killers[n];
                     if *m == killer_move {
                         score = SCORED_MOVE_OFFSET - ((i as u32 + 1) * KILLER_VAL);
                     }
@@ -134,21 +161,22 @@ pub const MVV_LVA: [[u32; 6]; 6] = [
     [10, 11, 12, 13, 14, 15], // victim P
 ];
 
-pub struct MoveIter<'a> {
-    movelist: &'a MoveList,
-    curr: usize,
+impl ExactSizeIterator for MoveList {
+    fn len(&self) -> usize {
+        self.len
+    }
 }
 
-impl Iterator for MoveIter<'_> {
+impl Iterator for MoveList {
     type Item = Move;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.curr >= self.movelist.len {
+        if self.current_idx >= self.len {
             None
         } else {
-            let m = self.movelist.arr[self.curr];
-            self.curr += 1;
-            Some(m.0)
+            let m = self.pick_move(self.current_idx);
+            self.current_idx += 1;
+            Some(m.m)
         }
     }
 }
@@ -157,8 +185,7 @@ impl FromIterator<Move> for MoveList {
     fn from_iter<I: IntoIterator<Item = Move>>(iter: I) -> Self {
         let mut move_list = MoveList::default();
         for m in iter {
-            move_list.arr[move_list.len] = (m, 0);
-            move_list.len += 1;
+            move_list.push(m);
         }
         move_list
     }
@@ -168,10 +195,11 @@ impl Default for MoveList {
     fn default() -> Self {
         // Uninitialized memory is much faster than initializing it when the important stuff will
         // be written over anyway ;)
-        let arr: MaybeUninit<[(Move, u32); MAX_LEN]> = MaybeUninit::uninit();
+        let arr: MaybeUninit<[MoveListEntry; MAX_LEN]> = MaybeUninit::uninit();
         Self {
             arr: unsafe { arr.assume_init() },
             len: 0,
+            current_idx: 0,
         }
     }
 }

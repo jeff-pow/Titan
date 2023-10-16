@@ -118,6 +118,15 @@ impl Move {
     }
 
     #[inline(always)]
+    pub fn is_normal(&self, board: &Board) -> bool {
+        self.promotion().is_none()
+            && !self.is_castle()
+            && !self.is_en_passant()
+            && !self.is_castle()
+            && !self.is_capture(board)
+    }
+
+    #[inline(always)]
     pub fn promotion(&self) -> Option<Promotion> {
         let promotion_flag = (self.0 >> 14) & 0b11;
         if promotion_flag != 1 {
@@ -170,6 +179,30 @@ impl Move {
         str
     }
 
+    #[inline(always)]
+    pub fn is_valid(&self, board: &Board) -> bool {
+        // *self != Move::NULL && board.color_at(self.origin_square()) == Some(board.to_move)
+        if *self == Move::NULL {
+            return false;
+        }
+        assert!(self.origin_square().is_valid() && self.dest_square().is_valid());
+        let o = board.color_at(self.origin_square());
+        let d = board.color_at(self.dest_square());
+        if o.is_some() && d.is_some() {
+            let o = o.unwrap();
+            let d = d.unwrap();
+            if d == o {
+                return false;
+            }
+        }
+        board.piece_at(self.origin_square()).is_some()
+        // && match (o, d) {
+        //     (Some(a), Some(b)) => a != b,
+        //     _ => true,
+        // }
+    }
+
+    #[inline(always)]
     pub fn castle_type(&self) -> Castle {
         debug_assert!(self.is_castle());
         if self.dest_square().dist(self.origin_square()) != 2 {
@@ -257,11 +290,11 @@ pub enum EnPassant {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Castle {
-    None,
     WhiteKingCastle,
     WhiteQueenCastle,
     BlackKingCastle,
     BlackQueenCastle,
+    None,
 }
 
 impl Display for Move {

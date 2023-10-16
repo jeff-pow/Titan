@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-fn gain(board: &Board, m: &Move) -> i32 {
+fn gain(board: &Board, m: Move) -> i32 {
     if m.is_castle() {
         return 0;
     }
@@ -44,7 +44,7 @@ fn next_attacker(board: &Board, occupied: &mut Bitboard, attackers: Bitboard, si
     unreachable!()
 }
 
-pub fn see(board: &Board, m: &Move, threshold: i32) -> bool {
+pub fn see(board: &Board, m: Move, threshold: i32) -> bool {
     let dest = m.dest_square();
     let src = m.origin_square();
 
@@ -67,7 +67,7 @@ pub fn see(board: &Board, m: &Move, threshold: i32) -> bool {
         board.bitboard(Color::White, PieceName::Bishop) | board.bitboard(Color::Black, PieceName::Bishop) | queens;
     let rooks = board.bitboard(Color::White, PieceName::Rook) | board.bitboard(Color::Black, PieceName::Rook) | queens;
 
-    let mut to_move = board.to_move.opp();
+    let mut to_move = !board.to_move;
 
     loop {
         let my_attackers = attackers & board.color_occupancies(to_move);
@@ -87,11 +87,11 @@ pub fn see(board: &Board, m: &Move, threshold: i32) -> bool {
 
         attackers &= occupied;
 
-        to_move = to_move.opp();
+        to_move = !to_move;
         val = -val - 1 - next_piece.value();
         if val >= 0 {
             if next_piece == PieceName::King && (attackers & board.color_occupancies(to_move) != Bitboard::EMPTY) {
-                to_move = to_move.opp();
+                to_move = !to_move;
             }
             break;
         }

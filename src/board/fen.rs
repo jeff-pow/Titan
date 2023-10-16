@@ -1,6 +1,9 @@
-use crate::types::{
-    pieces::{Color, PieceName},
-    square::Square,
+use crate::{
+    moves::moves::Castle,
+    types::{
+        pieces::{Color, PieceName},
+        square::Square,
+    },
 };
 
 use super::board::Board;
@@ -94,10 +97,10 @@ pub fn build_board(fen_string: &str) -> Board {
     // Order of array is white king castle, white queen castle, black king castle, black queen castle
     for c in iter.next().unwrap().chars() {
         match c {
-            'K' => board.white_king_castle = true,
-            'Q' => board.white_queen_castle = true,
-            'k' => board.black_king_castle = true,
-            'q' => board.black_queen_castle = true,
+            'K' => board.set_castling(Castle::WhiteKingCastle, true),
+            'Q' => board.set_castling(Castle::WhiteQueenCastle, true),
+            'k' => board.set_castling(Castle::BlackKingCastle, true),
+            'q' => board.set_castling(Castle::BlackQueenCastle, true),
             '-' => (),
             _ => panic!("Unrecognized castle character: {}", c),
         }
@@ -105,7 +108,7 @@ pub fn build_board(fen_string: &str) -> Board {
     let en_passant_letters: Vec<char> = iter.next().unwrap().chars().collect();
     let en_passant_idx = find_en_passant_square(en_passant_letters);
     if let Some(idx) = en_passant_idx {
-        board.en_passant_square = Square(idx)
+        board.en_passant_square = Some(Square(idx))
     }
     // Half move clock: not yet implemented
     let half_moves = iter.next();

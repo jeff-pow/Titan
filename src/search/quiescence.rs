@@ -32,38 +32,34 @@ pub fn quiescence(
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
     // TODO: Experiment with removing these
-    let eval = evaluate(board);
-    if eval >= beta {
-        return eval;
+    let stand_pat = evaluate(board);
+    if stand_pat >= beta {
+        return stand_pat;
     }
-    alpha = alpha.max(eval);
+    alpha = alpha.max(stand_pat);
 
-    let in_check = board.side_in_check(board.to_move);
+    let in_check = board.in_check(board.to_move);
     let mut moves = if in_check {
         generate_moves(board)
     } else {
         generate_psuedolegal_captures(board)
     };
-    if in_check && moves.len == 0 {
-        if in_check {
-            return -CHECKMATE + ply;
-        }
-        return STALEMATE;
+    if in_check && moves.is_empty() {
+        return -CHECKMATE + ply;
     }
-    moves.score_move_list(ply, board, Move::NULL, search_info);
-    let mut best_score = -INFINITY;
+    moves.score_move_list(board, Move::NULL, &search_info.killer_moves[ply as usize]);
+    let mut best_score = stand_pat;
 
-    for i in 0..moves.len {
+    for m in moves {
         let mut node_pvs = Vec::new();
         let mut new_b = board.to_owned();
-        let m = moves.pick_move(i);
 
         if !see(board, m, 1) {
             continue;
         }
 
         new_b.make_move(m);
-        if new_b.side_in_check(board.to_move) {
+        if new_b.in_check(board.to_move) {
             continue;
         }
 
@@ -75,23 +71,13 @@ pub fn quiescence(
 
         let eval = -quiescence(ply + 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
 
-        if eval >= beta {
-            return eval;
-        }
-
-        if eval > alpha {
-            alpha = eval;
-            pvs.clear();
-            pvs.push(*m);
-            pvs.append(&mut node_pvs);
-        }
         if eval > best_score {
             best_score = eval;
 
             if eval > alpha {
                 alpha = eval;
                 pvs.clear();
-                pvs.push(*m);
+                pvs.push(m);
                 pvs.append(&mut node_pvs);
             }
             if alpha >= beta {
@@ -100,10 +86,11 @@ pub fn quiescence(
         }
     }
 
-    alpha
+    // TODO: Fail soft instead of this mess...
+    best_score
 }
 
-fn is_bad_capture(board: &Board, m: &Move) -> bool {
+fn is_bad_capture(board: &Board, m: Move) -> bool {
     let moving_piece = board.piece_at(m.origin_square()).unwrap();
     let capture = board.piece_at(m.dest_square());
     if moving_piece == PieceName::Pawn {
@@ -122,7 +109,7 @@ fn is_bad_capture(board: &Board, m: &Move) -> bool {
 }
 
 fn is_pawn_recapture(board: &Board, sq: Square) -> bool {
-    let attacker = board.to_move.opp();
+    let attacker = !board.to_move;
     let pawn_attacks = board.mg.pawn_attacks(sq, board.to_move);
     if pawn_attacks & board.bitboard(attacker, PieceName::Pawn) != Bitboard::EMPTY {
         return true;
