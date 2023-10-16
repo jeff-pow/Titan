@@ -7,13 +7,12 @@ use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::eval::eval::evaluate;
 use crate::moves::movegenerator::{generate_psuedolegal_moves, MGT};
-use crate::moves::movepicker::MovePicker;
 use crate::moves::moves::Move;
 
-use super::killers::{empty_killers, store_killer_move};
+use super::killers::store_killer_move;
 use super::quiescence::quiescence;
 use super::see::see;
-use super::{reduction, search_stats, SearchInfo, SearchType};
+use super::{reduction, store_pv, SearchInfo, SearchType};
 
 pub const CHECKMATE: i32 = 30000;
 pub const STALEMATE: i32 = 0;
@@ -239,20 +238,17 @@ fn pvs(
     let mut legal_moves_searched = 0;
     moves.score_move_list(board, table_move, &search_info.killer_moves[ply as usize]);
     search_info.search_stats.nodes_searched += 1;
-    let moves = MovePicker::new(board, ply, table_move, &search_info.killer_moves);
 
     // Start of search
     for m in moves {
         let mut new_b = board.to_owned();
-        let is_quiet = m.is_quiet(board);
-        let s = m.to_lan();
+        let is_quiet = board.is_quiet(m);
 
-        if !is_root && !is_pv_node && best_score >= -NEAR_CHECKMATE {
+        if !is_root && best_score >= -NEAR_CHECKMATE {
             if is_quiet {
                 // Late move pruning (LMP)
                 // By now all quiets have been searched.
-                // TODO: Move the !is_pv_node to this check so SEE can be done on all nodes
-                if depth < 6 && !in_check && legal_moves_searched > (3 + depth * depth) / 2 {
+                if depth < 6 && !is_pv_node && !in_check && legal_moves_searched > (3 + depth * depth) / 2 {
                     break;
                 }
 
@@ -310,16 +306,6 @@ fn pvs(
             eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, search_info, &new_b, false, halt.clone());
         }
 
-        // There's some funky stuff going on here with returning alpha or best_score
-        // They should be the same but aren't for some reason...
-        // Also function performs considerably better when only updating the best move when it's above beta
-        // which makes slightly more sense I think?
-        // The case might be that the beta and alpha checks should only happen when the best score is raised
-        // Currently it does better when you don't update the best move at all away from a null
-        // move which makes zero sense...
-        // Currently it is literally better not to update best move from Move::NULL than try to
-        // update it at all, making me think my transposition table is goofed real good
-
         if eval > best_score {
             best_score = eval;
             best_move = m;
@@ -327,9 +313,7 @@ fn pvs(
             if eval > alpha {
                 alpha = eval;
                 best_move = m;
-                pv.clear();
-                pv.push(m);
-                pv.append(&mut node_pvs);
+                store_pv(pv, &mut node_pvs, m);
                 entry_flag = EntryFlag::Exact;
             }
 
@@ -366,6 +350,5 @@ fn pvs(
         .unwrap()
         .insert(board.zobrist_hash, TableEntry::new(depth, ply, entry_flag, alpha, best_move));
 
-    // TODO: Fail soft instead of this mess...
     best_score
 }

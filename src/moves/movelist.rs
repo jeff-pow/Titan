@@ -8,7 +8,7 @@ pub const MAX_LEN: usize = 218;
 /// Movelist elements contains a move and an i32 where a score can be stored later to be used in move ordering
 /// for efficient search pruning
 pub struct MoveList {
-    arr: [MoveListEntry; MAX_LEN],
+    pub arr: [MoveListEntry; MAX_LEN],
     len: usize,
     current_idx: usize,
 }
@@ -70,8 +70,7 @@ impl MoveList {
         if idx >= self.len {
             return None;
         }
-        let e = self.pick_move(idx);
-        Some(e)
+        Some(self.pick_move(idx))
     }
 
     #[inline(always)]

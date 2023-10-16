@@ -38,46 +38,36 @@ pub fn build_board(fen_string: &str) -> Board {
                     }
                     'Q' => {
                         board.place_piece(PieceName::Queen, Color::White, square);
-                        // board.material_val[Color::White as usize] += PieceName::Queen.value();
                     }
                     'R' => {
                         board.place_piece(PieceName::Rook, Color::White, square);
-                        // board.material_val[Color::White as usize] += PieceName::Rook.value();
                     }
                     'N' => {
                         board.place_piece(PieceName::Knight, Color::White, square);
-                        // board.material_val[Color::White as usize] += PieceName::Knight.value();
                     }
                     'B' => {
                         board.place_piece(PieceName::Bishop, Color::White, square);
-                        // board.material_val[Color::White as usize] += PieceName::Bishop.value();
                     }
                     'P' => {
                         board.place_piece(PieceName::Pawn, Color::White, square);
-                        // board.material_val[Color::White as usize] += PieceName::Pawn.value();
                     }
                     'k' => {
                         board.place_piece(PieceName::King, Color::Black, square);
                     }
                     'q' => {
                         board.place_piece(PieceName::Queen, Color::Black, square);
-                        // board.material_val[Color::Black as usize] += PieceName::Queen.value();
                     }
                     'r' => {
                         board.place_piece(PieceName::Rook, Color::Black, square);
-                        // board.material_val[Color::Black as usize] += PieceName::Rook.value();
                     }
                     'b' => {
                         board.place_piece(PieceName::Bishop, Color::Black, square);
-                        // board.material_val[Color::Black as usize] += PieceName::Bishop.value();
                     }
                     'n' => {
                         board.place_piece(PieceName::Knight, Color::Black, square);
-                        // board.material_val[Color::Black as usize] += PieceName::Knight.value();
                     }
                     'p' => {
                         board.place_piece(PieceName::Pawn, Color::Black, square);
-                        // board.material_val[Color::Black as usize] += PieceName::Pawn.value();
                     }
                     _ => panic!("Unrecognized char {}, board could not be made", c),
                 }
@@ -97,10 +87,10 @@ pub fn build_board(fen_string: &str) -> Board {
     // Order of array is white king castle, white queen castle, black king castle, black queen castle
     for c in iter.next().unwrap().chars() {
         match c {
-            'K' => board.set_castling(Castle::WhiteKingCastle, true),
-            'Q' => board.set_castling(Castle::WhiteQueenCastle, true),
-            'k' => board.set_castling(Castle::BlackKingCastle, true),
-            'q' => board.set_castling(Castle::BlackQueenCastle, true),
+            'K' => board.set_castling(Castle::WhiteKing, true),
+            'Q' => board.set_castling(Castle::WhiteQueen, true),
+            'k' => board.set_castling(Castle::BlackKing, true),
+            'q' => board.set_castling(Castle::BlackQueen, true),
             '-' => (),
             _ => panic!("Unrecognized castle character: {}", c),
         }

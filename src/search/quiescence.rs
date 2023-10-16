@@ -1,7 +1,7 @@
 use crate::board::board::Board;
 use crate::eval::eval::evaluate;
-use crate::moves::movegenerator::generate_moves;
-use crate::moves::{movegenerator::generate_psuedolegal_captures, moves::Move};
+use crate::moves::movegenerator::{generate_psuedolegal_moves, MGT};
+use crate::moves::moves::Move;
 use crate::search::pvs::STALEMATE;
 use crate::types::bitboard::Bitboard;
 use crate::types::pieces::{value, PieceName};
@@ -9,6 +9,7 @@ use crate::types::square::Square;
 
 use super::pvs::{CHECKMATE, INFINITY};
 use super::see::see;
+use super::store_pv;
 use super::{pvs::MAX_SEARCH_DEPTH, SearchInfo};
 
 pub fn quiescence(
@@ -31,7 +32,6 @@ pub fn quiescence(
     }
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
-    // TODO: Experiment with removing these
     let stand_pat = evaluate(board);
     if stand_pat >= beta {
         return stand_pat;
@@ -40,21 +40,19 @@ pub fn quiescence(
 
     let in_check = board.in_check(board.to_move);
     let mut moves = if in_check {
-        generate_moves(board)
+        generate_psuedolegal_moves(board, MGT::All)
     } else {
-        generate_psuedolegal_captures(board)
+        generate_psuedolegal_moves(board, MGT::CapturesOnly)
     };
-    if in_check && moves.is_empty() {
-        return -CHECKMATE + ply;
-    }
     moves.score_move_list(board, Move::NULL, &search_info.killer_moves[ply as usize]);
-    let mut best_score = stand_pat;
+    let mut best_score = if in_check { -INFINITY } else { evaluate(board) };
+    let mut moves_searched = 0;
 
     for m in moves {
         let mut node_pvs = Vec::new();
         let mut new_b = board.to_owned();
 
-        if !see(board, m, 1) {
+        if !in_check && !see(board, m, 1) {
             continue;
         }
 
@@ -62,6 +60,7 @@ pub fn quiescence(
         if new_b.in_check(board.to_move) {
             continue;
         }
+        moves_searched += 1;
 
         // TODO: Implement delta pruning here
 
@@ -73,12 +72,9 @@ pub fn quiescence(
 
         if eval > best_score {
             best_score = eval;
-
             if eval > alpha {
                 alpha = eval;
-                pvs.clear();
-                pvs.push(m);
-                pvs.append(&mut node_pvs);
+                store_pv(pvs, &mut node_pvs, m);
             }
             if alpha >= beta {
                 return alpha;
@@ -86,7 +82,10 @@ pub fn quiescence(
         }
     }
 
-    // TODO: Fail soft instead of this mess...
+    if in_check && moves_searched == 0 {
+        return -CHECKMATE + ply;
+    }
+
     best_score
 }
 

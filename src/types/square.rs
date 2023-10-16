@@ -193,6 +193,4 @@ mod square_test {
         let new_square = square.checked_shift(Direction::East);
         assert!(new_square.is_none());
     }
-
-    // ... add more test cases here ...
 }

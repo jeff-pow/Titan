@@ -13,7 +13,6 @@ impl History {
     #[inline(always)]
     pub fn push(&mut self, hash: u64) {
         debug_assert!(self.len < MAX_LEN);
-        // TODO: Fix this implementation detail
         if self.len >= MAX_LEN - 1 {
             return;
         }

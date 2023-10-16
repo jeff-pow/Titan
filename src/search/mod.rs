@@ -7,6 +7,7 @@ use crate::board::fen::{build_board, STARTING_FEN};
 use crate::engine::transposition::{get_table, TableEntry};
 use crate::moves::movegenerator::MoveGenerator;
 use crate::moves::movelist::MAX_LEN;
+use crate::moves::moves::Move;
 use crate::search::pvs::MAX_SEARCH_DEPTH;
 
 use self::killers::{empty_killers, KillerMoves};
@@ -88,4 +89,11 @@ pub fn reduction(depth: i32, moves_played: i32) -> i32 {
     let ply = moves_played as f32;
     let ret = 1. + depth.ln() * ply.ln() / 2.;
     ret as i32
+}
+
+#[inline(always)]
+pub fn store_pv(pvs: &mut Vec<Move>, node_pvs: &mut Vec<Move>, m: Move) {
+    pvs.clear();
+    pvs.push(m);
+    pvs.append(node_pvs);
 }
