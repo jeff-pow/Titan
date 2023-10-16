@@ -166,35 +166,6 @@ impl fmt::Debug for Bitboard {
     }
 }
 
-// impl fmt::Debug for Bitboard {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         let mut result = String::new();
-//
-//         for row in (0..8).rev() {
-//             for col in 0..8 {
-//                 let index = row * 8 + col;
-//                 let bit_is_set = self.0 & (1 << index) != 0;
-//
-//                 if bit_is_set {
-//                     result.push('1');
-//                 } else {
-//                     result.push('0');
-//                 }
-//
-//                 if col < 7 {
-//                     result.push(' ');
-//                 }
-//             }
-//
-//             if row < 7 {
-//                 result.push('\n');
-//             }
-//         }
-//
-//         write!(f, "\n{}", result)
-//     }
-// }
-
 impl ops::Not for Bitboard {
     type Output = Self;
 

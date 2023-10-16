@@ -52,7 +52,7 @@ pub fn quiescence(
         let mut node_pvs = Vec::new();
         let mut new_b = board.to_owned();
 
-        if !in_check && !see(board, m, 1) {
+        if (!in_check || moves_searched > 1) && !see(board, m, 1) {
             continue;
         }
 
@@ -62,11 +62,7 @@ pub fn quiescence(
         }
         moves_searched += 1;
 
-        // TODO: Implement delta pruning here
-
-        if !in_check && is_bad_capture(board, m) && m.promotion().is_none() {
-            continue;
-        }
+        // TODO: Implement delta pruning
 
         let eval = -quiescence(ply + 1, -beta, -alpha, &mut node_pvs, search_info, &new_b);
 
@@ -87,31 +83,4 @@ pub fn quiescence(
     }
 
     best_score
-}
-
-fn is_bad_capture(board: &Board, m: Move) -> bool {
-    let moving_piece = board.piece_at(m.origin_square()).unwrap();
-    let capture = board.piece_at(m.dest_square());
-    if moving_piece == PieceName::Pawn {
-        return false;
-    }
-
-    if value(capture) >= moving_piece.value() - 50 {
-        return false;
-    }
-
-    if is_pawn_recapture(board, m.dest_square()) && value(capture) + 200 - moving_piece.value() < 0 {
-        return true;
-    }
-
-    false
-}
-
-fn is_pawn_recapture(board: &Board, sq: Square) -> bool {
-    let attacker = !board.to_move;
-    let pawn_attacks = board.mg.pawn_attacks(sq, board.to_move);
-    if pawn_attacks & board.bitboard(attacker, PieceName::Pawn) != Bitboard::EMPTY {
-        return true;
-    }
-    false
 }
