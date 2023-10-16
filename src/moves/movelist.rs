@@ -129,9 +129,11 @@ impl MoveList {
                     board.piece_at(m.dest_square()).expect("There is a piece here")
                 };
                 if see(board, *m, -109) {
-                    *score = GOOD_CAPTURE + MVV_LVA[piece_moving as usize][captured_piece as usize];
+                    // *score = GOOD_CAPTURE + MVV_LVA[piece_moving as usize][captured_piece as usize];
+                    *score = GOOD_CAPTURE + MVV_LVA[captured_piece as usize][piece_moving as usize];
                 } else {
-                    *score = BAD_CAPTURE + MVV_LVA[piece_moving as usize][captured_piece as usize];
+                    // *score = BAD_CAPTURE + MVV_LVA[piece_moving as usize][captured_piece as usize];
+                    *score = BAD_CAPTURE + MVV_LVA[captured_piece as usize][piece_moving as usize];
                 }
             } else if killers[0] == *m {
                 *score = KILLER_ONE;

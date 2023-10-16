@@ -1606,3 +1606,61 @@ Started game 464 of 5000 (old vs new)
 Finished game 457 (new vs old): 1/2-1/2 {Draw by insufficient mating material}
 Score of new vs old: 149 - 130 - 180  [0.521] 459
 Started game 465 of 5000 (new vs old)
+Finished game 461 (new vs old): 0-1 {White loses on time}
+Score of new vs old: 149 - 131 - 180  [0.520] 460
+...      new playing White: 89 - 53 - 88  [0.578] 230
+...      new playing Black: 60 - 78 - 92  [0.461] 230
+...      White vs Black: 167 - 113 - 180  [0.559] 460
+Elo difference: 13.6 +/- 24.8, LOS: 85.9 %, DrawRatio: 39.1 %
+SPRT: llr 0.538 (18.3%), lbound -2.94, ubound 2.94
+Started game 466 of 5000 (old vs new)
+Finished game 464 (old vs new): 0-1 {White loses on time}
+Score of new vs old: 150 - 131 - 180  [0.521] 461
+Started game 467 of 5000 (new vs old)
+Finished game 463 (new vs old): 0-1 {Black mates}
+Score of new vs old: 150 - 132 - 180  [0.519] 462
+Started game 468 of 5000 (old vs new)
+Finished game 462 (old vs new): 0-1 {Black mates}
+Score of new vs old: 151 - 132 - 180  [0.521] 463
+Started game 469 of 5000 (new vs old)
+Finished game 459 (new vs old): 1-0 {Black loses on time}
+Score of new vs old: 152 - 132 - 180  [0.522] 464
+Started game 470 of 5000 (old vs new)
+Finished game 468 (old vs new): 1/2-1/2 {Draw by 3-fold repetition}
+Score of new vs old: 152 - 132 - 181  [0.522] 465
+Started game 471 of 5000 (new vs old)
+Finished game 466 (old vs new): 0-1 {Black mates}
+Score of new vs old: 153 - 132 - 181  [0.523] 466
+Started game 472 of 5000 (old vs new)
+Finished game 465 (new vs old): 0-1 {Black mates}
+Score of new vs old: 153 - 133 - 181  [0.521] 467
+Finished game 467 (new vs old): 0-1 {White loses on time}
+Score of new vs old: 153 - 134 - 181  [0.520] 468
+Started game 473 of 5000 (new vs old)
+Started game 474 of 5000 (old vs new)
+Finished game 470 (old vs new): 1-0 {Black loses on time}
+Score of new vs old: 153 - 135 - 181  [0.519] 469
+Started game 475 of 5000 (new vs old)
+Finished game 469 (new vs old): 0-1 {Black mates}
+Score of new vs old: 153 - 136 - 181  [0.518] 470
+...      new playing White: 90 - 57 - 88  [0.570] 235
+...      new playing Black: 63 - 79 - 93  [0.466] 235
+...      White vs Black: 169 - 120 - 181  [0.552] 470
+Elo difference: 12.6 +/- 24.6, LOS: 84.1 %, DrawRatio: 38.5 %
+SPRT: llr 0.479 (16.3%), lbound -2.94, ubound 2.94
+Started game 476 of 5000 (old vs new)
+Finished game 472 (old vs new): 1/2-1/2 {Draw by 3-fold repetition}
+Score of new vs old: 153 - 136 - 182  [0.518] 471
+Started game 477 of 5000 (new vs old)
+Finished game 474 (old vs new): 1/2-1/2 {Draw by 3-fold repetition}
+Score of new vs old: 153 - 136 - 183  [0.518] 472
+Started game 478 of 5000 (old vs new)
+Finished game 475 (new vs old): 1-0 {White mates}
+Score of new vs old: 154 - 136 - 183  [0.519] 473
+Started game 479 of 5000 (new vs old)
+Finished game 476 (old vs new): 1-0 {Black loses on time}
+Score of new vs old: 154 - 137 - 183  [0.518] 474
+Finished game 473 (new vs old): 1-0 {White mates}
+Score of new vs old: 155 - 137 - 183  [0.519] 475
+Started game 480 of 5000 (old vs new)
+Started game 481 of 5000 (new vs old)
