@@ -218,6 +218,15 @@ fn pvs(
             return static_eval;
         }
 
+        // Razoring
+        if static_eval < alpha - 400 - 300 * depth * depth {
+            let mut node_pvs = Vec::new();
+            let eval = quiescence(ply, alpha - 1, alpha, &mut node_pvs, info, board);
+            if eval < alpha {
+                return eval;
+            }
+        }
+
         // Null move pruning (NMP)
         if board.has_non_pawns(board.to_move)
             && depth >= MIN_NMP_DEPTH
@@ -253,7 +262,7 @@ fn pvs(
     // pruned
     let mut moves = generate_psuedolegal_moves(board, MGT::All);
     let mut legal_moves_searched = 0;
-    moves.score_move_list(board, table_move, &info.killer_moves[ply as usize]);
+    moves.score_moves(board, table_move, &info.killer_moves[ply as usize]);
     info.search_stats.nodes_searched += 1;
 
     // Start of search

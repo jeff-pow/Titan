@@ -1,4 +1,8 @@
-use crate::{board::board::Board, search::killers::NUM_KILLER_MOVES};
+use crate::{
+    board::board::Board,
+    search::{killers::NUM_KILLER_MOVES, see::see},
+    types::pieces::PieceName,
+};
 use std::mem::MaybeUninit;
 
 use super::moves::{Move, Promotion};
@@ -16,11 +20,11 @@ pub struct MoveList {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct MoveListEntry {
     pub m: Move,
-    pub score: u32,
+    pub score: i32,
 }
 
 impl MoveListEntry {
-    fn new(m: Move, score: u32) -> Self {
+    fn new(m: Move, score: i32) -> Self {
         MoveListEntry { m, score }
     }
 }
@@ -86,7 +90,7 @@ impl MoveList {
     }
 
     #[inline(always)]
-    pub fn get_score(&self, idx: usize) -> u32 {
+    pub fn get_score(&self, idx: usize) -> i32 {
         self.arr[idx].score
     }
 
@@ -102,36 +106,41 @@ impl MoveList {
         v
     }
 
-    pub fn score_move_list(&mut self, board: &Board, table_move: Move, killers: &[Move; NUM_KILLER_MOVES]) {
+    pub fn score_moves(&mut self, board: &Board, table_move: Move, killers: &[Move; NUM_KILLER_MOVES]) {
         for i in 0..self.len {
             let entry = self.get_mut(i);
             let m = &mut entry.m;
-            let m_score = &mut entry.score;
+            let score = &mut entry.score;
             let piece_moving = board.piece_at(m.origin_square()).unwrap();
             let capture = board.piece_at(m.dest_square());
             let promotion = m.promotion();
-            let mut score = 0;
             if m == &table_move {
-                score = SCORED_MOVE_OFFSET + TTMOVE_SORT_VAL;
+                *score = TTMOVE_SORT_VAL;
             } else if let Some(promotion) = promotion {
-                if promotion == Promotion::Queen {
-                    score = SCORED_MOVE_OFFSET + QUEEN_PROMOTION;
+                match promotion {
+                    Promotion::Queen => *score = QUEEN_PROMOTION,
+                    Promotion::Knight => *score = KNIGHT_PROMOTION,
+                    _ => *score = BAD_PROMOTION,
+                }
+            } else if capture.is_some() || m.is_en_passant() {
+                let captured_piece = if m.is_en_passant() {
+                    PieceName::Pawn
                 } else {
-                    score = SCORED_MOVE_OFFSET + 15;
+                    board.piece_at(m.dest_square()).expect("There is a piece here")
+                };
+                if see(board, *m, -109) {
+                    *score = GOOD_CAPTURE + MVV_LVA[piece_moving as usize][captured_piece as usize];
+                } else {
+                    *score = BAD_CAPTURE + MVV_LVA[piece_moving as usize][captured_piece as usize];
                 }
-            } else if let Some(capture) = capture {
-                score = SCORED_MOVE_OFFSET + MVV_LVA[capture as usize][piece_moving as usize];
+            } else if killers[0] == *m {
+                *score = KILLER_ONE;
+            } else if killers[1] == *m {
+                *score = KILLER_TWO;
             } else {
-                let mut n = 0;
-                while n < NUM_KILLER_MOVES && score == 0 {
-                    let killer_move = killers[n];
-                    if *m == killer_move {
-                        score = SCORED_MOVE_OFFSET - ((i as u32 + 1) * KILLER_VAL);
-                    }
-                    n += 1;
-                }
+                // TODO: History heuristic someday...
+                continue;
             }
-            *m_score = score;
         }
     }
 
@@ -146,14 +155,20 @@ impl MoveList {
     }
 }
 
-const KILLER_VAL: u32 = 10;
-const SCORED_MOVE_OFFSET: u32 = 1000;
-const QUEEN_PROMOTION: u32 = 67;
-const TTMOVE_SORT_VAL: u32 = 70;
+const KILLER_VAL: i32 = 10;
+const SCORED_MOVE_OFFSET: i32 = 1000;
+const QUEEN_PROMOTION: i32 = 9000001;
+const KNIGHT_PROMOTION: i32 = 9000000;
+const GOOD_CAPTURE: i32 = 800000;
+const KILLER_ONE: i32 = 700000;
+const KILLER_TWO: i32 = 600000;
+const BAD_CAPTURE: i32 = -800000;
+const BAD_PROMOTION: i32 = -2000000;
+const TTMOVE_SORT_VAL: i32 = i32::MAX - 1000;
 // Most valuable victim, least valuable attacker
 // Table is addressed from table[victim][capturer]
 // Ex second row is each piece attacking a queen w/ the later columns being less valuable pieces
-pub const MVV_LVA: [[u32; 6]; 6] = [
+pub const MVV_LVA: [[i32; 6]; 6] = [
     [60, 61, 62, 63, 64, 65], // victim K
     [50, 51, 52, 53, 54, 55], // victim Q
     [40, 41, 42, 43, 44, 45], // victim R

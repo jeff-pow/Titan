@@ -19,7 +19,7 @@ pub mod killers;
 pub(crate) mod pvs;
 pub(crate) mod quiescence;
 pub(crate) mod search_stats;
-mod see;
+pub mod see;
 
 #[derive(Clone)]
 pub struct SearchInfo {
