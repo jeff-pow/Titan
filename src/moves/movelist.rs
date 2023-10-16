@@ -115,7 +115,7 @@ impl MoveList {
             let capture = board.piece_at(m.dest_square());
             let promotion = m.promotion();
             if m == &table_move {
-                *score = TTMOVE_SORT_VAL;
+                *score = TTMOVE;
             } else if let Some(promotion) = promotion {
                 match promotion {
                     Promotion::Queen => *score = QUEEN_PROMOTION,
@@ -129,11 +129,11 @@ impl MoveList {
                     board.piece_at(m.dest_square()).expect("There is a piece here")
                 };
                 if see(board, *m, -109) {
-                    // *score = GOOD_CAPTURE + MVV_LVA[piece_moving as usize][captured_piece as usize];
-                    *score = GOOD_CAPTURE + MVV_LVA[captured_piece as usize][piece_moving as usize];
+                    *score = GOOD_CAPTURE + mvv_lva[piece_moving as usize][captured_piece as usize];
+                    // *score = GOOD_CAPTURE + MVV_LVA[captured_piece as usize][piece_moving as usize];
                 } else {
-                    // *score = BAD_CAPTURE + MVV_LVA[piece_moving as usize][captured_piece as usize];
-                    *score = BAD_CAPTURE + MVV_LVA[captured_piece as usize][piece_moving as usize];
+                    *score = BAD_CAPTURE + mvv_lva[piece_moving as usize][captured_piece as usize];
+                    // *score = BAD_CAPTURE + MVV_LVA[captured_piece as usize][piece_moving as usize];
                 }
             } else if killers[0] == *m {
                 *score = KILLER_ONE;
@@ -157,16 +157,14 @@ impl MoveList {
     }
 }
 
-const KILLER_VAL: i32 = 10;
-const SCORED_MOVE_OFFSET: i32 = 1000;
-const QUEEN_PROMOTION: i32 = 9000001;
-const KNIGHT_PROMOTION: i32 = 9000000;
-const GOOD_CAPTURE: i32 = 800000;
-const KILLER_ONE: i32 = 700000;
-const KILLER_TWO: i32 = 600000;
-const BAD_CAPTURE: i32 = -800000;
-const BAD_PROMOTION: i32 = -2000000;
-const TTMOVE_SORT_VAL: i32 = i32::MAX - 1000;
+const QUEEN_PROMOTION: i32 = 2000000001;
+const KNIGHT_PROMOTION: i32 = 2000000000;
+const GOOD_CAPTURE: i32 = 900000000;
+const KILLER_ONE: i32 = 800000000;
+const KILLER_TWO: i32 = 700000000;
+const BAD_CAPTURE: i32 = -1000000;
+const BAD_PROMOTION: i32 = -2000000001;
+const TTMOVE: i32 = i32::MAX - 1000;
 // Most valuable victim, least valuable attacker
 // Table is addressed from table[victim][capturer]
 // Ex second row is each piece attacking a queen w/ the later columns being less valuable pieces
@@ -177,6 +175,14 @@ pub const MVV_LVA: [[i32; 6]; 6] = [
     [30, 31, 32, 33, 34, 35], // victim B
     [20, 21, 22, 23, 24, 25], // victim K
     [10, 11, 12, 13, 14, 15], // victim P
+];
+const mvv_lva: [[i32; 6]; 6] = [
+    [100005, 200005, 300005, 400005, 500005, 600005],
+    [100004, 200004, 300004, 400004, 500004, 600004],
+    [100003, 200003, 300003, 400003, 500003, 600003],
+    [100002, 200002, 300002, 400002, 500002, 600002],
+    [100001, 200001, 300001, 400001, 500001, 600001],
+    [100000, 200000, 300000, 400000, 500000, 600000],
 ];
 
 impl ExactSizeIterator for MoveList {
