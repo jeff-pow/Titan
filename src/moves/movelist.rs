@@ -124,12 +124,11 @@ impl MoveList {
             let piece_moving = board.piece_at(m.origin_square()).unwrap();
             let capture = board.piece_at(m.dest_square());
             let promotion = m.promotion();
-            if m == &table_move {
+            if *m == table_move {
                 *score = TTMOVE;
             } else if let Some(promotion) = promotion {
                 match promotion {
                     Promotion::Queen => *score = QUEEN_PROMOTION,
-                    Promotion::Knight => *score = KNIGHT_PROMOTION,
                     _ => *score = BAD_PROMOTION,
                 }
             } else if capture.is_some() || m.is_en_passant() {
@@ -138,12 +137,10 @@ impl MoveList {
                 } else {
                     board.piece_at(m.dest_square()).expect("There is a piece here")
                 };
-                if see(board, *m, -109) {
-                    *score = GOOD_CAPTURE + mvv_lva[piece_moving as usize][captured_piece as usize];
-                    // *score = GOOD_CAPTURE + MVV_LVA[captured_piece as usize][piece_moving as usize];
+                if see(board, *m, -PieceName::Pawn.value()) {
+                    *score = GOOD_CAPTURE + MVV_LVA[piece_moving as usize][captured_piece as usize];
                 } else {
-                    *score = BAD_CAPTURE + mvv_lva[piece_moving as usize][captured_piece as usize];
-                    // *score = BAD_CAPTURE + MVV_LVA[captured_piece as usize][piece_moving as usize];
+                    *score = BAD_CAPTURE + MVV_LVA[piece_moving as usize][captured_piece as usize];
                 }
             } else if killers[0] == *m {
                 *score = KILLER_ONE;
@@ -157,37 +154,24 @@ impl MoveList {
     }
 }
 
-const QUEEN_PROMOTION: i32 = 2000000001;
-const KNIGHT_PROMOTION: i32 = GOOD_CAPTURE / 2;
-const GOOD_CAPTURE: i32 = 900000000;
-const KILLER_ONE: i32 = 800000000;
-const KILLER_TWO: i32 = 700000000;
-const BAD_CAPTURE: i32 = -1000000;
-const BAD_PROMOTION: i32 = -2000000001;
+const QUEEN_PROMOTION: i32 = 20000001;
+const GOOD_CAPTURE: i32 = 3000000;
+const KILLER_ONE: i32 = 2000000;
+const KILLER_TWO: i32 = 1000000;
+const BAD_CAPTURE: i32 = -10000;
+const BAD_PROMOTION: i32 = -20000001;
 const TTMOVE: i32 = i32::MAX - 1000;
-// Most valuable victim, least valuable attacker
-// Table is addressed from table[victim][capturer]
-// Ex second row is each piece attacking a queen w/ the later columns being less valuable pieces
-pub const MVV_LVA: [[i32; 6]; 6] = [
-    [60, 61, 62, 63, 64, 65], // victim K
-    [50, 51, 52, 53, 54, 55], // victim Q
-    [40, 41, 42, 43, 44, 45], // victim R
-    [30, 31, 32, 33, 34, 35], // victim B
-    [20, 21, 22, 23, 24, 25], // victim K
-    [10, 11, 12, 13, 14, 15], // victim P
-];
-
 /// [Attacker][Victim]
 #[rustfmt::skip]
-const mvv_lva: [[i32; 6]; 6] = [
+const MVV_LVA: [[i32; 6]; 6] = [
 // Victims
-//   K       Q       R       B       N       P       Attacker
-    [600000, 500000, 400000, 300000, 200000, 100000], // K
-    [600001, 500001, 400001, 300001, 200001, 100001], // Q
-    [600002, 500002, 400002, 300002, 200002, 100002], // R
-    [600003, 500003, 400003, 300003, 200003, 100003], // B
-    [600004, 500004, 400004, 300004, 200004, 100004], // N
-    [600005, 500005, 400005, 300005, 200005, 100005], // P
+//   K   Q   R   B   N   P       Attacker
+    [60, 50, 40, 30, 20, 10], // K
+    [61, 51, 41, 31, 21, 11], // Q
+    [62, 52, 42, 32, 22, 12], // R
+    [63, 53, 43, 33, 23, 13], // B
+    [64, 54, 44, 34, 24, 14], // N
+    [65, 55, 45, 35, 25, 15], // P
 ];
 
 impl Iterator for MoveList {
