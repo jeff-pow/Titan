@@ -29,20 +29,6 @@ impl History {
     }
 }
 
-impl Iterator for History {
-    type Item = u64;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.curr >= self.len {
-            None
-        } else {
-            let m = self.arr[self.curr];
-            self.curr += 1;
-            Some(m)
-        }
-    }
-}
-
 impl FromIterator<u64> for History {
     fn from_iter<I: IntoIterator<Item = u64>>(iter: I) -> Self {
         let mut history = History::default();
