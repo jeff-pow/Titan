@@ -51,9 +51,9 @@ fn create_accumulator(perspective: Color, board: Board) -> [i32; INPUT_SIZE] {
         }
     }
     for piece in PieceName::iter() {
-        let bb = board.bitboard(perspective.opp(), piece);
+        let bb = board.bitboard(!perspective, piece);
         for sq in bb {
-            arr[calc_accumulator_idx(perspective.opp(), piece, sq)] = 1;
+            arr[calc_accumulator_idx(!perspective, piece, sq)] = 1;
         }
     }
     arr
