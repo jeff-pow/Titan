@@ -219,13 +219,13 @@ fn pvs(
         }
 
         // Razoring
-        if static_eval < alpha - 400 - 300 * depth * depth {
-            let mut node_pvs = Vec::new();
-            let eval = quiescence(ply, alpha - 1, alpha, &mut node_pvs, info, board);
-            if eval < alpha {
-                return eval;
-            }
-        }
+        // if static_eval < alpha - 400 - 300 * depth * depth {
+        //     let mut node_pvs = Vec::new();
+        //     let eval = quiescence(ply, alpha - 1, alpha, &mut node_pvs, info, board);
+        //     if eval < alpha {
+        //         return eval;
+        //     }
+        // }
 
         // Null move pruning (NMP)
         if board.has_non_pawns(board.to_move)

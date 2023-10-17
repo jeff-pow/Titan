@@ -106,6 +106,16 @@ impl MoveList {
         v
     }
 
+    pub fn sort_next_move(&mut self, idx: usize) {
+        let mut max_idx = idx;
+        for i in (idx + 1)..self.len {
+            if self.get_score(i) > self.get_score(max_idx) {
+                max_idx = i;
+            }
+        }
+        self.swap(max_idx, idx);
+    }
+
     pub fn score_moves(&mut self, board: &Board, table_move: Move, killers: &[Move; NUM_KILLER_MOVES]) {
         for i in 0..self.len {
             let entry = self.get_mut(i);
@@ -145,20 +155,10 @@ impl MoveList {
             }
         }
     }
-
-    pub fn sort_next_move(&mut self, idx: usize) {
-        let mut max_idx = idx;
-        for i in (idx + 1)..self.len {
-            if self.get_score(i) > self.get_score(max_idx) {
-                max_idx = i;
-            }
-        }
-        self.swap(max_idx, idx);
-    }
 }
 
 const QUEEN_PROMOTION: i32 = 2000000001;
-const KNIGHT_PROMOTION: i32 = 2000000000;
+const KNIGHT_PROMOTION: i32 = GOOD_CAPTURE / 2;
 const GOOD_CAPTURE: i32 = 900000000;
 const KILLER_ONE: i32 = 800000000;
 const KILLER_TWO: i32 = 700000000;
@@ -176,20 +176,19 @@ pub const MVV_LVA: [[i32; 6]; 6] = [
     [20, 21, 22, 23, 24, 25], // victim K
     [10, 11, 12, 13, 14, 15], // victim P
 ];
-const mvv_lva: [[i32; 6]; 6] = [
-    [100005, 200005, 300005, 400005, 500005, 600005],
-    [100004, 200004, 300004, 400004, 500004, 600004],
-    [100003, 200003, 300003, 400003, 500003, 600003],
-    [100002, 200002, 300002, 400002, 500002, 600002],
-    [100001, 200001, 300001, 400001, 500001, 600001],
-    [100000, 200000, 300000, 400000, 500000, 600000],
-];
 
-impl ExactSizeIterator for MoveList {
-    fn len(&self) -> usize {
-        self.len
-    }
-}
+/// [Attacker][Victim]
+#[rustfmt::skip]
+const mvv_lva: [[i32; 6]; 6] = [
+// Victims
+//   K       Q       R       B       N       P       Attacker
+    [600000, 500000, 400000, 300000, 200000, 100000], // K
+    [600001, 500001, 400001, 300001, 200001, 100001], // Q
+    [600002, 500002, 400002, 300002, 200002, 100002], // R
+    [600003, 500003, 400003, 300003, 200003, 100003], // B
+    [600004, 500004, 400004, 300004, 200004, 100004], // N
+    [600005, 500005, 400005, 300005, 200005, 100005], // P
+];
 
 impl Iterator for MoveList {
     type Item = Move;
