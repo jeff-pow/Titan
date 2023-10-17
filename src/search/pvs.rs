@@ -253,7 +253,7 @@ fn pvs(
     // pruned
     let mut moves = generate_psuedolegal_moves(board, MGT::All);
     let mut legal_moves_searched = 0;
-    moves.score_move_list(board, table_move, &info.killer_moves[ply as usize]);
+    moves.score_moves(board, table_move, &info.killer_moves[ply as usize]);
     info.search_stats.nodes_searched += 1;
 
     // Start of search
