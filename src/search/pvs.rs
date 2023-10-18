@@ -290,37 +290,36 @@ fn pvs(
             continue;
         }
         let mut node_pvs = Vec::new();
-        let mut eval = -INFINITY;
+        let mut eval;
 
-        // LMR
-        let do_full_search;
-        if depth > MIN_LMR_DEPTH && legal_moves_searched >= LMR_THRESHOLD {
-            let mut r = 1;
-            if is_quiet || !is_pv_node {
-                r = get_reduction(info, depth, legal_moves_searched);
+        if legal_moves_searched == 0 {
+            node_pvs.clear();
+            // On the first move, just do a full depth search
+            eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false, halt.clone());
+        } else {
+            if legal_moves_searched < LMR_THRESHOLD  || depth < MIN_LMR_DEPTH {
+                node_pvs.clear();
+                eval = -pvs(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node, halt.clone());
+            } else {
+                // Otherwise do LMR
+                let mut r = get_reduction(info, depth, legal_moves_searched);
                 r += i32::from(!is_pv_node);
-                if cut_node {
+                if is_quiet && cut_node {
                     r += 2;
                 }
                 // if is_quiet && !see(&new_b, m, -50 * depth) {
                 //     depth += 1;
                 // }
+                r = r.clamp(1, depth - 1);
+                eval = -pvs(depth - r, -alpha - 1, -alpha, &mut Vec::new(), info, &new_b, !cut_node, halt.clone());
+                if eval > alpha && r > 1 {
+                    eval = -pvs(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node, halt.clone());
+                }
             }
-            r = r.clamp(1, depth - 1);
-            eval = -pvs(depth - r, -alpha - 1, -alpha, &mut Vec::new(), info, &new_b, !cut_node, halt.clone());
-            do_full_search = eval > alpha && r != 1;
-        } else {
-            do_full_search = !is_pv_node || legal_moves_searched <= 1;
-        }
-
-        if do_full_search {
-            node_pvs.clear();
-            eval = -pvs(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node, halt.clone());
-        }
-
-        if is_pv_node && (legal_moves_searched == 0 || (eval > alpha && (is_root || eval < beta))) {
-            node_pvs.clear();
-            eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false, halt.clone());
+            if eval > alpha && eval < beta {
+                node_pvs.clear();
+                eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false, halt.clone());
+            }
         }
 
         legal_moves_searched += 1;
