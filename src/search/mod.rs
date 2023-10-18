@@ -82,7 +82,7 @@ pub fn get_reduction(info: &SearchInfo, depth: i32, moves_played: i32) -> i32 {
 #[inline(always)]
 pub fn reduction(depth: i32, moves_played: i32) -> i32 {
     if depth <= MIN_LMR_DEPTH || moves_played < LMR_THRESHOLD {
-        return 0;
+        return 1;
     }
     let depth = depth as f32;
     let ply = moves_played as f32;
