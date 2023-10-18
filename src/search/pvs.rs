@@ -9,6 +9,7 @@ use crate::eval::eval::evaluate;
 use crate::moves::movegenerator::{generate_psuedolegal_moves, MGT};
 use crate::moves::moves::Move;
 
+use super::history::update_history;
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
 use super::see::see;
@@ -211,6 +212,7 @@ fn pvs(
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
     let static_eval = evaluate(board);
+    let hist_bonus = (155 * depth).min(2000) as i64;
 
     if !is_root && !is_pv_node && !in_check {
         // Reverse futility pruning
@@ -253,7 +255,7 @@ fn pvs(
     // pruned
     let mut moves = generate_psuedolegal_moves(board, MGT::All);
     let mut legal_moves_searched = 0;
-    moves.score_moves(board, table_move, &info.killer_moves[ply as usize]);
+    moves.score_moves(board, table_move, &info.killer_moves[ply as usize], &info.history);
     info.search_stats.nodes_searched += 1;
 
     // Start of search
@@ -297,7 +299,7 @@ fn pvs(
             // On the first move, just do a full depth search
             eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false, halt.clone());
         } else {
-            if legal_moves_searched < LMR_THRESHOLD  || depth < MIN_LMR_DEPTH {
+            if legal_moves_searched < LMR_THRESHOLD || depth < MIN_LMR_DEPTH {
                 node_pvs.clear();
                 eval = -pvs(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node, halt.clone());
             } else {
@@ -338,12 +340,14 @@ fn pvs(
                 let capture = board.piece_at(m.dest_square());
                 // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
                 // Also don't store killers that we have already stored
-                if capture.is_none() && best_move != info.killer_moves[ply as usize][0] {
+                if capture.is_none() {
                     store_killer_move(ply, m, info);
+                    update_history(&mut info.history, m, hist_bonus, board.to_move);
                 }
                 break;
             }
         }
+        update_history(&mut info.history, m, -hist_bonus, board.to_move);
     }
 
     if legal_moves_searched == 0 {

@@ -7,7 +7,6 @@ pub const MAX_LEN: usize = 500;
 pub struct History {
     pub arr: [u64; MAX_LEN],
     pub len: usize,
-    curr: usize,
 }
 
 impl History {
@@ -48,7 +47,6 @@ impl Default for History {
         Self {
             arr: unsafe { arr.assume_init() },
             len: 0,
-            curr: 0,
         }
     }
 }
