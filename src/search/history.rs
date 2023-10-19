@@ -1,6 +1,28 @@
 use crate::{moves::moves::Move, types::pieces::Color};
 
-pub fn update_history(history: &mut [[[i64; 64]; 64]; 2], m: Move, bonus: i64, side: Color) {
-    let i = &mut history[side as usize][m.origin_square().idx()][m.dest_square().idx()];
-    *i += bonus - *i * bonus.abs() / i64::from(i16::MAX);
+const MAX_HIST_VAL: i32 = i16::MAX as i32;
+
+#[derive(Clone)]
+pub struct MoveHistory {
+    // Indexed [side][src sq][dest sq]
+    search_history: [[[i32; 64]; 64]; 2],
+}
+
+impl MoveHistory {
+    pub fn update_history(&mut self, m: Move, bonus: i32, side: Color) {
+        let i = &mut self.search_history[side as usize][m.origin_square().idx()][m.dest_square().idx()];
+        *i += bonus - *i * bonus.abs() / MAX_HIST_VAL;
+    }
+
+    pub fn get_history(&self, m: Move, side: Color) -> i32 {
+        self.search_history[side as usize][m.origin_square().idx()][m.dest_square().idx()]
+    }
+}
+
+impl Default for MoveHistory {
+    fn default() -> Self {
+        Self {
+            search_history: [[[0; 64]; 64]; 2],
+        }
+    }
 }

@@ -9,7 +9,6 @@ use crate::eval::eval::evaluate;
 use crate::moves::movegenerator::{generate_psuedolegal_moves, MGT};
 use crate::moves::moves::Move;
 
-use super::history::update_history;
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
 use super::see::see;
@@ -212,7 +211,8 @@ fn pvs(
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
     let static_eval = evaluate(board);
-    let hist_bonus = (155 * depth).min(2000) as i64;
+    // TODO:  something like 10 or 20 depth * depth here
+    let hist_bonus = (155 * depth).min(2000);
 
     if !is_root && !is_pv_node && !in_check {
         // Reverse futility pruning
@@ -221,16 +221,12 @@ fn pvs(
         }
 
         // Null move pruning (NMP)
-        if board.has_non_pawns(board.to_move)
-            && depth >= MIN_NMP_DEPTH
-            && static_eval >= beta
-            && board.prev_move != Move::NULL
-        {
+        if board.has_non_pawns(board.to_move) && depth >= MIN_NMP_DEPTH && static_eval >= beta && board.can_nmp() {
             let mut node_pvs = Vec::new();
             let mut new_b = board.to_owned();
             new_b.to_move = !new_b.to_move;
             new_b.en_passant_square = None;
-            new_b.prev_move = Move::NULL;
+            new_b.prev_moves.push(Move::NULL);
             let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
             let mut null_eval = -pvs(depth - r, -beta, -beta + 1, &mut node_pvs, info, &new_b, !cut_node, halt.clone());
             if null_eval >= beta {
@@ -255,7 +251,7 @@ fn pvs(
     // pruned
     let mut moves = generate_psuedolegal_moves(board, MGT::All);
     let mut legal_moves_searched = 0;
-    moves.score_moves(board, table_move, &info.killer_moves[ply as usize], &info.history);
+    moves.score_moves(board, table_move, &info.killer_moves[ply as usize], info);
     info.search_stats.nodes_searched += 1;
 
     // Start of search
@@ -342,12 +338,13 @@ fn pvs(
                 // Also don't store killers that we have already stored
                 if capture.is_none() {
                     store_killer_move(ply, m, info);
-                    update_history(&mut info.history, m, hist_bonus, board.to_move);
+                    info.history.update_history(m, hist_bonus, board.to_move);
                 }
                 break;
             }
         }
-        update_history(&mut info.history, m, -hist_bonus, board.to_move);
+        // TODO: Try only doing this for quiet moves
+        info.history.update_history(m, -hist_bonus, board.to_move);
     }
 
     if legal_moves_searched == 0 {

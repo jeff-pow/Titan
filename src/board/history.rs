@@ -4,12 +4,12 @@ pub const MAX_LEN: usize = 500;
 #[derive(Clone)]
 /// u64list elements contains a move and an i32 where a score can be stored later to be used in move ordering
 /// for efficient search pruning
-pub struct History {
+pub struct BoardHistory {
     pub arr: [u64; MAX_LEN],
     pub len: usize,
 }
 
-impl History {
+impl BoardHistory {
     #[inline(always)]
     pub fn push(&mut self, hash: u64) {
         debug_assert!(self.len < MAX_LEN);
@@ -21,16 +21,16 @@ impl History {
     }
 
     #[inline(always)]
-    pub fn append(&mut self, other: &History) {
+    pub fn append(&mut self, other: &BoardHistory) {
         for idx in 0..other.len {
             self.push(other.arr[idx]);
         }
     }
 }
 
-impl FromIterator<u64> for History {
+impl FromIterator<u64> for BoardHistory {
     fn from_iter<I: IntoIterator<Item = u64>>(iter: I) -> Self {
-        let mut history = History::default();
+        let mut history = BoardHistory::default();
         for hash in iter {
             history.arr[history.len] = hash;
             history.len += 1;
@@ -39,7 +39,7 @@ impl FromIterator<u64> for History {
     }
 }
 
-impl Default for History {
+impl Default for BoardHistory {
     fn default() -> Self {
         // Uninitialized memory is much faster than initializing it when the important stuff will
         // be written over anyway ;)
