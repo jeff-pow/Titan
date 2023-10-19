@@ -3,7 +3,10 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
-    moves::{movegenerator::MoveGenerator, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
+    moves::{
+        movegenerator::MoveGenerator, movelist::MoveList, moves::Castle, moves::Direction::*, moves::Move,
+        moves::Promotion,
+    },
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName, NUM_PIECES},
@@ -11,7 +14,7 @@ use crate::{
     },
 };
 
-use super::{history::History, zobrist::Zobrist};
+use super::{history::BoardHistory, zobrist::Zobrist};
 
 #[derive(Clone)]
 pub struct Board {
@@ -26,10 +29,10 @@ pub struct Board {
     pub num_moves: i32,
     pub half_moves: i32,
     pub zobrist_hash: u64,
-    pub history: History,
+    pub history: BoardHistory,
     pub zobrist_consts: Arc<Zobrist>,
     pub mg: Arc<MoveGenerator>,
-    pub prev_move: Move,
+    pub prev_moves: MoveList,
 }
 
 impl Default for Board {
@@ -47,10 +50,10 @@ impl Default for Board {
             num_moves: 0,
             half_moves: 0,
             zobrist_hash: 0,
-            history: History::default(),
+            history: BoardHistory::default(),
             zobrist_consts: Arc::new(Zobrist::default()),
             mg: Arc::new(MoveGenerator::default()),
-            prev_move: Move::NULL,
+            prev_moves: MoveList::default(),
         }
     }
 }
@@ -59,6 +62,11 @@ impl Board {
     #[inline(always)]
     pub fn can_en_passant(&self) -> bool {
         self.en_passant_square.is_some()
+    }
+
+    #[inline(always)]
+    pub fn can_nmp(&self) -> bool {
+        self.prev_moves.arr[self.prev_moves.len()].m != Move::NULL
     }
 
     #[inline(always)]
@@ -119,6 +127,17 @@ impl Board {
     #[inline(always)]
     pub fn color_at(&self, sq: Square) -> Option<Color> {
         self.array_board[sq.idx()].map(|piece| piece.color)
+    }
+
+    #[inline(always)]
+    pub fn color_by_bitboards(&self, sq: Square) -> Option<Color> {
+        if sq.bitboard() & self.color_occupancies(Color::White) != Bitboard::EMPTY {
+            Some(Color::White)
+        } else if sq.bitboard() & self.color_occupancies(Color::Black) != Bitboard::EMPTY {
+            Some(Color::Black)
+        } else {
+            None
+        }
     }
 
     #[inline(always)]
@@ -255,7 +274,7 @@ impl Board {
 
         let origin = m.origin_square();
         let dest = m.dest_square();
-        let color = self.color_at(origin);
+        let color = self.color_by_bitboards(origin);
         let piece = self.piece_at(origin);
 
         if piece.is_none() {
@@ -263,7 +282,7 @@ impl Board {
         }
 
         let origin_color = color.unwrap();
-        let dest_color = self.color_at(dest);
+        let dest_color = self.color_by_bitboards(dest);
 
         if dest_color.is_some() && dest_color.unwrap() == origin_color {
             return false;
@@ -276,7 +295,7 @@ impl Board {
                     return self.occupancies().square_is_empty(dest);
                 } else {
                     let attacks = self.mg.pawn_attacks(origin, origin_color);
-                    let enemy_color = self.color_at(origin).unwrap();
+                    let enemy_color = self.color_by_bitboards(origin).unwrap();
                     return attacks & m.dest_square().bitboard() & self.color_occupancies(!enemy_color)
                         != Bitboard::EMPTY;
                 }
@@ -445,7 +464,7 @@ impl Board {
 
         self.add_to_history();
 
-        self.prev_move = m;
+        self.prev_moves.push(m);
 
         assert_eq!(Bitboard::EMPTY, self.color_occupancies(Color::White) & self.color_occupancies(Color::Black));
         let w = self.color_occupancies(Color::White);
@@ -471,7 +490,7 @@ impl Board {
 /// Function checks for the presence of the board in the game. If the board position will have occurred three times,
 /// returns true indicating the position would be a stalemate due to the threefold repetition rule
 pub fn check_for_3x_repetition(board: &Board) -> bool {
-    let arr = board.history.arr;
+    let arr = &board.history.arr;
     let len = board.history.len;
     let mut count = 0;
     for i in (0..len).rev() {
