@@ -130,38 +130,6 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn color_by_bitboards(&self, sq: Square) -> Option<Color> {
-        if sq.bitboard() & self.color_occupancies(Color::White) != Bitboard::EMPTY {
-            Some(Color::White)
-        } else if sq.bitboard() & self.color_occupancies(Color::Black) != Bitboard::EMPTY {
-            Some(Color::Black)
-        } else {
-            None
-        }
-    }
-
-    #[inline(always)]
-    pub fn name_by_bitboards(&self, sq: Square) -> Option<PieceName> {
-        if sq.bitboard() & self.occupancies() == Bitboard::EMPTY {
-            return None;
-        }
-        let color = if sq.bitboard() & self.color_occupancies(Color::White) != Bitboard::EMPTY {
-            Color::White
-        } else {
-            Color::Black
-        };
-        for p in PieceName::iter().rev() {
-            let bb = self.bitboard(color, p);
-            for s in bb {
-                if sq.bitboard() & s.bitboard() != Bitboard::EMPTY {
-                    return Some(p);
-                }
-            }
-        }
-        unreachable!()
-    }
-
-    #[inline(always)]
     pub fn piece_at(&self, sq: Square) -> Option<PieceName> {
         self.array_board[sq.idx()].map(|piece| piece.name)
     }
@@ -274,7 +242,7 @@ impl Board {
 
         let origin = m.origin_square();
         let dest = m.dest_square();
-        let color = self.color_by_bitboards(origin);
+        let color = self.color_at(origin);
         let piece = self.piece_at(origin);
 
         if piece.is_none() {
@@ -282,7 +250,7 @@ impl Board {
         }
 
         let origin_color = color.unwrap();
-        let dest_color = self.color_by_bitboards(dest);
+        let dest_color = self.color_at(dest);
 
         if dest_color.is_some() && dest_color.unwrap() == origin_color {
             return false;
@@ -295,7 +263,7 @@ impl Board {
                     return self.occupancies().square_is_empty(dest);
                 } else {
                     let attacks = self.mg.pawn_attacks(origin, origin_color);
-                    let enemy_color = self.color_by_bitboards(origin).unwrap();
+                    let enemy_color = self.color_at(origin).unwrap();
                     return attacks & m.dest_square().bitboard() & self.color_occupancies(!enemy_color)
                         != Bitboard::EMPTY;
                 }
