@@ -226,7 +226,7 @@ fn pvs(
             let mut new_b = board.to_owned();
             new_b.to_move = !new_b.to_move;
             new_b.en_passant_square = None;
-            new_b.prev_moves.push(Move::NULL);
+            new_b.prev_move = Move::NULL;
             let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
             let mut null_eval = -pvs(depth - r, -beta, -beta + 1, &mut node_pvs, info, &new_b, !cut_node, halt.clone());
             if null_eval >= beta {

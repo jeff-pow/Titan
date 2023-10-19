@@ -32,7 +32,7 @@ pub struct Board {
     pub history: BoardHistory,
     pub zobrist_consts: Arc<Zobrist>,
     pub mg: Arc<MoveGenerator>,
-    pub prev_moves: MoveList,
+    pub prev_move: Move,
 }
 
 impl Default for Board {
@@ -53,7 +53,7 @@ impl Default for Board {
             history: BoardHistory::default(),
             zobrist_consts: Arc::new(Zobrist::default()),
             mg: Arc::new(MoveGenerator::default()),
-            prev_moves: MoveList::default(),
+            prev_move: Move::NULL,
         }
     }
 }
@@ -66,7 +66,7 @@ impl Board {
 
     #[inline(always)]
     pub fn can_nmp(&self) -> bool {
-        self.prev_moves.arr[self.prev_moves.len()].m != Move::NULL
+        self.prev_move != Move::NULL
     }
 
     #[inline(always)]
@@ -432,7 +432,7 @@ impl Board {
 
         self.add_to_history();
 
-        self.prev_moves.push(m);
+        self.prev_move = m;
 
         assert_eq!(Bitboard::EMPTY, self.color_occupancies(Color::White) & self.color_occupancies(Color::Black));
         let w = self.color_occupancies(Color::White);
