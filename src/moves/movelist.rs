@@ -144,16 +144,16 @@ impl MoveList {
                     board.piece_at(m.dest_square()).expect("There is a piece here")
                 };
                 if see(board, *m, -PieceName::Pawn.value()) {
-                    *score = GOOD_CAPTURE + MVV_LVA[piece_moving as usize][captured_piece as usize];
+                    *score = GOOD_CAPTURE + MVV_LVA[piece_moving.idx()][captured_piece.idx()];
                 } else {
-                    *score = BAD_CAPTURE + MVV_LVA[piece_moving as usize][captured_piece as usize];
+                    *score = BAD_CAPTURE + MVV_LVA[piece_moving.idx()][captured_piece.idx()];
                 }
             } else if killers[0] == *m {
                 *score = KILLER_ONE;
             } else if killers[1] == *m {
                 *score = KILLER_TWO;
             } else {
-                *score = history[board.to_move as usize][m.origin_square().idx()][m.dest_square().idx()] as i32;
+                *score = history[board.to_move.idx()][m.origin_square().idx()][m.dest_square().idx()] as i32;
             }
         }
     }

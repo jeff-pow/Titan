@@ -43,12 +43,12 @@ impl GameTime {
     /// Returns None if player is out of time and should play absolutely anything to keep
     /// themselves alive
     pub fn recommended_time(&mut self, side: Color) -> Duration {
-        let clock = self.time_remaining[side as usize];
+        let clock = self.time_remaining[side.idx()];
         // If engine has less than 50 ms to make a move, play anything to keep itself alive
         if clock < GUI_DELAY {
             return Duration::ZERO;
         }
-        let increment = self.time_inc[side as usize];
+        let increment = self.time_inc[side.idx()];
         let recommended_time = clock.div_f64(20.);
         let recommended_time = recommended_time.min(MAX_THINK_TIME);
         recommended_time + increment

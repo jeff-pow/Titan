@@ -116,7 +116,7 @@ pub(crate) fn gen_pawn_attack_boards() -> [[Bitboard; 64]; 2] {
         if let Some(w2) = bb_square.checked_shift(NorthWest) {
             w |= w2;
         }
-        arr[Color::White as usize][sq.idx()] = w;
+        arr[Color::White.idx()][sq.idx()] = w;
 
         let mut b = Bitboard::EMPTY;
         if let Some(b1) = bb_square.checked_shift(SouthWest) {
@@ -125,7 +125,7 @@ pub(crate) fn gen_pawn_attack_boards() -> [[Bitboard; 64]; 2] {
         if let Some(b2) = bb_square.checked_shift(SouthEast) {
             b |= b2;
         }
-        arr[Color::Black as usize][sq.idx()] = b;
+        arr[Color::Black.idx()][sq.idx()] = b;
     }
     arr
 }
