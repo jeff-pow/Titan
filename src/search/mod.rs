@@ -15,6 +15,7 @@ use self::pvs::{LMR_THRESHOLD, MIN_LMR_DEPTH};
 use self::{game_time::GameTime, search_stats::SearchStats};
 
 pub(crate) mod game_time;
+pub mod history;
 pub mod killers;
 pub(crate) mod pvs;
 pub(crate) mod quiescence;
@@ -35,6 +36,7 @@ pub struct SearchInfo {
     pub sel_depth: i32,
     pub mg: MoveGenerator,
     pub lmr_reductions: LmrReductions,
+    pub history: [[[i64; 64]; 64]; 2],
 }
 
 impl Default for SearchInfo {
@@ -52,6 +54,7 @@ impl Default for SearchInfo {
             sel_depth: 0,
             mg: MoveGenerator::default(),
             lmr_reductions: lmr_reductions(),
+            history: [[[0; 64]; 64]; 2],
         }
     }
 }

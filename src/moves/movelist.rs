@@ -116,7 +116,13 @@ impl MoveList {
         self.swap(max_idx, idx);
     }
 
-    pub fn score_moves(&mut self, board: &Board, table_move: Move, killers: &[Move; NUM_KILLER_MOVES]) {
+    pub fn score_moves(
+        &mut self,
+        board: &Board,
+        table_move: Move,
+        killers: &[Move; NUM_KILLER_MOVES],
+        history: &[[[i64; 64]; 64]; 2],
+    ) {
         for i in 0..self.len {
             let entry = self.get_mut(i);
             let m = &mut entry.m;
@@ -147,8 +153,7 @@ impl MoveList {
             } else if killers[1] == *m {
                 *score = KILLER_TWO;
             } else {
-                // TODO: History heuristic someday...
-                continue;
+                *score = history[board.to_move as usize][m.origin_square().idx()][m.dest_square().idx()] as i32;
             }
         }
     }
