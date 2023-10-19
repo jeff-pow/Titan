@@ -38,6 +38,8 @@ pub struct NetworkState {
     accumulator: Accumulator,
 }
 
+const COLOR_OFFSET: usize = 64 * 6;
+const PIECE_OFFSET: usize = 64;
 fn feature_idx(color: Color, piece: PieceName, sq: Square) -> usize {
-    color.idx() * 64 * 6 + piece.idx() * 64 + sq.idx()
+    color.idx() * COLOR_OFFSET + piece.idx() * PIECE_OFFSET + sq.idx()
 }
