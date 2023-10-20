@@ -1,17 +1,10 @@
-use strum::IntoEnumIterator;
-
-use crate::{
-    board::board::Board,
-    types::{
-        pieces::{Color, PieceName},
-        square::Square,
-    },
+use crate::types::{
+    pieces::{Color, PieceName},
+    square::Square,
 };
 
 pub const INPUT_SIZE: usize = 768;
 const HIDDEN_SIZE: usize = 1536;
-const SCALE: i32 = 400;
-const DIVISOR: i32 = 255 * 64;
 pub static NETWORK: Network = Network::new();
 #[derive(Clone, Copy)]
 pub struct Accumulator([[i16; HIDDEN_SIZE]; 2]);
@@ -26,12 +19,12 @@ impl Accumulator {
         self.0[color.idx()]
     }
 
-    pub fn add_feature(&mut self, net: &Network, piece: PieceName, color: Color, sq: Square) {
+    pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
         let white_idx = feature_idx(color, piece, sq);
         let black_idx = feature_idx(!color, piece, sq.flip_vertical());
 
-        activate(&mut self.get(Color::White), &net.feature_weights, white_idx * HIDDEN_SIZE);
-        activate(&mut self.get(Color::Black), &net.feature_weights, black_idx * HIDDEN_SIZE);
+        activate(&mut self.get(Color::White), &NETWORK.feature_weights, white_idx * HIDDEN_SIZE);
+        activate(&mut self.get(Color::Black), &NETWORK.feature_weights, black_idx * HIDDEN_SIZE);
     }
 
     pub fn remove_feature(&mut self, net: &Network, piece: PieceName, color: Color, sq: Square) {
@@ -55,12 +48,12 @@ impl Accumulator {
         deactivate(&mut self.get(Color::Black), &net.feature_weights, black_from * HIDDEN_SIZE);
     }
 
-    pub(crate) fn reset(&mut self, net: &Network) {
+    pub(crate) fn reset(&mut self) {
         for (idx, x) in self.0[Color::White.idx()].iter_mut().enumerate() {
-            *x = net.feature_bias[idx];
+            *x = NETWORK.feature_bias[idx];
         }
         for (idx, x) in self.0[Color::Black.idx()].iter_mut().enumerate() {
-            *x = net.feature_bias[idx];
+            *x = NETWORK.feature_bias[idx];
         }
     }
 }
@@ -76,13 +69,12 @@ pub struct Network {
 
 impl Network {
     pub const fn new() -> Self {
-        let net = Self {
+        Self {
             feature_weights: [0; INPUT_SIZE * HIDDEN_SIZE],
             feature_bias: [0; HIDDEN_SIZE],
             output_weights: [0; HIDDEN_SIZE * 2],
             ouput_bias: 0,
-        };
-        net
+        }
     }
 
     pub fn evaluate(&self, acc: &Accumulator, to_move: Color) -> i32 {

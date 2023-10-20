@@ -6,15 +6,8 @@ pub mod moves;
 pub mod search;
 pub mod types;
 
-use board::fen::{build_board, STARTING_FEN};
-use eval::nnue::Network;
-
-use crate::eval::nnue::NETWORK;
+use engine::uci::main_loop;
 
 fn main() {
-    let net = Network::new();
-    let mut board = build_board(STARTING_FEN);
-    board.refresh_accumulators(&net);
-    println!("{}", NETWORK.evaluate(&board.accumulator, board.to_move));
-    // main_loop();
+    main_loop();
 }

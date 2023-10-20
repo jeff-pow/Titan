@@ -3,7 +3,7 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
-    eval::nnue::{Accumulator, Network, NETWORK},
+    eval::nnue::{Accumulator, NETWORK},
     moves::{movegenerator::MoveGenerator, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
     types::{
         bitboard::Bitboard,
@@ -164,7 +164,7 @@ impl Board {
         self.occupancies |= sq.bitboard();
         self.color_occupancies[color.idx()] |= sq.bitboard();
 
-        self.accumulator.add_feature(&NETWORK, piece_type, color, sq);
+        self.accumulator.add_feature(piece_type, color, sq);
     }
 
     #[inline(always)]
@@ -471,13 +471,13 @@ impl Board {
         }
     }
 
-    pub fn refresh_accumulators(&mut self, net: &Network) {
-        self.accumulator.reset(net);
+    pub fn refresh_accumulators(&mut self) {
+        self.accumulator.reset();
         for c in Color::iter() {
             for p in PieceName::iter() {
                 let bb = self.bitboard(c, p);
                 for sq in bb {
-                    self.accumulator.add_feature(net, p, c, sq)
+                    self.accumulator.add_feature(p, c, sq)
                 }
             }
         }

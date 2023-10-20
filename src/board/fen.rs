@@ -115,6 +115,7 @@ pub fn build_board(fen_string: &str) -> Board {
     board.gen_occupancies();
     board.gen_color_occupancies(Color::White);
     board.gen_color_occupancies(Color::Black);
+    board.refresh_accumulators();
     board
 }
 
