@@ -45,27 +45,43 @@ pub struct Network {
     pub ouput_bias: i16,
 }
 
+#[repr(C)]
 pub struct NetworkState {
     inputs: [[i16; INPUT_SIZE]; 2],
     accumulator: Accumulator,
-    net: Arc<Network>,
+    net: Network,
 }
 
 impl NetworkState {
     pub fn new(board: &Board) -> Box<Self> {
-        let mut net: Box<Self> = unsafe {
-            let layout = std::alloc::Layout::new::<Self>();
-            let ptr = std::alloc::alloc_zeroed(layout);
-            if ptr.is_null() {
-                std::alloc::handle_alloc_error(layout);
+        // let mut net: Box<Self> = unsafe {
+        //     let layout = std::alloc::Layout::new::<Self>();
+        //     let ptr = std::alloc::alloc_zeroed(layout);
+        //     if ptr.is_null() {
+        //         std::alloc::handle_alloc_error(layout);
+        //     }
+        //     Box::from_raw(ptr.cast())
+        // };
+        let net = Self {
+            inputs: [[0; INPUT_SIZE]; 2],
+            accumulator: Accumulator {
+                v: [[0; LAYER_1_SIZE]; 2],
+            },
+            net: Network {
+                feature_weights: [0; 768  * (768 * 2)],
+                feature_bias: [0; 768 * 2],
+                output_weights: [0; (768 * 2) * 2],
+                ouput_bias: 0,
             }
-            Box::from_raw(ptr.cast())
         };
+        let mut net = Box::from(net);
 
         net.refresh_accumulators(board, Update::BOTH);
 
         net
     }
+
+
 
     pub fn refresh_accumulators(&mut self, board: &Board, update: Update) {
         if update.white {
@@ -97,17 +113,21 @@ impl NetworkState {
             Activation::Activate => {
                 if update.white {
                     activate(&mut acc.get(Color::White), &self.net.feature_weights, white_idx * LAYER_1_SIZE);
+                    self.inputs[Color::White.idx()][white_idx] = 1;
                 }
                 if update.black {
                     activate(&mut acc.get(Color::Black), &self.net.feature_weights, black_idx * LAYER_1_SIZE);
+                    self.inputs[Color::Black.idx()][black_idx] = 1;
                 }
             }
             Activation::Deactivate => {
                 if update.white {
                     deactivate(&mut acc.get(Color::White), &self.net.feature_weights, white_idx * LAYER_1_SIZE);
+                    self.inputs[Color::White.idx()][white_idx] = 0;
                 }
                 if update.black {
                     deactivate(&mut acc.get(Color::Black), &self.net.feature_weights, black_idx * LAYER_1_SIZE);
+                    self.inputs[Color::Black.idx()][black_idx] = 0;
                 }
             }
         }
@@ -170,8 +190,6 @@ impl NetworkState {
             deactivate(&mut acc.get(Color::Black), &self.net.feature_weights, black_from * LAYER_1_SIZE);
         }
 
-        self.assert_valid(white_from, black_from, (color, piece, from), update, act);
-        self.assert_valid(white_to, black_to, (color, piece, to), update, act);
         if update.white {
             self.inputs[Color::White.idx()][white_from] = 0;
         }
@@ -184,6 +202,8 @@ impl NetworkState {
         if update.black {
             self.inputs[Color::Black.idx()][black_to] = 1;
         }
+        self.assert_valid(white_from, black_from, (color, piece, from), update, act);
+        self.assert_valid(white_to, black_to, (color, piece, to), update, act);
     }
 
     pub fn evaluate(&self, to_move: Color) -> i32 {
