@@ -3,6 +3,7 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
+    eval::nnue::{Accumulator, Network, NETWORK},
     moves::{movegenerator::MoveGenerator, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
     types::{
         bitboard::Bitboard,
@@ -30,6 +31,7 @@ pub struct Board {
     pub zobrist_consts: Arc<Zobrist>,
     pub mg: Arc<MoveGenerator>,
     pub prev_move: Move,
+    pub accumulator: Accumulator,
 }
 
 impl Default for Board {
@@ -51,6 +53,7 @@ impl Default for Board {
             zobrist_consts: Arc::new(Zobrist::default()),
             mg: Arc::new(MoveGenerator::default()),
             prev_move: Move::NULL,
+            accumulator: Accumulator::default(),
         }
     }
 }
@@ -160,6 +163,8 @@ impl Board {
         self.material_val[color.idx()] += piece_type.value();
         self.occupancies |= sq.bitboard();
         self.color_occupancies[color.idx()] |= sq.bitboard();
+
+        self.accumulator.add_feature(&NETWORK, piece_type, color, sq);
     }
 
     #[inline(always)]
@@ -170,6 +175,7 @@ impl Board {
             self.material_val[piece.color.idx()] -= piece.value();
             self.occupancies &= !sq.bitboard();
             self.color_occupancies[piece.color.idx()] &= !sq.bitboard();
+            self.accumulator.remove_feature(&NETWORK, piece.name, piece.color, sq);
         }
     }
 
@@ -461,6 +467,18 @@ impl Board {
                 dbg!("{:?} {:?}", color, piece);
                 dbg!(self.bitboards[color.idx()][piece.idx()]);
                 dbg!("\n");
+            }
+        }
+    }
+
+    pub fn refresh_accumulators(&mut self, net: &Network) {
+        self.accumulator.reset(net);
+        for c in Color::iter() {
+            for p in PieceName::iter() {
+                let bb = self.bitboard(c, p);
+                for sq in bb {
+                    self.accumulator.add_feature(net, p, c, sq)
+                }
             }
         }
     }
