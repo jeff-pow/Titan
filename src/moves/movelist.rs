@@ -152,9 +152,7 @@ impl MoveList {
             } else if killers[1] == *m {
                 *score = KILLER_TWO;
             } else {
-
                 *score = info.history.get_history(*m, board.to_move);
-
             }
         }
     }

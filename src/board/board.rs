@@ -3,12 +3,8 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
-
-    moves::{
-        movegenerator::MoveGenerator, movelist::MoveList, moves::Castle, moves::Direction::*, moves::Move,
-        moves::Promotion,
-    },
-
+    eval::nnue::{Accumulator, NETWORK},
+    moves::{movegenerator::MoveGenerator, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName, NUM_PIECES},
