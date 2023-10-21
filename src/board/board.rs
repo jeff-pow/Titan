@@ -3,10 +3,12 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
+
     moves::{
         movegenerator::MoveGenerator, movelist::MoveList, moves::Castle, moves::Direction::*, moves::Move,
         moves::Promotion,
     },
+
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName, NUM_PIECES},
@@ -33,6 +35,7 @@ pub struct Board {
     pub zobrist_consts: Arc<Zobrist>,
     pub mg: Arc<MoveGenerator>,
     pub prev_move: Move,
+    pub accumulator: Accumulator,
 }
 
 impl Default for Board {
@@ -54,6 +57,7 @@ impl Default for Board {
             zobrist_consts: Arc::new(Zobrist::default()),
             mg: Arc::new(MoveGenerator::default()),
             prev_move: Move::NULL,
+            accumulator: Accumulator::default(),
         }
     }
 }
@@ -87,7 +91,7 @@ impl Board {
 
     #[inline(always)]
     pub fn bitboard(&self, side: Color, piece: PieceName) -> Bitboard {
-        self.bitboards[side as usize][piece as usize]
+        self.bitboards[side.idx()][piece.idx()]
     }
 
     #[inline(always)]
@@ -97,16 +101,14 @@ impl Board {
 
     #[inline(always)]
     pub fn square_occupied(&self, piece_type: PieceName, color: Color, sq: Square) -> bool {
-        self.bitboards[color as usize][piece_type as usize].square_occupied(sq)
+        self.bitboards[color.idx()][piece_type.idx()].square_occupied(sq)
     }
 
     #[inline(always)]
     pub fn gen_color_occupancies(&mut self, color: Color) {
         // It's interesting to me that xor and bitwise or both seem to work here, only one piece should
         // be on a square at a time though so ¯\_(ツ)_/¯
-        self.color_occupancies[color as usize] = self.bitboards[color as usize]
-            .iter()
-            .fold(Bitboard::EMPTY, |a, b| a ^ *b)
+        self.color_occupancies[color.idx()] = self.bitboards[color.idx()].iter().fold(Bitboard::EMPTY, |a, b| a ^ *b)
     }
 
     #[inline(always)]
@@ -116,7 +118,7 @@ impl Board {
 
     #[inline(always)]
     pub fn color_occupancies(&self, color: Color) -> Bitboard {
-        self.color_occupancies[color as usize]
+        self.color_occupancies[color.idx()]
     }
 
     #[inline(always)]
@@ -137,28 +139,31 @@ impl Board {
     #[inline(always)]
     pub fn has_non_pawns(&self, side: Color) -> bool {
         self.occupancies()
-            ^ self.bitboards[side as usize][PieceName::King as usize]
-            ^ self.bitboards[side as usize][PieceName::Pawn as usize]
+            ^ self.bitboards[side.idx()][PieceName::King.idx()]
+            ^ self.bitboards[side.idx()][PieceName::Pawn.idx()]
             != Bitboard::EMPTY
     }
 
     #[inline(always)]
     pub fn place_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
-        self.bitboards[color as usize][piece_type as usize] |= sq.bitboard();
+        self.bitboards[color.idx()][piece_type.idx()] |= sq.bitboard();
         self.array_board[sq.idx()] = Some(Piece::new(piece_type, color));
-        self.material_val[color as usize] += piece_type.value();
+        self.material_val[color.idx()] += piece_type.value();
         self.occupancies |= sq.bitboard();
-        self.color_occupancies[color as usize] |= sq.bitboard();
+        self.color_occupancies[color.idx()] |= sq.bitboard();
+
+        self.accumulator.add_feature(piece_type, color, sq);
     }
 
     #[inline(always)]
     fn remove_piece(&mut self, sq: Square) {
         if let Some(piece) = self.array_board[sq.idx()] {
             self.array_board[sq.idx()] = None;
-            self.bitboards[piece.color as usize][piece.name as usize] &= !sq.bitboard();
-            self.material_val[piece.color as usize] -= piece.value();
+            self.bitboards[piece.color.idx()][piece.name.idx()] &= !sq.bitboard();
+            self.material_val[piece.color.idx()] -= piece.value();
             self.occupancies &= !sq.bitboard();
-            self.color_occupancies[piece.color as usize] &= !sq.bitboard();
+            self.color_occupancies[piece.color.idx()] &= !sq.bitboard();
+            self.accumulator.remove_feature(&NETWORK, piece.name, piece.color, sq);
         }
     }
 
@@ -195,7 +200,7 @@ impl Board {
     #[inline(always)]
     // Function left with lots of variables to improve debugability...
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
-        let attacker_occupancy = self.bitboards[attacker as usize];
+        let attacker_occupancy = self.bitboards[attacker.idx()];
         let occupancy = self.occupancies();
         let pawn_attacks = self.mg.pawn_attacks(sq, !attacker);
         let knight_attacks = self.mg.knight_attacks(sq);
@@ -204,12 +209,12 @@ impl Board {
         let queen_attacks = rook_attacks | bishop_attacks;
         let king_attacks = self.mg.king_attacks(sq);
 
-        let king_attacks_overlap = king_attacks & attacker_occupancy[PieceName::King as usize];
-        let queen_attacks_overlap = queen_attacks & attacker_occupancy[PieceName::Queen as usize];
-        let rook_attacks_overlap = rook_attacks & attacker_occupancy[PieceName::Rook as usize];
-        let bishop_attacks_overlap = bishop_attacks & attacker_occupancy[PieceName::Bishop as usize];
-        let knight_attacks_overlap = knight_attacks & attacker_occupancy[PieceName::Knight as usize];
-        let pawn_attacks_overlap = pawn_attacks & attacker_occupancy[PieceName::Pawn as usize];
+        let king_attacks_overlap = king_attacks & attacker_occupancy[PieceName::King.idx()];
+        let queen_attacks_overlap = queen_attacks & attacker_occupancy[PieceName::Queen.idx()];
+        let rook_attacks_overlap = rook_attacks & attacker_occupancy[PieceName::Rook.idx()];
+        let bishop_attacks_overlap = bishop_attacks & attacker_occupancy[PieceName::Bishop.idx()];
+        let knight_attacks_overlap = knight_attacks & attacker_occupancy[PieceName::Knight.idx()];
+        let pawn_attacks_overlap = pawn_attacks & attacker_occupancy[PieceName::Pawn.idx()];
 
         let is_king_attack = king_attacks_overlap != Bitboard::EMPTY;
         let is_queen_attack = queen_attacks_overlap != Bitboard::EMPTY;
@@ -228,8 +233,8 @@ impl Board {
     #[inline(always)]
     pub fn material_balance(&self) -> i32 {
         match self.to_move {
-            Color::White => self.material_val[Color::White as usize] - self.material_val[Color::Black as usize],
-            Color::Black => self.material_val[Color::Black as usize] - self.material_val[Color::White as usize],
+            Color::White => self.material_val[Color::White.idx()] - self.material_val[Color::Black.idx()],
+            Color::Black => self.material_val[Color::Black.idx()] - self.material_val[Color::White.idx()],
         }
     }
 
@@ -448,8 +453,20 @@ impl Board {
         for color in &[Color::White, Color::Black] {
             for piece in PieceName::iter() {
                 dbg!("{:?} {:?}", color, piece);
-                dbg!(self.bitboards[*color as usize][piece as usize]);
+                dbg!(self.bitboards[color.idx()][piece.idx()]);
                 dbg!("\n");
+            }
+        }
+    }
+
+    pub fn refresh_accumulators(&mut self) {
+        self.accumulator.reset();
+        for c in Color::iter() {
+            for p in PieceName::iter() {
+                let bb = self.bitboard(c, p);
+                for sq in bb {
+                    self.accumulator.add_feature(p, c, sq)
+                }
             }
         }
     }
@@ -562,14 +579,14 @@ mod board_tests {
     fn test_place_piece() {
         let mut board = Board::default();
         board.place_piece(Rook, Color::White, Square(0));
-        assert!(board.bitboards[Color::White as usize][Rook as usize].square_occupied(Square(0)));
+        assert!(board.bitboards[Color::White.idx()][Rook.idx()].square_occupied(Square(0)));
     }
 
     #[test]
     fn test_remove_piece() {
         let mut board = fen::build_board(fen::STARTING_FEN);
         board.remove_piece(Square(0));
-        assert!(board.bitboards[Color::White as usize][Rook as usize].square_is_empty(Square(0)));
+        assert!(board.bitboards[Color::White.idx()][Rook.idx()].square_is_empty(Square(0)));
         assert!(board.occupancies().square_is_empty(Square(0)));
     }
 }

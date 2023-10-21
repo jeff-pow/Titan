@@ -12,8 +12,18 @@ pub const NUM_PIECES: usize = 6;
 
 #[derive(EnumIter, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Color {
-    White = 0,
-    Black = 1,
+    White,
+    Black,
+}
+
+impl Color {
+    #[inline(always)]
+    pub fn idx(&self) -> usize {
+        match self {
+            Color::White => 0,
+            Color::Black => 1,
+        }
+    }
 }
 
 impl ops::Not for Color {
@@ -28,12 +38,12 @@ impl ops::Not for Color {
 
 #[derive(Debug, EnumIter, Copy, Clone, PartialEq, Eq)]
 pub enum PieceName {
-    King = 0,
-    Queen = 1,
-    Rook = 2,
-    Bishop = 3,
-    Knight = 4,
-    Pawn = 5,
+    King,
+    Queen,
+    Rook,
+    Bishop,
+    Knight,
+    Pawn,
 }
 
 impl PieceName {
@@ -46,6 +56,18 @@ impl PieceName {
             PieceName::Bishop => BISHOP_PTS,
             PieceName::Knight => KNIGHT_PTS,
             PieceName::Pawn => PAWN_PTS,
+        }
+    }
+
+    #[inline(always)]
+    pub fn idx(&self) -> usize {
+        match self {
+            PieceName::King => 0,
+            PieceName::Queen => 1,
+            PieceName::Rook => 2,
+            PieceName::Bishop => 3,
+            PieceName::Knight => 4,
+            PieceName::Pawn => 5,
         }
     }
 }

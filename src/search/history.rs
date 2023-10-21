@@ -33,4 +33,5 @@ impl Default for MoveHistory {
             search_history: [[[0; 64]; 64]; 2],
         }
     }
+
 }
