@@ -7,8 +7,10 @@ use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::eval::eval::evaluate;
 use crate::moves::movegenerator::{generate_psuedolegal_moves, MGT};
+use crate::moves::movelist::MoveListEntry;
 use crate::moves::moves::Move;
 
+use super::history::MAX_HIST_VAL;
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
 use super::see::see;
@@ -255,7 +257,7 @@ fn pvs(
     info.search_stats.nodes_searched += 1;
 
     // Start of search
-    for m in moves {
+    for MoveListEntry { m, score: hist_score } in moves {
         let mut new_b = board.to_owned();
         let is_quiet = board.is_quiet(m);
 
@@ -304,6 +306,13 @@ fn pvs(
                 r += i32::from(!is_pv_node);
                 if is_quiet && cut_node {
                     r += 2;
+                }
+                if is_quiet {
+                    if hist_score > MAX_HIST_VAL / 2 {
+                        r -= 1;
+                    } else if hist_score < -MAX_HIST_VAL / 2 {
+                        r += 1;
+                    }
                 }
                 // if is_quiet && !see(&new_b, m, -50 * depth) {
                 //     depth += 1;

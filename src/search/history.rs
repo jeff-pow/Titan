@@ -1,6 +1,6 @@
 use crate::{moves::moves::Move, types::pieces::Color};
 
-const MAX_HIST_VAL: i32 = i16::MAX as i32;
+pub const MAX_HIST_VAL: i32 = i16::MAX as i32;
 
 #[derive(Clone)]
 pub struct MoveHistory {

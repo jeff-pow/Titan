@@ -101,7 +101,7 @@ impl MoveList {
     #[inline(always)]
     pub fn into_vec(self) -> Vec<Move> {
         let mut v = Vec::new();
-        self.into_iter().for_each(|x| v.push(x));
+        self.into_iter().for_each(|x| v.push(x.m));
         v
     }
 
@@ -179,7 +179,7 @@ const MVV_LVA: [[i32; 6]; 6] = [
 ];
 
 impl Iterator for MoveList {
-    type Item = Move;
+    type Item = MoveListEntry;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_idx >= self.len {
@@ -187,16 +187,16 @@ impl Iterator for MoveList {
         } else {
             let m = self.pick_move(self.current_idx);
             self.current_idx += 1;
-            Some(m.m)
+            Some(m)
         }
     }
 }
 
-impl FromIterator<Move> for MoveList {
-    fn from_iter<I: IntoIterator<Item = Move>>(iter: I) -> Self {
+impl FromIterator<MoveListEntry> for MoveList {
+    fn from_iter<I: IntoIterator<Item = MoveListEntry>>(iter: I) -> Self {
         let mut move_list = MoveList::default();
         for m in iter {
-            move_list.push(m);
+            move_list.push(m.m);
         }
         move_list
     }
