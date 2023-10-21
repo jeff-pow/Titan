@@ -1,6 +1,6 @@
 use crate::{
     board::board::Board,
-    search::{killers::NUM_KILLER_MOVES, see::see},
+    search::{killers::NUM_KILLER_MOVES, see::see, SearchInfo},
     types::pieces::PieceName,
 };
 use std::mem::MaybeUninit;
@@ -33,7 +33,6 @@ impl MoveList {
     #[inline(always)]
     pub fn push(&mut self, m: Move) {
         debug_assert!(self.len < MAX_LEN);
-        debug_assert_ne!(m, Move::NULL);
         self.arr[self.len] = MoveListEntry::new(m, 0);
         self.len += 1;
     }
@@ -102,7 +101,7 @@ impl MoveList {
     #[inline(always)]
     pub fn into_vec(self) -> Vec<Move> {
         let mut v = Vec::new();
-        self.into_iter().for_each(|x| v.push(x));
+        self.into_iter().for_each(|x| v.push(x.m));
         v
     }
 
@@ -121,7 +120,7 @@ impl MoveList {
         board: &Board,
         table_move: Move,
         killers: &[Move; NUM_KILLER_MOVES],
-        history: &[[[i64; 64]; 64]; 2],
+        info: &SearchInfo,
     ) {
         for i in 0..self.len {
             let entry = self.get_mut(i);
@@ -153,7 +152,9 @@ impl MoveList {
             } else if killers[1] == *m {
                 *score = KILLER_TWO;
             } else {
-                *score = history[board.to_move.idx()][m.origin_square().idx()][m.dest_square().idx()] as i32;
+
+                *score = info.history.get_history(*m, board.to_move);
+
             }
         }
     }
@@ -180,7 +181,7 @@ const MVV_LVA: [[i32; 6]; 6] = [
 ];
 
 impl Iterator for MoveList {
-    type Item = Move;
+    type Item = MoveListEntry;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_idx >= self.len {
@@ -188,16 +189,16 @@ impl Iterator for MoveList {
         } else {
             let m = self.pick_move(self.current_idx);
             self.current_idx += 1;
-            Some(m.m)
+            Some(m)
         }
     }
 }
 
-impl FromIterator<Move> for MoveList {
-    fn from_iter<I: IntoIterator<Item = Move>>(iter: I) -> Self {
+impl FromIterator<MoveListEntry> for MoveList {
+    fn from_iter<I: IntoIterator<Item = MoveListEntry>>(iter: I) -> Self {
         let mut move_list = MoveList::default();
         for m in iter {
-            move_list.push(m);
+            move_list.push(m.m);
         }
         move_list
     }

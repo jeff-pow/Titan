@@ -2,7 +2,10 @@ use std::{sync::RwLock, time::Instant};
 
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
-use crate::{board::board::Board, moves::movegenerator::generate_moves};
+use crate::{
+    board::board::Board,
+    moves::{movegenerator::generate_moves, movelist::MoveListEntry},
+};
 
 #[allow(dead_code)]
 /// Counts and times the action of generating moves to a certain depth. Prints this information
@@ -36,7 +39,7 @@ pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
 pub fn perft(board: Board, depth: i32) -> usize {
     let mut total = 0;
     let moves = generate_moves(&board);
-    for m in moves {
+    for MoveListEntry { m, .. } in moves {
         let mut new_b = board.to_owned();
         new_b.make_move(m);
         let count = count_moves(depth - 1, &new_b);
@@ -55,7 +58,7 @@ pub fn count_moves(depth: i32, board: &Board) -> usize {
     if depth == 1 {
         return moves.len();
     }
-    for m in moves {
+    for MoveListEntry { m, .. } in moves {
         let mut new_b = board.to_owned();
         new_b.make_move(m);
         count += count_moves(depth - 1, &new_b);

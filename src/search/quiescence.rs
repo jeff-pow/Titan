@@ -2,6 +2,7 @@ use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::eval::eval::evaluate;
 use crate::moves::movegenerator::{generate_psuedolegal_moves, MGT};
+use crate::moves::movelist::MoveListEntry;
 use crate::moves::moves::Move;
 use crate::search::pvs::STALEMATE;
 
@@ -52,12 +53,12 @@ pub fn quiescence(
     } else {
         generate_psuedolegal_moves(board, MGT::CapturesOnly)
     };
-    moves.score_moves(board, table_move, &info.killer_moves[ply as usize], &info.history);
+    moves.score_moves(board, table_move, &info.killer_moves[ply as usize], info);
     let mut best_score = if in_check { -INFINITY } else { evaluate(board) };
     let mut best_move = Move::NULL;
     let mut moves_searched = 0;
 
-    for m in moves {
+    for MoveListEntry { m, .. } in moves {
         let mut node_pvs = Vec::new();
         let mut new_b = board.to_owned();
 

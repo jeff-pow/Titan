@@ -10,6 +10,7 @@ use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
 use crate::search::pvs::MAX_SEARCH_DEPTH;
 
+use self::history::MoveHistory;
 use self::killers::{empty_killers, KillerMoves};
 use self::pvs::{LMR_THRESHOLD, MIN_LMR_DEPTH};
 use self::{game_time::GameTime, search_stats::SearchStats};
@@ -36,7 +37,7 @@ pub struct SearchInfo {
     pub sel_depth: i32,
     pub mg: MoveGenerator,
     pub lmr_reductions: LmrReductions,
-    pub history: [[[i64; 64]; 64]; 2],
+    pub history: MoveHistory,
 }
 
 impl Default for SearchInfo {
@@ -54,7 +55,7 @@ impl Default for SearchInfo {
             sel_depth: 0,
             mg: MoveGenerator::default(),
             lmr_reductions: lmr_reductions(),
-            history: [[[0; 64]; 64]; 2],
+            history: MoveHistory::default(),
         }
     }
 }

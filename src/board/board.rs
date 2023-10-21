@@ -3,8 +3,12 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
-    eval::nnue::{Accumulator, NETWORK},
-    moves::{movegenerator::MoveGenerator, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
+
+    moves::{
+        movegenerator::MoveGenerator, movelist::MoveList, moves::Castle, moves::Direction::*, moves::Move,
+        moves::Promotion,
+    },
+
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName, NUM_PIECES},
@@ -12,7 +16,7 @@ use crate::{
     },
 };
 
-use super::{history::History, zobrist::Zobrist};
+use super::{history::BoardHistory, zobrist::Zobrist};
 
 #[derive(Clone)]
 pub struct Board {
@@ -27,7 +31,7 @@ pub struct Board {
     pub num_moves: i32,
     pub half_moves: i32,
     pub zobrist_hash: u64,
-    pub history: History,
+    pub history: BoardHistory,
     pub zobrist_consts: Arc<Zobrist>,
     pub mg: Arc<MoveGenerator>,
     pub prev_move: Move,
@@ -49,7 +53,7 @@ impl Default for Board {
             num_moves: 0,
             half_moves: 0,
             zobrist_hash: 0,
-            history: History::default(),
+            history: BoardHistory::default(),
             zobrist_consts: Arc::new(Zobrist::default()),
             mg: Arc::new(MoveGenerator::default()),
             prev_move: Move::NULL,
@@ -62,6 +66,11 @@ impl Board {
     #[inline(always)]
     pub fn can_en_passant(&self) -> bool {
         self.en_passant_square.is_some()
+    }
+
+    #[inline(always)]
+    pub fn can_nmp(&self) -> bool {
+        self.prev_move != Move::NULL
     }
 
     #[inline(always)]
@@ -120,27 +129,6 @@ impl Board {
     #[inline(always)]
     pub fn color_at(&self, sq: Square) -> Option<Color> {
         self.array_board[sq.idx()].map(|piece| piece.color)
-    }
-
-    #[inline(always)]
-    pub fn name_by_bitboards(&self, sq: Square) -> Option<PieceName> {
-        if sq.bitboard() & self.occupancies() == Bitboard::EMPTY {
-            return None;
-        }
-        let color = if sq.bitboard() & self.color_occupancies(Color::White) != Bitboard::EMPTY {
-            Color::White
-        } else {
-            Color::Black
-        };
-        for p in PieceName::iter().rev() {
-            let bb = self.bitboard(color, p);
-            for s in bb {
-                if sq.bitboard() & s.bitboard() != Bitboard::EMPTY {
-                    return Some(p);
-                }
-            }
-        }
-        unreachable!()
     }
 
     #[inline(always)]
@@ -487,7 +475,7 @@ impl Board {
 /// Function checks for the presence of the board in the game. If the board position will have occurred three times,
 /// returns true indicating the position would be a stalemate due to the threefold repetition rule
 pub fn check_for_3x_repetition(board: &Board) -> bool {
-    let arr = board.history.arr;
+    let arr = &board.history.arr;
     let len = board.history.len;
     let mut count = 0;
     for i in (0..len).rev() {
