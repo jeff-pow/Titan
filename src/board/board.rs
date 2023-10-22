@@ -3,7 +3,7 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
-    eval::nnue::{Accumulator, NETWORK},
+    eval::nnue::{Accumulator, NET},
     moves::{movegenerator::MoveGenerator, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
     types::{
         bitboard::Bitboard,
@@ -159,7 +159,7 @@ impl Board {
             self.material_val[piece.color.idx()] -= piece.value();
             self.occupancies &= !sq.bitboard();
             self.color_occupancies[piece.color.idx()] &= !sq.bitboard();
-            self.accumulator.remove_feature(&NETWORK, piece.name, piece.color, sq);
+            self.accumulator.remove_feature(&NET, piece.name, piece.color, sq);
         }
     }
 
