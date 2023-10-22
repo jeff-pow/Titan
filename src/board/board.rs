@@ -435,13 +435,17 @@ impl Board {
 
         self.prev_move = m;
 
-        assert_eq!(Bitboard::EMPTY, self.color_occupancies(Color::White) & self.color_occupancies(Color::Black));
+        debug_assert_eq!(Bitboard::EMPTY, self.color_occupancies(Color::White) & self.color_occupancies(Color::Black));
         let w = self.color_occupancies(Color::White);
         let b = self.color_occupancies(Color::Black);
         self.gen_color_occupancies(Color::White);
         self.gen_color_occupancies(Color::Black);
         debug_assert_eq!(w, self.color_occupancies(Color::White));
         debug_assert_eq!(b, self.color_occupancies(Color::Black));
+        let a = self.accumulator;
+        self.accumulator.reset();
+        self.refresh_accumulators();
+        assert_eq!(a, self.accumulator);
     }
 
     #[allow(dead_code)]

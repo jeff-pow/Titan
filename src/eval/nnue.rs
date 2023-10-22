@@ -6,13 +6,31 @@ use crate::types::{
 pub const INPUT_SIZE: usize = 768;
 const HIDDEN_SIZE: usize = 1024;
 pub static NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net.nnue")) };
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
 pub struct Accumulator([[i16; HIDDEN_SIZE]; 2]);
 impl Default for Accumulator {
     fn default() -> Self {
         Self([[0; HIDDEN_SIZE]; 2])
     }
+}
+
+fn get_feature_from_idx(i: usize) -> (Color, PieceName, Square) {
+    let c = i / COLOR_OFFSET;
+    let p = (i - (c * COLOR_OFFSET)) / PIECE_OFFSET;
+    let sq_index = i - c * COLOR_OFFSET - p * PIECE_OFFSET;
+    let color = if c == 0 { Color::White } else { Color::Black };
+    let piece = match p {
+        0 => PieceName::King,
+        1 => PieceName::Queen,
+        2 => PieceName::Rook,
+        3 => PieceName::Bishop,
+        4 => PieceName::Knight,
+        5 => PieceName::Pawn,
+        _ => panic!(),
+    };
+    let sq = Square(sq_index.try_into().unwrap());
+    (color, piece, sq)
 }
 
 impl Accumulator {

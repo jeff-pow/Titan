@@ -109,7 +109,12 @@ pub fn build_board(fen_string: &str) -> Board {
     }
 
     // Full number of moves in the game: starts from 1 and incremented after black's first move
-    iter.next();
+    let full_moves = iter.next();
+    if let Some(full_moves) = full_moves {
+        if let Ok(full_moves) = full_moves.parse() {
+            board.num_moves = full_moves;
+        }
+    }
     assert_eq!(iter.next(), None);
     board.zobrist_hash = board.generate_hash();
     board.gen_occupancies();
