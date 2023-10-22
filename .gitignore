@@ -5,3 +5,5 @@
 *.out
 new
 old
+*.net
+*.nnue
