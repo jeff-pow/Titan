@@ -1,4 +1,3 @@
-use std::process::exit;
 use crate::types::{
     pieces::{Color, PieceName},
     square::Square,
@@ -26,24 +25,8 @@ impl Accumulator {
     pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
         let white_idx = feature_idx(color, piece, sq);
         let black_idx = feature_idx(!color, piece, sq.flip_vertical());
-        // activate(&mut self.get(Color::White), &NET.feature_weights, white_idx * HIDDEN_SIZE);
-        // activate(&mut self.get(Color::Black), &NET.feature_weights, black_idx * HIDDEN_SIZE);
-        let a = self.0[Color::White.idx()].clone();
-        dbg!(&NET.feature_weights[white_idx..white_idx + HIDDEN_SIZE]);
-        exit(0);
-        for (i, d) in self.0[Color::White.idx()].iter_mut().zip(&NET.feature_weights[white_idx..white_idx + HIDDEN_SIZE]) {
-            *i += *d;
-        }
-        assert_ne!(a, self.0[Color::White.idx()]);
-        for (i, d) in self.0[Color::Black.idx()].iter_mut().zip(&NET.feature_weights[black_idx..black_idx + HIDDEN_SIZE]) {
-            *i += *d;
-        }
-        dbg!(piece);
-        dbg!(color);
-        dbg!(sq);
-        dbg!(self.get(Color::White));
-        dbg!(self.get(Color::Black));
-        assert_ne!(self.get(Color::White), self.get(Color::Black));
+        activate(&mut self.get(Color::White), &NET.feature_weights, white_idx * HIDDEN_SIZE);
+        activate(&mut self.get(Color::Black), &NET.feature_weights, black_idx * HIDDEN_SIZE);
     }
 
     pub fn remove_feature(&mut self, net: &Network, piece: PieceName, color: Color, sq: Square) {
@@ -54,8 +37,8 @@ impl Accumulator {
     }
 
     pub(crate) fn reset(&mut self) {
-        self.0[Color::White.idx()] = NET.feature_bias.clone();
-        self.0[Color::Black.idx()] = NET.feature_bias.clone();
+        self.0[Color::White.idx()] = NET.feature_bias;
+        self.0[Color::Black.idx()] = NET.feature_bias;
     }
 }
 
