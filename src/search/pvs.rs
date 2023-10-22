@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
-use crate::eval::eval::evaluate;
+use crate::eval::nnue::NET;
 use crate::moves::movegenerator::{generate_psuedolegal_moves, MGT};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::moves::Move;
@@ -79,7 +79,7 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32, halt: Arc<AtomicBool>) 
     // The previous eval from this side (two moves ago) is a good place to estimate the next
     // aspiration window around. First depth will not have an estimate, and we will do a full
     // window search
-    let mut score_history = vec![evaluate(&info.board)];
+    let mut score_history = vec![NET.evaluate(&info.board.accumulator, info.board.to_move)];
     info.iter_max_depth = 1;
 
     while info.iter_max_depth <= max_depth {
@@ -158,7 +158,7 @@ fn pvs(
     info.sel_depth = info.sel_depth.max(ply);
     // Don't do pvs unless you have a pv - otherwise you're wasting time
     if halt.load(Ordering::SeqCst) {
-        return evaluate(board);
+        return NET.evaluate(&info.board.accumulator, info.board.to_move);
     }
 
     // if in_check {
@@ -169,7 +169,7 @@ fn pvs(
         if board.in_check(board.to_move) {
             return quiescence(ply, alpha, beta, pv, info, board);
         }
-        return evaluate(board);
+        return NET.evaluate(&info.board.accumulator, info.board.to_move);
     }
 
     if ply > 0 {
@@ -212,11 +212,11 @@ fn pvs(
     let mut best_score = -INFINITY;
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
-    let static_eval = evaluate(board);
     // TODO:  something like 10 or 20 depth * depth here
     let hist_bonus = (155 * depth).min(2000);
 
     if !is_root && !is_pv_node && !in_check {
+        let static_eval = NET.evaluate(&info.board.accumulator, info.board.to_move);
         // Reverse futility pruning
         if static_eval - RFP_MULTIPLIER * depth >= beta && depth < MAX_RFP_DEPTH && static_eval.abs() < NEAR_CHECKMATE {
             return static_eval;
@@ -334,13 +334,11 @@ fn pvs(
         if eval > best_score {
             best_score = eval;
             best_move = m;
-
             if eval > alpha {
                 alpha = eval;
                 best_move = m;
                 store_pv(pv, &mut node_pvs, m);
             }
-
             if alpha >= beta {
                 let capture = board.piece_at(m.dest_square());
                 // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
@@ -353,6 +351,7 @@ fn pvs(
             }
         }
         // TODO: Try only doing this for quiet moves
+        // If a move doesn't raise alpha, deduct from its history score for move ordering
         info.history.update_history(m, -hist_bonus, board.to_move);
     }
 
