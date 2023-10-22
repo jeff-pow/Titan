@@ -15,24 +15,6 @@ impl Default for Accumulator {
     }
 }
 
-fn get_feature_from_idx(i: usize) -> (Color, PieceName, Square) {
-    let c = i / COLOR_OFFSET;
-    let p = (i - (c * COLOR_OFFSET)) / PIECE_OFFSET;
-    let sq_index = i - c * COLOR_OFFSET - p * PIECE_OFFSET;
-    let color = if c == 0 { Color::White } else { Color::Black };
-    let piece = match p {
-        0 => PieceName::King,
-        1 => PieceName::Queen,
-        2 => PieceName::Rook,
-        3 => PieceName::Bishop,
-        4 => PieceName::Knight,
-        5 => PieceName::Pawn,
-        _ => panic!(),
-    };
-    let sq = Square(sq_index.try_into().unwrap());
-    (color, piece, sq)
-}
-
 impl Accumulator {
     pub fn get(&self, color: Color) -> [i16; HIDDEN_SIZE] {
         self.0[color.idx()]
@@ -50,19 +32,6 @@ impl Accumulator {
         let black_idx = feature_idx(!color, piece, sq.flip_vertical());
         deactivate(&mut self.get(Color::White), &net.feature_weights, white_idx * HIDDEN_SIZE);
         deactivate(&mut self.get(Color::Black), &net.feature_weights, black_idx * HIDDEN_SIZE);
-    }
-
-    pub fn move_feature(&self, net: &Network, piece: PieceName, color: Color, from: Square, to: Square) {
-        let white_to = feature_idx(color, piece, to);
-        let black_to = feature_idx(!color, piece, to.flip_vertical());
-        let white_from = feature_idx(color, piece, from);
-        let black_from = feature_idx(!color, piece, from.flip_vertical());
-
-        activate(&mut self.get(Color::White), &net.feature_weights, white_to * HIDDEN_SIZE);
-        deactivate(&mut self.get(Color::White), &net.feature_weights, white_from * HIDDEN_SIZE);
-
-        activate(&mut self.get(Color::Black), &net.feature_weights, black_to * HIDDEN_SIZE);
-        deactivate(&mut self.get(Color::Black), &net.feature_weights, black_from * HIDDEN_SIZE);
     }
 
     pub(crate) fn reset(&mut self) {
@@ -89,22 +58,27 @@ impl Network {
         let mut output = 0;
 
         for (&i, &w) in us.iter().zip(&weights[..HIDDEN_SIZE]) {
-            output += crelu(i) * i32::from(w);
+            output += screlu(i) * i32::from(w);
         }
         for (&i, &w) in them.iter().zip(&weights[HIDDEN_SIZE..]) {
-            output += crelu(i) * i32::from(w);
+            output += screlu(i) * i32::from(w);
         }
 
         (output / 255 + i32::from(self.output_bias)) * 400 / (64 * 255)
     }
 }
 
+const RELU_MIN: i16 = 0;
+const RELU_MAX: i16 = 255;
 #[inline(always)]
-fn crelu(i: i16) -> i32 {
-    const CRELU_MIN: i16 = 0;
-    const CRELU_MAX: i16 = i8::MAX as i16;
-    let i = i32::from(i.clamp(CRELU_MIN, CRELU_MAX));
+fn screlu(i: i16) -> i32 {
+    let i = i32::from(i.clamp(RELU_MIN, RELU_MAX));
     i * i
+}
+
+#[allow(dead_code)]
+fn crelu(i: i16) -> i32 {
+    i32::from(i.clamp(RELU_MIN, RELU_MAX))
 }
 
 fn deactivate(input: &mut [i16], weights: &[i16], offset: usize) {
