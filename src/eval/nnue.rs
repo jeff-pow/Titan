@@ -71,10 +71,10 @@ impl Network {
         let mut output = 0;
 
         for (&i, &w) in us.iter().zip(&weights[..HIDDEN_SIZE]) {
-            output += crelu(i) + i32::from(w);
+            output += crelu(i) * i32::from(w);
         }
         for (&i, &w) in them.iter().zip(&weights[HIDDEN_SIZE..]) {
-            output += crelu(i) + i32::from(w);
+            output += crelu(i) * i32::from(w);
         }
 
         (output / 255 + i32::from(self.output_bias)) * 400 / (64 * 255)
