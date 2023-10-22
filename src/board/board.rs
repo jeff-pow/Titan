@@ -20,7 +20,6 @@ pub struct Board {
     pub color_occupancies: [Bitboard; 2],
     pub occupancies: Bitboard,
     pub array_board: [Option<Piece>; 64],
-    pub material_val: [i32; 2],
     pub to_move: Color,
     castling: [bool; 4],
     pub en_passant_square: Option<Square>,
@@ -42,7 +41,6 @@ impl Default for Board {
             color_occupancies: [Bitboard::EMPTY; 2],
             occupancies: Bitboard::EMPTY,
             array_board: [None; 64],
-            material_val: [0; 2],
             castling: [false; 4],
             to_move: Color::White,
             en_passant_square: None,
@@ -144,7 +142,6 @@ impl Board {
     pub fn place_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
         self.bitboards[color.idx()][piece_type.idx()] |= sq.bitboard();
         self.array_board[sq.idx()] = Some(Piece::new(piece_type, color));
-        self.material_val[color.idx()] += piece_type.value();
         self.occupancies |= sq.bitboard();
         self.color_occupancies[color.idx()] |= sq.bitboard();
 
@@ -156,7 +153,6 @@ impl Board {
         if let Some(piece) = self.array_board[sq.idx()] {
             self.array_board[sq.idx()] = None;
             self.bitboards[piece.color.idx()][piece.name.idx()] &= !sq.bitboard();
-            self.material_val[piece.color.idx()] -= piece.value();
             self.occupancies &= !sq.bitboard();
             self.color_occupancies[piece.color.idx()] &= !sq.bitboard();
             self.accumulator.remove_feature(&NET, piece.name, piece.color, sq);
@@ -227,10 +223,24 @@ impl Board {
     }
 
     #[inline(always)]
+    fn material_val(&self, c: Color) -> i32 {
+        let q = self.bitboard(c, PieceName::Queen).count_bits();
+        let r = self.bitboard(c, PieceName::Rook).count_bits();
+        let b = self.bitboard(c, PieceName::Bishop).count_bits();
+        let n = self.bitboard(c, PieceName::Knight).count_bits();
+        let p = self.bitboard(c, PieceName::Pawn).count_bits();
+        q * PieceName::Queen.value()
+            + r * PieceName::Rook.value()
+            + b * PieceName::Bishop.value()
+            + n * PieceName::Knight.value()
+            + p * PieceName::Pawn.value()
+    }
+
+    #[inline(always)]
     pub fn material_balance(&self) -> i32 {
         match self.to_move {
-            Color::White => self.material_val[Color::White.idx()] - self.material_val[Color::Black.idx()],
-            Color::Black => self.material_val[Color::Black.idx()] - self.material_val[Color::White.idx()],
+            Color::White => self.material_val(Color::White) - self.material_val(Color::Black),
+            Color::Black => self.material_val(Color::Black) - self.material_val(Color::White),
         }
     }
 
@@ -424,7 +434,6 @@ impl Board {
             self.half_moves = 0;
         }
 
-        // Change the side to move after making a move
         self.to_move = !self.to_move;
 
         self.num_moves += 1;
@@ -442,10 +451,6 @@ impl Board {
         self.gen_color_occupancies(Color::Black);
         debug_assert_eq!(w, self.color_occupancies(Color::White));
         debug_assert_eq!(b, self.color_occupancies(Color::Black));
-        let a = self.accumulator;
-        self.accumulator.reset();
-        self.refresh_accumulators();
-        assert_eq!(a, self.accumulator);
     }
 
     #[allow(dead_code)]

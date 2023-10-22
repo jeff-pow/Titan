@@ -40,6 +40,11 @@ impl Bitboard {
     }
 
     #[inline(always)]
+    pub fn count_bits(&self) -> i32 {
+        self.0.count_ones().try_into().expect("Valid conversion")
+    }
+
+    #[inline(always)]
     /// Checks a bitboard shift to ensure no information is lost and then executes the shift
     pub fn checked_shift(&self, dir: Direction) -> Option<Bitboard> {
         let bitboard = self.0.max(1);
