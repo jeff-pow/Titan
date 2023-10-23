@@ -1,5 +1,6 @@
 // use std::collections::HashMap;
 
+use lazy_static::lazy_static;
 use strum::IntoEnumIterator;
 
 use crate::{
@@ -11,6 +12,10 @@ use crate::{
 pub struct Zobrist {
     pub piece_square_hashes: [[[u64; 64]; 6]; 2],
     pub turn_hash: u64,
+}
+
+lazy_static! {
+    pub static ref ZOBRIST: Zobrist = Zobrist::default();
 }
 
 impl Default for Zobrist {
@@ -40,13 +45,13 @@ impl Board {
             for piece in PieceName::iter() {
                 let occupancies = self.bitboard(color, piece);
                 for sq in occupancies {
-                    hash ^= self.zobrist_consts.piece_square_hashes[color as usize][piece as usize][sq.idx()]
+                    hash ^= ZOBRIST.piece_square_hashes[color as usize][piece as usize][sq.idx()]
                 }
             }
         }
 
         if self.to_move == Color::Black {
-            hash ^= self.zobrist_consts.turn_hash;
+            hash ^= ZOBRIST.turn_hash;
         }
 
         hash

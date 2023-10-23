@@ -1,3 +1,4 @@
+use lazy_static::lazy_static;
 use strum::IntoEnumIterator;
 
 use crate::{
@@ -32,6 +33,10 @@ pub enum MoveGenerationType {
     CapturesOnly,
     QuietsOnly,
     All,
+}
+
+lazy_static! {
+    pub static ref MOVEGENERATOR: MoveGenerator = MoveGenerator::default();
 }
 
 #[derive(Clone)]
@@ -272,11 +277,14 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName, gen_type: MGT) 
     for sq in occ_bitboard {
         let occupancies = board.occupancies();
         let attack_bitboard = match piece_name {
-            King => board.mg.king_attacks(sq),
-            Queen => board.mg.magics.rook_attacks(occupancies, sq) | board.mg.magics.bishop_attacks(occupancies, sq),
-            Rook => board.mg.magics.rook_attacks(occupancies, sq),
-            Bishop => board.mg.magics.bishop_attacks(occupancies, sq),
-            Knight => board.mg.knight_attacks(sq),
+            King => MOVEGENERATOR.king_attacks(sq),
+            Queen => {
+                MOVEGENERATOR.magics.rook_attacks(occupancies, sq)
+                    | MOVEGENERATOR.magics.bishop_attacks(occupancies, sq)
+            }
+            Rook => MOVEGENERATOR.magics.rook_attacks(occupancies, sq),
+            Bishop => MOVEGENERATOR.magics.bishop_attacks(occupancies, sq),
+            Knight => MOVEGENERATOR.knight_attacks(sq),
             Pawn => panic!(),
         };
         let enemies_and_vacancies = !board.color_occupancies(board.to_move);
