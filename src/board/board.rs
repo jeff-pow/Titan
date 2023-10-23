@@ -1,10 +1,9 @@
 use core::fmt;
-use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
     eval::nnue::{Accumulator, NET},
-    moves::{movegenerator::MoveGenerator, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
+    moves::{movegenerator::MOVEGENERATOR, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName, NUM_PIECES},
@@ -12,7 +11,7 @@ use crate::{
     },
 };
 
-use super::{history::BoardHistory, zobrist::Zobrist};
+use super::history::BoardHistory;
 
 #[derive(Clone)]
 pub struct Board {
@@ -27,8 +26,6 @@ pub struct Board {
     pub half_moves: i32,
     pub zobrist_hash: u64,
     pub history: BoardHistory,
-    pub zobrist_consts: Arc<Zobrist>,
-    pub mg: Arc<MoveGenerator>,
     pub prev_move: Move,
     pub accumulator: Accumulator,
 }
@@ -48,8 +45,6 @@ impl Default for Board {
             half_moves: 0,
             zobrist_hash: 0,
             history: BoardHistory::default(),
-            zobrist_consts: Arc::new(Zobrist::default()),
-            mg: Arc::new(MoveGenerator::default()),
             prev_move: Move::NULL,
             accumulator: Accumulator::default(),
         }
@@ -180,12 +175,12 @@ impl Board {
 
     #[inline(always)]
     pub fn attackers_for_side(&self, attacker: Color, sq: Square, occupancy: Bitboard) -> Bitboard {
-        let pawn_attacks = self.mg.pawn_attacks(sq, !attacker) & self.bitboard(attacker, PieceName::Pawn);
-        let knight_attacks = self.mg.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
-        let bishop_attacks = self.mg.bishop_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Bishop);
-        let rook_attacks = self.mg.rook_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Rook);
+        let pawn_attacks = MOVEGENERATOR.pawn_attacks(sq, !attacker) & self.bitboard(attacker, PieceName::Pawn);
+        let knight_attacks = MOVEGENERATOR.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
+        let bishop_attacks = MOVEGENERATOR.bishop_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Bishop);
+        let rook_attacks = MOVEGENERATOR.rook_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Rook);
         let queen_attacks = (rook_attacks | bishop_attacks) & self.bitboard(attacker, PieceName::Queen);
-        let king_attacks = self.mg.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
+        let king_attacks = MOVEGENERATOR.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
         pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | queen_attacks | king_attacks
     }
 
@@ -194,12 +189,12 @@ impl Board {
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
         let attacker_occupancy = self.bitboards[attacker.idx()];
         let occupancy = self.occupancies();
-        let pawn_attacks = self.mg.pawn_attacks(sq, !attacker);
-        let knight_attacks = self.mg.knight_attacks(sq);
-        let bishop_attacks = self.mg.bishop_attacks(sq, occupancy);
-        let rook_attacks = self.mg.rook_attacks(sq, occupancy);
+        let pawn_attacks = MOVEGENERATOR.pawn_attacks(sq, !attacker);
+        let knight_attacks = MOVEGENERATOR.knight_attacks(sq);
+        let bishop_attacks = MOVEGENERATOR.bishop_attacks(sq, occupancy);
+        let rook_attacks = MOVEGENERATOR.rook_attacks(sq, occupancy);
         let queen_attacks = rook_attacks | bishop_attacks;
-        let king_attacks = self.mg.king_attacks(sq);
+        let king_attacks = MOVEGENERATOR.king_attacks(sq);
 
         let king_attacks_overlap = king_attacks & attacker_occupancy[PieceName::King.idx()];
         let queen_attacks_overlap = queen_attacks & attacker_occupancy[PieceName::Queen.idx()];
@@ -273,17 +268,19 @@ impl Board {
                 if self.is_quiet(m) {
                     return self.occupancies().square_is_empty(dest);
                 } else {
-                    let attacks = self.mg.pawn_attacks(origin, origin_color);
+                    let attacks = MOVEGENERATOR.pawn_attacks(origin, origin_color);
                     let enemy_color = self.color_at(origin).unwrap();
                     return attacks & m.dest_square().bitboard() & self.color_occupancies(!enemy_color)
                         != Bitboard::EMPTY;
                 }
             }
-            PieceName::King => self.mg.king_attacks(origin),
-            PieceName::Queen => self.mg.rook_attacks(origin, occupancies) | self.mg.bishop_attacks(origin, occupancies),
-            PieceName::Rook => self.mg.rook_attacks(origin, occupancies),
-            PieceName::Bishop => self.mg.bishop_attacks(origin, occupancies),
-            PieceName::Knight => self.mg.knight_attacks(origin),
+            PieceName::King => MOVEGENERATOR.king_attacks(origin),
+            PieceName::Queen => {
+                MOVEGENERATOR.rook_attacks(origin, occupancies) | MOVEGENERATOR.bishop_attacks(origin, occupancies)
+            }
+            PieceName::Rook => MOVEGENERATOR.rook_attacks(origin, occupancies),
+            PieceName::Bishop => MOVEGENERATOR.bishop_attacks(origin, occupancies),
+            PieceName::Knight => MOVEGENERATOR.knight_attacks(origin),
         };
 
         let enemy_occupancies = !self.color_occupancies(self.to_move);

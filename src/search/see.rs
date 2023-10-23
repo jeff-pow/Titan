@@ -2,7 +2,10 @@ use strum::IntoEnumIterator;
 
 use crate::{
     board::board::Board,
-    moves::moves::{Move, Promotion},
+    moves::{
+        movegenerator::MOVEGENERATOR,
+        moves::{Move, Promotion},
+    },
     types::{
         bitboard::Bitboard,
         pieces::{Color, PieceName},
@@ -82,10 +85,10 @@ pub fn see(board: &Board, m: Move, threshold: i32) -> bool {
         let next_piece = next_attacker(board, &mut occupied, my_attackers, to_move);
 
         if next_piece == PieceName::Pawn || next_piece == PieceName::Bishop || next_piece == PieceName::Queen {
-            attackers |= board.mg.bishop_attacks(dest, occupied) & bishops;
+            attackers |= MOVEGENERATOR.bishop_attacks(dest, occupied) & bishops;
         }
         if next_piece == PieceName::Rook || next_piece == PieceName::Queen {
-            attackers |= board.mg.rook_attacks(dest, occupied) & rooks;
+            attackers |= MOVEGENERATOR.rook_attacks(dest, occupied) & rooks;
         }
 
         attackers &= occupied;
