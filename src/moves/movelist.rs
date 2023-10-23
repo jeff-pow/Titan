@@ -53,13 +53,6 @@ impl MoveList {
     }
 
     #[inline(always)]
-    pub fn append(&mut self, other: &MoveList) {
-        for idx in 0..other.len {
-            self.push(other.arr[idx].m);
-        }
-    }
-
-    #[inline(always)]
     pub fn swap(&mut self, a: usize, b: usize) {
         unsafe {
             let ptr_a: *mut MoveListEntry = &mut self.arr[a];

@@ -3,7 +3,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     eval::nnue::{Accumulator, NET},
-    moves::{movegenerator::MOVEGENERATOR, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
+    moves::{movegenerator::MG, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName, NUM_PIECES},
@@ -166,12 +166,12 @@ impl Board {
 
     #[inline(always)]
     pub fn attackers_for_side(&self, attacker: Color, sq: Square, occupancy: Bitboard) -> Bitboard {
-        let pawn_attacks = MOVEGENERATOR.pawn_attacks(sq, !attacker) & self.bitboard(attacker, PieceName::Pawn);
-        let knight_attacks = MOVEGENERATOR.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
-        let bishop_attacks = MOVEGENERATOR.bishop_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Bishop);
-        let rook_attacks = MOVEGENERATOR.rook_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Rook);
+        let pawn_attacks = MG.pawn_attacks(sq, !attacker) & self.bitboard(attacker, PieceName::Pawn);
+        let knight_attacks = MG.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
+        let bishop_attacks = MG.bishop_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Bishop);
+        let rook_attacks = MG.rook_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Rook);
         let queen_attacks = (rook_attacks | bishop_attacks) & self.bitboard(attacker, PieceName::Queen);
-        let king_attacks = MOVEGENERATOR.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
+        let king_attacks = MG.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
         pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | queen_attacks | king_attacks
     }
 
@@ -179,12 +179,12 @@ impl Board {
     // Function left with lots of variables to improve debugability...
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
         let occupancy = self.occupancies();
-        let pawn_attacks = MOVEGENERATOR.pawn_attacks(sq, !attacker);
-        let knight_attacks = MOVEGENERATOR.knight_attacks(sq);
-        let bishop_attacks = MOVEGENERATOR.bishop_attacks(sq, occupancy);
-        let rook_attacks = MOVEGENERATOR.rook_attacks(sq, occupancy);
+        let pawn_attacks = MG.pawn_attacks(sq, !attacker);
+        let knight_attacks = MG.knight_attacks(sq);
+        let bishop_attacks = MG.bishop_attacks(sq, occupancy);
+        let rook_attacks = MG.rook_attacks(sq, occupancy);
         let queen_attacks = rook_attacks | bishop_attacks;
-        let king_attacks = MOVEGENERATOR.king_attacks(sq);
+        let king_attacks = MG.king_attacks(sq);
 
         let king_attacks_overlap = king_attacks & self.bitboard(attacker, PieceName::King);
         let queen_attacks_overlap = queen_attacks & self.bitboard(attacker, PieceName::Queen);
@@ -258,19 +258,17 @@ impl Board {
                 if self.is_quiet(m) {
                     return self.occupancies().square_is_empty(dest);
                 } else {
-                    let attacks = MOVEGENERATOR.pawn_attacks(origin, origin_color);
+                    let attacks = MG.pawn_attacks(origin, origin_color);
                     let enemy_color = self.color_at(origin).unwrap();
                     return attacks & m.dest_square().bitboard() & self.color_occupancies(!enemy_color)
                         != Bitboard::EMPTY;
                 }
             }
-            PieceName::King => MOVEGENERATOR.king_attacks(origin),
-            PieceName::Queen => {
-                MOVEGENERATOR.rook_attacks(origin, occupancies) | MOVEGENERATOR.bishop_attacks(origin, occupancies)
-            }
-            PieceName::Rook => MOVEGENERATOR.rook_attacks(origin, occupancies),
-            PieceName::Bishop => MOVEGENERATOR.bishop_attacks(origin, occupancies),
-            PieceName::Knight => MOVEGENERATOR.knight_attacks(origin),
+            PieceName::King => MG.king_attacks(origin),
+            PieceName::Queen => MG.rook_attacks(origin, occupancies) | MG.bishop_attacks(origin, occupancies),
+            PieceName::Rook => MG.rook_attacks(origin, occupancies),
+            PieceName::Bishop => MG.bishop_attacks(origin, occupancies),
+            PieceName::Knight => MG.knight_attacks(origin),
         };
 
         let enemy_occupancies = !self.color_occupancies(self.to_move);

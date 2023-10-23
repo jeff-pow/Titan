@@ -21,10 +21,10 @@ use super::{
     moves::{Castle, Move, MoveType},
 };
 
-pub const WHITE_KINGSIDE_SQUARES: Bitboard = Bitboard(0b1100000);
-pub const WHITE_QUEENSIDE_SQUARES: Bitboard = Bitboard(0b1110);
-pub const BLACK_KINGSIDE_SQUARES: Bitboard = Bitboard(0x6000000000000000);
-pub const BLACK_QUEENSIDE_SQUARES: Bitboard = Bitboard(0xe00000000000000);
+const WHITE_KINGSIDE_SQUARES: Bitboard = Bitboard(0b1100000);
+const WHITE_QUEENSIDE_SQUARES: Bitboard = Bitboard(0b1110);
+const BLACK_KINGSIDE_SQUARES: Bitboard = Bitboard(0x6000000000000000);
+const BLACK_QUEENSIDE_SQUARES: Bitboard = Bitboard(0xe00000000000000);
 
 #[allow(clippy::upper_case_acronyms)]
 pub type MGT = MoveGenerationType;
@@ -36,7 +36,8 @@ pub enum MoveGenerationType {
 }
 
 lazy_static! {
-    pub static ref MOVEGENERATOR: MoveGenerator = MoveGenerator::default();
+    /// Object that contains the attack boards for each piece from each square
+    pub static ref MG: MoveGenerator = MoveGenerator::default();
 }
 
 #[derive(Clone)]
@@ -89,20 +90,23 @@ impl MoveGenerator {
 /// Generates all moves with no respect to legality via leaving itself in check
 pub fn generate_psuedolegal_moves(board: &Board, gen_type: MGT) -> MoveList {
     let mut moves = MoveList::default();
-    moves.append(&generate_bitboard_moves(board, PieceName::Knight, gen_type));
-    moves.append(&generate_bitboard_moves(board, PieceName::King, gen_type));
-    moves.append(&generate_bitboard_moves(board, PieceName::Queen, gen_type));
-    moves.append(&generate_bitboard_moves(board, PieceName::Rook, gen_type));
-    moves.append(&generate_bitboard_moves(board, PieceName::Bishop, gen_type));
-    moves.append(&generate_pawn_moves(board, gen_type));
+    generate_bitboard_moves(board, PieceName::Knight, gen_type, &mut moves);
+    generate_bitboard_moves(board, PieceName::King, gen_type, &mut moves);
+    generate_bitboard_moves(board, PieceName::Queen, gen_type, &mut moves);
+    generate_bitboard_moves(board, PieceName::Rook, gen_type, &mut moves);
+    generate_bitboard_moves(board, PieceName::Bishop, gen_type, &mut moves);
+    // moves.append(&generate_bitboard_moves(board, PieceName::King, gen_type));
+    // moves.append(&generate_bitboard_moves(board, PieceName::Queen, gen_type));
+    // moves.append(&generate_bitboard_moves(board, PieceName::Rook, gen_type));
+    // moves.append(&generate_bitboard_moves(board, PieceName::Bishop, gen_type));
+    generate_pawn_moves(board, gen_type, &mut moves);
     if gen_type == MGT::QuietsOnly || gen_type == MGT::All {
-        moves.append(&generate_castling_moves(board));
+        generate_castling_moves(board, &mut moves);
     }
     moves
 }
 
-fn generate_castling_moves(board: &Board) -> MoveList {
-    let mut moves = MoveList::default();
+fn generate_castling_moves(board: &Board, moves: &mut MoveList) {
     let (kingside_vacancies, queenside_vacancies) = match board.to_move {
         Color::White => (WHITE_KINGSIDE_SQUARES, WHITE_QUEENSIDE_SQUARES),
         Color::Black => (BLACK_KINGSIDE_SQUARES, BLACK_QUEENSIDE_SQUARES),
@@ -144,11 +148,9 @@ fn generate_castling_moves(board: &Board) -> MoveList {
             moves.push(Move::new(king_sq, queenside_dest, None, MoveType::Castle));
         }
     }
-    moves
 }
 
-fn generate_pawn_moves(board: &Board, gen_type: MGT) -> MoveList {
-    let mut moves = MoveList::default();
+fn generate_pawn_moves(board: &Board, gen_type: MGT, moves: &mut MoveList) {
     let pawns = board.bitboard(board.to_move, Pawn);
     let vacancies = !board.occupancies();
     let enemies = board.color_occupancies(!board.to_move);
@@ -209,15 +211,15 @@ fn generate_pawn_moves(board: &Board, gen_type: MGT) -> MoveList {
         let right_capture_promotions = promotions.shift(up_right) & enemies;
         if matches!(gen_type, MGT::All | MGT::QuietsOnly) {
             for dest in no_capture_promotions {
-                generate_promotions(dest, down, &mut moves);
+                generate_promotions(dest, down, moves);
             }
         }
         if matches!(gen_type, MGT::All | MGT::CapturesOnly) {
             for dest in left_capture_promotions {
-                generate_promotions(dest, down_right, &mut moves);
+                generate_promotions(dest, down_right, moves);
             }
             for dest in right_capture_promotions {
-                generate_promotions(dest, down_left, &mut moves);
+                generate_promotions(dest, down_left, moves);
             }
         }
     }
@@ -249,8 +251,6 @@ fn generate_pawn_moves(board: &Board, gen_type: MGT) -> MoveList {
             }
         }
     }
-
-    moves
 }
 
 pub fn get_en_passant(board: &Board, dir: Direction) -> Option<Move> {
@@ -270,21 +270,17 @@ fn generate_promotions(dest: Square, d: Direction, moves: &mut MoveList) {
     }
 }
 
-fn generate_bitboard_moves(board: &Board, piece_name: PieceName, gen_type: MGT) -> MoveList {
-    let mut moves = MoveList::default();
+fn generate_bitboard_moves(board: &Board, piece_name: PieceName, gen_type: MGT, moves: &mut MoveList) {
     // Don't calculate any moves if no pieces of that type exist for the given color
     let occ_bitboard = board.bitboard(board.to_move, piece_name);
     for sq in occ_bitboard {
         let occupancies = board.occupancies();
         let attack_bitboard = match piece_name {
-            King => MOVEGENERATOR.king_attacks(sq),
-            Queen => {
-                MOVEGENERATOR.magics.rook_attacks(occupancies, sq)
-                    | MOVEGENERATOR.magics.bishop_attacks(occupancies, sq)
-            }
-            Rook => MOVEGENERATOR.magics.rook_attacks(occupancies, sq),
-            Bishop => MOVEGENERATOR.magics.bishop_attacks(occupancies, sq),
-            Knight => MOVEGENERATOR.knight_attacks(sq),
+            King => MG.king_attacks(sq),
+            Queen => MG.magics.rook_attacks(occupancies, sq) | MG.magics.bishop_attacks(occupancies, sq),
+            Rook => MG.magics.rook_attacks(occupancies, sq),
+            Bishop => MG.magics.bishop_attacks(occupancies, sq),
+            Knight => MG.knight_attacks(sq),
             Pawn => panic!(),
         };
         let enemies_and_vacancies = !board.color_occupancies(board.to_move);
@@ -298,7 +294,6 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName, gen_type: MGT) 
             moves.push(Move::new(sq, dest, None, MoveType::Normal));
         }
     }
-    moves
 }
 
 /// Returns all legal moves
