@@ -13,18 +13,18 @@ use crate::{
 
 use super::history::BoardHistory;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Board {
     bitboards: [Bitboard; NUM_PIECES],
-    pub color_occupancies: [Bitboard; 2],
-    pub array_board: [Option<Piece>; 64],
+    color_occupancies: [Bitboard; 2],
+    array_board: [Option<Piece>; 64],
     pub to_move: Color,
     castling: [bool; 4],
     pub en_passant_square: Option<Square>,
     pub num_moves: i32,
     pub half_moves: i32,
     pub zobrist_hash: u64,
-    pub history: BoardHistory,
+    history: BoardHistory,
     pub prev_move: Move,
     pub accumulator: Accumulator,
 }
@@ -103,21 +103,26 @@ impl Board {
 
     #[inline(always)]
     pub fn color_at(&self, sq: Square) -> Option<Color> {
-        self.array_board[sq.idx()].map(|piece| piece.color)
+        // self.array_board[sq.idx()].map(|piece| piece.color);
+        self.color_occupancies
+            .iter()
+            .position(|x| *x & sq.bitboard() != Bitboard::EMPTY)
+            .map(Color::from)
+        // c.map(|x| Color(x))
     }
 
     #[inline(always)]
     pub fn piece_at(&self, sq: Square) -> Option<PieceName> {
-        self.array_board[sq.idx()].map(|piece| piece.name)
+        // self.array_board[sq.idx()].map(|piece| piece.name)
+        self.bitboards
+            .iter()
+            .position(|x| *x & sq.bitboard() != Bitboard::EMPTY)
+            .map(PieceName::from)
     }
 
     #[inline(always)]
     pub fn has_non_pawns(&self, side: Color) -> bool {
-        self.occupancies()
-            // ^ self.bitboards[side.idx()][PieceName::King.idx()]
-            ^ self.bitboard(side, PieceName::King)
-            ^ self.bitboard(side, PieceName::Pawn)
-            // ^ self.bitboards[side.idx()][PieceName::Pawn.idx()]
+        self.occupancies() ^ self.bitboard(side, PieceName::King) ^ self.bitboard(side, PieceName::Pawn)
             != Bitboard::EMPTY
     }
 
@@ -135,7 +140,6 @@ impl Board {
     fn remove_piece(&mut self, sq: Square) {
         if let Some(piece) = self.array_board[sq.idx()] {
             self.array_board[sq.idx()] = None;
-            self.color_occupancies[piece.color.idx()] &= !sq.bitboard();
             self.bitboards[piece.name.idx()] &= !sq.bitboard();
             self.color_occupancies[piece.color.idx()] &= !sq.bitboard();
             self.accumulator.remove_feature(&NET, piece.name, piece.color, sq);

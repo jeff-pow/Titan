@@ -36,6 +36,16 @@ impl ops::Not for Color {
     }
 }
 
+impl From<usize> for Color {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => Color::White,
+            1 => Color::Black,
+            _ => panic!("Invalid color index"),
+        }
+    }
+}
+
 #[derive(Debug, EnumIter, Copy, Clone, PartialEq, Eq)]
 pub enum PieceName {
     King,
@@ -72,6 +82,20 @@ impl PieceName {
     }
 }
 
+impl From<usize> for PieceName {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => PieceName::King,
+            1 => PieceName::Queen,
+            2 => PieceName::Rook,
+            3 => PieceName::Bishop,
+            4 => PieceName::Knight,
+            5 => PieceName::Pawn,
+            _ => panic!("Invalid piece index"),
+        }
+    }
+}
+
 #[derive(Eq, Copy, Clone, PartialEq, Debug)]
 pub struct Piece {
     pub name: PieceName,
@@ -81,10 +105,5 @@ pub struct Piece {
 impl Piece {
     pub fn new(name: PieceName, color: Color) -> Self {
         Self { name, color }
-    }
-
-    #[inline(always)]
-    pub fn value(&self) -> i32 {
-        self.name.value()
     }
 }
