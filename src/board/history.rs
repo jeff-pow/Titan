@@ -19,13 +19,6 @@ impl BoardHistory {
         self.arr[self.len] = hash;
         self.len += 1;
     }
-
-    #[inline(always)]
-    pub fn append(&mut self, other: &BoardHistory) {
-        for idx in 0..other.len {
-            self.push(other.arr[idx]);
-        }
-    }
 }
 
 impl FromIterator<u64> for BoardHistory {
