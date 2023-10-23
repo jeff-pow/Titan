@@ -186,13 +186,21 @@ impl Board {
         let queen_attacks = rook_attacks | bishop_attacks;
         let king_attacks = MOVEGENERATOR.king_attacks(sq);
 
-        (king_attacks & self.bitboard(attacker, PieceName::King)
-            | queen_attacks & self.bitboard(attacker, PieceName::Queen)
-            | rook_attacks & self.bitboard(attacker, PieceName::Rook)
-            | bishop_attacks & self.bitboard(attacker, PieceName::Bishop)
-            | knight_attacks & self.bitboard(attacker, PieceName::Knight)
-            | pawn_attacks & self.bitboard(attacker, PieceName::Pawn))
-            != Bitboard::EMPTY
+        let king_attacks_overlap = king_attacks & self.bitboard(attacker, PieceName::King);
+        let queen_attacks_overlap = queen_attacks & self.bitboard(attacker, PieceName::Queen);
+        let rook_attacks_overlap = rook_attacks & self.bitboard(attacker, PieceName::Rook);
+        let bishop_attacks_overlap = bishop_attacks & self.bitboard(attacker, PieceName::Bishop);
+        let knight_attacks_overlap = knight_attacks & self.bitboard(attacker, PieceName::Knight);
+        let pawn_attacks_overlap = pawn_attacks & self.bitboard(attacker, PieceName::Pawn);
+
+        let is_king_attack = king_attacks_overlap != Bitboard::EMPTY;
+        let is_queen_attack = queen_attacks_overlap != Bitboard::EMPTY;
+        let is_rook_attack = rook_attacks_overlap != Bitboard::EMPTY;
+        let is_bishop_attack = bishop_attacks_overlap != Bitboard::EMPTY;
+        let is_knight_attack = knight_attacks_overlap != Bitboard::EMPTY;
+        let is_pawn_attack = pawn_attacks_overlap != Bitboard::EMPTY;
+
+        is_king_attack || is_queen_attack || is_rook_attack || is_bishop_attack || is_knight_attack || is_pawn_attack
     }
 
     pub fn add_to_history(&mut self) {
