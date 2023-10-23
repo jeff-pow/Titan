@@ -15,9 +15,8 @@ use super::history::BoardHistory;
 
 #[derive(Clone)]
 pub struct Board {
-    bitboards: [[Bitboard; NUM_PIECES]; 2],
+    bitboards: [Bitboard; NUM_PIECES],
     pub color_occupancies: [Bitboard; 2],
-    pub occupancies: Bitboard,
     pub array_board: [Option<Piece>; 64],
     pub to_move: Color,
     castling: [bool; 4],
@@ -32,11 +31,10 @@ pub struct Board {
 
 impl Default for Board {
     fn default() -> Self {
-        let bitboards = [[Bitboard::EMPTY; 6]; 2];
+        let bitboards = [Bitboard::EMPTY; 6];
         Board {
             bitboards,
             color_occupancies: [Bitboard::EMPTY; 2],
-            occupancies: Bitboard::EMPTY,
             array_board: [None; 64],
             castling: [false; 4],
             to_move: Color::White,
@@ -80,7 +78,7 @@ impl Board {
 
     #[inline(always)]
     pub fn bitboard(&self, side: Color, piece: PieceName) -> Bitboard {
-        self.bitboards[side.idx()][piece.idx()]
+        self.bitboards[piece.idx()] & self.color_occupancies(side)
     }
 
     #[inline(always)]
@@ -90,19 +88,7 @@ impl Board {
 
     #[inline(always)]
     pub fn square_occupied(&self, piece_type: PieceName, color: Color, sq: Square) -> bool {
-        self.bitboards[color.idx()][piece_type.idx()].square_occupied(sq)
-    }
-
-    #[inline(always)]
-    pub fn gen_color_occupancies(&mut self, color: Color) {
-        // It's interesting to me that xor and bitwise or both seem to work here, only one piece should
-        // be on a square at a time though so ¯\_(ツ)_/¯
-        self.color_occupancies[color.idx()] = self.bitboards[color.idx()].iter().fold(Bitboard::EMPTY, |a, b| a ^ *b)
-    }
-
-    #[inline(always)]
-    pub fn gen_occupancies(&mut self) {
-        self.occupancies = self.bitboards.iter().flatten().fold(Bitboard::EMPTY, |a, b| a ^ *b)
+        self.bitboard(color, piece_type) & sq.bitboard() != Bitboard::EMPTY
     }
 
     #[inline(always)]
@@ -112,7 +98,7 @@ impl Board {
 
     #[inline(always)]
     pub fn occupancies(&self) -> Bitboard {
-        self.occupancies
+        self.color_occupancies.iter().fold(Bitboard::EMPTY, |a, b| a ^ *b)
     }
 
     #[inline(always)]
@@ -128,16 +114,18 @@ impl Board {
     #[inline(always)]
     pub fn has_non_pawns(&self, side: Color) -> bool {
         self.occupancies()
-            ^ self.bitboards[side.idx()][PieceName::King.idx()]
-            ^ self.bitboards[side.idx()][PieceName::Pawn.idx()]
+            // ^ self.bitboards[side.idx()][PieceName::King.idx()]
+            ^ self.bitboard(side, PieceName::King)
+            ^ self.bitboard(side, PieceName::Pawn)
+            // ^ self.bitboards[side.idx()][PieceName::Pawn.idx()]
             != Bitboard::EMPTY
     }
 
     #[inline(always)]
     pub fn place_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
-        self.bitboards[color.idx()][piece_type.idx()] |= sq.bitboard();
+        self.color_occupancies[color.idx()] |= sq.bitboard();
+        self.bitboards[piece_type.idx()] |= sq.bitboard();
         self.array_board[sq.idx()] = Some(Piece::new(piece_type, color));
-        self.occupancies |= sq.bitboard();
         self.color_occupancies[color.idx()] |= sq.bitboard();
 
         self.accumulator.add_feature(piece_type, color, sq);
@@ -147,8 +135,8 @@ impl Board {
     fn remove_piece(&mut self, sq: Square) {
         if let Some(piece) = self.array_board[sq.idx()] {
             self.array_board[sq.idx()] = None;
-            self.bitboards[piece.color.idx()][piece.name.idx()] &= !sq.bitboard();
-            self.occupancies &= !sq.bitboard();
+            self.color_occupancies[piece.color.idx()] &= !sq.bitboard();
+            self.bitboards[piece.name.idx()] &= !sq.bitboard();
             self.color_occupancies[piece.color.idx()] &= !sq.bitboard();
             self.accumulator.remove_feature(&NET, piece.name, piece.color, sq);
         }
@@ -187,7 +175,6 @@ impl Board {
     #[inline(always)]
     // Function left with lots of variables to improve debugability...
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
-        let attacker_occupancy = self.bitboards[attacker.idx()];
         let occupancy = self.occupancies();
         let pawn_attacks = MOVEGENERATOR.pawn_attacks(sq, !attacker);
         let knight_attacks = MOVEGENERATOR.knight_attacks(sq);
@@ -196,12 +183,12 @@ impl Board {
         let queen_attacks = rook_attacks | bishop_attacks;
         let king_attacks = MOVEGENERATOR.king_attacks(sq);
 
-        let king_attacks_overlap = king_attacks & attacker_occupancy[PieceName::King.idx()];
-        let queen_attacks_overlap = queen_attacks & attacker_occupancy[PieceName::Queen.idx()];
-        let rook_attacks_overlap = rook_attacks & attacker_occupancy[PieceName::Rook.idx()];
-        let bishop_attacks_overlap = bishop_attacks & attacker_occupancy[PieceName::Bishop.idx()];
-        let knight_attacks_overlap = knight_attacks & attacker_occupancy[PieceName::Knight.idx()];
-        let pawn_attacks_overlap = pawn_attacks & attacker_occupancy[PieceName::Pawn.idx()];
+        let king_attacks_overlap = king_attacks & self.bitboard(attacker, PieceName::King);
+        let queen_attacks_overlap = queen_attacks & self.bitboard(attacker, PieceName::Queen);
+        let rook_attacks_overlap = rook_attacks & self.bitboard(attacker, PieceName::Rook);
+        let bishop_attacks_overlap = bishop_attacks & self.bitboard(attacker, PieceName::Bishop);
+        let knight_attacks_overlap = knight_attacks & self.bitboard(attacker, PieceName::Knight);
+        let pawn_attacks_overlap = pawn_attacks & self.bitboard(attacker, PieceName::Pawn);
 
         let is_king_attack = king_attacks_overlap != Bitboard::EMPTY;
         let is_queen_attack = queen_attacks_overlap != Bitboard::EMPTY;
@@ -444,8 +431,6 @@ impl Board {
         debug_assert_eq!(Bitboard::EMPTY, self.color_occupancies(Color::White) & self.color_occupancies(Color::Black));
         let w = self.color_occupancies(Color::White);
         let b = self.color_occupancies(Color::Black);
-        self.gen_color_occupancies(Color::White);
-        self.gen_color_occupancies(Color::Black);
         debug_assert_eq!(w, self.color_occupancies(Color::White));
         debug_assert_eq!(b, self.color_occupancies(Color::Black));
     }
@@ -455,7 +440,7 @@ impl Board {
         for color in &[Color::White, Color::Black] {
             for piece in PieceName::iter() {
                 dbg!("{:?} {:?}", color, piece);
-                dbg!(self.bitboards[color.idx()][piece.idx()]);
+                dbg!(self.bitboard(*color, piece));
                 dbg!("\n");
             }
         }
@@ -581,14 +566,14 @@ mod board_tests {
     fn test_place_piece() {
         let mut board = Board::default();
         board.place_piece(Rook, Color::White, Square(0));
-        assert!(board.bitboards[Color::White.idx()][Rook.idx()].square_occupied(Square(0)));
+        assert!(board.bitboard(Color::White, PieceName::Rook).square_occupied(Square(0)));
     }
 
     #[test]
     fn test_remove_piece() {
         let mut board = fen::build_board(fen::STARTING_FEN);
         board.remove_piece(Square(0));
-        assert!(board.bitboards[Color::White.idx()][Rook.idx()].square_is_empty(Square(0)));
+        assert!(board.bitboard(Color::White, PieceName::Rook).square_is_empty(Square(0)));
         assert!(board.occupancies().square_is_empty(Square(0)));
     }
 }
