@@ -185,15 +185,6 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn in_check(&self, side: Color) -> bool {
-        let king_square = self.king_square(side);
-        if !king_square.is_valid() {
-            return true;
-        }
-        self.square_under_attack(!side, king_square)
-    }
-
-    #[inline(always)]
     pub fn attackers(&self, sq: Square, occupancy: Bitboard) -> Bitboard {
         self.attackers_for_side(Color::White, sq, occupancy) | self.attackers_for_side(Color::Black, sq, occupancy)
     }
@@ -204,7 +195,8 @@ impl Board {
         let knight_attacks = MG.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
         let bishop_attacks = MG.bishop_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Bishop);
         let rook_attacks = MG.rook_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Rook);
-        let queen_attacks = (rook_attacks | bishop_attacks) & self.bitboard(attacker, PieceName::Queen);
+        let queen_attacks = (MG.rook_attacks(sq, occupancy) | MG.bishop_attacks(sq, occupancy))
+            & self.bitboard(attacker, PieceName::Queen);
         let king_attacks = MG.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
         pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | queen_attacks | king_attacks
     }
@@ -212,29 +204,17 @@ impl Board {
     #[inline(always)]
     // Function left with lots of variables to improve debugability...
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
-        let occupancy = self.occupancies();
-        let pawn_attacks = MG.pawn_attacks(sq, !attacker);
-        let knight_attacks = MG.knight_attacks(sq);
-        let bishop_attacks = MG.bishop_attacks(sq, occupancy);
-        let rook_attacks = MG.rook_attacks(sq, occupancy);
-        let queen_attacks = rook_attacks | bishop_attacks;
-        let king_attacks = MG.king_attacks(sq);
+        let a = self.attackers_for_side(attacker, sq, self.occupancies());
+        a != Bitboard::EMPTY
+    }
 
-        let king_attacks_overlap = king_attacks & self.bitboard(attacker, PieceName::King);
-        let queen_attacks_overlap = queen_attacks & self.bitboard(attacker, PieceName::Queen);
-        let rook_attacks_overlap = rook_attacks & self.bitboard(attacker, PieceName::Rook);
-        let bishop_attacks_overlap = bishop_attacks & self.bitboard(attacker, PieceName::Bishop);
-        let knight_attacks_overlap = knight_attacks & self.bitboard(attacker, PieceName::Knight);
-        let pawn_attacks_overlap = pawn_attacks & self.bitboard(attacker, PieceName::Pawn);
-
-        let is_king_attack = king_attacks_overlap != Bitboard::EMPTY;
-        let is_queen_attack = queen_attacks_overlap != Bitboard::EMPTY;
-        let is_rook_attack = rook_attacks_overlap != Bitboard::EMPTY;
-        let is_bishop_attack = bishop_attacks_overlap != Bitboard::EMPTY;
-        let is_knight_attack = knight_attacks_overlap != Bitboard::EMPTY;
-        let is_pawn_attack = pawn_attacks_overlap != Bitboard::EMPTY;
-
-        is_king_attack || is_queen_attack || is_rook_attack || is_bishop_attack || is_knight_attack || is_pawn_attack
+    #[inline(always)]
+    pub fn in_check(&self, side: Color) -> bool {
+        let king_square = self.king_square(side);
+        if !king_square.is_valid() {
+            return true;
+        }
+        self.square_under_attack(!side, king_square)
     }
 
     fn add_to_history(&mut self) {
@@ -319,6 +299,7 @@ impl Board {
 
     /// Function makes a move and modifies board state to reflect the move that just happened.
     /// Returns true if a move was legal, and false if it was illegal.
+    #[must_use]
     pub fn make_move(&mut self, m: Move) -> bool {
         // Special case if the move is an en_passant
         if m.is_en_passant() {
@@ -471,7 +452,7 @@ impl Board {
         debug_assert_eq!(b, self.color_occupancies(Color::Black));
 
         // Return false if the move leaves the opposite side in check, denoting an invalid move
-        self.in_check(!self.to_move)
+        !self.in_check(!self.to_move)
     }
 
     #[allow(dead_code)]

@@ -296,8 +296,7 @@ pub fn generate_legal_moves(board: &Board) -> MoveList {
         .into_iter()
         .filter(|m| {
             let mut new_b = board.to_owned();
-            new_b.make_move(m.m);
-            !new_b.in_check(board.to_move)
+            new_b.make_move(m.m)
         })
         .collect()
 }
