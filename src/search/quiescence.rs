@@ -1,15 +1,15 @@
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
-use crate::eval::nnue::NET;
-use crate::moves::movegenerator::{generate_psuedolegal_moves, MGT};
+use crate::eval::eval::evaluate;
+use crate::moves::movegenerator::{generate_moves, MGT};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::moves::Move;
-use crate::search::pvs::STALEMATE;
+use crate::search::search::STALEMATE;
 
-use super::pvs::{CHECKMATE, INFINITY};
+use super::search::{CHECKMATE, INFINITY};
 use super::see::see;
 use super::store_pv;
-use super::{pvs::MAX_SEARCH_DEPTH, SearchInfo};
+use super::{search::MAX_SEARCH_DEPTH, SearchInfo};
 
 pub fn quiescence(
     ply: i32,
@@ -27,7 +27,8 @@ pub fn quiescence(
     info.search_stats.nodes_searched += 1;
 
     if ply >= MAX_SEARCH_DEPTH {
-        return NET.evaluate(&info.board.accumulator, info.board.to_move);
+        // return NET.evaluate(&info.board.accumulator, info.board.to_move);
+        return evaluate(board);
     }
 
     let (_, table_move) = {
@@ -40,7 +41,8 @@ pub fn quiescence(
     };
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
-    let stand_pat = NET.evaluate(&board.accumulator, board.to_move);
+    // let stand_pat = NET.evaluate(&board.accumulator, board.to_move);
+    let stand_pat = evaluate(board);
     if stand_pat >= beta {
         return stand_pat;
     }
@@ -49,15 +51,16 @@ pub fn quiescence(
 
     let in_check = board.in_check(board.to_move);
     let mut moves = if in_check {
-        generate_psuedolegal_moves(board, MGT::All)
+        generate_moves(board, MGT::All)
     } else {
-        generate_psuedolegal_moves(board, MGT::CapturesOnly)
+        generate_moves(board, MGT::CapturesOnly)
     };
     moves.score_moves(board, table_move, &info.killer_moves[ply as usize], info);
     let mut best_score = if in_check {
         -INFINITY
     } else {
-        NET.evaluate(&board.accumulator, board.to_move)
+        // NET.evaluate(&board.accumulator, board.to_move)
+        evaluate(board)
     };
     let mut best_move = Move::NULL;
     let mut moves_searched = 0;

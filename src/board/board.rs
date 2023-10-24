@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-use super::history::BoardHistory;
+use super::move_history::BoardHistory;
 
 #[derive(Clone, Copy)]
 pub struct Board {
@@ -284,7 +284,7 @@ impl Board {
     }
 
     /// Function makes a move and modifies board state to reflect the move that just happened
-    pub fn make_move(&mut self, m: Move) {
+    pub fn make_move(&mut self, m: Move) -> bool {
         // Special case if the move is an en_passant
         if m.is_en_passant() {
             match self.to_move {
@@ -434,6 +434,9 @@ impl Board {
         let b = self.color_occupancies(Color::Black);
         debug_assert_eq!(w, self.color_occupancies(Color::White));
         debug_assert_eq!(b, self.color_occupancies(Color::Black));
+
+        // Return false if the move leaves the opposite side in check, denoting an invalid move
+        self.in_check(!self.to_move)
     }
 
     #[allow(dead_code)]

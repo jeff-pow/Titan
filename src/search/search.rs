@@ -1,16 +1,15 @@
 use std::cmp::{max, min};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
-use crate::eval::nnue::NET;
-use crate::moves::movegenerator::{generate_psuedolegal_moves, MGT};
+use crate::eval::eval::evaluate;
+use crate::moves::movegenerator::{generate_moves, MGT};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::moves::Move;
 
-use super::history::MAX_HIST_VAL;
+use super::history_heuristics::MAX_HIST_VAL;
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
 use super::see::see;
@@ -57,7 +56,7 @@ pub fn print_search_stats(info: &SearchInfo, eval: i32, pv: &[Move], iter_depth:
     println!();
 }
 
-pub fn search(info: &mut SearchInfo, mut max_depth: i32, halt: Arc<AtomicBool>) -> Move {
+pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
     let mut best_move = Move::NULL;
     let mut pv_moves = Vec::new();
 
@@ -79,7 +78,7 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32, halt: Arc<AtomicBool>) 
     // The previous eval from this side (two moves ago) is a good place to estimate the next
     // aspiration window around. First depth will not have an estimate, and we will do a full
     // window search
-    let mut score_history = vec![NET.evaluate(&info.board.accumulator, info.board.to_move)];
+    let mut score_history = vec![evaluate(&info.board)];
     info.iter_max_depth = 1;
 
     while info.iter_max_depth <= max_depth {
@@ -99,7 +98,7 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32, halt: Arc<AtomicBool>) 
 
         let mut score;
         loop {
-            score = pvs(info.iter_max_depth, alpha, beta, &mut pv_moves, info, board, false, halt.clone());
+            score = alpha_beta(info.iter_max_depth, alpha, beta, &mut pv_moves, info, board, false);
             if score <= alpha {
                 beta = (alpha + beta) / 2;
                 alpha = max(score - delta, -INFINITY);
@@ -126,7 +125,7 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32, halt: Arc<AtomicBool>) 
         {
             break;
         }
-        if halt.load(Ordering::SeqCst) {
+        if info.halt.load(Ordering::SeqCst) {
             break;
         }
         info.iter_max_depth += 1;
@@ -140,7 +139,7 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32, halt: Arc<AtomicBool>) 
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
 /// to refute other variations
 #[allow(clippy::too_many_arguments)]
-fn pvs(
+fn alpha_beta(
     mut depth: i32,
     mut alpha: i32,
     beta: i32,
@@ -148,7 +147,6 @@ fn pvs(
     info: &mut SearchInfo,
     board: &Board,
     cut_node: bool,
-    halt: Arc<AtomicBool>,
 ) -> i32 {
     let ply = info.iter_max_depth - depth;
     let is_root = ply == 0;
@@ -157,8 +155,9 @@ fn pvs(
     let is_pv_node = (beta - alpha).abs() != 1;
     info.sel_depth = info.sel_depth.max(ply);
     // Don't do pvs unless you have a pv - otherwise you're wasting time
-    if halt.load(Ordering::SeqCst) {
-        return NET.evaluate(&info.board.accumulator, info.board.to_move);
+    if info.halt.load(Ordering::SeqCst) {
+        // return NET.evaluate(&info.board.accumulator, info.board.to_move);
+        return evaluate(board);
     }
 
     // if in_check {
@@ -169,7 +168,8 @@ fn pvs(
         if board.in_check(board.to_move) {
             return quiescence(ply, alpha, beta, pv, info, board);
         }
-        return NET.evaluate(&info.board.accumulator, info.board.to_move);
+        // return NET.evaluate(&info.board.accumulator, info.board.to_move);
+        return evaluate(board);
     }
 
     if ply > 0 {
@@ -212,11 +212,11 @@ fn pvs(
     let mut best_score = -INFINITY;
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
-    // TODO:  something like 10 or 20 depth * depth here
     let hist_bonus = (155 * depth).min(2000);
 
     if !is_root && !is_pv_node && !in_check {
-        let static_eval = NET.evaluate(&info.board.accumulator, info.board.to_move);
+        // let static_eval = NET.evaluate(&info.board.accumulator, info.board.to_move);
+        let static_eval = evaluate(board);
         // Reverse futility pruning
         if static_eval - RFP_MULTIPLIER * depth >= beta && depth < MAX_RFP_DEPTH && static_eval.abs() < NEAR_CHECKMATE {
             return static_eval;
@@ -230,7 +230,7 @@ fn pvs(
             new_b.en_passant_square = None;
             new_b.prev_move = Move::NULL;
             let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
-            let mut null_eval = -pvs(depth - r, -beta, -beta + 1, &mut node_pvs, info, &new_b, !cut_node, halt.clone());
+            let mut null_eval = -alpha_beta(depth - r, -beta, -beta + 1, &mut node_pvs, info, &new_b, !cut_node);
             if null_eval >= beta {
                 if null_eval > NEAR_CHECKMATE {
                     null_eval = beta;
@@ -240,7 +240,7 @@ fn pvs(
                 }
                 // Concept from stockfish
                 info.nmp_plies = ply + (depth - r) / 3;
-                let null_eval = pvs(depth - r, beta - 1, beta, &mut Vec::new(), info, board, false, halt.clone());
+                let null_eval = alpha_beta(depth - r, beta - 1, beta, &mut Vec::new(), info, board, false);
                 info.nmp_plies = 0;
                 if null_eval >= beta {
                     return null_eval;
@@ -249,9 +249,7 @@ fn pvs(
         }
     }
 
-    // Just generate psuedolegal moves to save computation time on legality for moves that will be
-    // pruned
-    let mut moves = generate_psuedolegal_moves(board, MGT::All);
+    let mut moves = generate_moves(board, MGT::All);
     let mut legal_moves_searched = 0;
     moves.score_moves(board, table_move, &info.killer_moves[ply as usize], info);
     info.search_stats.nodes_searched += 1;
@@ -295,11 +293,11 @@ fn pvs(
         if legal_moves_searched == 0 {
             node_pvs.clear();
             // On the first move, just do a full depth search
-            eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false, halt.clone());
+            eval = -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false);
         } else {
             if legal_moves_searched < LMR_THRESHOLD || depth < MIN_LMR_DEPTH {
                 node_pvs.clear();
-                eval = -pvs(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node, halt.clone());
+                eval = -alpha_beta(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node);
             } else {
                 // Otherwise do LMR
                 let mut r = get_reduction(info, depth, legal_moves_searched);
@@ -318,14 +316,14 @@ fn pvs(
                 //     depth += 1;
                 // }
                 r = r.clamp(1, depth - 1);
-                eval = -pvs(depth - r, -alpha - 1, -alpha, &mut Vec::new(), info, &new_b, !cut_node, halt.clone());
+                eval = -alpha_beta(depth - r, -alpha - 1, -alpha, &mut Vec::new(), info, &new_b, !cut_node);
                 if eval > alpha && r > 1 {
-                    eval = -pvs(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node, halt.clone());
+                    eval = -alpha_beta(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node);
                 }
             }
             if eval > alpha && eval < beta {
                 node_pvs.clear();
-                eval = -pvs(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false, halt.clone());
+                eval = -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false);
             }
         }
 

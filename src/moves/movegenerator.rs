@@ -87,18 +87,14 @@ impl MoveGenerator {
     }
 }
 
-/// Generates all moves with no respect to legality via leaving itself in check
-pub fn generate_psuedolegal_moves(board: &Board, gen_type: MGT) -> MoveList {
+/// Generates all pseudolegal moves
+pub fn generate_moves(board: &Board, gen_type: MGT) -> MoveList {
     let mut moves = MoveList::default();
     generate_bitboard_moves(board, PieceName::Knight, gen_type, &mut moves);
     generate_bitboard_moves(board, PieceName::King, gen_type, &mut moves);
     generate_bitboard_moves(board, PieceName::Queen, gen_type, &mut moves);
     generate_bitboard_moves(board, PieceName::Rook, gen_type, &mut moves);
     generate_bitboard_moves(board, PieceName::Bishop, gen_type, &mut moves);
-    // moves.append(&generate_bitboard_moves(board, PieceName::King, gen_type));
-    // moves.append(&generate_bitboard_moves(board, PieceName::Queen, gen_type));
-    // moves.append(&generate_bitboard_moves(board, PieceName::Rook, gen_type));
-    // moves.append(&generate_bitboard_moves(board, PieceName::Bishop, gen_type));
     generate_pawn_moves(board, gen_type, &mut moves);
     if gen_type == MGT::QuietsOnly || gen_type == MGT::All {
         generate_castling_moves(board, &mut moves);
@@ -283,13 +279,11 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName, gen_type: MGT, 
             Knight => MG.knight_attacks(sq),
             Pawn => panic!(),
         };
-        let enemies_and_vacancies = !board.color_occupancies(board.to_move);
         let attacks = match gen_type {
             MoveGenerationType::CapturesOnly => attack_bitboard & board.color_occupancies(!board.to_move),
             MoveGenerationType::QuietsOnly => attack_bitboard & !board.occupancies(),
-            MoveGenerationType::All => attack_bitboard & enemies_and_vacancies,
+            MoveGenerationType::All => attack_bitboard & (!board.color_occupancies(board.to_move)),
         };
-        // let attacks = attack_bitboard & enemies_and_vacancies;
         for dest in attacks {
             moves.push(Move::new(sq, dest, None, MoveType::Normal));
         }
@@ -297,8 +291,8 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName, gen_type: MGT, 
 }
 
 /// Returns all legal moves
-pub fn generate_moves(board: &Board) -> MoveList {
-    generate_psuedolegal_moves(board, MGT::All)
+pub fn generate_legal_moves(board: &Board) -> MoveList {
+    generate_moves(board, MGT::All)
         .into_iter()
         .filter(|m| {
             let mut new_b = board.to_owned();
