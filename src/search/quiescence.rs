@@ -73,8 +73,7 @@ pub fn quiescence(
             continue;
         }
 
-        new_b.make_move(m);
-        if new_b.in_check(board.to_move) {
+        if !new_b.make_move(m) {
             continue;
         }
         moves_searched += 1;

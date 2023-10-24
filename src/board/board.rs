@@ -82,13 +82,47 @@ impl Board {
     }
 
     #[inline(always)]
+    fn is_material_draw(&self) -> bool {
+        // If we have any pawns, checkmate is still possible
+        if self.piece_bitboard(PieceName::Pawn) != Bitboard::EMPTY {
+            return false;
+        }
+        let piece_count = self.occupancies().count_bits();
+        // King vs King can't checkmate
+        if piece_count == 2
+               // If there's three pieces and a singular knight or bishop, stalemate is impossible
+            || (piece_count == 3 && ((self.piece_bitboard(PieceName::Knight).count_bits() == 1)
+            || (self.piece_bitboard(PieceName::Bishop).count_bits() == 1)))
+        {
+            return true;
+        } else if piece_count == 4 {
+            // No combination of two knights and a king can checkmate
+            if self.piece_bitboard(PieceName::Knight).count_bits() == 2 {
+                return true;
+            }
+            // If there is one bishop per side, checkmate is impossible
+            if self.color_occupancies(Color::White).count_bits() == 2
+                && self.piece_bitboard(PieceName::Bishop).count_bits() == 2
+            {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    pub fn piece_bitboard(&self, p: PieceName) -> Bitboard {
+        self.bitboards[p.idx()]
+    }
+
+    #[inline(always)]
     pub fn is_draw(&self) -> bool {
-        check_for_3x_repetition(self) || self.half_moves >= 100
+        check_for_3x_repetition(self) || self.half_moves >= 100 || self.is_material_draw()
     }
 
     #[inline(always)]
     pub fn square_occupied(&self, piece_type: PieceName, color: Color, sq: Square) -> bool {
-        self.bitboard(color, piece_type) & sq.bitboard() != Bitboard::EMPTY
+        self.bitboard(color, piece_type).square_occupied(sq)
     }
 
     #[inline(always)]
@@ -203,7 +237,7 @@ impl Board {
         is_king_attack || is_queen_attack || is_rook_attack || is_bishop_attack || is_knight_attack || is_pawn_attack
     }
 
-    pub fn add_to_history(&mut self) {
+    fn add_to_history(&mut self) {
         self.history.push(self.zobrist_hash);
     }
 
@@ -277,13 +311,14 @@ impl Board {
         attacks & dest.bitboard() != Bitboard::EMPTY
     }
 
-    /// Determines if a move is "quiet" for quiescence search
+    /// Returns true if a move does not capture a piece, and false if a piece is captured
     #[inline(always)]
     pub fn is_quiet(&self, m: Move) -> bool {
         self.occupancies().square_is_empty(m.dest_square())
     }
 
-    /// Function makes a move and modifies board state to reflect the move that just happened
+    /// Function makes a move and modifies board state to reflect the move that just happened.
+    /// Returns true if a move was legal, and false if it was illegal.
     pub fn make_move(&mut self, m: Move) -> bool {
         // Special case if the move is an en_passant
         if m.is_en_passant() {

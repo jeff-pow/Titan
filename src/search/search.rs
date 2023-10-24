@@ -26,6 +26,7 @@ pub const MAX_SEARCH_DEPTH: i32 = 100;
 pub const INIT_ASP: i32 = 10;
 
 /// Begin LMR if more than this many moves have been searched
+// TODO: Test this at 1
 pub const LMR_THRESHOLD: i32 = 2;
 pub const MIN_LMR_DEPTH: i32 = 2;
 const MAX_CAPTURE_SEE_DEPTH: i32 = 6;
@@ -283,8 +284,7 @@ fn alpha_beta(
             }
         }
 
-        new_b.make_move(m);
-        if new_b.in_check(board.to_move) {
+        if !new_b.make_move(m) {
             continue;
         }
         let mut node_pvs = Vec::new();
