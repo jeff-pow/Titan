@@ -13,6 +13,8 @@ use super::bitboard::Bitboard;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Square(pub u8);
 
+pub const NUM_SQUARES: usize = 64;
+
 impl Square {
     /// Function checks whether a shift is valid before executing it
     #[inline(always)]

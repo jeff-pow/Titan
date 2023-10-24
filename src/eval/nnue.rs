@@ -1,6 +1,6 @@
 use crate::types::{
-    pieces::{Color, PieceName},
-    square::Square,
+    pieces::{Color, PieceName, NUM_PIECES},
+    square::{Square, NUM_SQUARES},
 };
 
 pub const INPUT_SIZE: usize = 768;
@@ -104,8 +104,8 @@ fn activate(input: &mut [i16; HIDDEN_SIZE], weights: &[i16], offset: usize) {
     }
 }
 
-const COLOR_OFFSET: usize = 64 * 6;
-const PIECE_OFFSET: usize = 64;
+const COLOR_OFFSET: usize = NUM_SQUARES * NUM_PIECES;
+const PIECE_OFFSET: usize = NUM_SQUARES;
 fn feature_idx(color: Color, piece: PieceName, sq: Square) -> usize {
     color.idx() * COLOR_OFFSET + piece.idx() * PIECE_OFFSET + sq.idx()
 }

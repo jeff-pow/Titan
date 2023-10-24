@@ -21,8 +21,8 @@ pub fn evaluate(board: &Board) -> i32 {
             game_phase += game_phase_value(piece);
             // We flip the index of white pieces because the const boards are indexed with square
             // A8 being arr[63]
-            white_mg += get_mg_table(piece)[sq.idx() ^ 56] + piece.value();
-            white_eg += get_eg_table(piece)[sq.idx() ^ 56] + piece.value();
+            white_mg += get_mg_table(piece)[sq.flip_vertical().idx()] + piece.value();
+            white_eg += get_eg_table(piece)[sq.flip_vertical().idx()] + piece.value();
         }
     }
     for piece in PieceName::iter() {
