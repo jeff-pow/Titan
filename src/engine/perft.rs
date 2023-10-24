@@ -1,4 +1,4 @@
-use std::{sync::RwLock, time::Instant};
+use std::sync::RwLock;
 
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
@@ -6,20 +6,6 @@ use crate::{
     board::board::Board,
     moves::{movegenerator::generate_legal_moves, movelist::MoveListEntry},
 };
-
-#[allow(dead_code)]
-/// Counts and times the action of generating moves to a certain depth. Prints this information
-pub fn time_move_generation(board: &Board, depth: i32) {
-    for i in 1..=depth {
-        let start = Instant::now();
-        let m = count_moves(i, board);
-        print!("{m}");
-        let elapsed = start.elapsed();
-        print!(" moves generated in {:?} ", elapsed);
-        println!("at a depth of {i}");
-        println!("{} nps", m as u64 / elapsed.as_secs());
-    }
-}
 
 pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
     let total = RwLock::new(0);
