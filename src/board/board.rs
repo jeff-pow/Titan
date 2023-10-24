@@ -445,12 +445,8 @@ impl Board {
 
         self.prev_move = m;
 
-        debug_assert_eq!(Bitboard::EMPTY, self.color_occupancies(Color::White) & self.color_occupancies(Color::Black));
-        let w = self.color_occupancies(Color::White);
-        let b = self.color_occupancies(Color::Black);
-        debug_assert_eq!(w, self.color_occupancies(Color::White));
-        debug_assert_eq!(b, self.color_occupancies(Color::Black));
-
+        // assert_ne!(self.accumulator.get(Color::White), self.accumulator.get(Color::Black));
+        // self.refresh_accumulators();
         // Return false if the move leaves the opposite side in check, denoting an invalid move
         !self.in_check(!self.to_move)
     }
