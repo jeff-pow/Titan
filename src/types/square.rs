@@ -14,9 +14,6 @@ use super::bitboard::Bitboard;
 pub struct Square(pub u8);
 
 impl Square {
-    /// Declaration of an invalid square used as the equivalent of null
-    // pub const INVALID: Square = Square(64);
-
     /// Function checks whether a shift is valid before executing it
     #[inline(always)]
     pub fn checked_shift(&self, dir: Direction) -> Option<Square> {
@@ -43,6 +40,7 @@ impl Square {
     /// shifts validity has already been proven valid elsewhere
     pub fn shift(&self, dir: Direction) -> Square {
         let new_square = self.0 as i8 + dir as i8;
+        debug_assert!(Square(new_square as u8).is_valid());
         Square(new_square as u8)
     }
 

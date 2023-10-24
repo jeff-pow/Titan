@@ -21,17 +21,6 @@ impl BoardHistory {
     }
 }
 
-impl FromIterator<u64> for BoardHistory {
-    fn from_iter<I: IntoIterator<Item = u64>>(iter: I) -> Self {
-        let mut history = BoardHistory::default();
-        for hash in iter {
-            history.arr[history.len] = hash;
-            history.len += 1;
-        }
-        history
-    }
-}
-
 impl Default for BoardHistory {
     fn default() -> Self {
         // Uninitialized memory is much faster than initializing it when the important stuff will
