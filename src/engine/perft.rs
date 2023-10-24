@@ -12,10 +12,12 @@ use crate::{
 pub fn time_move_generation(board: &Board, depth: i32) {
     for i in 1..=depth {
         let start = Instant::now();
-        print!("{}", count_moves(i, board));
+        let m = count_moves(i, board);
+        print!("{m}");
         let elapsed = start.elapsed();
         print!(" moves generated in {:?} ", elapsed);
         println!("at a depth of {i}");
+        println!("{} nps", m as u64 / elapsed.as_secs());
     }
 }
 
