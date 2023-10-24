@@ -250,15 +250,6 @@ pub enum Promotion {
     Knight,
 }
 
-#[derive(Clone, Copy, Debug, EnumIter, PartialEq)]
-pub enum EnPassant {
-    NW,
-    NE,
-    SW,
-    SE,
-    None,
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Castle {
     WhiteKing,
