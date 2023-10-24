@@ -31,9 +31,8 @@ pub struct Board {
 
 impl Default for Board {
     fn default() -> Self {
-        let bitboards = [Bitboard::EMPTY; 6];
         Board {
-            bitboards,
+            bitboards: [Bitboard::EMPTY; 6],
             color_occupancies: [Bitboard::EMPTY; 2],
             array_board: [None; 64],
             castling: [false; 4],
@@ -132,25 +131,25 @@ impl Board {
 
     #[inline(always)]
     pub fn occupancies(&self) -> Bitboard {
-        self.color_occupancies.iter().fold(Bitboard::EMPTY, |a, b| a ^ *b)
+        self.color_occupancies(Color::White) | self.color_occupancies(Color::Black)
     }
 
     #[inline(always)]
     pub fn color_at(&self, sq: Square) -> Option<Color> {
-        // self.array_board[sq.idx()].map(|piece| piece.color);
-        self.color_occupancies
-            .iter()
-            .position(|x| *x & sq.bitboard() != Bitboard::EMPTY)
-            .map(Color::from)
+        self.array_board[sq.idx()].map(|piece| piece.color)
+        // self.color_occupancies
+        //     .iter()
+        //     .position(|x| *x & sq.bitboard() != Bitboard::EMPTY)
+        //     .map(Color::from)
     }
 
     #[inline(always)]
     pub fn piece_at(&self, sq: Square) -> Option<PieceName> {
-        // self.array_board[sq.idx()].map(|piece| piece.name)
-        self.bitboards
-            .iter()
-            .position(|x| *x & sq.bitboard() != Bitboard::EMPTY)
-            .map(PieceName::from)
+        self.array_board[sq.idx()].map(|piece| piece.name)
+        // self.bitboards
+        //     .iter()
+        //     .position(|x| *x & sq.bitboard() != Bitboard::EMPTY)
+        //     .map(PieceName::from)
     }
 
     #[inline(always)]
@@ -165,7 +164,6 @@ impl Board {
         self.bitboards[piece_type.idx()] |= sq.bitboard();
         self.array_board[sq.idx()] = Some(Piece::new(piece_type, color));
         self.color_occupancies[color.idx()] |= sq.bitboard();
-
         self.accumulator.add_feature(piece_type, color, sq);
     }
 
@@ -202,10 +200,8 @@ impl Board {
     }
 
     #[inline(always)]
-    // Function left with lots of variables to improve debugability...
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
-        let a = self.attackers_for_side(attacker, sq, self.occupancies());
-        a != Bitboard::EMPTY
+        self.attackers_for_side(attacker, sq, self.occupancies()) != Bitboard::EMPTY
     }
 
     #[inline(always)]
