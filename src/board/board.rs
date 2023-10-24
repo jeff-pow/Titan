@@ -489,8 +489,7 @@ impl Board {
         self.accumulator.reset();
         for c in Color::iter() {
             for p in PieceName::iter() {
-                let bb = self.bitboard(c, p);
-                for sq in bb {
+                for sq in self.bitboard(c, p) {
                     self.accumulator.add_feature(p, c, sq)
                 }
             }
