@@ -6,7 +6,6 @@ use rustc_hash::FxHashMap;
 use crate::board::board::Board;
 use crate::board::fen::{build_board, STARTING_FEN};
 use crate::engine::transposition::{get_table, TableEntry};
-use crate::moves::movegenerator::MoveGenerator;
 use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
 
@@ -35,7 +34,6 @@ pub struct SearchInfo {
     pub nmp_plies: i32,
     pub killer_moves: KillerMoves,
     pub sel_depth: i32,
-    pub mg: MoveGenerator,
     pub lmr_reductions: LmrReductions,
     pub history: MoveHistory,
     pub halt: Arc<AtomicBool>,
@@ -54,7 +52,6 @@ impl Default for SearchInfo {
             max_depth: MAX_SEARCH_DEPTH,
             killer_moves: empty_killers(),
             sel_depth: 0,
-            mg: MoveGenerator::default(),
             lmr_reductions: lmr_reductions(),
             history: MoveHistory::default(),
             halt: Arc::new(AtomicBool::from(false)),
