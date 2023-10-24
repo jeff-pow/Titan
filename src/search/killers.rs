@@ -1,6 +1,6 @@
 use crate::moves::moves::Move;
 
-use super::{pvs::MAX_SEARCH_DEPTH, SearchInfo};
+use super::{search::MAX_SEARCH_DEPTH, SearchInfo};
 
 pub type KillerMoves = [[Move; NUM_KILLER_MOVES]; MAX_SEARCH_DEPTH as usize];
 

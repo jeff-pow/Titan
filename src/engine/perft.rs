@@ -4,7 +4,7 @@ use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
 use crate::{
     board::board::Board,
-    moves::{movegenerator::generate_moves, movelist::MoveListEntry},
+    moves::{movegenerator::generate_legal_moves, movelist::MoveListEntry},
 };
 
 #[allow(dead_code)]
@@ -21,7 +21,7 @@ pub fn time_move_generation(board: &Board, depth: i32) {
 
 pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
     let total = RwLock::new(0);
-    let moves = generate_moves(&board);
+    let moves = generate_legal_moves(&board);
 
     moves.into_vec().into_par_iter().for_each(|m| {
         let mut new_b = board.to_owned();
@@ -38,7 +38,7 @@ pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
 
 pub fn perft(board: Board, depth: i32) -> usize {
     let mut total = 0;
-    let moves = generate_moves(&board);
+    let moves = generate_legal_moves(&board);
     for MoveListEntry { m, .. } in moves {
         let mut new_b = board.to_owned();
         new_b.make_move(m);
@@ -53,7 +53,7 @@ pub fn perft(board: Board, depth: i32) -> usize {
 /// Recursively counts the number of moves down to a certain depth
 pub fn count_moves(depth: i32, board: &Board) -> usize {
     let mut count = 0;
-    let moves = generate_moves(board);
+    let moves = generate_legal_moves(board);
 
     if depth == 1 {
         return moves.len();

@@ -1,3 +1,4 @@
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, RwLock};
 
 use rustc_hash::FxHashMap;
@@ -8,18 +9,17 @@ use crate::engine::transposition::{get_table, TableEntry};
 use crate::moves::movegenerator::MoveGenerator;
 use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
-use crate::search::pvs::MAX_SEARCH_DEPTH;
 
-use self::history::MoveHistory;
+use self::history_heuristics::MoveHistory;
 use self::killers::{empty_killers, KillerMoves};
-use self::pvs::{LMR_THRESHOLD, MIN_LMR_DEPTH};
+use self::search::{LMR_THRESHOLD, MAX_SEARCH_DEPTH, MIN_LMR_DEPTH};
 use self::{game_time::GameTime, search_stats::SearchStats};
 
 pub(crate) mod game_time;
-pub mod history;
+pub mod history_heuristics;
 pub mod killers;
-pub(crate) mod pvs;
 pub(crate) mod quiescence;
+pub mod search;
 pub(crate) mod search_stats;
 pub mod see;
 
@@ -38,6 +38,7 @@ pub struct SearchInfo {
     pub mg: MoveGenerator,
     pub lmr_reductions: LmrReductions,
     pub history: MoveHistory,
+    pub halt: Arc<AtomicBool>,
 }
 
 impl Default for SearchInfo {
@@ -56,6 +57,7 @@ impl Default for SearchInfo {
             mg: MoveGenerator::default(),
             lmr_reductions: lmr_reductions(),
             history: MoveHistory::default(),
+            halt: Arc::new(AtomicBool::from(false)),
         }
     }
 }

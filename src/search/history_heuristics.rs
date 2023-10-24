@@ -5,6 +5,7 @@ pub const MAX_HIST_VAL: i32 = i16::MAX as i32;
 #[derive(Clone)]
 pub struct MoveHistory {
     // Indexed [side][src sq][dest sq]
+    // TODO: Index by piece instead of butterfly boards
     search_history: [[[i32; 64]; 64]; 2],
 }
 
