@@ -19,6 +19,19 @@ impl BoardHistory {
         self.arr[self.len] = hash;
         self.len += 1;
     }
+
+    /// Function checks for the presence of the board in the game. If the board position will have occurred three times,
+    /// returns true indicating the position would be a stalemate due to the threefold repetition rule
+    pub fn check_for_3x_repetition(&self, hash: u64) -> bool {
+        let len = self.len;
+        let mut count = 0;
+        for i in (0..len).rev() {
+            if self.arr[i] == hash {
+                count += 1;
+            }
+        }
+        count >= 3
+    }
 }
 
 impl Default for BoardHistory {

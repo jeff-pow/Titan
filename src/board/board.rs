@@ -116,7 +116,7 @@ impl Board {
 
     #[inline(always)]
     pub fn is_draw(&self) -> bool {
-        check_for_3x_repetition(self) || self.half_moves >= 100 || self.is_material_draw()
+        self.history.check_for_3x_repetition(self.zobrist_hash) || self.half_moves >= 100 || self.is_material_draw()
     }
 
     #[inline(always)]
@@ -468,20 +468,6 @@ impl Board {
             }
         }
     }
-}
-
-/// Function checks for the presence of the board in the game. If the board position will have occurred three times,
-/// returns true indicating the position would be a stalemate due to the threefold repetition rule
-pub fn check_for_3x_repetition(board: &Board) -> bool {
-    let arr = &board.history.arr;
-    let len = board.history.len;
-    let mut count = 0;
-    for i in (0..len).rev() {
-        if arr[i] == board.zobrist_hash {
-            count += 1;
-        }
-    }
-    count >= 3
 }
 
 impl fmt::Display for Board {
