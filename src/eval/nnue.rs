@@ -34,6 +34,7 @@ impl Accumulator {
     pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
         let white_idx = feature_idx(color, piece, sq);
         let black_idx = feature_idx(!color, piece, sq.flip_vertical());
+
         self.activate(&NET.feature_weights, white_idx * HIDDEN_SIZE, Color::White);
         self.activate(&NET.feature_weights, black_idx * HIDDEN_SIZE, Color::Black);
         self.1[sq.idx()] = Some(Piece { name: piece, color });
@@ -58,22 +59,22 @@ impl Accumulator {
         self.0[Color::Black.idx()] = NET.feature_bias;
     }
 
-    fn deactivate(&mut self, weights: &[i16], offset: usize, color: Color) {
-        for (i, &d) in self.0[color.idx()]
+    fn deactivate(&mut self, weights: &[i16; HIDDEN_SIZE * INPUT_SIZE], offset: usize, color: Color) {
+        self.0[color.idx()]
             .iter_mut()
             .zip(&weights[offset..offset + HIDDEN_SIZE])
-        {
-            *i -= d;
-        }
+            .for_each(|(i, &d)| {
+                *i -= d;
+            })
     }
 
-    fn activate(&mut self, weights: &[i16], offset: usize, color: Color) {
-        for (i, &d) in self.0[color.idx()]
+    fn activate(&mut self, weights: &[i16; HIDDEN_SIZE * INPUT_SIZE], offset: usize, color: Color) {
+        self.0[color.idx()]
             .iter_mut()
             .zip(&weights[offset..offset + HIDDEN_SIZE])
-        {
-            *i += d;
-        }
+            .for_each(|(i, &d)| {
+                *i += d;
+            })
     }
 }
 

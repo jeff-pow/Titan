@@ -472,7 +472,7 @@ impl Board {
     pub fn refresh_accumulators(&mut self) {
         self.accumulator.reset();
         for c in Color::iter() {
-            for p in PieceName::iter() {
+            for p in PieceName::iter().rev() {
                 for sq in self.bitboard(c, p) {
                     self.accumulator.add_feature(p, c, sq)
                 }

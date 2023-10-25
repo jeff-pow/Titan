@@ -48,12 +48,12 @@ impl From<usize> for Color {
 
 #[derive(Debug, EnumIter, Copy, Clone, PartialEq, Eq)]
 pub enum PieceName {
-    King,
-    Queen,
-    Rook,
-    Bishop,
-    Knight,
     Pawn,
+    Knight,
+    Bishop,
+    Rook,
+    Queen,
+    King,
 }
 
 impl PieceName {
@@ -71,14 +71,7 @@ impl PieceName {
 
     #[inline(always)]
     pub fn idx(&self) -> usize {
-        match self {
-            PieceName::King => 0,
-            PieceName::Queen => 1,
-            PieceName::Rook => 2,
-            PieceName::Bishop => 3,
-            PieceName::Knight => 4,
-            PieceName::Pawn => 5,
-        }
+        *self as usize
     }
 }
 
