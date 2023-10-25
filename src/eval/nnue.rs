@@ -1,6 +1,9 @@
-use crate::types::{
-    pieces::{Color, PieceName, NUM_PIECES},
-    square::{Square, NUM_SQUARES},
+use crate::{
+    board::board::Board,
+    types::{
+        pieces::{Color, Piece, PieceName, NUM_PIECES},
+        square::{Square, NUM_SQUARES},
+    },
 };
 
 pub const INPUT_SIZE: usize = 768;
@@ -11,10 +14,10 @@ pub const NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net
 // pub const NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../nn.nnue")) };
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
-pub struct Accumulator([[i16; HIDDEN_SIZE]; 2]);
+pub struct Accumulator([[i16; HIDDEN_SIZE]; 2], [Option<Piece>; 64]);
 impl Default for Accumulator {
     fn default() -> Self {
-        let mut a = Self([[0; HIDDEN_SIZE]; 2]);
+        let mut a = Self([[0; HIDDEN_SIZE]; 2], [None; 64]);
         a.reset();
         a
     }
@@ -35,6 +38,7 @@ impl Accumulator {
 
         activate(self.get_mut(Color::White), &NET.feature_weights, white_idx * HIDDEN_SIZE);
         activate(self.get_mut(Color::Black), &NET.feature_weights, black_idx * HIDDEN_SIZE);
+        self.1[sq.idx()] = Some(Piece { name: piece, color });
     }
 
     pub fn remove_feature(&mut self, net: &Network, piece: PieceName, color: Color, sq: Square) {
@@ -42,6 +46,13 @@ impl Accumulator {
         let black_idx = feature_idx(!color, piece, sq.flip_vertical());
         deactivate(self.get_mut(Color::White), &net.feature_weights, white_idx * HIDDEN_SIZE);
         deactivate(self.get_mut(Color::Black), &net.feature_weights, black_idx * HIDDEN_SIZE);
+        self.1[sq.idx()] = None;
+    }
+
+    pub fn assert_valid(&mut self, array_board: &[Option<Piece>; 64]) {
+        for (a, b) in self.1.iter().zip(array_board) {
+            assert_eq!(a, b);
+        }
     }
 
     pub(crate) fn reset(&mut self) {
