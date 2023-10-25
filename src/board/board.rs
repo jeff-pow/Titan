@@ -110,6 +110,17 @@ impl Board {
         false
     }
 
+    #[inline(always)]
+    // Returns the type of piece captured by a move, if any
+    pub fn capture(&self, m: Move) -> Option<PieceName> {
+        if m.is_en_passant() {
+            Some(PieceName::Pawn)
+        } else {
+            self.piece_at(m.dest_square())
+        }
+    }
+
+    #[inline(always)]
     pub fn piece_bitboard(&self, p: PieceName) -> Bitboard {
         self.bitboards[p.idx()]
     }
@@ -310,7 +321,7 @@ impl Board {
         }
 
         let piece_moving = self.piece_at(m.origin_square()).expect("There should be a piece here");
-        let capture = self.piece_at(m.dest_square());
+        let capture = self.capture(m);
         self.remove_piece(m.dest_square());
         self.place_piece(piece_moving, self.to_move, m.dest_square());
         self.remove_piece(m.origin_square());

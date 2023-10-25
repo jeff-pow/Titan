@@ -10,8 +10,7 @@ pub const INPUT_SIZE: usize = 768;
 const HIDDEN_SIZE: usize = 768;
 const Q: i32 = 255 * 64;
 const SCALE: i32 = 400;
-pub const NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net010.bin")) };
-// pub const NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../nn.nnue")) };
+pub const NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net.nnue")) };
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
 pub struct Accumulator([[i16; HIDDEN_SIZE]; 2], [Option<Piece>; 64]);
@@ -35,17 +34,16 @@ impl Accumulator {
     pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
         let white_idx = feature_idx(color, piece, sq);
         let black_idx = feature_idx(!color, piece, sq.flip_vertical());
-
-        activate(self.get_mut(Color::White), &NET.feature_weights, white_idx * HIDDEN_SIZE);
-        activate(self.get_mut(Color::Black), &NET.feature_weights, black_idx * HIDDEN_SIZE);
+        self.activate(&NET.feature_weights, white_idx * HIDDEN_SIZE, Color::White);
+        self.activate(&NET.feature_weights, black_idx * HIDDEN_SIZE, Color::Black);
         self.1[sq.idx()] = Some(Piece { name: piece, color });
     }
 
     pub fn remove_feature(&mut self, net: &Network, piece: PieceName, color: Color, sq: Square) {
         let white_idx = feature_idx(color, piece, sq);
         let black_idx = feature_idx(!color, piece, sq.flip_vertical());
-        deactivate(self.get_mut(Color::White), &net.feature_weights, white_idx * HIDDEN_SIZE);
-        deactivate(self.get_mut(Color::Black), &net.feature_weights, black_idx * HIDDEN_SIZE);
+        self.deactivate(&net.feature_weights, white_idx * HIDDEN_SIZE, Color::White);
+        self.deactivate(&net.feature_weights, black_idx * HIDDEN_SIZE, Color::Black);
         self.1[sq.idx()] = None;
     }
 
@@ -59,6 +57,24 @@ impl Accumulator {
         self.0[Color::White.idx()] = NET.feature_bias;
         self.0[Color::Black.idx()] = NET.feature_bias;
     }
+
+    fn deactivate(&mut self, weights: &[i16], offset: usize, color: Color) {
+        for (i, &d) in self.0[color.idx()]
+            .iter_mut()
+            .zip(&weights[offset..offset + HIDDEN_SIZE])
+        {
+            *i -= d;
+        }
+    }
+
+    fn activate(&mut self, weights: &[i16], offset: usize, color: Color) {
+        for (i, &d) in self.0[color.idx()]
+            .iter_mut()
+            .zip(&weights[offset..offset + HIDDEN_SIZE])
+        {
+            *i += d;
+        }
+    }
 }
 
 #[repr(align(64))]
@@ -71,11 +87,11 @@ pub struct Network {
     pub output_bias: i16,
 }
 
-impl Network {
-    pub fn evaluate(&self, acc: &Accumulator, to_move: Color) -> i32 {
-        let (us, them) = (acc.get(to_move), acc.get(!to_move));
+impl Board {
+    pub fn evaluate(&self) -> i32 {
+        let (us, them) = (self.accumulator.get(self.to_move), self.accumulator.get(!self.to_move));
 
-        let weights = &self.output_weights;
+        let weights = &NET.output_weights;
         // let mut output = i32::from(self.output_bias);
         let mut output = 0;
 
@@ -86,7 +102,7 @@ impl Network {
             output += crelu(i) * i32::from(w);
         }
 
-        (output + i32::from(self.output_bias)) * SCALE / Q
+        (output + i32::from(NET.output_bias)) * SCALE / Q
     }
 }
 
@@ -95,18 +111,6 @@ const RELU_MAX: i16 = 255;
 #[inline(always)]
 fn crelu(i: i16) -> i32 {
     i32::from(i.clamp(RELU_MIN, RELU_MAX))
-}
-
-fn deactivate(input: &mut [i16], weights: &[i16], offset: usize) {
-    for (i, &d) in input.iter_mut().zip(&weights[offset..offset + HIDDEN_SIZE]) {
-        *i -= d;
-    }
-}
-
-fn activate(input: &mut [i16; HIDDEN_SIZE], weights: &[i16], offset: usize) {
-    for (i, &d) in input.iter_mut().zip(&weights[offset..offset + HIDDEN_SIZE]) {
-        *i += d;
-    }
 }
 
 const COLOR_OFFSET: usize = NUM_SQUARES * NUM_PIECES;
