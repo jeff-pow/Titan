@@ -16,7 +16,7 @@ fn main() {
     b.refresh_accumulators();
     b.accumulator.assert_valid(&b.array_board);
     // should be 22 :(
-    println!("{}", NET.evaluate(&b.accumulator, b.to_move));
+    println!("{}", b.evaluate());
     println!("{}", NET.feature_weights.iter().filter(|x| **x == 0).count());
     println!("{}", NET.feature_weights.len());
     // main_loop();

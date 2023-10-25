@@ -5,7 +5,6 @@ use std::time::{Duration, Instant};
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
 use crate::eval::eval::evaluate;
-use crate::eval::nnue::NET;
 use crate::moves::movegenerator::{generate_moves, MGT};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::moves::Move;
@@ -158,7 +157,7 @@ fn alpha_beta(
     info.sel_depth = info.sel_depth.max(ply);
     // Don't do pvs unless you have a pv - otherwise you're wasting time
     if info.halt.load(Ordering::SeqCst) {
-        return NET.evaluate(&info.board.accumulator, info.board.to_move);
+        return board.evaluate();
         // return evaluate(board);
     }
 
@@ -170,7 +169,7 @@ fn alpha_beta(
         if board.in_check(board.to_move) {
             return quiescence(ply, alpha, beta, pv, info, board);
         }
-        return NET.evaluate(&info.board.accumulator, info.board.to_move);
+        return board.evaluate();
         // return evaluate(board);
     }
 
@@ -217,7 +216,7 @@ fn alpha_beta(
     let hist_bonus = (155 * depth).min(2000);
 
     if !is_root && !is_pv_node && !in_check {
-        let static_eval = NET.evaluate(&info.board.accumulator, info.board.to_move);
+        let static_eval = board.evaluate();
         // let static_eval = evaluate(board);
         // Reverse futility pruning
         if static_eval - RFP_MULTIPLIER * depth >= beta && depth < MAX_RFP_DEPTH && static_eval.abs() < NEAR_CHECKMATE {
@@ -339,7 +338,7 @@ fn alpha_beta(
                 store_pv(pv, &mut node_pvs, m);
             }
             if alpha >= beta {
-                let capture = board.piece_at(m.dest_square());
+                let capture = board.capture(m);
                 // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
                 // Also don't store killers that we have already stored
                 if capture.is_none() {
