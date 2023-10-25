@@ -6,12 +6,15 @@ pub mod moves;
 pub mod search;
 pub mod types;
 
-use engine::uci::main_loop;
+use crate::{
+    board::fen::{build_board, STARTING_FEN},
+    eval::nnue::NET,
+};
 
 fn main() {
-    // let mut b = build_board(STARTING_FEN);
-    // b.refresh_accumulators();
-    // assert_eq!(b.accumulator.get(Color::White), b.accumulator.get(Color::Black));
-    // println!("{:?}", &NET);
-    main_loop();
+    let mut b = build_board(STARTING_FEN);
+    b.refresh_accumulators();
+    // should be 22 :(
+    println!("{}", NET.evaluate(&b.accumulator, b.to_move));
+    // main_loop();
 }

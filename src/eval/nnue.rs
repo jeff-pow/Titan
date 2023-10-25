@@ -4,8 +4,10 @@ use crate::types::{
 };
 
 pub const INPUT_SIZE: usize = 768;
-const HIDDEN_SIZE: usize = 1024;
-pub const NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net.nnue")) };
+const HIDDEN_SIZE: usize = 768;
+const Q: i32 = 255 * 64;
+const SCALE: i32 = 400;
+pub const NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net010.bin")) };
 // pub const NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../nn.nnue")) };
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
@@ -48,7 +50,7 @@ impl Accumulator {
     }
 }
 
-// #[repr(align(64))]
+#[repr(align(64))]
 #[repr(C)]
 #[derive(Clone, Debug)]
 pub struct Network {
@@ -73,21 +75,13 @@ impl Network {
             output += crelu(i) * i32::from(w);
         }
 
-        (output / 255 + i32::from(self.output_bias)) * 400 / (64 * 255)
-        // output / 32
+        (output + i32::from(self.output_bias)) * SCALE / Q
     }
 }
 
 const RELU_MIN: i16 = 0;
 const RELU_MAX: i16 = 255;
 #[inline(always)]
-#[allow(dead_code)]
-fn screlu(i: i16) -> i32 {
-    let i = i32::from(i.clamp(RELU_MIN, RELU_MAX));
-    i * i
-}
-
-#[allow(dead_code)]
 fn crelu(i: i16) -> i32 {
     i32::from(i.clamp(RELU_MIN, RELU_MAX))
 }
