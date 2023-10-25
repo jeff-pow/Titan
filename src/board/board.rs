@@ -17,7 +17,7 @@ use super::move_history::BoardHistory;
 pub struct Board {
     bitboards: [Bitboard; NUM_PIECES],
     color_occupancies: [Bitboard; 2],
-    array_board: [Option<Piece>; 64],
+    pub array_board: [Option<Piece>; 64],
     pub to_move: Color,
     castling: [bool; 4],
     pub en_passant_square: Option<Square>,
