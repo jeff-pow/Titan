@@ -72,6 +72,14 @@ impl PieceName {
     #[inline(always)]
     pub fn idx(&self) -> usize {
         *self as usize
+        // match self {
+        //     PieceName::Pawn => 0,
+        //     PieceName::Knight => 1,
+        //     PieceName::Bishop => 2,
+        //     PieceName::Rook => 3,
+        //     PieceName::Queen => 4,
+        //     PieceName::King => 5,
+        // }
     }
 }
 
