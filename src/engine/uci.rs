@@ -5,9 +5,12 @@ use std::{io, time::Duration};
 use itertools::Itertools;
 
 use crate::board::fen::parse_fen_from_buffer;
+use crate::board::zobrist::ZOBRIST;
 use crate::eval::eval::evaluate;
+use crate::moves::movegenerator::MG;
 use crate::search::killers::empty_killers;
 use crate::search::search::{search, MAX_SEARCH_DEPTH};
+use crate::types::square::Square;
 use crate::{
     board::{
         board::Board,
@@ -24,6 +27,11 @@ use super::perft::multi_threaded_perft;
 pub fn main_loop() -> ! {
     let mut search_info = SearchInfo::default();
     let mut buffer = String::new();
+    // Calling this code will allow the global static zobrist and movegenerator constants to be
+    // initialized before the engine enters play, so it doesn't waste playing time initializing
+    // constants. A large difference in STC
+    let _ = ZOBRIST.turn_hash;
+    let _ = MG.king_attacks(Square(0));
     println!("Ready to go!");
     let mut handle = None;
 
