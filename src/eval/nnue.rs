@@ -90,6 +90,7 @@ pub struct Network {
 
 impl Board {
     pub fn evaluate(&self) -> i32 {
+        println!("hi");
         let (us, them) = (self.accumulator.get(self.to_move), self.accumulator.get(!self.to_move));
 
         let weights = &NET.output_weights;

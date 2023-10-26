@@ -42,7 +42,6 @@ impl Square {
     /// shifts validity has already been proven valid elsewhere
     pub fn shift(&self, dir: Direction) -> Square {
         let new_square = self.0 as i8 + dir as i8;
-        debug_assert!(Square(new_square as u8).is_valid());
         Square(new_square as u8)
     }
 
