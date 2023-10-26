@@ -1,6 +1,5 @@
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
-use crate::eval::eval::evaluate;
 use crate::moves::movegenerator::{generate_moves, MGT};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::moves::Move;
@@ -42,7 +41,7 @@ pub fn quiescence(
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
     // let stand_pat = board.evaluate();
-    let stand_pat = evaluate(board);
+    let stand_pat = board.evaluate();
     if stand_pat >= beta {
         return stand_pat;
     }
