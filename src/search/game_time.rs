@@ -49,7 +49,7 @@ impl GameTime {
             return Duration::ZERO;
         }
         let increment = self.time_inc[side.idx()];
-        let recommended_time = clock.div_f64(20.);
+        let recommended_time = clock.div_f64(30.);
         let recommended_time = recommended_time.min(MAX_THINK_TIME);
         recommended_time + increment
     }
