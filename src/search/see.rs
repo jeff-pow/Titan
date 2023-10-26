@@ -37,7 +37,7 @@ fn gain(board: &Board, m: Move) -> i32 {
 }
 
 fn next_attacker(board: &Board, occupied: &mut Bitboard, attackers: Bitboard, side: Color) -> PieceName {
-    for p in PieceName::iter().rev() {
+    for p in PieceName::iter() {
         let mut bb = attackers & board.bitboard(side, p);
         if bb != Bitboard::EMPTY {
             *occupied ^= bb.pop_lsb().bitboard();

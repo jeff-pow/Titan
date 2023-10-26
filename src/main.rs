@@ -6,7 +6,7 @@ pub mod moves;
 pub mod search;
 pub mod types;
 
-use crate::engine::uci::main_loop;
+use engine::uci::main_loop;
 
 fn main() {
     main_loop();
