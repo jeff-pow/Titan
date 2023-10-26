@@ -89,22 +89,26 @@ pub struct Network {
 }
 
 impl Board {
+    #[allow(clippy::deref_addrof)]
     pub fn evaluate(&self) -> i32 {
-        println!("hi");
         let (us, them) = (self.accumulator.get(self.to_move), self.accumulator.get(!self.to_move));
 
         let weights = &NET.output_weights;
-        // let mut output = i32::from(self.output_bias);
         let mut output = 0;
 
         for (&i, &w) in us.iter().zip(&weights[..HIDDEN_SIZE]) {
             output += crelu(i) * i32::from(w);
         }
+
         for (&i, &w) in them.iter().zip(&weights[HIDDEN_SIZE..]) {
             output += crelu(i) * i32::from(w);
         }
+        // So this is odd... It crashes if I don't take the address and deref
+        // I don't know enough rust to fix it
+        // ¯\_(ツ)_/¯
+        output += *&NET.output_bias as i32;
 
-        (output + i32::from(NET.output_bias)) * SCALE / Q
+        (output) * SCALE / Q
     }
 }
 

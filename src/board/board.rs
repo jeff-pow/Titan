@@ -13,7 +13,7 @@ use crate::{
 
 use super::move_history::BoardHistory;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Board {
     bitboards: [Bitboard; NUM_PIECES],
     color_occupancies: [Bitboard; 2],
