@@ -21,11 +21,11 @@ pub struct Board {
     pub to_move: Color,
     castling: [bool; 4],
     pub en_passant_square: Option<Square>,
+    pub prev_move: Move,
     pub num_moves: i32,
     pub half_moves: i32,
     pub zobrist_hash: u64,
     history: BoardHistory,
-    pub prev_move: Move,
     pub accumulator: Accumulator,
 }
 

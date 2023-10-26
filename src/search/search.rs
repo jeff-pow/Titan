@@ -157,8 +157,8 @@ fn alpha_beta(
     info.sel_depth = info.sel_depth.max(ply);
     // Don't do pvs unless you have a pv - otherwise you're wasting time
     if info.halt.load(Ordering::SeqCst) {
-        return board.evaluate();
-        // return evaluate(board);
+        // return board.evaluate();
+        return evaluate(board);
     }
 
     // if in_check {
@@ -169,8 +169,8 @@ fn alpha_beta(
         if board.in_check(board.to_move) {
             return quiescence(ply, alpha, beta, pv, info, board);
         }
-        return board.evaluate();
-        // return evaluate(board);
+        // return board.evaluate();
+        return evaluate(board);
     }
 
     if ply > 0 {
@@ -216,8 +216,8 @@ fn alpha_beta(
     let hist_bonus = (155 * depth).min(2000);
 
     if !is_root && !is_pv_node && !in_check {
-        let static_eval = board.evaluate();
-        // let static_eval = evaluate(board);
+        // let static_eval = board.evaluate();
+        let static_eval = evaluate(board);
         // Reverse futility pruning
         if static_eval - RFP_MULTIPLIER * depth >= beta && depth < MAX_RFP_DEPTH && static_eval.abs() < NEAR_CHECKMATE {
             return static_eval;
