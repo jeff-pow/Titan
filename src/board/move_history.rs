@@ -1,7 +1,7 @@
 use std::mem::MaybeUninit;
 
 pub const MAX_LEN: usize = 500;
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 /// u64list elements contains a move and an i32 where a score can be stored later to be used in move ordering
 /// for efficient search pruning
 pub struct BoardHistory {
@@ -20,22 +20,17 @@ impl BoardHistory {
         self.len += 1;
     }
 
-    #[inline(always)]
-    pub fn append(&mut self, other: &BoardHistory) {
-        for idx in 0..other.len {
-            self.push(other.arr[idx]);
+    /// Function checks for the presence of the board in the game. If the board position will have occurred three times,
+    /// returns true indicating the position would be a stalemate due to the threefold repetition rule
+    pub fn check_for_3x_repetition(&self, hash: u64) -> bool {
+        let len = self.len;
+        let mut count = 0;
+        for i in (0..len).rev() {
+            if self.arr[i] == hash {
+                count += 1;
+            }
         }
-    }
-}
-
-impl FromIterator<u64> for BoardHistory {
-    fn from_iter<I: IntoIterator<Item = u64>>(iter: I) -> Self {
-        let mut history = BoardHistory::default();
-        for hash in iter {
-            history.arr[history.len] = hash;
-            history.len += 1;
-        }
-        history
+        count >= 3
     }
 }
 

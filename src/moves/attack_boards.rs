@@ -4,7 +4,6 @@ use strum_macros::EnumIter;
 use crate::moves::moves::Direction::*;
 use crate::types::{bitboard::Bitboard, pieces::Color, square::Square};
 
-// These basically exist because rust won't let me
 const FILE_A_U64: u64 = 0x101010101010101;
 pub const FILE_A: Bitboard = Bitboard(FILE_A_U64);
 pub const FILE_B: Bitboard = Bitboard(FILE_A_U64 << 1);

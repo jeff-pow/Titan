@@ -1,7 +1,6 @@
 use std::mem;
 
-use crate::moves::moves::Move;
-use crate::search::pvs::NEAR_CHECKMATE;
+use crate::{moves::moves::Move, search::search::NEAR_CHECKMATE};
 use rustc_hash::FxHashMap;
 
 pub struct TableEntry {

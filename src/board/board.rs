@@ -1,10 +1,9 @@
 use core::fmt;
-use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::{
-    eval::nnue::{Accumulator, NETWORK},
-    moves::{movegenerator::MoveGenerator, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
+    eval::nnue::{Accumulator, NET},
+    moves::{movegenerator::MG, moves::Castle, moves::Direction::*, moves::Move, moves::Promotion},
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName, NUM_PIECES},
@@ -12,37 +11,30 @@ use crate::{
     },
 };
 
-use super::{history::BoardHistory, zobrist::Zobrist};
+use super::move_history::BoardHistory;
 
 #[derive(Clone)]
 pub struct Board {
-    bitboards: [[Bitboard; NUM_PIECES]; 2],
-    pub color_occupancies: [Bitboard; 2],
-    pub occupancies: Bitboard,
+    bitboards: [Bitboard; NUM_PIECES],
+    color_occupancies: [Bitboard; 2],
     pub array_board: [Option<Piece>; 64],
-    pub material_val: [i32; 2],
     pub to_move: Color,
     castling: [bool; 4],
     pub en_passant_square: Option<Square>,
+    pub prev_move: Move,
     pub num_moves: i32,
     pub half_moves: i32,
     pub zobrist_hash: u64,
-    pub history: BoardHistory,
-    pub zobrist_consts: Arc<Zobrist>,
-    pub mg: Arc<MoveGenerator>,
-    pub prev_move: Move,
+    history: BoardHistory,
     pub accumulator: Accumulator,
 }
 
 impl Default for Board {
     fn default() -> Self {
-        let bitboards = [[Bitboard::EMPTY; 6]; 2];
         Board {
-            bitboards,
+            bitboards: [Bitboard::EMPTY; 6],
             color_occupancies: [Bitboard::EMPTY; 2],
-            occupancies: Bitboard::EMPTY,
             array_board: [None; 64],
-            material_val: [0; 2],
             castling: [false; 4],
             to_move: Color::White,
             en_passant_square: None,
@@ -50,8 +42,6 @@ impl Default for Board {
             half_moves: 0,
             zobrist_hash: 0,
             history: BoardHistory::default(),
-            zobrist_consts: Arc::new(Zobrist::default()),
-            mg: Arc::new(MoveGenerator::default()),
             prev_move: Move::NULL,
             accumulator: Accumulator::default(),
         }
@@ -87,29 +77,62 @@ impl Board {
 
     #[inline(always)]
     pub fn bitboard(&self, side: Color, piece: PieceName) -> Bitboard {
-        self.bitboards[side.idx()][piece.idx()]
+        self.bitboards[piece.idx()] & self.color_occupancies(side)
+    }
+
+    #[inline(always)]
+    fn is_material_draw(&self) -> bool {
+        // If we have any pawns, checkmate is still possible
+        if self.piece_bitboard(PieceName::Pawn) != Bitboard::EMPTY {
+            return false;
+        }
+        let piece_count = self.occupancies().count_bits();
+        // King vs King can't checkmate
+        if piece_count == 2
+               // If there's three pieces and a singular knight or bishop, stalemate is impossible
+            || (piece_count == 3 && ((self.piece_bitboard(PieceName::Knight).count_bits() == 1)
+            || (self.piece_bitboard(PieceName::Bishop).count_bits() == 1)))
+        {
+            return true;
+        } else if piece_count == 4 {
+            // No combination of two knights and a king can checkmate
+            if self.piece_bitboard(PieceName::Knight).count_bits() == 2 {
+                return true;
+            }
+            // If there is one bishop per side, checkmate is impossible
+            if self.color_occupancies(Color::White).count_bits() == 2
+                && self.piece_bitboard(PieceName::Bishop).count_bits() == 2
+            {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    #[inline(always)]
+    // Returns the type of piece captured by a move, if any
+    pub fn capture(&self, m: Move) -> Option<PieceName> {
+        if m.is_en_passant() {
+            Some(PieceName::Pawn)
+        } else {
+            self.piece_at(m.dest_square())
+        }
+    }
+
+    #[inline(always)]
+    pub fn piece_bitboard(&self, p: PieceName) -> Bitboard {
+        self.bitboards[p.idx()]
     }
 
     #[inline(always)]
     pub fn is_draw(&self) -> bool {
-        check_for_3x_repetition(self) || self.half_moves >= 100
+        self.history.check_for_3x_repetition(self.zobrist_hash) || self.half_moves >= 100 || self.is_material_draw()
     }
 
     #[inline(always)]
     pub fn square_occupied(&self, piece_type: PieceName, color: Color, sq: Square) -> bool {
-        self.bitboards[color.idx()][piece_type.idx()].square_occupied(sq)
-    }
-
-    #[inline(always)]
-    pub fn gen_color_occupancies(&mut self, color: Color) {
-        // It's interesting to me that xor and bitwise or both seem to work here, only one piece should
-        // be on a square at a time though so ¯\_(ツ)_/¯
-        self.color_occupancies[color.idx()] = self.bitboards[color.idx()].iter().fold(Bitboard::EMPTY, |a, b| a ^ *b)
-    }
-
-    #[inline(always)]
-    pub fn gen_occupancies(&mut self) {
-        self.occupancies = self.bitboards.iter().flatten().fold(Bitboard::EMPTY, |a, b| a ^ *b)
+        self.bitboard(color, piece_type).square_occupied(sq)
     }
 
     #[inline(always)]
@@ -119,35 +142,39 @@ impl Board {
 
     #[inline(always)]
     pub fn occupancies(&self) -> Bitboard {
-        self.occupancies
+        self.color_occupancies(Color::White) | self.color_occupancies(Color::Black)
     }
 
     #[inline(always)]
     pub fn color_at(&self, sq: Square) -> Option<Color> {
         self.array_board[sq.idx()].map(|piece| piece.color)
+        // self.color_occupancies
+        //     .iter()
+        //     .position(|x| *x & sq.bitboard() != Bitboard::EMPTY)
+        //     .map(Color::from)
     }
 
     #[inline(always)]
     pub fn piece_at(&self, sq: Square) -> Option<PieceName> {
         self.array_board[sq.idx()].map(|piece| piece.name)
+        // self.bitboards
+        //     .iter()
+        //     .position(|x| *x & sq.bitboard() != Bitboard::EMPTY)
+        //     .map(PieceName::from)
     }
 
     #[inline(always)]
     pub fn has_non_pawns(&self, side: Color) -> bool {
-        self.occupancies()
-            ^ self.bitboards[side.idx()][PieceName::King.idx()]
-            ^ self.bitboards[side.idx()][PieceName::Pawn.idx()]
+        self.occupancies() ^ self.bitboard(side, PieceName::King) ^ self.bitboard(side, PieceName::Pawn)
             != Bitboard::EMPTY
     }
 
     #[inline(always)]
     pub fn place_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
-        self.bitboards[color.idx()][piece_type.idx()] |= sq.bitboard();
-        self.array_board[sq.idx()] = Some(Piece::new(piece_type, color));
-        self.material_val[color.idx()] += piece_type.value();
-        self.occupancies |= sq.bitboard();
         self.color_occupancies[color.idx()] |= sq.bitboard();
-
+        self.bitboards[piece_type.idx()] |= sq.bitboard();
+        self.array_board[sq.idx()] = Some(Piece::new(piece_type, color));
+        self.color_occupancies[color.idx()] |= sq.bitboard();
         self.accumulator.add_feature(piece_type, color, sq);
     }
 
@@ -155,17 +182,37 @@ impl Board {
     fn remove_piece(&mut self, sq: Square) {
         if let Some(piece) = self.array_board[sq.idx()] {
             self.array_board[sq.idx()] = None;
-            self.bitboards[piece.color.idx()][piece.name.idx()] &= !sq.bitboard();
-            self.material_val[piece.color.idx()] -= piece.value();
-            self.occupancies &= !sq.bitboard();
+            self.bitboards[piece.name.idx()] &= !sq.bitboard();
             self.color_occupancies[piece.color.idx()] &= !sq.bitboard();
-            self.accumulator.remove_feature(&NETWORK, piece.name, piece.color, sq);
+            self.accumulator.remove_feature(&NET, piece.name, piece.color, sq);
         }
     }
 
     #[inline(always)]
     pub fn king_square(&self, color: Color) -> Square {
         self.bitboard(color, PieceName::King).get_lsb()
+    }
+
+    #[inline(always)]
+    pub fn attackers(&self, sq: Square, occupancy: Bitboard) -> Bitboard {
+        self.attackers_for_side(Color::White, sq, occupancy) | self.attackers_for_side(Color::Black, sq, occupancy)
+    }
+
+    #[inline(always)]
+    pub fn attackers_for_side(&self, attacker: Color, sq: Square, occupancy: Bitboard) -> Bitboard {
+        let pawn_attacks = MG.pawn_attacks(sq, !attacker) & self.bitboard(attacker, PieceName::Pawn);
+        let knight_attacks = MG.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
+        let bishop_attacks = MG.bishop_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Bishop);
+        let rook_attacks = MG.rook_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Rook);
+        let queen_attacks = (MG.rook_attacks(sq, occupancy) | MG.bishop_attacks(sq, occupancy))
+            & self.bitboard(attacker, PieceName::Queen);
+        let king_attacks = MG.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
+        pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | queen_attacks | king_attacks
+    }
+
+    #[inline(always)]
+    pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
+        self.attackers_for_side(attacker, sq, self.occupancies()) != Bitboard::EMPTY
     }
 
     #[inline(always)]
@@ -177,60 +224,29 @@ impl Board {
         self.square_under_attack(!side, king_square)
     }
 
-    #[inline(always)]
-    pub fn attackers(&self, sq: Square, occupancy: Bitboard) -> Bitboard {
-        self.attackers_for_side(Color::White, sq, occupancy) | self.attackers_for_side(Color::Black, sq, occupancy)
-    }
-
-    #[inline(always)]
-    pub fn attackers_for_side(&self, attacker: Color, sq: Square, occupancy: Bitboard) -> Bitboard {
-        let pawn_attacks = self.mg.pawn_attacks(sq, !attacker) & self.bitboard(attacker, PieceName::Pawn);
-        let knight_attacks = self.mg.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
-        let bishop_attacks = self.mg.bishop_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Bishop);
-        let rook_attacks = self.mg.rook_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Rook);
-        let queen_attacks = (rook_attacks | bishop_attacks) & self.bitboard(attacker, PieceName::Queen);
-        let king_attacks = self.mg.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
-        pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | queen_attacks | king_attacks
-    }
-
-    #[inline(always)]
-    // Function left with lots of variables to improve debugability...
-    pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
-        let attacker_occupancy = self.bitboards[attacker.idx()];
-        let occupancy = self.occupancies();
-        let pawn_attacks = self.mg.pawn_attacks(sq, !attacker);
-        let knight_attacks = self.mg.knight_attacks(sq);
-        let bishop_attacks = self.mg.bishop_attacks(sq, occupancy);
-        let rook_attacks = self.mg.rook_attacks(sq, occupancy);
-        let queen_attacks = rook_attacks | bishop_attacks;
-        let king_attacks = self.mg.king_attacks(sq);
-
-        let king_attacks_overlap = king_attacks & attacker_occupancy[PieceName::King.idx()];
-        let queen_attacks_overlap = queen_attacks & attacker_occupancy[PieceName::Queen.idx()];
-        let rook_attacks_overlap = rook_attacks & attacker_occupancy[PieceName::Rook.idx()];
-        let bishop_attacks_overlap = bishop_attacks & attacker_occupancy[PieceName::Bishop.idx()];
-        let knight_attacks_overlap = knight_attacks & attacker_occupancy[PieceName::Knight.idx()];
-        let pawn_attacks_overlap = pawn_attacks & attacker_occupancy[PieceName::Pawn.idx()];
-
-        let is_king_attack = king_attacks_overlap != Bitboard::EMPTY;
-        let is_queen_attack = queen_attacks_overlap != Bitboard::EMPTY;
-        let is_rook_attack = rook_attacks_overlap != Bitboard::EMPTY;
-        let is_bishop_attack = bishop_attacks_overlap != Bitboard::EMPTY;
-        let is_knight_attack = knight_attacks_overlap != Bitboard::EMPTY;
-        let is_pawn_attack = pawn_attacks_overlap != Bitboard::EMPTY;
-
-        is_king_attack || is_queen_attack || is_rook_attack || is_bishop_attack || is_knight_attack || is_pawn_attack
-    }
-
-    pub fn add_to_history(&mut self) {
+    fn add_to_history(&mut self) {
         self.history.push(self.zobrist_hash);
+    }
+
+    #[inline(always)]
+    fn material_val(&self, c: Color) -> i32 {
+        let q = self.bitboard(c, PieceName::Queen).count_bits();
+        let r = self.bitboard(c, PieceName::Rook).count_bits();
+        let b = self.bitboard(c, PieceName::Bishop).count_bits();
+        let n = self.bitboard(c, PieceName::Knight).count_bits();
+        let p = self.bitboard(c, PieceName::Pawn).count_bits();
+        q * PieceName::Queen.value()
+            + r * PieceName::Rook.value()
+            + b * PieceName::Bishop.value()
+            + n * PieceName::Knight.value()
+            + p * PieceName::Pawn.value()
     }
 
     #[inline(always)]
     pub fn material_balance(&self) -> i32 {
         match self.to_move {
-            Color::White => self.material_val[Color::White.idx()] - self.material_val[Color::Black.idx()],
-            Color::Black => self.material_val[Color::Black.idx()] - self.material_val[Color::White.idx()],
+            Color::White => self.material_val(Color::White) - self.material_val(Color::Black),
+            Color::Black => self.material_val(Color::Black) - self.material_val(Color::White),
         }
     }
 
@@ -263,17 +279,17 @@ impl Board {
                 if self.is_quiet(m) {
                     return self.occupancies().square_is_empty(dest);
                 } else {
-                    let attacks = self.mg.pawn_attacks(origin, origin_color);
+                    let attacks = MG.pawn_attacks(origin, origin_color);
                     let enemy_color = self.color_at(origin).unwrap();
                     return attacks & m.dest_square().bitboard() & self.color_occupancies(!enemy_color)
                         != Bitboard::EMPTY;
                 }
             }
-            PieceName::King => self.mg.king_attacks(origin),
-            PieceName::Queen => self.mg.rook_attacks(origin, occupancies) | self.mg.bishop_attacks(origin, occupancies),
-            PieceName::Rook => self.mg.rook_attacks(origin, occupancies),
-            PieceName::Bishop => self.mg.bishop_attacks(origin, occupancies),
-            PieceName::Knight => self.mg.knight_attacks(origin),
+            PieceName::King => MG.king_attacks(origin),
+            PieceName::Queen => MG.rook_attacks(origin, occupancies) | MG.bishop_attacks(origin, occupancies),
+            PieceName::Rook => MG.rook_attacks(origin, occupancies),
+            PieceName::Bishop => MG.bishop_attacks(origin, occupancies),
+            PieceName::Knight => MG.knight_attacks(origin),
         };
 
         let enemy_occupancies = !self.color_occupancies(self.to_move);
@@ -282,14 +298,16 @@ impl Board {
         attacks & dest.bitboard() != Bitboard::EMPTY
     }
 
-    /// Determines if a move is "quiet" for quiescence search
+    /// Returns true if a move does not capture a piece, and false if a piece is captured
     #[inline(always)]
     pub fn is_quiet(&self, m: Move) -> bool {
         self.occupancies().square_is_empty(m.dest_square())
     }
 
-    /// Function makes a move and modifies board state to reflect the move that just happened
-    pub fn make_move(&mut self, m: Move) {
+    /// Function makes a move and modifies board state to reflect the move that just happened.
+    /// Returns true if a move was legal, and false if it was illegal.
+    #[must_use]
+    pub fn make_move(&mut self, m: Move) -> bool {
         // Special case if the move is an en_passant
         if m.is_en_passant() {
             match self.to_move {
@@ -303,7 +321,7 @@ impl Board {
         }
 
         let piece_moving = self.piece_at(m.origin_square()).expect("There should be a piece here");
-        let capture = self.piece_at(m.dest_square());
+        let capture = self.capture(m);
         self.remove_piece(m.dest_square());
         self.place_piece(piece_moving, self.to_move, m.dest_square());
         self.remove_piece(m.origin_square());
@@ -424,7 +442,6 @@ impl Board {
             self.half_moves = 0;
         }
 
-        // Change the side to move after making a move
         self.to_move = !self.to_move;
 
         self.num_moves += 1;
@@ -435,13 +452,10 @@ impl Board {
 
         self.prev_move = m;
 
-        assert_eq!(Bitboard::EMPTY, self.color_occupancies(Color::White) & self.color_occupancies(Color::Black));
-        let w = self.color_occupancies(Color::White);
-        let b = self.color_occupancies(Color::Black);
-        self.gen_color_occupancies(Color::White);
-        self.gen_color_occupancies(Color::Black);
-        debug_assert_eq!(w, self.color_occupancies(Color::White));
-        debug_assert_eq!(b, self.color_occupancies(Color::Black));
+        // assert_ne!(self.accumulator.get(Color::White), self.accumulator.get(Color::Black));
+        // self.refresh_accumulators();
+        // Return false if the move leaves the opposite side in check, denoting an invalid move
+        !self.in_check(!self.to_move)
     }
 
     #[allow(dead_code)]
@@ -449,7 +463,7 @@ impl Board {
         for color in &[Color::White, Color::Black] {
             for piece in PieceName::iter() {
                 dbg!("{:?} {:?}", color, piece);
-                dbg!(self.bitboards[color.idx()][piece.idx()]);
+                dbg!(self.bitboard(*color, piece));
                 dbg!("\n");
             }
         }
@@ -458,28 +472,13 @@ impl Board {
     pub fn refresh_accumulators(&mut self) {
         self.accumulator.reset();
         for c in Color::iter() {
-            for p in PieceName::iter() {
-                let bb = self.bitboard(c, p);
-                for sq in bb {
+            for p in PieceName::iter().rev() {
+                for sq in self.bitboard(c, p) {
                     self.accumulator.add_feature(p, c, sq)
                 }
             }
         }
     }
-}
-
-/// Function checks for the presence of the board in the game. If the board position will have occurred three times,
-/// returns true indicating the position would be a stalemate due to the threefold repetition rule
-pub fn check_for_3x_repetition(board: &Board) -> bool {
-    let arr = &board.history.arr;
-    let len = board.history.len;
-    let mut count = 0;
-    for i in (0..len).rev() {
-        if arr[i] == board.zobrist_hash {
-            count += 1;
-        }
-    }
-    count >= 3
 }
 
 impl fmt::Display for Board {
@@ -575,14 +574,14 @@ mod board_tests {
     fn test_place_piece() {
         let mut board = Board::default();
         board.place_piece(Rook, Color::White, Square(0));
-        assert!(board.bitboards[Color::White.idx()][Rook.idx()].square_occupied(Square(0)));
+        assert!(board.bitboard(Color::White, PieceName::Rook).square_occupied(Square(0)));
     }
 
     #[test]
     fn test_remove_piece() {
         let mut board = fen::build_board(fen::STARTING_FEN);
         board.remove_piece(Square(0));
-        assert!(board.bitboards[Color::White.idx()][Rook.idx()].square_is_empty(Square(0)));
+        assert!(board.bitboard(Color::White, PieceName::Rook).square_is_empty(Square(0)));
         assert!(board.occupancies().square_is_empty(Square(0)));
     }
 }

@@ -1,14 +1,16 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::thread::{self};
 use std::{io, time::Duration};
 
 use itertools::Itertools;
 
 use crate::board::fen::parse_fen_from_buffer;
+use crate::board::zobrist::ZOBRIST;
 use crate::eval::eval::evaluate;
+use crate::moves::movegenerator::MG;
 use crate::search::killers::empty_killers;
-use crate::search::pvs::{search, MAX_SEARCH_DEPTH};
+use crate::search::search::{search, MAX_SEARCH_DEPTH};
+use crate::types::square::Square;
 use crate::{
     board::{
         board::Board,
@@ -25,8 +27,12 @@ use super::perft::multi_threaded_perft;
 pub fn main_loop() -> ! {
     let mut search_info = SearchInfo::default();
     let mut buffer = String::new();
+    // Calling this code will allow the global static zobrist and movegenerator constants to be
+    // initialized before the engine enters play, so it doesn't waste playing time initializing
+    // constants. A large difference in STC
+    let _ = ZOBRIST.turn_hash;
+    let _ = MG.king_attacks(Square(0));
     println!("Ready to go!");
-    let halt = Arc::new(AtomicBool::new(false));
     let mut handle = None;
 
     loop {
@@ -68,16 +74,15 @@ pub fn main_loop() -> ! {
             search_info.killer_moves = empty_killers();
             println!("Transposition table cleared");
         } else if buffer.starts_with("go") {
-            halt.store(false, Ordering::SeqCst);
+            search_info.halt.store(false, Ordering::SeqCst);
             if buffer.contains("depth") {
                 let mut iter = buffer.split_whitespace().skip(2);
                 let depth = iter.next().unwrap().parse::<i32>().unwrap();
                 search_info.max_depth = depth;
                 search_info.search_type = SearchType::Depth;
                 let mut s = search_info.clone();
-                let h = halt.clone();
                 handle = Some(thread::spawn(move || {
-                    println!("bestmove {}", search(&mut s, depth, h).to_lan());
+                    println!("bestmove {}", search(&mut s, depth).to_lan());
                 }));
             } else if buffer.contains("perft") {
                 let mut iter = buffer.split_whitespace().skip(2);
@@ -87,24 +92,22 @@ pub fn main_loop() -> ! {
                 search_info.search_type = SearchType::Time;
                 search_info.game_time = parse_time(&buffer, &mut search_info);
                 let mut s = search_info.clone();
-                let h = halt.clone();
                 handle = Some(thread::spawn(move || {
-                    println!("bestmove {}", search(&mut s, MAX_SEARCH_DEPTH, h).to_lan());
+                    println!("bestmove {}", search(&mut s, MAX_SEARCH_DEPTH).to_lan());
                 }));
             } else {
                 search_info.search_type = SearchType::Infinite;
                 let mut s = search_info.clone();
-                let h = halt.clone();
                 handle = Some(thread::spawn(move || {
-                    search(&mut s, MAX_SEARCH_DEPTH, h);
+                    search(&mut s, MAX_SEARCH_DEPTH);
                 }));
             }
         } else if buffer.starts_with("stop") {
-            halt.store(true, Ordering::SeqCst);
+            search_info.halt.store(true, Ordering::SeqCst);
             if let Some(h) = handle.take() {
                 let _ = h.join();
             }
-            halt.store(false, Ordering::SeqCst);
+            search_info.halt.store(false, Ordering::SeqCst);
         } else if buffer.starts_with("quit") {
             std::process::exit(0);
         } else if buffer.starts_with("uci") {
@@ -120,7 +123,7 @@ pub fn main_loop() -> ! {
 fn parse_moves(moves: &[&str], board: &mut Board, skip: usize) {
     for str in moves.iter().skip(skip) {
         let m = from_lan(str, board);
-        board.make_move(m);
+        let _ = board.make_move(m);
     }
 }
 

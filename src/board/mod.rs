@@ -1,4 +1,4 @@
 pub mod board;
 pub(crate) mod fen;
-mod history;
+pub mod move_history;
 pub(crate) mod zobrist;
