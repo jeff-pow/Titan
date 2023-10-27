@@ -95,7 +95,7 @@ pub fn build_board(fen_string: &str) -> Board {
     //         _ => panic!("Unrecognized castle character: {}", c),
     //     }
     // }
-    board.c = parse_castling(iter.next().unwrap());
+    board.c = parse_castling(&mut board, iter.next().unwrap());
     let en_passant_letters: Vec<char> = iter.next().unwrap().chars().collect();
     let en_passant_idx = find_en_passant_square(en_passant_letters);
     if let Some(idx) = en_passant_idx {
@@ -122,13 +122,25 @@ pub fn build_board(fen_string: &str) -> Board {
     board
 }
 
-fn parse_castling(buf: &&str) -> u8 {
+fn parse_castling(board: &mut Board, buf: &&str) -> u8 {
     let rights = buf.chars().fold(0, |x, ch| {
         x | match ch {
-            'K' => Castle::WhiteKing as u8,
-            'Q' => Castle::WhiteQueen as u8,
-            'k' => Castle::BlackKing as u8,
-            'q' => Castle::BlackQueen as u8,
+            'K' => {
+                board.castling[0] = true;
+                Castle::WhiteKing as u8
+            }
+            'Q' => {
+                board.castling[1] = true;
+                Castle::WhiteQueen as u8
+            }
+            'k' => {
+                board.castling[2] = true;
+                Castle::BlackKing as u8
+            }
+            'q' => {
+                board.castling[3] = true;
+                Castle::BlackQueen as u8
+            }
             _ => 0,
         }
     });
