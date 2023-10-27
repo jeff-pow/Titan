@@ -356,26 +356,17 @@ impl Board {
                 Castle::None => (),
             }
         }
-        // If move is a promotion, a pawn is removed from the board and replaced with a higher
-        // value piece
-        if m.promotion().is_some() {
+
+        if let Some(p) = m.promotion() {
             self.remove_piece(m.dest_square());
+            match p {
+                Promotion::Queen => self.place_piece(PieceName::Queen, self.to_move, m.dest_square()),
+                Promotion::Rook => self.place_piece(PieceName::Rook, self.to_move, m.dest_square()),
+                Promotion::Bishop => self.place_piece(PieceName::Bishop, self.to_move, m.dest_square()),
+                Promotion::Knight => self.place_piece(PieceName::Knight, self.to_move, m.dest_square()),
+            }
         }
-        match m.promotion() {
-            Some(Promotion::Queen) => {
-                self.place_piece(PieceName::Queen, self.to_move, m.dest_square());
-            }
-            Some(Promotion::Rook) => {
-                self.place_piece(PieceName::Rook, self.to_move, m.dest_square());
-            }
-            Some(Promotion::Bishop) => {
-                self.place_piece(PieceName::Bishop, self.to_move, m.dest_square());
-            }
-            Some(Promotion::Knight) => {
-                self.place_piece(PieceName::Knight, self.to_move, m.dest_square());
-            }
-            None => (),
-        }
+
         // Update board's king square if king moves and remove ability to castle
         if piece_moving == PieceName::King {
             match self.to_move {
