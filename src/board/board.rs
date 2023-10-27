@@ -325,6 +325,7 @@ impl Board {
         self.remove_piece(m.dest_square());
         self.place_piece(piece_moving, self.to_move, m.dest_square());
         self.remove_piece(m.origin_square());
+        let mask = m.dest_square().bitboard() | m.origin_square().bitboard();
 
         // Move rooks if a castle move is applied
         if m.is_castle() {
@@ -332,26 +333,26 @@ impl Board {
                 Castle::WhiteKing => {
                     self.place_piece(PieceName::Rook, self.to_move, Square(5));
                     self.remove_piece(Square(7));
-                    self.set_castling(Castle::WhiteQueen, false);
-                    self.set_castling(Castle::WhiteKing, false);
+                    // self.set_castling(Castle::WhiteQueen, false);
+                    // self.set_castling(Castle::WhiteKing, false);
                 }
                 Castle::WhiteQueen => {
                     self.place_piece(PieceName::Rook, self.to_move, Square(3));
                     self.remove_piece(Square(0));
-                    self.set_castling(Castle::WhiteQueen, false);
-                    self.set_castling(Castle::WhiteKing, false);
+                    // self.set_castling(Castle::WhiteQueen, false);
+                    // self.set_castling(Castle::WhiteKing, false);
                 }
                 Castle::BlackKing => {
                     self.place_piece(PieceName::Rook, self.to_move, Square(61));
                     self.remove_piece(Square(63));
-                    self.set_castling(Castle::BlackQueen, false);
-                    self.set_castling(Castle::BlackKing, false);
+                    // self.set_castling(Castle::BlackQueen, false);
+                    // self.set_castling(Castle::BlackKing, false);
                 }
                 Castle::BlackQueen => {
                     self.place_piece(PieceName::Rook, self.to_move, Square(59));
                     self.remove_piece(Square(56));
-                    self.set_castling(Castle::BlackQueen, false);
-                    self.set_castling(Castle::BlackKing, false);
+                    // self.set_castling(Castle::BlackQueen, false);
+                    // self.set_castling(Castle::BlackKing, false);
                 }
                 Castle::None => (),
             }
@@ -380,22 +381,22 @@ impl Board {
         if piece_moving == PieceName::King {
             match self.to_move {
                 Color::White => {
-                    self.set_castling(Castle::WhiteQueen, false);
-                    self.set_castling(Castle::WhiteKing, false);
+                    // self.set_castling(Castle::WhiteQueen, false);
+                    // self.set_castling(Castle::WhiteKing, false);
                 }
                 Color::Black => {
-                    self.set_castling(Castle::BlackQueen, false);
-                    self.set_castling(Castle::BlackKing, false);
+                    // self.set_castling(Castle::BlackQueen, false);
+                    // self.set_castling(Castle::BlackKing, false);
                 }
             }
         }
         // If a rook moves, castling to that side is no longer possible
         if piece_moving == PieceName::Rook {
             match m.origin_square().0 {
-                0 => self.set_castling(Castle::WhiteQueen, false),
-                7 => self.set_castling(Castle::WhiteKing, false),
-                56 => self.set_castling(Castle::BlackQueen, false),
-                63 => self.set_castling(Castle::BlackKing, false),
+                // 0 => self.set_castling(Castle::WhiteQueen, false),
+                // 7 => self.set_castling(Castle::WhiteKing, false),
+                // 56 => self.set_castling(Castle::BlackQueen, false),
+                // 63 => self.set_castling(Castle::BlackKing, false),
                 _ => (),
             }
         }
@@ -403,14 +404,30 @@ impl Board {
         if let Some(cap) = capture {
             if cap == PieceName::Rook {
                 match m.dest_square().0 {
-                    0 => self.set_castling(Castle::WhiteQueen, false),
-                    7 => self.set_castling(Castle::WhiteKing, false),
-                    56 => self.set_castling(Castle::BlackQueen, false),
-                    63 => self.set_castling(Castle::BlackKing, false),
+                    // 0 => self.set_castling(Castle::WhiteQueen, false),
+                    // 7 => self.set_castling(Castle::WhiteKing, false),
+                    // 56 => self.set_castling(Castle::BlackQueen, false),
+                    // 63 => self.set_castling(Castle::BlackKing, false),
                     _ => (),
                 }
             }
         }
+
+        if self.castling[0] {
+            self.castling[0] = mask != Bitboard(0x14);
+        }
+        if self.castling[1] {
+            self.castling[1] = mask != Bitboard(0x50);
+        }
+        if self.castling[2] {
+            self.castling[2] = mask != Bitboard(0x5000000000000000);
+        }
+        if self.castling[2] {
+            self.castling[2] = mask != Bitboard(1400000000000000);
+        }
+        // self.castling[1] = mask & Bitboard(0x11) != Bitboard::EMPTY;
+        // self.castling[2] = mask & Bitboard(0x9000000000000000) == Bitboard::EMPTY;
+        // self.castling[3] = mask & Bitboard(0x1100000000000000) == Bitboard::EMPTY;
         // If the end index of a move is 16 squares from the start (and a pawn moved), an en passant is possible
         let mut en_passant = false;
         if piece_moving == PieceName::Pawn {

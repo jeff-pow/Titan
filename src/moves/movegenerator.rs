@@ -25,6 +25,12 @@ const WHITE_KINGSIDE_SQUARES: Bitboard = Bitboard(0b1100000);
 const WHITE_QUEENSIDE_SQUARES: Bitboard = Bitboard(0b1110);
 const BLACK_KINGSIDE_SQUARES: Bitboard = Bitboard(0x6000000000000000);
 const BLACK_QUEENSIDE_SQUARES: Bitboard = Bitboard(0xe00000000000000);
+const WHITE_KING_START_SQUARE: Square = Square(4);
+const WHITE_KING_ROOK: Square = Square(7);
+const WHITE_QUEEN_ROOK: Square = Square(0);
+const BLACK_KING_START_SQUARE: Square = Square(60);
+const BLACK_KING_ROOK: Square = Square(63);
+const BLACK_QUEEN_ROOK: Square = Square(56);
 
 #[allow(clippy::upper_case_acronyms)]
 pub type MGT = MoveGenerationType;
@@ -111,13 +117,26 @@ fn generate_castling_moves(board: &Board, moves: &mut MoveList) {
         Color::White => (board.castling(Castle::WhiteKing), board.castling(Castle::WhiteQueen)),
         Color::Black => (board.castling(Castle::BlackKing), board.castling(Castle::BlackQueen)),
     };
+    let (king_rook, queen_rook) = match board.to_move {
+        Color::White => (WHITE_KING_ROOK, WHITE_QUEEN_ROOK),
+        Color::Black => (BLACK_KING_ROOK, BLACK_QUEEN_ROOK),
+    };
+    let king_start_sq = match board.to_move {
+        Color::White => WHITE_KING_START_SQUARE,
+        Color::Black => BLACK_KING_START_SQUARE,
+    };
     let (kingside_dest, queenside_dest) = match board.to_move {
         Color::White => (Square(6), Square(2)),
         Color::Black => (Square(62), Square(58)),
     };
     let king_sq = board.king_square(board.to_move);
+    let rook_bb = board.bitboard(board.to_move, PieceName::Rook);
     'kingside: {
-        if can_kingside && (kingside_vacancies & board.occupancies()) == Bitboard::EMPTY {
+        if can_kingside
+            && (kingside_vacancies & board.occupancies()) == Bitboard::EMPTY
+            && king_sq == king_start_sq
+            && rook_bb & king_rook.bitboard() != Bitboard::EMPTY
+        {
             let range = match board.to_move {
                 Color::White => 4..=6,
                 Color::Black => 60..=62,
@@ -131,7 +150,11 @@ fn generate_castling_moves(board: &Board, moves: &mut MoveList) {
         }
     }
     'queenside: {
-        if can_queenside && (queenside_vacancies & board.occupancies()) == Bitboard::EMPTY {
+        if can_queenside
+            && (queenside_vacancies & board.occupancies()) == Bitboard::EMPTY
+            && king_sq == king_start_sq
+            && rook_bb & queen_rook.bitboard() != Bitboard::EMPTY
+        {
             let range = match board.to_move {
                 Color::White => 2..=4,
                 Color::Black => 58..=60,
