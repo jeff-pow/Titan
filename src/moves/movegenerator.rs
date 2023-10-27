@@ -109,62 +109,46 @@ pub fn generate_moves(board: &Board, gen_type: MGT) -> MoveList {
 }
 
 fn generate_castling_moves(board: &Board, moves: &mut MoveList) {
-    let (kingside_vacancies, queenside_vacancies) = match board.to_move {
-        Color::White => (WHITE_KINGSIDE_SQUARES, WHITE_QUEENSIDE_SQUARES),
-        Color::Black => (BLACK_KINGSIDE_SQUARES, BLACK_QUEENSIDE_SQUARES),
-    };
-    let (can_kingside, can_queenside) = match board.to_move {
-        Color::White => (board.castling(Castle::WhiteKing), board.castling(Castle::WhiteQueen)),
-        Color::Black => (board.castling(Castle::BlackKing), board.castling(Castle::BlackQueen)),
-    };
-    let (king_rook, queen_rook) = match board.to_move {
-        Color::White => (WHITE_KING_ROOK, WHITE_QUEEN_ROOK),
-        Color::Black => (BLACK_KING_ROOK, BLACK_QUEEN_ROOK),
-    };
-    let king_start_sq = match board.to_move {
-        Color::White => WHITE_KING_START_SQUARE,
-        Color::Black => BLACK_KING_START_SQUARE,
-    };
-    let (kingside_dest, queenside_dest) = match board.to_move {
-        Color::White => (Square(6), Square(2)),
-        Color::Black => (Square(62), Square(58)),
-    };
-    let king_sq = board.king_square(board.to_move);
-    let rook_bb = board.bitboard(board.to_move, PieceName::Rook);
-    'kingside: {
-        if can_kingside
-            && (kingside_vacancies & board.occupancies()) == Bitboard::EMPTY
-            && king_sq == king_start_sq
-            && rook_bb & king_rook.bitboard() != Bitboard::EMPTY
+    if board.to_move == Color::White {
+        if board.c & Castle::WhiteKing as u8 != 0
+            && board.occupancies().square_is_empty(Square(5))
+            && board.occupancies().square_is_empty(Square(6))
+            && !board.square_under_attack(Color::Black, Square(4))
+            && !board.square_under_attack(Color::Black, Square(5))
+            && !board.square_under_attack(Color::Black, Square(6))
         {
-            let range = match board.to_move {
-                Color::White => 4..=6,
-                Color::Black => 60..=62,
-            };
-            for check_sq in range {
-                if board.square_under_attack(!board.to_move, Square(check_sq)) {
-                    break 'kingside;
-                }
-            }
-            moves.push(Move::new(king_sq, kingside_dest, None, MoveType::Castle));
+            moves.push(Move::new(Square(4), Square(6), None, MoveType::Castle));
         }
-    }
-    'queenside: {
-        if can_queenside
-            && (queenside_vacancies & board.occupancies()) == Bitboard::EMPTY
-            && king_sq == king_start_sq
-            && rook_bb & queen_rook.bitboard() != Bitboard::EMPTY
+        if board.c & Castle::WhiteQueen as u8 != 0
+            && board.occupancies().square_is_empty(Square(1))
+            && board.occupancies().square_is_empty(Square(2))
+            && board.occupancies().square_is_empty(Square(3))
+            && !board.square_under_attack(Color::Black, Square(2))
+            && !board.square_under_attack(Color::Black, Square(3))
+            && !board.square_under_attack(Color::Black, Square(4))
         {
-            let range = match board.to_move {
-                Color::White => 2..=4,
-                Color::Black => 58..=60,
-            };
-            for check_sq in range {
-                if board.square_under_attack(!board.to_move, Square(check_sq)) {
-                    break 'queenside;
-                }
-            }
-            moves.push(Move::new(king_sq, queenside_dest, None, MoveType::Castle));
+            moves.push(Move::new(Square(4), Square(2), None, MoveType::Castle));
+        }
+    } else {
+        if board.c & Castle::BlackKing as u8 != 0
+            && board.occupancies().square_is_empty(Square(61))
+            && board.occupancies().square_is_empty(Square(62))
+            && !board.square_under_attack(Color::White, Square(60))
+            && !board.square_under_attack(Color::White, Square(61))
+            && !board.square_under_attack(Color::White, Square(62))
+        {
+            moves.push(Move::new(Square(60), Square(62), None, MoveType::Castle));
+        }
+
+        if board.c & Castle::BlackQueen as u8 != 0
+            && board.occupancies().square_is_empty(Square(57))
+            && board.occupancies().square_is_empty(Square(58))
+            && board.occupancies().square_is_empty(Square(59))
+            && !board.square_under_attack(Color::White, Square(58))
+            && !board.square_under_attack(Color::White, Square(59))
+            && !board.square_under_attack(Color::White, Square(60))
+        {
+            moves.push(Move::new(Square(60), Square(58), None, MoveType::Castle));
         }
     }
 }
