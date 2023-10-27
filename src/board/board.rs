@@ -446,10 +446,7 @@ impl Board {
 
         self.c &= CASTLING_RIGHTS[m.origin_square().idx()];
         self.c &= CASTLING_RIGHTS[m.dest_square().idx()];
-        assert_eq!(self.castling[0], self.castling(Castle::WhiteKing));
-        assert_eq!(self.castling[1], self.castling(Castle::WhiteQueen));
-        assert_eq!(self.castling[2], self.castling(Castle::BlackKing));
-        assert_eq!(self.castling[3], self.castling(Castle::BlackQueen));
+        self.assert_castle_sync();
 
         self.to_move = !self.to_move;
 
@@ -463,6 +460,13 @@ impl Board {
 
         // Return false if the move leaves the opposite side in check, denoting an invalid move
         !self.in_check(!self.to_move)
+    }
+
+    pub fn assert_castle_sync(&self) {
+        assert_eq!(self.castling[0], self.castling(Castle::WhiteKing));
+        assert_eq!(self.castling[1], self.castling(Castle::WhiteQueen));
+        assert_eq!(self.castling[2], self.castling(Castle::BlackKing));
+        assert_eq!(self.castling[3], self.castling(Castle::BlackQueen));
     }
 
     #[allow(dead_code)]
