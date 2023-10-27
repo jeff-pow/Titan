@@ -25,10 +25,6 @@ impl Accumulator {
         &self.0[color.idx()]
     }
 
-    pub fn get_mut(&mut self, color: Color) -> &mut [i16; HIDDEN_SIZE] {
-        &mut self.0[color.idx()]
-    }
-
     pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
         let white_idx = feature_idx(color, piece, sq);
         let black_idx = feature_idx(!color, piece, sq.flip_vertical());
@@ -45,8 +41,7 @@ impl Accumulator {
     }
 
     pub(crate) fn reset(&mut self) {
-        self.0[Color::White.idx()] = NET.feature_bias;
-        self.0[Color::Black.idx()] = NET.feature_bias;
+        self.0 = [NET.feature_bias; 2];
     }
 
     fn deactivate(&mut self, weights: &[i16; HIDDEN_SIZE * INPUT_SIZE], offset: usize, color: Color) {
