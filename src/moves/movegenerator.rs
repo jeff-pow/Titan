@@ -21,17 +21,6 @@ use super::{
     moves::{Castle, Move, MoveType},
 };
 
-const WHITE_KINGSIDE_SQUARES: Bitboard = Bitboard(0b1100000);
-const WHITE_QUEENSIDE_SQUARES: Bitboard = Bitboard(0b1110);
-const BLACK_KINGSIDE_SQUARES: Bitboard = Bitboard(0x6000000000000000);
-const BLACK_QUEENSIDE_SQUARES: Bitboard = Bitboard(0xe00000000000000);
-const WHITE_KING_START_SQUARE: Square = Square(4);
-const WHITE_KING_ROOK: Square = Square(7);
-const WHITE_QUEEN_ROOK: Square = Square(0);
-const BLACK_KING_START_SQUARE: Square = Square(60);
-const BLACK_KING_ROOK: Square = Square(63);
-const BLACK_QUEEN_ROOK: Square = Square(56);
-
 #[allow(clippy::upper_case_acronyms)]
 pub type MGT = MoveGenerationType;
 #[derive(Copy, Clone, PartialEq)]

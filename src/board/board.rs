@@ -5,7 +5,6 @@ use crate::{
     eval::nnue::{Accumulator, NET},
     moves::{
         movegenerator::MG,
-        moves::Castle,
         moves::Move,
         moves::Promotion,
         moves::{Direction::*, CASTLING_RIGHTS},
@@ -16,6 +15,7 @@ use crate::{
         square::Square,
     },
 };
+use crate::moves::moves::Castle;
 
 use super::move_history::BoardHistory;
 
@@ -444,8 +444,18 @@ impl Board {
             self.half_moves = 0;
         }
 
-        self.c &= CASTLING_RIGHTS[m.origin_square().idx()];
-        self.c &= CASTLING_RIGHTS[m.dest_square().idx()];
+        // if piece_moving == PieceName::Rook {
+        //     let a = 5;
+        //     println!("{}", a);
+        //     let b = m.origin_square();
+        //     let c = m.dest_square();
+        //     println!("{}", b.0 + c.0);
+        // }
+        let a = m.origin_square();
+        let b = m.dest_square();
+        let c = CASTLING_RIGHTS[a.idx()];
+        let d = CASTLING_RIGHTS[b.idx()];
+        self.c &= CASTLING_RIGHTS[m.origin_square().idx()] & CASTLING_RIGHTS[m.dest_square().idx()];
         self.assert_castle_sync();
 
         self.to_move = !self.to_move;

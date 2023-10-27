@@ -174,6 +174,7 @@ mod fen_tests {
         board::fen::{find_en_passant_square, parse_castling},
         moves::moves::Castle,
     };
+    use crate::board::board::Board;
 
     #[test]
     fn test_en_passant_square() {
@@ -191,42 +192,48 @@ mod fen_tests {
     #[test]
     fn test_parse_castling_white_king() {
         let input = "K";
-        let result = parse_castling(&input);
+        let mut b = Board::default();
+        let result = parse_castling(&mut b, &input);
         assert_eq!(result, Castle::WhiteKing as u8);
     }
 
     #[test]
     fn test_parse_castling_white_queen() {
         let input = "Q";
-        let result = parse_castling(&input);
+        let mut b = Board::default();
+        let result = parse_castling(&mut b, &input);
         assert_eq!(result, Castle::WhiteQueen as u8);
     }
 
     #[test]
     fn test_parse_castling_black_king() {
         let input = "k";
-        let result = parse_castling(&input);
+        let mut b = Board::default();
+        let result = parse_castling(&mut b, &input);
         assert_eq!(result, Castle::BlackKing as u8);
     }
 
     #[test]
     fn test_parse_castling_black_queen() {
         let input = "q";
-        let result = parse_castling(&input);
+        let mut b = Board::default();
+        let result = parse_castling(&mut b, &input);
         assert_eq!(result, Castle::BlackQueen as u8);
     }
 
     #[test]
     fn test_parse_castling_invalid() {
         let input = "X";
-        let result = parse_castling(&input);
+        let mut b = Board::default();
+        let result = parse_castling(&mut b, &input);
         assert_eq!(result, 0); // Expecting 0 for invalid input
     }
 
     #[test]
     fn test_parse_multiple_castlings() {
         let input = "KQkq";
-        let result = parse_castling(&input);
+        let mut b = Board::default();
+        let result = parse_castling(&mut b, &input);
         // You need to define the expected result based on the combination of castling rights.
         // For example, if all castling rights are allowed (KQkq), you can set the expected result to a specific value.
         let expected_result =
@@ -237,7 +244,8 @@ mod fen_tests {
     #[test]
     fn test_parse_partial_castlings() {
         let input = "Kk";
-        let result = parse_castling(&input);
+        let mut b = Board::default();
+        let result = parse_castling(&mut b, &input);
         // Define the expected result for the combination of castling rights in the input.
         let expected_result = Castle::WhiteKing as u8 | Castle::BlackKing as u8;
         assert_eq!(result, expected_result);
