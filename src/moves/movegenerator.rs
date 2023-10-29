@@ -99,7 +99,7 @@ pub fn generate_moves(board: &Board, gen_type: MGT) -> MoveList {
 
 fn generate_castling_moves(board: &Board, moves: &mut MoveList) {
     if board.to_move == Color::White {
-        if board.c & Castle::WhiteKing as u8 != 0
+        if board.can_castle(Castle::WhiteKing)
             && board.occupancies().square_is_empty(Square(5))
             && board.occupancies().square_is_empty(Square(6))
             && !board.square_under_attack(Color::Black, Square(4))
@@ -108,7 +108,8 @@ fn generate_castling_moves(board: &Board, moves: &mut MoveList) {
         {
             moves.push(Move::new(Square(4), Square(6), None, MoveType::Castle));
         }
-        if board.c & Castle::WhiteQueen as u8 != 0
+
+        if board.can_castle(Castle::WhiteQueen)
             && board.occupancies().square_is_empty(Square(1))
             && board.occupancies().square_is_empty(Square(2))
             && board.occupancies().square_is_empty(Square(3))
@@ -119,7 +120,7 @@ fn generate_castling_moves(board: &Board, moves: &mut MoveList) {
             moves.push(Move::new(Square(4), Square(2), None, MoveType::Castle));
         }
     } else {
-        if board.c & Castle::BlackKing as u8 != 0
+        if board.can_castle(Castle::BlackKing)
             && board.occupancies().square_is_empty(Square(61))
             && board.occupancies().square_is_empty(Square(62))
             && !board.square_under_attack(Color::White, Square(60))
@@ -129,7 +130,7 @@ fn generate_castling_moves(board: &Board, moves: &mut MoveList) {
             moves.push(Move::new(Square(60), Square(62), None, MoveType::Castle));
         }
 
-        if board.c & Castle::BlackQueen as u8 != 0
+        if board.can_castle(Castle::BlackQueen)
             && board.occupancies().square_is_empty(Square(57))
             && board.occupancies().square_is_empty(Square(58))
             && board.occupancies().square_is_empty(Square(59))

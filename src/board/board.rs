@@ -19,17 +19,17 @@ use crate::{
 
 use super::move_history::BoardHistory;
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct Board {
     bitboards: [Bitboard; NUM_PIECES],
     color_occupancies: [Bitboard; 2],
     pub array_board: [Option<Piece>; 64],
     pub to_move: Color,
-    pub c: u8,
+    c: u8,
     pub en_passant_square: Option<Square>,
     pub prev_move: Move,
-    pub num_moves: i32,
-    pub half_moves: i32,
+    pub num_moves: usize,
+    pub half_moves: usize,
     pub zobrist_hash: u64,
     history: BoardHistory,
     pub accumulator: Accumulator,
@@ -66,14 +66,19 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn castling(&self, c: Castle) -> bool {
+    pub fn can_castle(&self, c: Castle) -> bool {
         match c {
-            Castle::WhiteKing => self.c & Castle::WhiteKing as u8 == Castle::WhiteKing as u8,
-            Castle::WhiteQueen => self.c & Castle::WhiteQueen as u8 == Castle::WhiteQueen as u8,
-            Castle::BlackKing => self.c & Castle::BlackKing as u8 == Castle::BlackKing as u8,
-            Castle::BlackQueen => self.c & Castle::BlackQueen as u8 == Castle::BlackQueen as u8,
+            Castle::WhiteKing => self.c & Castle::WhiteKing as u8 != 0,
+            Castle::WhiteQueen => self.c & Castle::WhiteQueen as u8 != 0,
+            Castle::BlackKing => self.c & Castle::BlackKing as u8 != 0,
+            Castle::BlackQueen => self.c & Castle::BlackQueen as u8 != 0,
             _ => panic!(),
         }
+    }
+
+    #[inline(always)]
+    pub fn set_castling(&mut self, castling: u8) {
+        self.c = castling;
     }
 
     #[inline(always)]
@@ -351,10 +356,8 @@ impl Board {
             }
         }
 
-
         // Special case if the move is an en_passant
         if m.is_en_passant() {
-
             match self.to_move {
                 Color::White => {
                     self.remove_piece(m.dest_square().shift(South));
@@ -496,16 +499,16 @@ impl fmt::Debug for Board {
         };
         str += &self.to_string();
         str += "Castles available: ";
-        if self.castling(Castle::WhiteKing) {
+        if self.can_castle(Castle::WhiteKing) {
             str += "K"
         };
-        if self.castling(Castle::WhiteQueen) {
+        if self.can_castle(Castle::WhiteQueen) {
             str += "Q"
         };
-        if self.castling(Castle::BlackKing) {
+        if self.can_castle(Castle::BlackKing) {
             str += "k"
         };
-        if self.castling(Castle::BlackQueen) {
+        if self.can_castle(Castle::BlackQueen) {
             str += "q"
         };
         str += "\n";

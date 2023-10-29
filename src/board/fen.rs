@@ -8,10 +8,10 @@ use crate::{
 
 use super::board::Board;
 
-/** File takes a string in Forsyth-Edwards notation and constructs a board state */
-
+/// Fen string for the starting position of a board
 pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+/// Takes in a string in fen notation and returns a board state
 pub fn build_board(fen_string: &str) -> Board {
     let mut board = Board::default();
     let mut row = 7;
@@ -77,31 +77,23 @@ pub fn build_board(fen_string: &str) -> Board {
         start += step;
         row = row.saturating_sub(1);
     }
-    // 9th iteration: find who's turn it is to move
+    // 9th element: find who's turn it is to move
     board.to_move = match iter.next().unwrap().chars().next().unwrap() {
         'w' => Color::White,
         'b' => Color::Black,
         _ => panic!("invalid turn"),
     };
+
     // 10th bucket find who can still castle
     // Order of array is white king castle, white queen castle, black king castle, black queen castle
-    // for c in iter.next().unwrap().chars() {
-    //     match c {
-    //         'K' => board.set_castling(Castle::WhiteKing, true),
-    //         'Q' => board.set_castling(Castle::WhiteQueen, true),
-    //         'k' => board.set_castling(Castle::BlackKing, true),
-    //         'q' => board.set_castling(Castle::BlackQueen, true),
-    //         '-' => (),
-    //         _ => panic!("Unrecognized castle character: {}", c),
-    //     }
-    // }
-    board.c = parse_castling(iter.next().unwrap());
+    board.set_castling(parse_castling(iter.next().unwrap()));
+
     let en_passant_letters: Vec<char> = iter.next().unwrap().chars().collect();
     let en_passant_idx = find_en_passant_square(en_passant_letters);
     if let Some(idx) = en_passant_idx {
         board.en_passant_square = Some(Square(idx))
     }
-    // Half move clock: not yet implemented
+
     let half_moves = iter.next();
     if let Some(half_moves) = half_moves {
         if let Ok(half_moves) = half_moves.parse() {
