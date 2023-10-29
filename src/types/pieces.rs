@@ -18,7 +18,7 @@ pub enum Color {
 
 impl Color {
     #[inline(always)]
-    pub fn idx(&self) -> usize {
+    pub fn idx(self) -> usize {
         match self {
             Color::White => 0,
             Color::Black => 1,
@@ -58,7 +58,7 @@ pub enum PieceName {
 
 impl PieceName {
     #[inline(always)]
-    pub fn value(&self) -> i32 {
+    pub fn value(self) -> i32 {
         match self {
             PieceName::King => KING_PTS,
             PieceName::Queen => QUEEN_PTS,
@@ -70,16 +70,8 @@ impl PieceName {
     }
 
     #[inline(always)]
-    pub fn idx(&self) -> usize {
-        *self as usize
-        // match self {
-        //     PieceName::Pawn => 0,
-        //     PieceName::Knight => 1,
-        //     PieceName::Bishop => 2,
-        //     PieceName::Rook => 3,
-        //     PieceName::Queen => 4,
-        //     PieceName::King => 5,
-        // }
+    pub fn idx(self) -> usize {
+        self as usize
     }
 }
 

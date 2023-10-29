@@ -232,11 +232,9 @@ fn get_eg_table(piece: PieceName) -> &'static [i32; 64] {
 
 fn game_phase_value(piece: PieceName) -> i32 {
     match piece {
-        PieceName::King => 0,
         PieceName::Queen => 4,
         PieceName::Rook => 2,
-        PieceName::Bishop => 1,
-        PieceName::Knight => 1,
-        PieceName::Pawn => 0,
+        PieceName::Bishop | PieceName::Knight => 1,
+        PieceName::Pawn | PieceName::King => 0,
     }
 }

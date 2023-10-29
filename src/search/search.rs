@@ -187,12 +187,18 @@ fn alpha_beta(
     }
 
     let (table_value, table_move) = {
-        if let Some(entry) = info.transpos_table.read().unwrap().get(&board.zobrist_hash) {
-            entry.get(depth, ply, alpha, beta, board)
-        } else {
-            (None, Move::NULL)
-        }
+        // if let Some(entry) = info.transpos_table.read().unwrap().get(&board.zobrist_hash) {
+        //     entry.get(depth, ply, alpha, beta, board)
+        // } else {
+        //     (None, Move::NULL)
+        // };
+        info.transpos_table
+            .read()
+            .unwrap()
+            .get(&board.zobrist_hash)
+            .map_or((None, Move::NULL), |entry| entry.get(depth, ply, alpha, beta, board))
     };
+
     if let Some(eval) = table_value {
         if !is_root {
             // This can cut off evals in certain cases, but it's easy to implement :)

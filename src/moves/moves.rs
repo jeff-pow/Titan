@@ -10,6 +10,7 @@ use crate::{
 
 use strum_macros::EnumIter;
 
+#[derive(Clone, Copy)]
 pub(crate) enum MoveType {
     Normal,
     Promotion,
@@ -44,7 +45,7 @@ pub enum Direction {
 
 impl Direction {
     /// Returns the opposite direction of the given direction
-    pub fn opp(&self) -> Self {
+    pub fn opp(self) -> Self {
         match self {
             North => South,
             NorthWest => SouthEast,
@@ -95,8 +96,7 @@ impl Move {
             Some(Promotion::Queen) => 3,
             Some(Promotion::Rook) => 2,
             Some(Promotion::Bishop) => 1,
-            Some(Promotion::Knight) => 0,
-            None => 0,
+            Some(Promotion::Knight) | None => 0,
         };
         let move_type = match move_type {
             MoveType::Normal => 0,
@@ -126,24 +126,24 @@ impl Move {
     }
 
     #[inline(always)]
-    pub fn is_capture(&self, board: &Board) -> bool {
+    pub fn is_capture(self, board: &Board) -> bool {
         board.occupancies().square_occupied(self.dest_square())
     }
 
     #[inline(always)]
-    pub fn is_castle(&self) -> bool {
+    pub fn is_castle(self) -> bool {
         let castle_flag = (self.0 >> 14) & 0b11;
         castle_flag == MoveType::Castle as u32
     }
 
     #[inline(always)]
-    pub fn piece_moving(&self) -> PieceName {
+    pub fn piece_moving(self) -> PieceName {
         let piece_flag = (self.0 >> 16) & 0b111;
         PieceName::from(piece_flag as usize)
     }
 
     #[inline(always)]
-    pub fn is_en_passant(&self) -> bool {
+    pub fn is_en_passant(self) -> bool {
         let en_passant_flag = (self.0 >> 14) & 0b11;
         en_passant_flag == MoveType::EnPassant as u32
     }
@@ -159,7 +159,7 @@ impl Move {
     }
 
     #[inline(always)]
-    pub fn is_normal(&self, board: &Board) -> bool {
+    pub fn is_normal(self, board: &Board) -> bool {
         self.promotion().is_none()
             && !self.is_castle()
             && !self.is_en_passant()
@@ -168,7 +168,7 @@ impl Move {
     }
 
     #[inline(always)]
-    pub fn promotion(&self) -> Option<Promotion> {
+    pub fn promotion(self) -> Option<Promotion> {
         let promotion_flag = (self.0 >> 14) & 0b11;
         if promotion_flag != MoveType::Promotion as u32 {
             return None;
@@ -183,17 +183,17 @@ impl Move {
     }
 
     #[inline(always)]
-    pub fn origin_square(&self) -> Square {
+    pub fn origin_square(self) -> Square {
         Square((self.0 & 0b111111) as u8)
     }
 
     #[inline(always)]
-    pub fn dest_square(&self) -> Square {
+    pub fn dest_square(self) -> Square {
         Square(((self.0 >> 6) & 0b111111) as u8)
     }
 
     #[inline(always)]
-    pub fn as_u16(&self) -> u16 {
+    pub fn as_u16(self) -> u16 {
         self.0 as u16
     }
 
@@ -220,7 +220,7 @@ impl Move {
     }
 
     #[inline(always)]
-    pub fn castle_type(&self) -> Castle {
+    pub fn castle_type(self) -> Castle {
         debug_assert!(self.is_castle());
         if self.dest_square().dist(self.origin_square()) != 2 {
             Castle::None
@@ -252,16 +252,17 @@ pub fn from_lan(str: &str, board: &Board) -> Move {
     let end_row = (vec[3].to_digit(10).unwrap() - 1) * 8;
     let dest_sq = Square((end_row + end_column) as u8);
 
-    let mut promotion = None;
-    if vec.len() > 4 {
-        promotion = match vec[4] {
+    let promotion = if vec.len() > 4 {
+        match vec[4] {
             'q' => Some(Promotion::Queen),
             'r' => Some(Promotion::Rook),
             'b' => Some(Promotion::Bishop),
             'n' => Some(Promotion::Knight),
             _ => panic!(),
-        };
-    }
+        }
+    } else {
+        None
+    };
     let piece_moving = board.piece_at(origin_sq).expect("There should be a piece here...");
     let captured = board.piece_at(dest_sq);
     let castle = match piece_moving {

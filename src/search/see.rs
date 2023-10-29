@@ -19,11 +19,7 @@ fn gain(board: &Board, m: Move) -> i32 {
     if m.is_en_passant() {
         return PieceName::Pawn.value();
     }
-    let mut score = if let Some(capture) = board.piece_at(m.dest_square()) {
-        capture.value()
-    } else {
-        0
-    };
+    let mut score = board.piece_at(m.dest_square()).map_or(0, |p| p.value());
     if let Some(p) = m.promotion() {
         score += match p {
             Promotion::Queen => PieceName::Queen.value(),

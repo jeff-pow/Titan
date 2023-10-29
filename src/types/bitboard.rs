@@ -23,30 +23,30 @@ impl Bitboard {
     }
 
     #[inline(always)]
-    pub fn get_lsb(&self) -> Square {
+    pub fn get_lsb(self) -> Square {
         let lsb = self.0 & self.0.wrapping_neg();
         Square(lsb.trailing_zeros() as u8)
     }
 
     #[inline(always)]
-    pub fn square_occupied(&self, sq: Square) -> bool {
+    pub fn square_occupied(self, sq: Square) -> bool {
         debug_assert!(sq.is_valid());
         self.0 & (1 << sq.0) != 0
     }
 
     #[inline(always)]
-    pub fn square_is_empty(&self, sq: Square) -> bool {
+    pub fn square_is_empty(self, sq: Square) -> bool {
         !self.square_occupied(sq)
     }
 
     #[inline(always)]
-    pub fn count_bits(&self) -> i32 {
+    pub fn count_bits(self) -> i32 {
         self.0.count_ones().try_into().expect("Valid conversion")
     }
 
     #[inline(always)]
     /// Checks a bitboard shift to ensure no information is lost and then executes the shift
-    pub fn checked_shift(&self, dir: Direction) -> Option<Bitboard> {
+    pub fn checked_shift(self, dir: Direction) -> Option<Bitboard> {
         let bitboard = self.0.max(1);
         let result = match dir {
             Direction::North => {
@@ -118,7 +118,7 @@ impl Bitboard {
     /// Executes a shift without checking to ensure no information is list. Only to be used when a
     /// shift has already been proven to be safe
     #[inline(always)]
-    pub fn shift(&self, dir: Direction) -> Bitboard {
+    pub fn shift(self, dir: Direction) -> Bitboard {
         match dir {
             Direction::North => Bitboard(self.0 << 8),
             Direction::NorthWest => Bitboard((self.0 << 7) & !FILE_H.0),

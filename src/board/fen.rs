@@ -29,48 +29,47 @@ pub fn build_board(fen_string: &str) -> Board {
             if c.is_ascii_digit() {
                 idx += c.to_digit(10).unwrap() as usize;
                 continue;
-            } else {
-                let square = row * 8 + idx;
-                let square = Square(square as u8);
-                match c {
-                    'K' => {
-                        board.place_piece(PieceName::King, Color::White, square);
-                    }
-                    'Q' => {
-                        board.place_piece(PieceName::Queen, Color::White, square);
-                    }
-                    'R' => {
-                        board.place_piece(PieceName::Rook, Color::White, square);
-                    }
-                    'N' => {
-                        board.place_piece(PieceName::Knight, Color::White, square);
-                    }
-                    'B' => {
-                        board.place_piece(PieceName::Bishop, Color::White, square);
-                    }
-                    'P' => {
-                        board.place_piece(PieceName::Pawn, Color::White, square);
-                    }
-                    'k' => {
-                        board.place_piece(PieceName::King, Color::Black, square);
-                    }
-                    'q' => {
-                        board.place_piece(PieceName::Queen, Color::Black, square);
-                    }
-                    'r' => {
-                        board.place_piece(PieceName::Rook, Color::Black, square);
-                    }
-                    'b' => {
-                        board.place_piece(PieceName::Bishop, Color::Black, square);
-                    }
-                    'n' => {
-                        board.place_piece(PieceName::Knight, Color::Black, square);
-                    }
-                    'p' => {
-                        board.place_piece(PieceName::Pawn, Color::Black, square);
-                    }
-                    _ => panic!("Unrecognized char {}, board could not be made", c),
+            }
+            let square = row * 8 + idx;
+            let square = Square(square as u8);
+            match c {
+                'K' => {
+                    board.place_piece(PieceName::King, Color::White, square);
                 }
+                'Q' => {
+                    board.place_piece(PieceName::Queen, Color::White, square);
+                }
+                'R' => {
+                    board.place_piece(PieceName::Rook, Color::White, square);
+                }
+                'N' => {
+                    board.place_piece(PieceName::Knight, Color::White, square);
+                }
+                'B' => {
+                    board.place_piece(PieceName::Bishop, Color::White, square);
+                }
+                'P' => {
+                    board.place_piece(PieceName::Pawn, Color::White, square);
+                }
+                'k' => {
+                    board.place_piece(PieceName::King, Color::Black, square);
+                }
+                'q' => {
+                    board.place_piece(PieceName::Queen, Color::Black, square);
+                }
+                'r' => {
+                    board.place_piece(PieceName::Rook, Color::Black, square);
+                }
+                'b' => {
+                    board.place_piece(PieceName::Bishop, Color::Black, square);
+                }
+                'n' => {
+                    board.place_piece(PieceName::Knight, Color::Black, square);
+                }
+                'p' => {
+                    board.place_piece(PieceName::Pawn, Color::Black, square);
+                }
+                _ => panic!("Unrecognized char {}, board could not be made", c),
             }
             idx += 1;
         }
