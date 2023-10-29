@@ -213,7 +213,6 @@ fn alpha_beta(
     let mut best_score = -INFINITY;
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
-    let hist_bonus = (155 * depth).min(2000);
 
     if !is_root && !is_pv_node && !in_check {
         // let static_eval = board.evaluate();
@@ -317,6 +316,7 @@ fn alpha_beta(
                 //     depth += 1;
                 // }
                 r = r.clamp(1, depth - 1);
+
                 eval = -alpha_beta(depth - r, -alpha - 1, -alpha, &mut Vec::new(), info, &new_b, !cut_node);
                 if eval > alpha && r > 1 {
                     eval = -alpha_beta(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node);
@@ -348,7 +348,7 @@ fn alpha_beta(
                     let len = info.current_line.len();
                     let range = len - 6.min(0)..len - 1.min(0);
                     info.history
-                        .update_history(m, hist_bonus, board.to_move, &info.current_line[range]);
+                        .update_history(m, depth, board.to_move, &info.current_line[range]);
                 }
                 break;
             }
@@ -358,7 +358,7 @@ fn alpha_beta(
         let len = info.current_line.len();
         let range = len - 6.min(0)..len - 1.min(0);
         info.history
-            .update_history(m, -hist_bonus, board.to_move, &info.current_line[range]);
+            .update_history(m, -depth, board.to_move, &info.current_line[range]);
     }
 
     if legal_moves_searched == 0 {

@@ -40,7 +40,9 @@ impl MoveHistory {
         }
     }
 
-    pub fn update_history(&mut self, m: Move, bonus: i32, side: Color, prev_moves: &[Move]) {
+    pub fn update_history(&mut self, m: Move, depth: i32, side: Color, prev_moves: &[Move]) {
+        let bonus = (155 * depth).min(2000);
+
         self.update_search_history(m, bonus, side);
         self.update_conthist_score(m, bonus, side, prev_moves);
     }
