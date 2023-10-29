@@ -288,7 +288,6 @@ fn alpha_beta(
         }
         info.current_line.push(m);
         let mut node_pvs = Vec::new();
-        let mut eval;
 
         let can_lmr = legal_moves_searched >= LMR_THRESHOLD && depth >= MIN_LMR_DEPTH;
 
@@ -316,25 +315,31 @@ fn alpha_beta(
             }
         };
 
-        if legal_moves_searched == 0 {
+        let eval = if legal_moves_searched == 0 {
             node_pvs.clear();
-            // On the first move, just do a full depth search
-            eval = -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false);
+            // On the first move, just do a full depth search so we at least have a pv
+            -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
         } else {
             node_pvs.clear();
+            // Start with a zero window reduced search
             let zero_window = -alpha_beta(depth - r, -alpha - 1, -alpha, &mut Vec::new(), info, &new_b, !cut_node);
-            if zero_window > alpha && r > 1 {
-                node_pvs.clear();
-                eval = -alpha_beta(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node);
-            } else {
-                eval = zero_window
-            }
 
-            if eval > alpha && eval < beta {
+            // If that search raises alpha and the reduction was more than one, do a research at a zero window with full depth
+            let verification_score = if zero_window > alpha && r > 1 {
                 node_pvs.clear();
-                eval = -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false);
+                -alpha_beta(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node)
+            } else {
+                zero_window
+            };
+
+            // If the verification score falls between alpha and beta, full window full depth search
+            if verification_score > alpha && verification_score < beta {
+                node_pvs.clear();
+                -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
+            } else {
+                verification_score
             }
-        }
+        };
 
         legal_moves_searched += 1;
         info.current_line.pop();
