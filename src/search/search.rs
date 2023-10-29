@@ -290,16 +290,12 @@ fn alpha_beta(
         let mut node_pvs = Vec::new();
         let mut eval;
 
-        if legal_moves_searched == 0 {
-            node_pvs.clear();
-            // On the first move, just do a full depth search
-            eval = -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false);
-        } else {
-            if legal_moves_searched < LMR_THRESHOLD || depth < MIN_LMR_DEPTH {
-                node_pvs.clear();
-                eval = -alpha_beta(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node);
+        let can_lmr = legal_moves_searched >= LMR_THRESHOLD && depth >= MIN_LMR_DEPTH;
+
+        let r = {
+            if !can_lmr {
+                1
             } else {
-                // Otherwise do LMR
                 let mut r = get_reduction(info, depth, legal_moves_searched);
                 r += i32::from(!is_pv_node);
                 if is_quiet && cut_node {
@@ -316,12 +312,25 @@ fn alpha_beta(
                 //     depth += 1;
                 // }
                 r = r.clamp(1, depth - 1);
-
-                eval = -alpha_beta(depth - r, -alpha - 1, -alpha, &mut Vec::new(), info, &new_b, !cut_node);
-                if eval > alpha && r > 1 {
-                    eval = -alpha_beta(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node);
-                }
+                r
             }
+        };
+
+        if legal_moves_searched == 0 {
+            node_pvs.clear();
+            // On the first move, just do a full depth search
+            eval = -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false);
+        } else {
+            node_pvs.clear();
+            let zero_window = -alpha_beta(depth - r, -alpha - 1, -alpha, &mut Vec::new(), info, &new_b, !cut_node);
+            if zero_window > alpha && r > 1 {
+                node_pvs.clear();
+                // TODO: Might not want to even do a zero window full depth search - could go straight into full window full depth if we fail reduced height
+                eval = -alpha_beta(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node);
+            } else {
+                eval = zero_window
+            }
+
             if eval > alpha && eval < beta {
                 node_pvs.clear();
                 eval = -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false);
