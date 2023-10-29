@@ -62,7 +62,7 @@ impl Board {
 
         match self.en_passant_square {
             Some(x) => hash ^= ZOBRIST.en_passant[x.idx()],
-            None => hash ^= ZOBRIST.en_passant[65],
+            None => hash ^= ZOBRIST.en_passant[64],
         }
 
         if self.can_castle(Castle::WhiteKing) {
