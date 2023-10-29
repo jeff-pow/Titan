@@ -1,6 +1,7 @@
 use core::fmt;
 use strum::IntoEnumIterator;
 
+use crate::moves::moves::Castle;
 use crate::{
     eval::nnue::{Accumulator, NET},
     moves::{
@@ -15,7 +16,6 @@ use crate::{
         square::Square,
     },
 };
-use crate::moves::moves::Castle;
 
 use super::move_history::BoardHistory;
 
@@ -310,8 +310,11 @@ impl Board {
     #[inline(always)]
     pub fn set_castling(&mut self, c: Castle, b: bool) {
         match c {
-            Castle::None => panic!(),
-            _ => self.castling[c as usize] = b,
+            Castle::WhiteKing => self.castling[0] = b,
+            Castle::WhiteQueen => self.castling[1] = b,
+            Castle::BlackKing => self.castling[2] = b,
+            Castle::BlackQueen => self.castling[3] = b,
+            Castle::None => todo!(),
         }
     }
 
@@ -444,13 +447,9 @@ impl Board {
             self.half_moves = 0;
         }
 
-        // if piece_moving == PieceName::Rook {
-        //     let a = 5;
-        //     println!("{}", a);
-        //     let b = m.origin_square();
-        //     let c = m.dest_square();
-        //     println!("{}", b.0 + c.0);
-        // }
+        if piece_moving == PieceName::Rook {
+            let a = 5;
+        }
         let a = m.origin_square();
         let b = m.dest_square();
         let c = CASTLING_RIGHTS[a.idx()];
