@@ -5,13 +5,17 @@ use strum::IntoEnumIterator;
 
 use crate::{
     board::board::Board,
-    moves::magics::Rng,
+    moves::{magics::Rng, moves::Castle},
     types::pieces::{Color, PieceName},
 };
 
 pub struct Zobrist {
     pub piece_square_hashes: [[[u64; 64]; 6]; 2],
     pub turn_hash: u64,
+    pub castling: [u64; 4],
+    // 64 squares plus an invalid square
+    // Don't bother figuring out invalid enpassant squares, literally not worth the squeeze
+    pub en_passant: [u64; 65],
 }
 
 lazy_static! {
@@ -28,9 +32,15 @@ impl Default for Zobrist {
             .flatten()
             .flatten()
             .for_each(|x| *x = rng.next_u64());
+        let mut castling = [0; 4];
+        castling.iter_mut().for_each(|x| *x = rng.next_u64());
+        let mut en_passant = [0; 65];
+        en_passant.iter_mut().for_each(|x| *x = rng.next_u64());
         Self {
             turn_hash,
             piece_square_hashes,
+            castling,
+            en_passant,
         }
     }
 }
@@ -48,6 +58,24 @@ impl Board {
                     hash ^= ZOBRIST.piece_square_hashes[color as usize][piece as usize][sq.idx()]
                 }
             }
+        }
+
+        match self.en_passant_square {
+            Some(x) => hash ^= ZOBRIST.en_passant[x.idx()],
+            None => hash ^= ZOBRIST.en_passant[65],
+        }
+
+        if self.can_castle(Castle::WhiteKing) {
+            hash ^= ZOBRIST.castling[0];
+        }
+        if self.can_castle(Castle::WhiteQueen) {
+            hash ^= ZOBRIST.castling[1];
+        }
+        if self.can_castle(Castle::BlackKing) {
+            hash ^= ZOBRIST.castling[2];
+        }
+        if self.can_castle(Castle::BlackQueen) {
+            hash ^= ZOBRIST.castling[3];
         }
 
         if self.to_move == Color::Black {
