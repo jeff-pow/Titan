@@ -95,7 +95,7 @@ pub fn build_board(fen_string: &str) -> Board {
     //         _ => panic!("Unrecognized castle character: {}", c),
     //     }
     // }
-    board.c = parse_castling(&mut board, iter.next().unwrap());
+    board.c = parse_castling(iter.next().unwrap());
     let en_passant_letters: Vec<char> = iter.next().unwrap().chars().collect();
     let en_passant_idx = find_en_passant_square(en_passant_letters);
     if let Some(idx) = en_passant_idx {
@@ -122,25 +122,13 @@ pub fn build_board(fen_string: &str) -> Board {
     board
 }
 
-fn parse_castling(board: &mut Board, buf: &&str) -> u8 {
+fn parse_castling(buf: &&str) -> u8 {
     let rights = buf.chars().fold(0, |x, ch| {
         x | match ch {
-            'K' => {
-                board.castling[0] = true;
-                Castle::WhiteKing as u8
-            }
-            'Q' => {
-                board.castling[1] = true;
-                Castle::WhiteQueen as u8
-            }
-            'k' => {
-                board.castling[2] = true;
-                Castle::BlackKing as u8
-            }
-            'q' => {
-                board.castling[3] = true;
-                Castle::BlackQueen as u8
-            }
+            'K' => Castle::WhiteKing as u8,
+            'Q' => Castle::WhiteQueen as u8,
+            'k' => Castle::BlackKing as u8,
+            'q' => Castle::BlackQueen as u8,
             _ => 0,
         }
     });
@@ -174,7 +162,6 @@ mod fen_tests {
         board::fen::{find_en_passant_square, parse_castling},
         moves::moves::Castle,
     };
-    use crate::board::board::Board;
 
     #[test]
     fn test_en_passant_square() {
@@ -192,48 +179,42 @@ mod fen_tests {
     #[test]
     fn test_parse_castling_white_king() {
         let input = "K";
-        let mut b = Board::default();
-        let result = parse_castling(&mut b, &input);
+        let result = parse_castling(&input);
         assert_eq!(result, Castle::WhiteKing as u8);
     }
 
     #[test]
     fn test_parse_castling_white_queen() {
         let input = "Q";
-        let mut b = Board::default();
-        let result = parse_castling(&mut b, &input);
+        let result = parse_castling(&input);
         assert_eq!(result, Castle::WhiteQueen as u8);
     }
 
     #[test]
     fn test_parse_castling_black_king() {
         let input = "k";
-        let mut b = Board::default();
-        let result = parse_castling(&mut b, &input);
+        let result = parse_castling(&input);
         assert_eq!(result, Castle::BlackKing as u8);
     }
 
     #[test]
     fn test_parse_castling_black_queen() {
         let input = "q";
-        let mut b = Board::default();
-        let result = parse_castling(&mut b, &input);
+        let result = parse_castling(&input);
         assert_eq!(result, Castle::BlackQueen as u8);
     }
 
     #[test]
     fn test_parse_castling_invalid() {
         let input = "X";
-        let mut b = Board::default();
-        let result = parse_castling(&mut b, &input);
+        let result = parse_castling(&input);
         assert_eq!(result, 0); // Expecting 0 for invalid input
     }
 
     #[test]
     fn test_parse_multiple_castlings() {
         let input = "KQkq";
-        let mut b = Board::default();
-        let result = parse_castling(&mut b, &input);
+        let result = parse_castling(&input);
         // You need to define the expected result based on the combination of castling rights.
         // For example, if all castling rights are allowed (KQkq), you can set the expected result to a specific value.
         let expected_result =
@@ -244,8 +225,7 @@ mod fen_tests {
     #[test]
     fn test_parse_partial_castlings() {
         let input = "Kk";
-        let mut b = Board::default();
-        let result = parse_castling(&mut b, &input);
+        let result = parse_castling(&input);
         // Define the expected result for the combination of castling rights in the input.
         let expected_result = Castle::WhiteKing as u8 | Castle::BlackKing as u8;
         assert_eq!(result, expected_result);
