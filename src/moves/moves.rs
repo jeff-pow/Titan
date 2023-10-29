@@ -3,6 +3,7 @@ use std::fmt::Display;
 
 use crate::{
     board::board::Board,
+    engine::transposition::ShortMove,
     moves::moves::Direction::*,
     types::{pieces::PieceName, square::Square},
 };
@@ -148,6 +149,13 @@ impl Move {
     }
 
     #[inline(always)]
+    pub fn from_short_move(sm: ShortMove, board: &Board) -> Self {
+        let m = Self(sm.as_u32());
+
+        Self(sm.as_u32() | board.piece_at(m.dest_square()).expect("There is a piece here").idx() as u32)
+    }
+
+    #[inline(always)]
     pub fn is_normal(&self, board: &Board) -> bool {
         self.promotion().is_none()
             && !self.is_castle()
@@ -179,6 +187,11 @@ impl Move {
     #[inline(always)]
     pub fn dest_square(&self) -> Square {
         Square(((self.0 >> 6) & 0b111111) as u8)
+    }
+
+    #[inline(always)]
+    pub fn as_u16(&self) -> u16 {
+        self.0 as u16
     }
 
     /// To Long Algebraic Notation
