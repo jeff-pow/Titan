@@ -252,12 +252,24 @@ pub enum Promotion {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Castle {
-    WhiteKing,
-    WhiteQueen,
-    BlackKing,
-    BlackQueen,
+    WhiteKing = 1,
+    WhiteQueen = 2,
+    BlackKing = 4,
+    BlackQueen = 8,
     None,
 }
+
+#[rustfmt::skip]
+pub const CASTLING_RIGHTS: [u8; 64] = [
+    13, 15, 15, 15, 12, 15, 15, 14,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    7, 15, 15, 15, 3, 15, 15, 11,
+];
 
 impl Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
