@@ -6,7 +6,6 @@ use crate::{
     moves::{moves::Direction, moves::Direction::*, moves::Promotion},
     types::{
         bitboard::Bitboard,
-        pieces::PieceName::*,
         pieces::{Color, PieceName},
         square::Square,
     },
@@ -144,7 +143,7 @@ fn generate_castling_moves(board: &Board, moves: &mut MoveList) {
 }
 
 fn generate_pawn_moves(board: &Board, gen_type: MGT, moves: &mut MoveList) {
-    let pawns = board.bitboard(board.to_move, Pawn);
+    let pawns = board.bitboard(board.to_move, PieceName::Pawn);
     let vacancies = !board.occupancies();
     let enemies = board.color_occupancies(!board.to_move);
     let non_promotions = match board.to_move {
@@ -248,7 +247,7 @@ fn generate_pawn_moves(board: &Board, gen_type: MGT, moves: &mut MoveList) {
 
 pub fn get_en_passant(board: &Board, dir: Direction) -> Option<Move> {
     let sq = board.en_passant_square?.checked_shift(dir)?;
-    let pawn = sq.bitboard() & board.bitboard(board.to_move, Pawn);
+    let pawn = sq.bitboard() & board.bitboard(board.to_move, PieceName::Pawn);
     if pawn != Bitboard::EMPTY {
         let dest = board.en_passant_square?;
         let src = dest.checked_shift(dir)?;
@@ -269,12 +268,12 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName, gen_type: MGT, 
     for sq in occ_bitboard {
         let occupancies = board.occupancies();
         let attack_bitboard = match piece_name {
-            King => MG.king_attacks(sq),
-            Queen => MG.magics.rook_attacks(occupancies, sq) | MG.magics.bishop_attacks(occupancies, sq),
-            Rook => MG.magics.rook_attacks(occupancies, sq),
-            Bishop => MG.magics.bishop_attacks(occupancies, sq),
-            Knight => MG.knight_attacks(sq),
-            Pawn => panic!(),
+            PieceName::King => MG.king_attacks(sq),
+            PieceName::Queen => MG.magics.rook_attacks(occupancies, sq) | MG.magics.bishop_attacks(occupancies, sq),
+            PieceName::Rook => MG.magics.rook_attacks(occupancies, sq),
+            PieceName::Bishop => MG.magics.bishop_attacks(occupancies, sq),
+            PieceName::Knight => MG.knight_attacks(sq),
+            PieceName::Pawn => panic!(),
         };
         let attacks = match gen_type {
             MoveGenerationType::CapturesOnly => attack_bitboard & board.color_occupancies(!board.to_move),

@@ -282,13 +282,13 @@ impl Board {
         let occupancies = self.occupancies();
         let attack_bitboard = match piece.unwrap() {
             PieceName::Pawn => {
-                if self.is_quiet(m) {
-                    return self.occupancies().square_is_empty(dest);
+                return if self.is_quiet(m) {
+                    self.occupancies().square_is_empty(dest)
                 } else {
                     let attacks = MG.pawn_attacks(origin, origin_color);
                     let enemy_color = self.color_at(origin).unwrap();
-                    return attacks & m.dest_square().bitboard() & self.color_occupancies(!enemy_color)
-                        != Bitboard::EMPTY;
+                    attacks & m.dest_square().bitboard() & self.color_occupancies(!enemy_color)
+                        != Bitboard::EMPTY
                 }
             }
             PieceName::King => MG.king_attacks(origin),

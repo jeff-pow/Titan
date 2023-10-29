@@ -1,5 +1,5 @@
 #![allow(clippy::module_inception)]
-#[warn(clippy::nursery)]
+#[warn(clippy::perf)]
 pub mod board;
 pub mod engine;
 pub mod eval;
