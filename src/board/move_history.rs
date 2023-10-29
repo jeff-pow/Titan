@@ -30,7 +30,7 @@ impl BoardHistory {
                 count += 1;
             }
         }
-        count >= 3
+        count > 1
     }
 }
 
