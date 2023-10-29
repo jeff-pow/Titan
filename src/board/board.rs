@@ -351,8 +351,10 @@ impl Board {
             }
         }
 
+
         // Special case if the move is an en_passant
         if m.is_en_passant() {
+
             match self.to_move {
                 Color::White => {
                     self.remove_piece(m.dest_square().shift(South));
