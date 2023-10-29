@@ -12,10 +12,7 @@ use crate::search::killers::empty_killers;
 use crate::search::search::{search, MAX_SEARCH_DEPTH};
 use crate::types::square::Square;
 use crate::{
-    board::{
-        board::Board,
-        fen::{self, build_board},
-    },
+    board::fen::{self, build_board},
     moves::moves::from_lan,
     search::{game_time::GameTime, SearchInfo, SearchType},
     types::pieces::Color,
@@ -55,13 +52,13 @@ pub fn main_loop() -> ! {
                 search_info.board = build_board(&parse_fen_from_buffer(&vec));
 
                 if vec.len() > 9 {
-                    parse_moves(&vec, &mut search_info.board, 9);
+                    parse_moves(&vec, &mut search_info, 9);
                 }
             } else if buffer.contains("startpos") {
                 search_info.board = build_board(fen::STARTING_FEN);
 
                 if vec.len() > 3 {
-                    parse_moves(&vec, &mut search_info.board, 3);
+                    parse_moves(&vec, &mut search_info, 3);
                 }
             }
         } else if buffer.eq("d\n") {
@@ -120,10 +117,11 @@ pub fn main_loop() -> ! {
     }
 }
 
-fn parse_moves(moves: &[&str], board: &mut Board, skip: usize) {
+fn parse_moves(moves: &[&str], info: &mut SearchInfo, skip: usize) {
     for str in moves.iter().skip(skip) {
-        let m = from_lan(str, board);
-        let _ = board.make_move(m);
+        let m = from_lan(str, &info.board);
+        let _ = info.board.make_move(m);
+        info.current_line.push(m);
     }
 }
 

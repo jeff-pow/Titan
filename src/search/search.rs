@@ -188,7 +188,7 @@ fn alpha_beta(
 
     let (table_value, table_move) = {
         if let Some(entry) = info.transpos_table.read().unwrap().get(&board.zobrist_hash) {
-            entry.get(depth, ply, alpha, beta)
+            entry.get(depth, ply, alpha, beta, board)
         } else {
             (None, Move::NULL)
         }
@@ -287,6 +287,7 @@ fn alpha_beta(
         if !new_b.make_move(m) {
             continue;
         }
+        info.current_line.push(m);
         let mut node_pvs = Vec::new();
         let mut eval;
 
@@ -328,6 +329,7 @@ fn alpha_beta(
         }
 
         legal_moves_searched += 1;
+        info.current_line.pop();
 
         if eval > best_score {
             best_score = eval;
@@ -343,14 +345,20 @@ fn alpha_beta(
                 // Also don't store killers that we have already stored
                 if capture.is_none() {
                     store_killer_move(ply, m, info);
-                    info.history.update_history(m, hist_bonus, board.to_move);
+                    let len = info.current_line.len();
+                    let range = len - 6.min(0)..len - 1.min(0);
+                    info.history
+                        .update_history(m, hist_bonus, board.to_move, &info.current_line[range]);
                 }
                 break;
             }
         }
         // TODO: Try only doing this for quiet moves
         // If a move doesn't raise alpha, deduct from its history score for move ordering
-        info.history.update_history(m, -hist_bonus, board.to_move);
+        let len = info.current_line.len();
+        let range = len - 6.min(0)..len - 1.min(0);
+        info.history
+            .update_history(m, -hist_bonus, board.to_move, &info.current_line[range]);
     }
 
     if legal_moves_searched == 0 {

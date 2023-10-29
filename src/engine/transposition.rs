@@ -1,6 +1,6 @@
 use std::mem;
 
-use crate::{moves::moves::Move, search::search::NEAR_CHECKMATE};
+use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKMATE};
 use rustc_hash::FxHashMap;
 
 pub struct TableEntry {
@@ -10,6 +10,7 @@ pub struct TableEntry {
     best_move: ShortMove,
 }
 
+#[derive(Clone, Copy, PartialEq)]
 pub struct ShortMove(u16);
 
 impl ShortMove {
@@ -46,7 +47,7 @@ impl TableEntry {
         }
     }
 
-    pub fn get(&self, depth: i32, ply: i32, alpha: i32, beta: i32) -> (Option<i32>, ShortMove) {
+    pub fn get(&self, depth: i32, ply: i32, alpha: i32, beta: i32, board: &Board) -> (Option<i32>, Move) {
         let mut eval: Option<i32> = None;
         if self.depth >= depth {
             match self.flag {
@@ -74,7 +75,8 @@ impl TableEntry {
                 }
             }
         }
-        (eval, self.best_move)
+        let best_move = Move::from_short_move(self.best_move, board);
+        (eval, best_move)
     }
 }
 

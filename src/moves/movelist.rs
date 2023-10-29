@@ -145,7 +145,8 @@ impl MoveList {
             } else if killers[1] == *m {
                 *score = KILLER_TWO;
             } else {
-                *score = info.history.get_history(*m, board.to_move);
+                // TODO: Not sure if prev moves are necessary here
+                *score = info.history.get_history(*m, board.to_move, &[]);
             }
         }
     }
