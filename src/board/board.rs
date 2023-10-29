@@ -37,7 +37,7 @@ pub struct Board {
 
 impl Default for Board {
     fn default() -> Self {
-        Board {
+        Self {
             bitboards: [Bitboard::EMPTY; 6],
             color_occupancies: [Bitboard::EMPTY; 2],
             array_board: [None; 64],
