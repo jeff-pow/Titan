@@ -152,9 +152,10 @@ impl Move {
     pub fn from_short_move(sm: ShortMove, board: &Board) -> Self {
         let m = Self(sm.as_u32());
         if m == Move::NULL {
-            return m;
+            m
+        } else {
+            Self(sm.as_u32() | board.piece_at(m.origin_square()).expect("There is a piece here").idx() as u32)
         }
-        Self(sm.as_u32() | board.piece_at(m.origin_square()).expect("There is a piece here").idx() as u32)
     }
 
     #[inline(always)]

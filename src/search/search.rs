@@ -325,7 +325,6 @@ fn alpha_beta(
             let zero_window = -alpha_beta(depth - r, -alpha - 1, -alpha, &mut Vec::new(), info, &new_b, !cut_node);
             if zero_window > alpha && r > 1 {
                 node_pvs.clear();
-                // TODO: Might not want to even do a zero window full depth search - could go straight into full window full depth if we fail reduced height
                 eval = -alpha_beta(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node);
             } else {
                 eval = zero_window
