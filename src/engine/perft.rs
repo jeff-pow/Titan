@@ -26,8 +26,9 @@ pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
 
 pub fn perft(board: Board, depth: i32) -> usize {
     let mut total = 0;
-    let moves = generate_legal_moves(&board);
-    for MoveListEntry { m, .. } in moves {
+    let mut moves = generate_legal_moves(&board);
+    // for MoveListEntry { m, .. } in moves {
+    while let Some(m) = moves.perft_next() {
         let mut new_b = board.to_owned();
         assert!(new_b.make_move(m));
         let count = count_moves(depth - 1, &new_b);
@@ -41,7 +42,7 @@ pub fn perft(board: Board, depth: i32) -> usize {
 /// Recursively counts the number of moves down to a certain depth
 pub fn count_moves(depth: i32, board: &Board) -> usize {
     let mut count = 0;
-    let moves = generate_legal_moves(board);
+    let mut moves = generate_legal_moves(board);
     assert!(depth >= 0);
 
     if depth == 1 {
@@ -51,7 +52,7 @@ pub fn count_moves(depth: i32, board: &Board) -> usize {
         return 1;
     }
 
-    for MoveListEntry { m, .. } in moves {
+    while let Some(m) = moves.perft_next() {
         let mut new_b = board.to_owned();
         assert!(new_b.make_move(m));
         count += count_moves(depth - 1, &new_b);
