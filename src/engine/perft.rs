@@ -1,13 +1,9 @@
-use std::{fs::File, io::BufRead, io::BufReader, sync::RwLock};
+use std::sync::RwLock;
 
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
-use crate::board::zobrist::ZOBRIST;
-use crate::eval::nnue::{INPUT_SIZE, NET};
-use crate::moves::movegenerator::MG;
-use crate::types::square::Square;
 use crate::{
-    board::{board::Board, fen::build_board},
+    board::board::Board,
     moves::{movegenerator::generate_legal_moves, movelist::MoveListEntry},
 };
 
@@ -26,24 +22,6 @@ pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
 
     let x = *total.read().unwrap();
     x
-}
-
-pub fn epd_perft(f: &str) {
-    let file = BufReader::new(File::open(f).expect("File not found"));
-    for (test_num, line) in file.lines().enumerate() {
-        let l = line.unwrap().clone();
-        let vec = l.split(" ;").collect::<Vec<&str>>();
-        let mut iter = vec.iter();
-        let board = build_board(iter.next().unwrap());
-        for entry in iter {
-            let (depth, nodes) = entry.split_once(" ").unwrap();
-            let depth = depth[1..].parse::<i32>().unwrap();
-            let nodes = nodes.parse::<usize>().unwrap();
-            assert_eq!(nodes, multi_threaded_perft(board, depth));
-            // assert_eq!(nodes, perft(board, depth));
-        }
-        println!("{test_num} passed");
-    }
 }
 
 pub fn perft(board: Board, depth: i32) -> usize {
@@ -83,6 +61,8 @@ pub fn count_moves(depth: i32, board: &Board) -> usize {
 
 #[cfg(test)]
 mod movegen_tests {
+    use std::{fs::File, io::BufRead, io::BufReader};
+
     // Positions and expected values from https://www.chessprogramming.org/Perft_Results
     use crate::{
         board::fen::{self, build_board},
@@ -136,5 +116,24 @@ mod movegen_tests {
     fn test_position_7() {
         let board = build_board("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1");
         assert_eq!(71_179_139, multi_threaded_perft(board, 6));
+    }
+
+    #[test]
+    pub fn epd_perft() {
+        let file = BufReader::new(File::open("ethereal_perft.epd").expect("File not found"));
+        for (test_num, line) in file.lines().enumerate() {
+            let l = line.unwrap().clone();
+            let vec = l.split(" ;").collect::<Vec<&str>>();
+            let mut iter = vec.iter();
+            let board = build_board(iter.next().unwrap());
+            for entry in iter {
+                let (depth, nodes) = entry.split_once(' ').unwrap();
+                let depth = depth[1..].parse::<i32>().unwrap();
+                let nodes = nodes.parse::<usize>().unwrap();
+                assert_eq!(nodes, multi_threaded_perft(board, depth));
+                // assert_eq!(nodes, perft(board, depth));
+            }
+            println!("{test_num} passed");
+        }
     }
 }
