@@ -6,6 +6,10 @@ use crate::{
     board::{board::Board, fen::build_board},
     moves::{movegenerator::generate_legal_moves, movelist::MoveListEntry},
 };
+use crate::board::zobrist::ZOBRIST;
+use crate::eval::nnue::{INPUT_SIZE, NET};
+use crate::moves::movegenerator::MG;
+use crate::types::square::Square;
 
 pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
     let total = RwLock::new(0);
@@ -31,14 +35,14 @@ pub fn epd_perft(f: &str) {
         let vec = l.split(" ;").collect::<Vec<&str>>();
         let mut iter = vec.iter();
         let board = build_board(iter.next().unwrap());
-        for depth in iter {
-            let (depth, nodes) = depth.split_once(" ").unwrap();
+        for entry in iter {
+            let (depth, nodes) = entry.split_once(" ").unwrap();
             let depth = depth[1..].parse::<i32>().unwrap();
             let nodes = nodes.parse::<usize>().unwrap();
-            // assert_eq!(nodes, multi_threaded_perft(board, depth));
-            assert_eq!(nodes, perft(board, depth));
-            println!("{test_num} passed");
+            assert_eq!(nodes, multi_threaded_perft(board, depth));
+            // assert_eq!(nodes, perft(board, depth));
         }
+        println!("{test_num} passed");
     }
 }
 
@@ -60,10 +64,15 @@ pub fn perft(board: Board, depth: i32) -> usize {
 pub fn count_moves(depth: i32, board: &Board) -> usize {
     let mut count = 0;
     let moves = generate_legal_moves(board);
+    assert!(depth >= 0);
 
     if depth == 1 {
         return moves.len();
     }
+    if depth == 0 {
+        return 1;
+    }
+
     for MoveListEntry { m, .. } in moves {
         let mut new_b = board.to_owned();
         assert!(new_b.make_move(m));

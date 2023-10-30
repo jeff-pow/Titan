@@ -1,3 +1,4 @@
+use lazy_static::lazy_static;
 use crate::{
     board::board::Board,
     types::{
@@ -11,6 +12,7 @@ const HIDDEN_SIZE: usize = 768;
 const Q: i32 = 255 * 64;
 const SCALE: i32 = 400;
 pub const NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net.nnue")) };
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
 pub struct Accumulator([[i16; HIDDEN_SIZE]; 2]);
