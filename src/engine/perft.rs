@@ -2,14 +2,14 @@ use std::{fs::File, io::BufRead, io::BufReader, sync::RwLock};
 
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
-use crate::{
-    board::{board::Board, fen::build_board},
-    moves::{movegenerator::generate_legal_moves, movelist::MoveListEntry},
-};
 use crate::board::zobrist::ZOBRIST;
 use crate::eval::nnue::{INPUT_SIZE, NET};
 use crate::moves::movegenerator::MG;
 use crate::types::square::Square;
+use crate::{
+    board::{board::Board, fen::build_board},
+    moves::{movegenerator::generate_legal_moves, movelist::MoveListEntry},
+};
 
 pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
     let total = RwLock::new(0);

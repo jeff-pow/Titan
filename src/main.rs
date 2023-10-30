@@ -6,8 +6,8 @@ pub mod moves;
 pub mod search;
 pub mod types;
 
-use engine::uci::main_loop;
 use crate::engine::perft::epd_perft;
+use engine::uci::main_loop;
 
 fn main() {
     // main_loop();
