@@ -6,10 +6,8 @@ pub mod moves;
 pub mod search;
 pub mod types;
 
-use crate::engine::perft::epd_perft;
 use engine::uci::main_loop;
 
 fn main() {
-    // main_loop();
-    epd_perft("ethereal_perft.epd");
+    main_loop();
 }
