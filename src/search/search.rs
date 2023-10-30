@@ -52,7 +52,7 @@ pub fn print_search_stats(info: &SearchInfo, eval: i32, pv: &[Move], iter_depth:
         eval
     );
     for m in pv {
-        print!("{} ", m.to_lan());
+        print!("{} ", m.to_san());
     }
     println!();
 }

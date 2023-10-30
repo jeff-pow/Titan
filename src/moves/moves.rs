@@ -197,8 +197,8 @@ impl Move {
         self.0 as u16
     }
 
-    /// To Long Algebraic Notation
-    pub fn to_lan(self) -> String {
+    /// To Short Algebraic Notation
+    pub fn to_san(self) -> String {
         let mut str = String::new();
         let arr = ["a", "b", "c", "d", "e", "f", "g", "h"];
         let origin_number = self.origin_square().rank() + 1;
@@ -338,7 +338,7 @@ impl Display for Move {
         str += " En Passant: ";
         str += &self.is_en_passant().to_string();
         str += "  ";
-        str += &self.to_lan();
+        str += &self.to_san();
         write!(f, "{}", str)
     }
 }

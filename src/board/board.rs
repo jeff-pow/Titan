@@ -137,11 +137,6 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn square_occupied(&self, piece_type: PieceName, color: Color, sq: Square) -> bool {
-        self.bitboard(color, piece_type).square_occupied(sq)
-    }
-
-    #[inline(always)]
     pub fn color_occupancies(&self, color: Color) -> Bitboard {
         self.color_occupancies[color.idx()]
     }
@@ -177,10 +172,9 @@ impl Board {
 
     #[inline(always)]
     pub fn place_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
-        self.color_occupancies[color.idx()] |= sq.bitboard();
-        self.bitboards[piece_type.idx()] |= sq.bitboard();
         self.array_board[sq.idx()] = Some(Piece::new(piece_type, color));
-        self.color_occupancies[color.idx()] |= sq.bitboard();
+        self.bitboards[piece_type.idx()] ^= sq.bitboard();
+        self.color_occupancies[color.idx()] ^= sq.bitboard();
         self.accumulator.add_feature(piece_type, color, sq);
     }
 
@@ -188,8 +182,8 @@ impl Board {
     fn remove_piece(&mut self, sq: Square) {
         if let Some(piece) = self.array_board[sq.idx()] {
             self.array_board[sq.idx()] = None;
-            self.bitboards[piece.name.idx()] &= !sq.bitboard();
-            self.color_occupancies[piece.color.idx()] &= !sq.bitboard();
+            self.bitboards[piece.name.idx()] ^= sq.bitboard();
+            self.color_occupancies[piece.color.idx()] ^= sq.bitboard();
             self.accumulator.remove_feature(&NET, piece.name, piece.color, sq);
         }
     }
@@ -287,8 +281,7 @@ impl Board {
                 } else {
                     let attacks = MG.pawn_attacks(origin, origin_color);
                     let enemy_color = self.color_at(origin).unwrap();
-                    attacks & m.dest_square().bitboard() & self.color_occupancies(!enemy_color)
-                        != Bitboard::EMPTY
+                    attacks & m.dest_square().bitboard() & self.color_occupancies(!enemy_color) != Bitboard::EMPTY
                 }
             }
             PieceName::King => MG.king_attacks(origin),
@@ -309,9 +302,6 @@ impl Board {
     pub fn is_quiet(&self, m: Move) -> bool {
         self.occupancies().square_is_empty(m.dest_square())
     }
-
-    #[inline(always)]
-    // pub fn set_castling(&mut self, c: Castle, b: bool) {}
 
     /// Function makes a move and modifies board state to reflect the move that just happened.
     /// Returns true if a move was legal, and false if it was illegal.
@@ -369,26 +359,20 @@ impl Board {
         }
 
         // If the end index of a move is 16 squares from the start (and a pawn moved), an en passant is possible
-        let mut en_passant = false;
+        self.en_passant_square = None;
         if piece_moving == PieceName::Pawn {
             match self.to_move {
                 Color::White => {
                     if m.origin_square() == m.dest_square().shift(South).shift(South) {
-                        en_passant = true;
                         self.en_passant_square = Some(m.dest_square().shift(South));
                     }
                 }
                 Color::Black => {
                     if m.dest_square().shift(North).shift(North) == m.origin_square() {
-                        en_passant = true;
                         self.en_passant_square = Some(m.origin_square().shift(South));
                     }
                 }
             }
-        }
-        // If this move did not create a new en passant opportunity, the ability to do it goes away
-        if !en_passant {
-            self.en_passant_square = None;
         }
 
         // If a piece isn't captured or a pawn isn't moved, increment the half move clock.
@@ -450,33 +434,28 @@ impl fmt::Display for Board {
                 let idx = row * 8 + col;
 
                 // Append piece characters for white pieces
-                if self.square_occupied(PieceName::King, Color::White, Square(idx)) {
-                    str += "K"
-                } else if self.square_occupied(PieceName::Queen, Color::White, Square(idx)) {
-                    str += "Q"
-                } else if self.square_occupied(PieceName::Rook, Color::White, Square(idx)) {
-                    str += "R"
-                } else if self.square_occupied(PieceName::Bishop, Color::White, Square(idx)) {
-                    str += "B"
-                } else if self.square_occupied(PieceName::Knight, Color::White, Square(idx)) {
-                    str += "N"
-                } else if self.square_occupied(PieceName::Pawn, Color::White, Square(idx)) {
-                    str += "P"
-                } else if self.square_occupied(PieceName::King, Color::Black, Square(idx)) {
-                    str += "k"
-                } else if self.square_occupied(PieceName::Queen, Color::Black, Square(idx)) {
-                    str += "q"
-                } else if self.square_occupied(PieceName::Rook, Color::Black, Square(idx)) {
-                    str += "r"
-                } else if self.square_occupied(PieceName::Bishop, Color::Black, Square(idx)) {
-                    str += "b"
-                } else if self.square_occupied(PieceName::Knight, Color::Black, Square(idx)) {
-                    str += "n"
-                } else if self.square_occupied(PieceName::Pawn, Color::Black, Square(idx)) {
-                    str += "p"
+                let piece = self.piece_at(Square(idx));
+                let color = self.color_at(Square(idx));
+                let char = match piece {
+                    Some(p) => match p {
+                        PieceName::Pawn => "P",
+                        PieceName::Knight => "N",
+                        PieceName::Bishop => "B",
+                        PieceName::Rook => "R",
+                        PieceName::Queen => "Q",
+                        PieceName::King => "K",
+                    },
+                    None => "_",
+                };
+                let char = if let Some(c) = color {
+                    match c {
+                        Color::White => char.to_uppercase(),
+                        Color::Black => char.to_lowercase(),
+                    }
                 } else {
-                    str += "_"
-                }
+                    "_".to_string()
+                };
+                str += char.as_str();
 
                 str.push_str(" | ");
             }
