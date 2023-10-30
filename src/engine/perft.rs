@@ -2,10 +2,7 @@ use std::sync::RwLock;
 
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
-use crate::{
-    board::board::Board,
-    moves::{movegenerator::generate_legal_moves, movelist::MoveListEntry},
-};
+use crate::{board::board::Board, moves::movegenerator::generate_legal_moves};
 
 pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
     let total = RwLock::new(0);
