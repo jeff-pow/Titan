@@ -18,7 +18,7 @@ pub enum Color {
 
 impl Color {
     #[inline(always)]
-    pub fn idx(&self) -> usize {
+    pub fn idx(self) -> usize {
         match self {
             Color::White => 0,
             Color::Black => 1,
@@ -58,7 +58,7 @@ pub enum PieceName {
 
 impl PieceName {
     #[inline(always)]
-    pub fn value(&self) -> i32 {
+    pub fn value(self) -> i32 {
         match self {
             PieceName::King => KING_PTS,
             PieceName::Queen => QUEEN_PTS,
@@ -70,8 +70,8 @@ impl PieceName {
     }
 
     #[inline(always)]
-    pub fn idx(&self) -> usize {
-        *self as usize
+    pub fn idx(self) -> usize {
+        self as usize
         // match self {
         //     PieceName::Pawn => 0,
         //     PieceName::Knight => 1,
@@ -86,12 +86,12 @@ impl PieceName {
 impl From<usize> for PieceName {
     fn from(value: usize) -> Self {
         match value {
-            0 => PieceName::King,
-            1 => PieceName::Queen,
-            2 => PieceName::Rook,
-            3 => PieceName::Bishop,
-            4 => PieceName::Knight,
-            5 => PieceName::Pawn,
+            5 => PieceName::King,
+            4 => PieceName::Queen,
+            3 => PieceName::Rook,
+            2 => PieceName::Bishop,
+            1 => PieceName::Knight,
+            0 => PieceName::Pawn,
             _ => panic!("Invalid piece index"),
         }
     }

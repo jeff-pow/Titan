@@ -16,7 +16,7 @@ use crate::{
         board::Board,
         fen::{self, build_board},
     },
-    moves::moves::from_lan,
+    moves::moves::from_san,
     search::{game_time::GameTime, SearchInfo, SearchType},
     types::pieces::Color,
 };
@@ -82,7 +82,7 @@ pub fn main_loop() -> ! {
                 search_info.search_type = SearchType::Depth;
                 let mut s = search_info.clone();
                 handle = Some(thread::spawn(move || {
-                    println!("bestmove {}", search(&mut s, depth).to_lan());
+                    println!("bestmove {}", search(&mut s, depth).to_san());
                 }));
             } else if buffer.contains("perft") {
                 let mut iter = buffer.split_whitespace().skip(2);
@@ -93,7 +93,7 @@ pub fn main_loop() -> ! {
                 search_info.game_time = parse_time(&buffer, &mut search_info);
                 let mut s = search_info.clone();
                 handle = Some(thread::spawn(move || {
-                    println!("bestmove {}", search(&mut s, MAX_SEARCH_DEPTH).to_lan());
+                    println!("bestmove {}", search(&mut s, MAX_SEARCH_DEPTH).to_san());
                 }));
             } else {
                 search_info.search_type = SearchType::Infinite;
@@ -122,7 +122,7 @@ pub fn main_loop() -> ! {
 
 fn parse_moves(moves: &[&str], board: &mut Board, skip: usize) {
     for str in moves.iter().skip(skip) {
-        let m = from_lan(str, board);
+        let m = from_san(str, board);
         let _ = board.make_move(m);
     }
 }

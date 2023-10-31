@@ -52,7 +52,7 @@ pub fn print_search_stats(info: &SearchInfo, eval: i32, pv: &[Move], iter_depth:
         eval
     );
     for m in pv {
-        print!("{} ", m.to_lan());
+        print!("{} ", m.to_san());
     }
     println!();
 }
@@ -188,7 +188,7 @@ fn alpha_beta(
 
     let (table_value, table_move) = {
         if let Some(entry) = info.transpos_table.read().unwrap().get(&board.zobrist_hash) {
-            entry.get(depth, ply, alpha, beta)
+            entry.get(depth, ply, alpha, beta, board)
         } else {
             (None, Move::NULL)
         }
@@ -288,18 +288,13 @@ fn alpha_beta(
             continue;
         }
         let mut node_pvs = Vec::new();
-        let mut eval;
 
-        if legal_moves_searched == 0 {
-            node_pvs.clear();
-            // On the first move, just do a full depth search
-            eval = -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false);
-        } else {
-            if legal_moves_searched < LMR_THRESHOLD || depth < MIN_LMR_DEPTH {
-                node_pvs.clear();
-                eval = -alpha_beta(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node);
+        let can_lmr = legal_moves_searched >= LMR_THRESHOLD && depth >= MIN_LMR_DEPTH;
+
+        let r = {
+            if !can_lmr {
+                1
             } else {
-                // Otherwise do LMR
                 let mut r = get_reduction(info, depth, legal_moves_searched);
                 r += i32::from(!is_pv_node);
                 if is_quiet && cut_node {
@@ -316,16 +311,35 @@ fn alpha_beta(
                 //     depth += 1;
                 // }
                 r = r.clamp(1, depth - 1);
-                eval = -alpha_beta(depth - r, -alpha - 1, -alpha, &mut Vec::new(), info, &new_b, !cut_node);
-                if eval > alpha && r > 1 {
-                    eval = -alpha_beta(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node);
-                }
+                r
             }
-            if eval > alpha && eval < beta {
+        };
+
+        let eval = if legal_moves_searched == 0 {
+            node_pvs.clear();
+            // On the first move, just do a full depth search so we at least have a pv
+            -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
+        } else {
+            node_pvs.clear();
+            // Start with a zero window reduced search
+            let zero_window = -alpha_beta(depth - r, -alpha - 1, -alpha, &mut Vec::new(), info, &new_b, !cut_node);
+
+            // If that search raises alpha and the reduction was more than one, do a research at a zero window with full depth
+            let verification_score = if zero_window > alpha && r > 1 {
                 node_pvs.clear();
-                eval = -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false);
+                -alpha_beta(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node)
+            } else {
+                zero_window
+            };
+
+            // If the verification score falls between alpha and beta, full window full depth search
+            if verification_score > alpha && verification_score < beta {
+                node_pvs.clear();
+                -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
+            } else {
+                verification_score
             }
-        }
+        };
 
         legal_moves_searched += 1;
 
