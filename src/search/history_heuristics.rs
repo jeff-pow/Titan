@@ -63,11 +63,13 @@ impl MoveHistory {
     }
 
     pub fn get_counter(&self, m: Move, side: Color) -> Move {
-        self.search_history[side.idx()][m.piece_moving().idx()][m.dest_square().idx()].counter
+        // self.search_history[side.idx()][m.piece_moving().idx()][m.dest_square().idx()].counter
+        Move::NULL
     }
 
     pub fn get_history(&self, m: Move, side: Color, prev_moves: &[Move]) -> i32 {
-        self.get_search_history(m, side) + self.get_conthist_score(m, prev_moves, side)
+        // self.get_search_history(m, side) + self.get_conthist_score(m, prev_moves, side)
+        self.get_search_history(m, side)
     }
 
     fn get_search_history(&self, m: Move, side: Color) -> i32 {
