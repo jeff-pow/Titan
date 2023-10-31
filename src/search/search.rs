@@ -364,20 +364,17 @@ fn alpha_beta(
                 // Also don't store killers that we have already stored
                 if capture.is_none() {
                     store_killer_move(ply, m, info);
-                    let len = info.current_line.len();
-                    let range = len - 6.min(0)..len - 1.min(0);
                     info.history
-                        .update_history(m, depth, board.to_move, &info.current_line[range]);
+                        .update_history(m, depth, board.to_move, &info.current_line, true);
+                    info.history
+                        .set_counter(m, board.to_move, *info.current_line.last().unwrap_or(break));
                 }
                 break;
             }
         }
-        // TODO: Try only doing this for quiet moves
         // If a move doesn't raise alpha, deduct from its history score for move ordering
-        let len = info.current_line.len();
-        let range = len - 6.min(0)..len - 1.min(0);
         info.history
-            .update_history(m, -depth, board.to_move, &info.current_line[range]);
+            .update_history(m, -depth, board.to_move, &info.current_line, false);
     }
 
     if legal_moves_searched == 0 {

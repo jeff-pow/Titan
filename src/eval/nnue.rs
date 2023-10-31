@@ -79,6 +79,9 @@ impl Board {
         let (us, them) = (self.accumulator.get(self.to_move), self.accumulator.get(!self.to_move));
 
         let weights = &NET.output_weights;
+        // So this is odd... It crashes if I don't take the address and deref
+        // I don't know enough rust to fix it
+        // ¯\_(ツ)_/¯
         let mut output = i32::from(*&NET.output_bias);
 
         for (&i, &w) in us.iter().zip(&weights[..HIDDEN_SIZE]) {
@@ -88,10 +91,6 @@ impl Board {
         for (&i, &w) in them.iter().zip(&weights[HIDDEN_SIZE..]) {
             output += crelu(i) * i32::from(w);
         }
-        // So this is odd... It crashes if I don't take the address and deref
-        // I don't know enough rust to fix it
-        // ¯\_(ツ)_/¯
-        // output += *&NET.output_bias as i32;
 
         (output) * SCALE / Q
     }

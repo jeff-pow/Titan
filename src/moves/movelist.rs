@@ -144,9 +144,14 @@ impl MoveList {
                 *score = KILLER_ONE;
             } else if killers[1] == *m {
                 *score = KILLER_TWO;
+            } else if info
+                .history
+                .get_counter(*info.current_line.last().unwrap_or(&Move::NULL), board.to_move)
+                == *m
+            {
+                *score = COUNTER_MOVE;
             } else {
-                // TODO: Not sure if prev moves are necessary here
-                *score = info.history.get_history(*m, board.to_move, &[]);
+                *score = info.history.get_history(*m, board.to_move, &info.current_line);
             }
         }
     }
@@ -156,6 +161,7 @@ const QUEEN_PROMOTION: i32 = 20000001;
 const GOOD_CAPTURE: i32 = 3000000;
 const KILLER_ONE: i32 = 2000000;
 const KILLER_TWO: i32 = 1000000;
+const COUNTER_MOVE: i32 = 900000;
 const BAD_CAPTURE: i32 = -10000;
 const BAD_PROMOTION: i32 = -20000001;
 const TTMOVE: i32 = i32::MAX - 1000;

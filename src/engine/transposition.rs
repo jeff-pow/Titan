@@ -4,7 +4,7 @@ use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKM
 use rustc_hash::FxHashMap;
 
 pub struct TableEntry {
-    depth: i32,
+    depth: i16,
     flag: EntryFlag,
     eval: i32,
     best_move: ShortMove,
@@ -40,7 +40,7 @@ impl TableEntry {
         }
 
         Self {
-            depth,
+            depth: depth as i16,
             flag,
             eval: v,
             best_move: ShortMove::from_move(best_move),
@@ -49,7 +49,7 @@ impl TableEntry {
 
     pub fn get(&self, depth: i32, ply: i32, alpha: i32, beta: i32, board: &Board) -> (Option<i32>, Move) {
         let mut eval: Option<i32> = None;
-        if self.depth >= depth {
+        if self.depth as i32 >= depth {
             match self.flag {
                 EntryFlag::Exact => {
                     let mut value = self.eval;

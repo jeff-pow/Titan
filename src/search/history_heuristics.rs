@@ -40,15 +40,30 @@ impl MoveHistory {
         }
     }
 
-    pub fn update_history(&mut self, m: Move, depth: i32, side: Color, prev_moves: &[Move]) {
-        let bonus = (155 * depth).min(2000);
+    pub fn update_history(&mut self, m: Move, depth: i32, side: Color, move_history: &[Move], good: bool) {
+        let bonus = (155 * depth).min(2000) * if good { 1 } else { -1 };
 
-        self.update_search_history(m, bonus, side);
-        self.update_conthist_score(m, bonus, side, prev_moves);
+        let entry = &mut self.search_history[side.idx()][m.piece_moving().idx()][m.dest_square().idx()];
+        entry.score += bonus - entry.score * bonus.abs() / MAX_HIST_VAL;
+
+        let len = move_history.len();
+        let max_elements = 4.min(len);
+        let prev_moves = &move_history[max_elements..];
+
+        for x in prev_moves {
+            if *x != Move::NULL {
+                let cont = &mut entry.continuation[x.piece_moving().idx()][x.dest_square().idx()];
+                *cont += bonus - *cont * bonus.abs() / MAX_HIST_VAL;
+            }
+        }
     }
 
-    pub fn set_counter(&mut self, m: Move, side: Color) {
-        self.search_history[side.idx()][m.piece_moving().idx()][m.dest_square().idx()].counter = m;
+    pub fn set_counter(&mut self, m: Move, side: Color, prev: Move) {
+        self.search_history[side.idx()][prev.piece_moving().idx()][prev.dest_square().idx()].counter = m;
+    }
+
+    pub fn get_counter(&self, m: Move, side: Color) -> Move {
+        self.search_history[side.idx()][m.piece_moving().idx()][m.dest_square().idx()].counter
     }
 
     pub fn get_history(&self, m: Move, side: Color, prev_moves: &[Move]) -> i32 {
@@ -70,8 +85,8 @@ impl MoveHistory {
         score
     }
 
-    pub fn get_counter(&self, m: Move, side: Color) -> Move {
-        self.search_history[side.idx()][m.piece_moving().idx()][m.dest_square().idx()].counter
+    pub fn clear(&mut self) {
+        *self = Self::default();
     }
 }
 
