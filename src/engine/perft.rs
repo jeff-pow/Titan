@@ -13,7 +13,7 @@ pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
         assert!(new_b.make_move(m));
         let count = count_moves(depth - 1, &new_b);
         *total.write().unwrap() += count;
-        println!("{}: {}", m.to_lan(), count);
+        println!("{}: {}", m.to_san(), count);
     });
     println!("\nNodes searched: {}", total.read().unwrap());
 
@@ -30,7 +30,7 @@ pub fn perft(board: Board, depth: i32) -> usize {
         assert!(new_b.make_move(m));
         let count = count_moves(depth - 1, &new_b);
         total += count;
-        println!("{}: {}", m.to_lan(), count);
+        println!("{}: {}", m.to_san(), count);
     }
     println!("\nNodes searched: {}", total);
     total

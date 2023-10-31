@@ -34,7 +34,7 @@ pub fn quiescence(
     let (_, table_move) = {
         // Returning an eval from this is weird to handle, but we can definitely get a best move
         if let Some(entry) = info.transpos_table.read().unwrap().get(&board.zobrist_hash) {
-            entry.get(0, ply, alpha, beta)
+            entry.get(0, ply, alpha, beta, board)
         } else {
             (None, Move::NULL)
         }
