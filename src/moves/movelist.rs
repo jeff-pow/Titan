@@ -3,7 +3,7 @@ use crate::{
     search::{killers::NUM_KILLER_MOVES, see::see, SearchInfo},
     types::pieces::PieceName,
 };
-use std::mem::MaybeUninit;
+use std::{mem::MaybeUninit, ops::Index};
 
 use super::moves::{Move, Promotion};
 
@@ -98,6 +98,17 @@ impl MoveList {
         v
     }
 
+    #[inline(always)]
+    pub fn perft_next(&mut self) -> Option<Move> {
+        if self.current_idx >= self.len {
+            None
+        } else {
+            let m = self.arr[self.current_idx];
+            self.current_idx += 1;
+            Some(m.m)
+        }
+    }
+
     pub fn sort_next_move(&mut self, idx: usize) {
         let mut max_idx = idx;
         for i in (idx + 1)..self.len {
@@ -120,7 +131,7 @@ impl MoveList {
             let m = &mut entry.m;
             let score = &mut entry.score;
             let piece_moving = board.piece_at(m.origin_square()).unwrap();
-            let capture = board.piece_at(m.dest_square());
+            let capture = board.capture(*m);
             let promotion = m.promotion();
             if *m == table_move {
                 *score = TTMOVE;
@@ -129,17 +140,12 @@ impl MoveList {
                     Promotion::Queen => *score = QUEEN_PROMOTION,
                     _ => *score = BAD_PROMOTION,
                 }
-            } else if capture.is_some() || m.is_en_passant() {
-                let captured_piece = if m.is_en_passant() {
-                    PieceName::Pawn
+            } else if let Some(c) = capture {
+                *score = if see(board, *m, -PieceName::Pawn.value()) {
+                    GOOD_CAPTURE
                 } else {
-                    board.piece_at(m.dest_square()).expect("There is a piece here")
-                };
-                if see(board, *m, -PieceName::Pawn.value()) {
-                    *score = GOOD_CAPTURE + MVV_LVA[piece_moving.idx()][captured_piece.idx()];
-                } else {
-                    *score = BAD_CAPTURE + MVV_LVA[piece_moving.idx()][captured_piece.idx()];
-                }
+                    BAD_CAPTURE
+                } + MVV_LVA[piece_moving.idx()][c.idx()];
             } else if killers[0] == *m {
                 *score = KILLER_ONE;
             } else if killers[1] == *m {
@@ -177,6 +183,14 @@ const MVV_LVA: [[i32; 6]; 6] = [
     [64, 54, 44, 34, 24, 14], // N
     [65, 55, 45, 35, 25, 15], // P
 ];
+
+impl Index<usize> for MoveList {
+    type Output = Move;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.arr[index].m
+    }
+}
 
 impl Iterator for MoveList {
     type Item = MoveListEntry;
