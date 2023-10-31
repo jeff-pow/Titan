@@ -308,6 +308,7 @@ impl Board {
     #[must_use]
     pub fn make_move(&mut self, m: Move) -> bool {
         let piece_moving = m.piece_moving();
+        assert_eq!(piece_moving, m.piece_moving());
         let capture = self.capture(m);
         self.remove_piece(m.dest_square());
         self.place_piece(piece_moving, self.to_move, m.dest_square());

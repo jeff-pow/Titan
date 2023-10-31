@@ -86,12 +86,12 @@ impl PieceName {
 impl From<usize> for PieceName {
     fn from(value: usize) -> Self {
         match value {
-            0 => PieceName::King,
-            1 => PieceName::Queen,
-            2 => PieceName::Rook,
-            3 => PieceName::Bishop,
-            4 => PieceName::Knight,
-            5 => PieceName::Pawn,
+            5 => PieceName::King,
+            4 => PieceName::Queen,
+            3 => PieceName::Rook,
+            2 => PieceName::Bishop,
+            1 => PieceName::Knight,
+            0 => PieceName::Pawn,
             _ => panic!("Invalid piece index"),
         }
     }
