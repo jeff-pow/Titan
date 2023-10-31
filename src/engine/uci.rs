@@ -6,7 +6,6 @@ use itertools::Itertools;
 
 use crate::board::fen::parse_fen_from_buffer;
 use crate::board::zobrist::ZOBRIST;
-use crate::eval::eval::evaluate;
 use crate::moves::movegenerator::MG;
 use crate::search::killers::empty_killers;
 use crate::search::search::{search, MAX_SEARCH_DEPTH};
@@ -47,7 +46,7 @@ pub fn main_loop() -> ! {
         } else if buffer.starts_with("ucinewgame") {
             search_info = SearchInfo::default();
         } else if buffer.starts_with("eval") {
-            println!("{} cp", evaluate(&search_info.board));
+            println!("{} cp", search_info.board.evaluate());
         } else if buffer.starts_with("position") {
             let vec: Vec<&str> = buffer.split_whitespace().collect();
 
