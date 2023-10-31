@@ -37,6 +37,7 @@ pub struct SearchInfo {
     pub lmr_reductions: LmrReductions,
     pub history: MoveHistory,
     pub halt: Arc<AtomicBool>,
+    pub current_line: Vec<Move>,
 }
 
 impl Default for SearchInfo {
@@ -55,6 +56,7 @@ impl Default for SearchInfo {
             lmr_reductions: lmr_reductions(),
             history: MoveHistory::default(),
             halt: Arc::new(AtomicBool::from(false)),
+            current_line: Vec::new(),
         }
     }
 }

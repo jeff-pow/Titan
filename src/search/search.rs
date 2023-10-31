@@ -287,6 +287,7 @@ fn alpha_beta(
         if !new_b.make_move(m) {
             continue;
         }
+        info.current_line.push(m);
         let mut node_pvs = Vec::new();
 
         let can_lmr = legal_moves_searched >= LMR_THRESHOLD && depth >= MIN_LMR_DEPTH;
@@ -342,6 +343,7 @@ fn alpha_beta(
         };
 
         legal_moves_searched += 1;
+        info.current_line.pop();
 
         if eval > best_score {
             best_score = eval;
@@ -358,6 +360,8 @@ fn alpha_beta(
                 if capture.is_none() {
                     store_killer_move(ply, m, info);
                     info.history.update_history(m, hist_bonus, board.to_move);
+                    info.history
+                        .set_counter(board.to_move, *info.current_line.last().unwrap_or(&Move::NULL), m);
                 }
                 break;
             }

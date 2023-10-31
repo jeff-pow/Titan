@@ -133,6 +133,8 @@ impl MoveList {
             let piece_moving = board.piece_at(m.origin_square()).unwrap();
             let capture = board.capture(*m);
             let promotion = m.promotion();
+            let prev = info.current_line.last().unwrap_or(&Move::NULL);
+            let counter = info.history.get_counter(board.to_move, *prev);
             if *m == table_move {
                 *score = TTMOVE;
             } else if let Some(promotion) = promotion {
@@ -150,6 +152,8 @@ impl MoveList {
                 *score = KILLER_ONE;
             } else if killers[1] == *m {
                 *score = KILLER_TWO;
+            } else if counter == *m {
+                *score = COUNTER_MOVE;
             } else {
                 *score = info.history.get_history(*m, board.to_move);
             }
@@ -161,6 +165,7 @@ const QUEEN_PROMOTION: i32 = 20000001;
 const GOOD_CAPTURE: i32 = 3000000;
 const KILLER_ONE: i32 = 2000000;
 const KILLER_TWO: i32 = 1000000;
+const COUNTER_MOVE: i32 = 900000;
 const BAD_CAPTURE: i32 = -10000;
 const BAD_PROMOTION: i32 = -20000001;
 const TTMOVE: i32 = i32::MAX - 1000;

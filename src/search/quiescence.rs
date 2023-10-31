@@ -76,11 +76,14 @@ pub fn quiescence(
         if !new_b.make_move(m) {
             continue;
         }
+        info.current_line.push(m);
         moves_searched += 1;
 
         // TODO: Implement delta pruning
 
         let eval = -quiescence(ply + 1, -beta, -alpha, &mut node_pvs, info, &new_b);
+
+        info.current_line.pop();
 
         if eval > best_score {
             best_score = eval;
