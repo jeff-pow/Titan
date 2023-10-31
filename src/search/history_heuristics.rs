@@ -6,12 +6,12 @@ pub const MAX_HIST_VAL: i32 = i16::MAX as i32;
 pub struct MoveHistory {
     // Indexed [side][src sq][dest sq]
     // TODO: Index by piece instead of butterfly boards
-    search_history: [[[i32; 64]; 64]; 2],
+    search_history: [[[i32; 64]; 6]; 2],
 }
 
 impl MoveHistory {
     fn update_search_history(&mut self, m: Move, bonus: i32, side: Color) {
-        let i = &mut self.search_history[side as usize][m.origin_square().idx()][m.dest_square().idx()];
+        let i = &mut self.search_history[side as usize][m.piece_moving().idx()][m.dest_square().idx()];
         *i += bonus - *i * bonus.abs() / MAX_HIST_VAL;
     }
 
@@ -24,14 +24,14 @@ impl MoveHistory {
     }
 
     fn get_search_history(&self, m: Move, side: Color) -> i32 {
-        self.search_history[side as usize][m.origin_square().idx()][m.dest_square().idx()]
+        self.search_history[side as usize][m.piece_moving().idx()][m.dest_square().idx()]
     }
 }
 
 impl Default for MoveHistory {
     fn default() -> Self {
         Self {
-            search_history: [[[0; 64]; 64]; 2],
+            search_history: [[[0; 64]; 6]; 2],
         }
     }
 }
