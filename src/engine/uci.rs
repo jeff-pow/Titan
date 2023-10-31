@@ -16,7 +16,7 @@ use crate::{
         board::Board,
         fen::{self, build_board},
     },
-    moves::moves::from_lan,
+    moves::moves::from_san,
     search::{game_time::GameTime, SearchInfo, SearchType},
     types::pieces::Color,
 };
@@ -122,7 +122,7 @@ pub fn main_loop() -> ! {
 
 fn parse_moves(moves: &[&str], board: &mut Board, skip: usize) {
     for str in moves.iter().skip(skip) {
-        let m = from_lan(str, board);
+        let m = from_san(str, board);
         let _ = board.make_move(m);
     }
 }

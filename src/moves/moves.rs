@@ -238,8 +238,8 @@ impl Move {
     }
 }
 
-/// Method converts a lan move provided by UCI framework into a Move struct
-pub fn from_lan(str: &str, board: &Board) -> Move {
+/// Method converts a san move provided by UCI framework into a Move struct
+pub fn from_san(str: &str, board: &Board) -> Move {
     let vec: Vec<char> = str.chars().collect();
 
     // Using base 20 allows program to convert letters directly to numbers instead of matching
