@@ -307,7 +307,7 @@ impl Board {
     /// Returns true if a move was legal, and false if it was illegal.
     #[must_use]
     pub fn make_move(&mut self, m: Move) -> bool {
-        let piece_moving = self.piece_at(m.origin_square()).expect("There should be a piece here");
+        let piece_moving = m.piece_moving();
         let capture = self.capture(m);
         self.remove_piece(m.dest_square());
         self.place_piece(piece_moving, self.to_move, m.dest_square());
