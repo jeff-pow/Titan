@@ -74,7 +74,6 @@ impl Default for Magics {
 }
 
 impl Magics {
-    #[inline(always)]
     pub fn bishop_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
         let mut occupied = occupied.0;
         let magic_entry: &SMagic = &self.bishop_magics[square.idx()];
@@ -84,7 +83,6 @@ impl Magics {
         unsafe { Bitboard(*(magic_entry.ptr as *const u64).add(occupied as usize)) }
     }
 
-    #[inline(always)]
     pub fn rook_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
         let mut occupied = occupied.0;
         let magic_entry: &SMagic = &self.rook_magics[square.idx()];

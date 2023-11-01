@@ -118,7 +118,7 @@ mod movegen_tests {
 
     #[test]
     pub fn epd_perft() {
-        let file = BufReader::new(File::open("ethereal_perft.epd").expect("File not found"));
+        let file = BufReader::new(File::open("./src/engine/ethereal_perft.epd").expect("File not found"));
         for (test_num, line) in file.lines().enumerate() {
             let l = line.unwrap().clone();
             let vec = l.split(" ;").collect::<Vec<&str>>();

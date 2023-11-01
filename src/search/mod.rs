@@ -84,7 +84,6 @@ pub fn get_reduction(info: &SearchInfo, depth: i32, moves_played: i32) -> i32 {
     info.lmr_reductions[depth as usize][moves_played as usize]
 }
 
-#[inline(always)]
 pub fn reduction(depth: i32, moves_played: i32) -> i32 {
     if depth <= MIN_LMR_DEPTH || moves_played < LMR_THRESHOLD {
         return 1;
@@ -95,7 +94,6 @@ pub fn reduction(depth: i32, moves_played: i32) -> i32 {
     ret as i32
 }
 
-#[inline(always)]
 pub fn store_pv(pvs: &mut Vec<Move>, node_pvs: &mut Vec<Move>, m: Move) {
     pvs.clear();
     pvs.push(m);

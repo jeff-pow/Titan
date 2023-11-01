@@ -55,17 +55,14 @@ impl Default for Board {
 }
 
 impl Board {
-    #[inline(always)]
     pub fn can_en_passant(&self) -> bool {
         self.en_passant_square.is_some()
     }
 
-    #[inline(always)]
     pub fn can_nmp(&self) -> bool {
         self.prev_move != Move::NULL
     }
 
-    #[inline(always)]
     pub fn can_castle(&self, c: Castle) -> bool {
         match c {
             Castle::WhiteKing => self.c & Castle::WhiteKing as u8 != 0,
@@ -76,17 +73,14 @@ impl Board {
         }
     }
 
-    #[inline(always)]
     pub fn set_castling(&mut self, castling: u8) {
         self.c = castling;
     }
 
-    #[inline(always)]
     pub fn bitboard(&self, side: Color, piece: PieceName) -> Bitboard {
         self.bitboards[piece.idx()] & self.color_occupancies(side)
     }
 
-    #[inline(always)]
     fn is_material_draw(&self) -> bool {
         // If we have any pawns, checkmate is still possible
         if self.piece_bitboard(PieceName::Pawn) != Bitboard::EMPTY {
@@ -116,7 +110,6 @@ impl Board {
         false
     }
 
-    #[inline(always)]
     // Returns the type of piece captured by a move, if any
     pub fn capture(&self, m: Move) -> Option<PieceName> {
         if m.is_en_passant() {
@@ -126,27 +119,22 @@ impl Board {
         }
     }
 
-    #[inline(always)]
     pub fn piece_bitboard(&self, p: PieceName) -> Bitboard {
         self.bitboards[p.idx()]
     }
 
-    #[inline(always)]
     pub fn is_draw(&self) -> bool {
         self.history.check_for_3x_repetition(self.zobrist_hash) || self.half_moves >= 100 || self.is_material_draw()
     }
 
-    #[inline(always)]
     pub fn color_occupancies(&self, color: Color) -> Bitboard {
         self.color_occupancies[color.idx()]
     }
 
-    #[inline(always)]
     pub fn occupancies(&self) -> Bitboard {
         self.color_occupancies(Color::White) | self.color_occupancies(Color::Black)
     }
 
-    #[inline(always)]
     pub fn color_at(&self, sq: Square) -> Option<Color> {
         self.array_board[sq.idx()].map(|piece| piece.color)
         // self.color_occupancies
@@ -155,7 +143,6 @@ impl Board {
         //     .map(Color::from)
     }
 
-    #[inline(always)]
     pub fn piece_at(&self, sq: Square) -> Option<PieceName> {
         self.array_board[sq.idx()].map(|piece| piece.name)
         // self.bitboards
@@ -164,13 +151,11 @@ impl Board {
         //     .map(PieceName::from)
     }
 
-    #[inline(always)]
     pub fn has_non_pawns(&self, side: Color) -> bool {
         self.occupancies() ^ self.bitboard(side, PieceName::King) ^ self.bitboard(side, PieceName::Pawn)
             != Bitboard::EMPTY
     }
 
-    #[inline(always)]
     pub fn place_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
         self.array_board[sq.idx()] = Some(Piece::new(piece_type, color));
         self.bitboards[piece_type.idx()] ^= sq.bitboard();
@@ -178,7 +163,6 @@ impl Board {
         self.accumulator.add_feature(piece_type, color, sq);
     }
 
-    #[inline(always)]
     fn remove_piece(&mut self, sq: Square) {
         if let Some(piece) = self.array_board[sq.idx()] {
             self.array_board[sq.idx()] = None;
@@ -188,17 +172,14 @@ impl Board {
         }
     }
 
-    #[inline(always)]
     pub fn king_square(&self, color: Color) -> Square {
         self.bitboard(color, PieceName::King).get_lsb()
     }
 
-    #[inline(always)]
     pub fn attackers(&self, sq: Square, occupancy: Bitboard) -> Bitboard {
         self.attackers_for_side(Color::White, sq, occupancy) | self.attackers_for_side(Color::Black, sq, occupancy)
     }
 
-    #[inline(always)]
     pub fn attackers_for_side(&self, attacker: Color, sq: Square, occupancy: Bitboard) -> Bitboard {
         let pawn_attacks = MG.pawn_attacks(sq, !attacker) & self.bitboard(attacker, PieceName::Pawn);
         let knight_attacks = MG.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
@@ -210,12 +191,10 @@ impl Board {
         pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | queen_attacks | king_attacks
     }
 
-    #[inline(always)]
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
         self.attackers_for_side(attacker, sq, self.occupancies()) != Bitboard::EMPTY
     }
 
-    #[inline(always)]
     pub fn in_check(&self, side: Color) -> bool {
         let king_square = self.king_square(side);
         if !king_square.is_valid() {
@@ -228,7 +207,6 @@ impl Board {
         self.history.push(self.zobrist_hash);
     }
 
-    #[inline(always)]
     fn material_val(&self, c: Color) -> i32 {
         self.bitboard(c, PieceName::Queen).count_bits() * PieceName::Queen.value()
             + self.bitboard(c, PieceName::Rook).count_bits() * PieceName::Rook.value()
@@ -237,7 +215,6 @@ impl Board {
             + self.bitboard(c, PieceName::Pawn).count_bits() * PieceName::Pawn.value()
     }
 
-    #[inline(always)]
     pub fn material_balance(&self) -> i32 {
         match self.to_move {
             Color::White => self.material_val(Color::White) - self.material_val(Color::Black),
@@ -293,7 +270,6 @@ impl Board {
     }
 
     /// Returns true if a move does not capture a piece, and false if a piece is captured
-    #[inline(always)]
     pub fn is_quiet(&self, m: Move) -> bool {
         self.occupancies().square_is_empty(m.dest_square())
     }

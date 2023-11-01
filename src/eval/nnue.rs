@@ -96,7 +96,6 @@ impl Board {
 
 const RELU_MIN: i16 = 0;
 const RELU_MAX: i16 = 255;
-#[inline(always)]
 fn crelu(i: i16) -> i32 {
     i32::from(i.clamp(RELU_MIN, RELU_MAX))
 }

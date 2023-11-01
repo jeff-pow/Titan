@@ -10,7 +10,6 @@ pub struct BoardHistory {
 }
 
 impl BoardHistory {
-    #[inline(always)]
     pub fn push(&mut self, hash: u64) {
         debug_assert!(self.len < MAX_LEN);
         if self.len >= MAX_LEN - 1 {

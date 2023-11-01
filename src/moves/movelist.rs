@@ -30,24 +30,20 @@ impl MoveListEntry {
 }
 
 impl MoveList {
-    #[inline(always)]
     pub fn push(&mut self, m: Move) {
         debug_assert!(self.len < MAX_LEN);
         self.arr[self.len] = MoveListEntry::new(m, 0);
         self.len += 1;
     }
 
-    #[inline(always)]
     pub fn len(&self) -> usize {
         self.len
     }
 
-    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
 
-    #[inline(always)]
     fn swap(&mut self, a: usize, b: usize) {
         unsafe {
             let ptr_a: *mut MoveListEntry = &mut self.arr[a];
@@ -56,21 +52,18 @@ impl MoveList {
         }
     }
 
-    #[inline(always)]
     /// Sorts next move into position and then returns a reference to the move
     fn pick_move(&mut self, idx: usize) -> MoveListEntry {
         self.sort_next_move(idx);
         self.arr[idx]
     }
 
-    #[inline(always)]
     pub fn into_vec(self) -> Vec<Move> {
         let mut v = Vec::new();
         self.into_iter().for_each(|x| v.push(x.m));
         v
     }
 
-    #[inline(always)]
     pub fn perft_next(&mut self) -> Option<Move> {
         if self.current_idx >= self.len {
             None

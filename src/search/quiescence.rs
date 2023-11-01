@@ -26,9 +26,7 @@ pub fn quiescence(
     info.search_stats.nodes_searched += 1;
 
     if ply >= MAX_SEARCH_DEPTH {
-
         return board.evaluate();
-
     }
 
     let (_, table_move) = {

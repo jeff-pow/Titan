@@ -47,7 +47,6 @@ impl Default for Zobrist {
 
 impl Board {
     /// Provides a hash for the board eval to be placed into a transposition table
-    #[inline(always)]
     pub(crate) fn generate_hash(&self) -> u64 {
         let mut hash = 0;
 

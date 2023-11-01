@@ -58,12 +58,10 @@ impl Default for MoveGenerator {
 }
 
 impl MoveGenerator {
-    #[inline(always)]
     pub fn bishop_attacks(&self, square: Square, occupied: Bitboard) -> Bitboard {
         self.magics.bishop_attacks(occupied, square)
     }
 
-    #[inline(always)]
     pub fn rook_attacks(&self, square: Square, occupied: Bitboard) -> Bitboard {
         self.magics.rook_attacks(occupied, square)
     }

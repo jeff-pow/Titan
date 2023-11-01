@@ -129,30 +129,25 @@ impl Move {
         Self(m)
     }
 
-    #[inline(always)]
     pub fn is_capture(self, board: &Board) -> bool {
         board.occupancies().square_occupied(self.dest_square())
     }
 
-    #[inline(always)]
     pub fn is_castle(self) -> bool {
         let castle_flag = (self.0 >> 14) & 0b11;
         castle_flag == MoveType::Castle as u32
     }
 
-    #[inline(always)]
     pub fn piece_moving(self) -> PieceName {
         let piece_flag = (self.0 >> 16) & 0b111;
         PieceName::from(piece_flag as usize)
     }
 
-    #[inline(always)]
     pub fn is_en_passant(self) -> bool {
         let en_passant_flag = (self.0 >> 14) & 0b11;
         en_passant_flag == MoveType::EnPassant as u32
     }
 
-    #[inline(always)]
     pub fn is_normal(self, board: &Board) -> bool {
         self.promotion().is_none()
             && !self.is_castle()
@@ -161,7 +156,6 @@ impl Move {
             && !self.is_capture(board)
     }
 
-    #[inline(always)]
     pub fn promotion(self) -> Option<Promotion> {
         let promotion_flag = (self.0 >> 14) & 0b11;
         if promotion_flag != MoveType::Promotion as u32 {
@@ -176,17 +170,14 @@ impl Move {
         }
     }
 
-    #[inline(always)]
     pub fn origin_square(self) -> Square {
         Square((self.0 & 0b111111) as u8)
     }
 
-    #[inline(always)]
     pub fn dest_square(self) -> Square {
         Square(((self.0 >> 6) & 0b111111) as u8)
     }
 
-    #[inline(always)]
     pub fn as_u16(self) -> u16 {
         self.0 as u16
     }
@@ -213,7 +204,6 @@ impl Move {
         str
     }
 
-    #[inline(always)]
     pub fn castle_type(self) -> Castle {
         debug_assert!(self.is_castle());
         if self.dest_square().dist(self.origin_square()) != 2 {

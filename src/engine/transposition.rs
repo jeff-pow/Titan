@@ -85,7 +85,6 @@ impl ShortMove {
         Self(m.as_u16())
     }
 
-    #[inline(always)]
     fn to_move(self, board: &Board) -> Move {
         let m = Move::raw(self.0 as u32);
         if m == Move::NULL {
