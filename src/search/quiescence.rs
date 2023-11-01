@@ -1,6 +1,5 @@
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TableEntry};
-use crate::eval::eval::evaluate;
 use crate::moves::movegenerator::{generate_moves, MGT};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::moves::Move;
@@ -27,7 +26,9 @@ pub fn quiescence(
     info.search_stats.nodes_searched += 1;
 
     if ply >= MAX_SEARCH_DEPTH {
-        return evaluate(board);
+
+        return board.evaluate();
+
     }
 
     let (_, table_move) = {
@@ -40,7 +41,9 @@ pub fn quiescence(
     };
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
-    let stand_pat = evaluate(board);
+
+    let stand_pat = board.evaluate();
+
     if stand_pat >= beta {
         return stand_pat;
     }
@@ -54,7 +57,9 @@ pub fn quiescence(
         generate_moves(board, MGT::CapturesOnly)
     };
     moves.score_moves(board, table_move, &info.killer_moves[ply as usize], info);
-    let mut best_score = if in_check { -INFINITY } else { evaluate(board) };
+
+    let mut best_score = if in_check { -INFINITY } else { board.evaluate() };
+
     let mut best_move = Move::NULL;
     let mut moves_searched = 0;
 
