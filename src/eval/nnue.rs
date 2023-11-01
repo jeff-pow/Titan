@@ -13,6 +13,7 @@ const SCALE: i32 = 400;
 pub const NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net.nnue")) };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(align(64))]
 #[repr(C)]
 pub struct Accumulator([[i16; HIDDEN_SIZE]; 2]);
 impl Default for Accumulator {
@@ -22,10 +23,6 @@ impl Default for Accumulator {
 }
 
 impl Accumulator {
-    pub fn get(&self, color: Color) -> &[i16; HIDDEN_SIZE] {
-        &self.0[color.idx()]
-    }
-
     pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
         let white_idx = feature_idx(color, piece, sq);
         let black_idx = feature_idx(!color, piece, sq.flip_vertical());
@@ -77,9 +74,12 @@ pub struct Network {
 impl Board {
     #[allow(clippy::deref_addrof)]
     pub fn evaluate(&self) -> i32 {
-        let (us, them) = (self.accumulator.get(self.to_move), self.accumulator.get(!self.to_move));
-
+        let (us, them) = (self.accumulator.0[self.to_move.idx()], self.accumulator.0[(!self.to_move).idx()]);
         let weights = &NET.output_weights;
+
+        // So this is odd... It crashes if I don't take the address and deref
+        // I don't know enough rust to fix it
+        // ¯\_(ツ)_/¯
         let mut output = i32::from(*&NET.output_bias);
 
         for (&i, &w) in us.iter().zip(&weights[..HIDDEN_SIZE]) {
@@ -89,10 +89,6 @@ impl Board {
         for (&i, &w) in them.iter().zip(&weights[HIDDEN_SIZE..]) {
             output += crelu(i) * i32::from(w);
         }
-        // So this is odd... It crashes if I don't take the address and deref
-        // I don't know enough rust to fix it
-        // ¯\_(ツ)_/¯
-        // output += *&NET.output_bias as i32;
 
         (output) * SCALE / Q
     }
