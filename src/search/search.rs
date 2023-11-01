@@ -92,6 +92,8 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
         } else {
             -INFINITY as f64
         };
+
+        // Create a window we think the actual evaluation of the position will fall within
         let mut delta = INIT_ASP + (prev_avg * prev_avg * 6.25e-5) as i32;
         alpha = max(prev_avg as i32 - delta, -INFINITY);
         beta = min(prev_avg as i32 + delta, INFINITY);
@@ -156,18 +158,23 @@ fn alpha_beta(
     info.sel_depth = info.sel_depth.max(ply);
     // Don't do pvs unless you have a pv - otherwise you're wasting time
     if info.halt.load(Ordering::SeqCst) {
+
         return board.evaluate();
+
     }
 
     // if in_check {
     //     depth += 1;
     // }
+
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
         if board.in_check(board.to_move) {
             return quiescence(ply, alpha, beta, pv, info, board);
         }
+
         return board.evaluate();
+
     }
 
     if ply > 0 {
@@ -183,6 +190,7 @@ fn alpha_beta(
         }
     }
 
+    // Attempt to read eval, or at least a suggestion for the best move from transposition table
     let (table_value, table_move) = {
         if let Some(entry) = info.transpos_table.read().unwrap().get(&board.zobrist_hash) {
             entry.get(depth, ply, alpha, beta, board)
@@ -191,14 +199,13 @@ fn alpha_beta(
         }
     };
     if let Some(eval) = table_value {
-        if !is_root {
+        if !is_root && !is_pv_node {
             // This can cut off evals in certain cases, but it's easy to implement :)
-            // pv.push(table_move);
             return eval;
         }
     }
     // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval, isn't a
-    // PV node, and is a cutNode
+    // PV node, and is a cutNode (?)
     else if depth >= MIN_IIR_DEPTH && !is_pv_node {
         depth -= 1;
     }
@@ -213,7 +220,9 @@ fn alpha_beta(
     let hist_bonus = (155 * depth).min(2000);
 
     if !is_root && !is_pv_node && !in_check {
+
         let static_eval = board.evaluate();
+
         // Reverse futility pruning
         if static_eval - RFP_MULTIPLIER * depth >= beta && depth < MAX_RFP_DEPTH && static_eval.abs() < NEAR_CHECKMATE {
             return static_eval;
@@ -280,13 +289,15 @@ fn alpha_beta(
             }
         }
 
+        // Make move filters out illegal moves
         if !new_b.make_move(m) {
             continue;
         }
+        info.current_line.push(m);
         let mut node_pvs = Vec::new();
 
         let can_lmr = legal_moves_searched >= LMR_THRESHOLD && depth >= MIN_LMR_DEPTH;
-
+        // R is used in late move reductions
         let r = {
             if !can_lmr {
                 1
@@ -306,8 +317,8 @@ fn alpha_beta(
                 // if is_quiet && !see(&new_b, m, -50 * depth) {
                 //     depth += 1;
                 // }
-                r = r.clamp(1, depth - 1);
-                r
+                // Don't let LMR send us into qsearch
+                r.clamp(1, depth - 1)
             }
         };
 
@@ -338,6 +349,7 @@ fn alpha_beta(
         };
 
         legal_moves_searched += 1;
+        info.current_line.pop();
 
         if eval > best_score {
             best_score = eval;
@@ -354,6 +366,8 @@ fn alpha_beta(
                 if capture.is_none() {
                     store_killer_move(ply, m, info);
                     info.history.update_history(m, hist_bonus, board.to_move);
+                    info.history
+                        .set_counter(board.to_move, *info.current_line.last().unwrap_or(&Move::NULL), m);
                 }
                 break;
             }
@@ -364,7 +378,6 @@ fn alpha_beta(
     }
 
     if legal_moves_searched == 0 {
-        // Checkmate
         if board.in_check(board.to_move) {
             // Distance from root is returned in order for other recursive calls to determine
             // shortest viable checkmate path

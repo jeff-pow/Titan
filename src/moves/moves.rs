@@ -3,7 +3,6 @@ use std::fmt::Display;
 
 use crate::{
     board::board::Board,
-    engine::transposition::ShortMove,
     moves::moves::Direction::*,
     types::{pieces::PieceName, square::Square},
 };
@@ -80,7 +79,7 @@ impl Direction {
 /// bit 14-15: special move flag: normal move(0), promotion (1), en passant (2), castling (3)
 /// bit 16-19: piece moving - useful in continuation history
 /// NOTE: en passant bit is set only when a pawn can be captured
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Move(u32);
 
 impl Move {
@@ -125,6 +124,11 @@ impl Move {
         Self::full_move(origin, destination, None, MoveType::EnPassant, PieceName::Pawn)
     }
 
+    /// Creates a move from a raw u32. I hope you know what you're doing...
+    pub fn raw(m: u32) -> Self {
+        Self(m)
+    }
+
     #[inline(always)]
     pub fn is_capture(self, board: &Board) -> bool {
         board.occupancies().square_occupied(self.dest_square())
@@ -146,16 +150,6 @@ impl Move {
     pub fn is_en_passant(self) -> bool {
         let en_passant_flag = (self.0 >> 14) & 0b11;
         en_passant_flag == MoveType::EnPassant as u32
-    }
-
-    #[inline(always)]
-    pub fn from_short_move(sm: ShortMove, board: &Board) -> Self {
-        let m = Self(sm.as_u32());
-        if m == Move::NULL {
-            m
-        } else {
-            Self(sm.as_u32() | board.piece_at(m.origin_square()).expect("There is a piece here").idx() as u32)
-        }
     }
 
     #[inline(always)]

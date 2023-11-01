@@ -26,11 +26,13 @@ pub fn quiescence(
     info.search_stats.nodes_searched += 1;
 
     if ply >= MAX_SEARCH_DEPTH {
+
         return board.evaluate();
+
     }
 
     let (_, table_move) = {
-        // Returning an eval from this is weird to handle, but we can definitely get a best move
+        // Returning an eval from this has been uncooperative, but we can definitely get a best move
         if let Some(entry) = info.transpos_table.read().unwrap().get(&board.zobrist_hash) {
             entry.get(0, ply, alpha, beta, board)
         } else {
@@ -39,7 +41,9 @@ pub fn quiescence(
     };
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
+
     let stand_pat = board.evaluate();
+
     if stand_pat >= beta {
         return stand_pat;
     }
@@ -53,7 +57,9 @@ pub fn quiescence(
         generate_moves(board, MGT::CapturesOnly)
     };
     moves.score_moves(board, table_move, &info.killer_moves[ply as usize], info);
+
     let mut best_score = if in_check { -INFINITY } else { board.evaluate() };
+
     let mut best_move = Move::NULL;
     let mut moves_searched = 0;
 
@@ -61,6 +67,8 @@ pub fn quiescence(
         let mut node_pvs = Vec::new();
         let mut new_b = board.to_owned();
 
+        // We want to find at least one evasion so we know we aren't in checkmate, so don't prune
+        // moves before then
         if (!in_check || moves_searched > 1) && !see(board, m, 1) {
             continue;
         }
@@ -68,11 +76,14 @@ pub fn quiescence(
         if !new_b.make_move(m) {
             continue;
         }
+        info.current_line.push(m);
         moves_searched += 1;
 
         // TODO: Implement delta pruning
 
         let eval = -quiescence(ply + 1, -beta, -alpha, &mut node_pvs, info, &new_b);
+
+        info.current_line.pop();
 
         if eval > best_score {
             best_score = eval;

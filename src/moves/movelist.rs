@@ -48,12 +48,7 @@ impl MoveList {
     }
 
     #[inline(always)]
-    pub fn has_next(&self) -> bool {
-        self.current_idx < self.len
-    }
-
-    #[inline(always)]
-    pub fn swap(&mut self, a: usize, b: usize) {
+    fn swap(&mut self, a: usize, b: usize) {
         unsafe {
             let ptr_a: *mut MoveListEntry = &mut self.arr[a];
             let ptr_b: *mut MoveListEntry = &mut self.arr[b];
@@ -62,33 +57,10 @@ impl MoveList {
     }
 
     #[inline(always)]
-    pub fn get_one(&mut self, idx: usize) -> Option<MoveListEntry> {
-        if idx >= self.len {
-            return None;
-        }
-        Some(self.pick_move(idx))
-    }
-
-    #[inline(always)]
     /// Sorts next move into position and then returns a reference to the move
     fn pick_move(&mut self, idx: usize) -> MoveListEntry {
         self.sort_next_move(idx);
-        self.get_move(idx)
-    }
-
-    #[inline(always)]
-    pub fn get_move(&self, idx: usize) -> MoveListEntry {
         self.arr[idx]
-    }
-
-    #[inline(always)]
-    pub fn get_score(&self, idx: usize) -> i32 {
-        self.arr[idx].score
-    }
-
-    #[inline(always)]
-    pub fn get_mut(&mut self, idx: usize) -> &mut MoveListEntry {
-        &mut self.arr[idx]
     }
 
     #[inline(always)]
@@ -109,10 +81,10 @@ impl MoveList {
         }
     }
 
-    pub fn sort_next_move(&mut self, idx: usize) {
+    fn sort_next_move(&mut self, idx: usize) {
         let mut max_idx = idx;
         for i in (idx + 1)..self.len {
-            if self.get_score(i) > self.get_score(max_idx) {
+            if self.arr[i].score > self.arr[max_idx].score {
                 max_idx = i;
             }
         }
@@ -127,12 +99,14 @@ impl MoveList {
         info: &SearchInfo,
     ) {
         for i in 0..self.len {
-            let entry = self.get_mut(i);
+            let entry = &mut self.arr[i];
             let m = &mut entry.m;
             let score = &mut entry.score;
             let piece_moving = board.piece_at(m.origin_square()).unwrap();
             let capture = board.capture(*m);
             let promotion = m.promotion();
+            let prev = info.current_line.last().unwrap_or(&Move::NULL);
+            let counter = info.history.get_counter(board.to_move, *prev);
             if *m == table_move {
                 *score = TTMOVE;
             } else if let Some(promotion) = promotion {
@@ -150,6 +124,8 @@ impl MoveList {
                 *score = KILLER_ONE;
             } else if killers[1] == *m {
                 *score = KILLER_TWO;
+            } else if counter == *m {
+                *score = COUNTER_MOVE;
             } else {
                 *score = info.history.get_history(*m, board.to_move);
             }
@@ -161,6 +137,7 @@ const QUEEN_PROMOTION: i32 = 20000001;
 const GOOD_CAPTURE: i32 = 3000000;
 const KILLER_ONE: i32 = 2000000;
 const KILLER_TWO: i32 = 1000000;
+const COUNTER_MOVE: i32 = 900000;
 const BAD_CAPTURE: i32 = -10000;
 const BAD_PROMOTION: i32 = -20000001;
 const TTMOVE: i32 = i32::MAX - 1000;
