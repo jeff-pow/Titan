@@ -15,12 +15,12 @@ const NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net.nnu
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(align(64))]
 #[repr(C)]
-struct Chunk([i16; HIDDEN_SIZE]);
+struct Block([i16; HIDDEN_SIZE]);
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(align(64))]
 #[repr(C)]
-pub struct Accumulator([Chunk; 2]);
+pub struct Accumulator([Block; 2]);
 impl Default for Accumulator {
     fn default() -> Self {
         Self([NET.feature_bias; 2])
@@ -42,13 +42,13 @@ impl Accumulator {
         self.deactivate(&NET.feature_weights[black_idx], Color::Black);
     }
 
-    fn deactivate(&mut self, weights: &Chunk, color: Color) {
+    fn deactivate(&mut self, weights: &Block, color: Color) {
         self.0[color.idx()].0.iter_mut().zip(&weights.0).for_each(|(i, &d)| {
             *i -= d;
         });
     }
 
-    fn activate(&mut self, weights: &Chunk, color: Color) {
+    fn activate(&mut self, weights: &Block, color: Color) {
         self.0[color.idx()].0.iter_mut().zip(&weights.0).for_each(|(i, &d)| {
             *i += d;
         });
@@ -59,9 +59,9 @@ impl Accumulator {
 #[repr(C)]
 #[derive(Clone, Debug)]
 struct Network {
-    feature_weights: [Chunk; INPUT_SIZE],
-    feature_bias: Chunk,
-    output_weights: [Chunk; 2],
+    feature_weights: [Block; INPUT_SIZE],
+    feature_bias: Block,
+    output_weights: [Block; 2],
     output_bias: i16,
 }
 
