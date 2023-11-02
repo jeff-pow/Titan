@@ -72,11 +72,11 @@ impl Board {
         // ¯\_(ツ)_/¯
         let mut output = i32::from(*&NET.output_bias);
 
-        for (&i, w) in us.iter().zip(weights[0]) {
+        for (&i, &w) in us.iter().zip(&weights[0]) {
             output += crelu(i) * i32::from(w);
         }
 
-        for (&i, w) in them.iter().zip(weights[1]) {
+        for (&i, &w) in them.iter().zip(&weights[1]) {
             output += crelu(i) * i32::from(w);
         }
 
