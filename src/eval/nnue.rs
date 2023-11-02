@@ -107,7 +107,7 @@ mod nnue_tests {
     fn inference_benchmark() {
         let board = build_board(STARTING_FEN);
         let start = Instant::now();
-        let iters = 1_000_000_0u128;
+        let iters = 10_000_000_u128;
         for _ in 0..iters {
             black_box(board.evaluate());
         }
