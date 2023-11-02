@@ -48,7 +48,7 @@ pub fn quiescence(
     let original_alpha = alpha;
     alpha = alpha.max(stand_pat);
 
-    let in_check = board.in_check(board.to_move);
+    let in_check = board.in_check;
     let mut moves = if in_check {
         generate_moves(board, MGT::All)
     } else {

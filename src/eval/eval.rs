@@ -53,9 +53,6 @@ fn evaluate(board: &Board) -> i32 {
     let mg_phase = min(game_phase, 24);
     let eg_phase = 24 - mg_phase;
     let mut eval = (mg_pts * mg_phase + eg_pts * eg_phase) / 24;
-    if board.in_check(!board.to_move) {
-        eval += 90;
-    }
     // match board.to_move {
     //     Color::White => eval += king_to_corner(board.white_king_square, board.black_king_square, eg_phase),
     //     Color::Black => eval += king_to_corner(board.black_king_square, board.white_king_square, eg_phase),

@@ -152,7 +152,7 @@ fn alpha_beta(
 ) -> i32 {
     let ply = info.iter_max_depth - depth;
     let is_root = ply == 0;
-    let in_check = board.in_check(board.to_move);
+    let in_check = board.in_check;
     // Is a zero width search if alpha and beta are one apart
     let is_pv_node = (beta - alpha).abs() != 1;
     info.sel_depth = info.sel_depth.max(ply);
@@ -167,7 +167,7 @@ fn alpha_beta(
 
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
-        if board.in_check(board.to_move) {
+        if board.in_check {
             return quiescence(ply, alpha, beta, pv, info, board);
         }
 
@@ -374,7 +374,7 @@ fn alpha_beta(
     }
 
     if legal_moves_searched == 0 {
-        if board.in_check(board.to_move) {
+        if board.in_check {
             // Distance from root is returned in order for other recursive calls to determine
             // shortest viable checkmate path
             return -CHECKMATE + ply;
