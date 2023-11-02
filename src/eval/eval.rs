@@ -8,6 +8,7 @@ use crate::{
 };
 
 // https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
+#[allow(dead_code)]
 fn evaluate(board: &Board) -> i32 {
     let mut white_mg = 0;
     let mut white_eg = 0;
