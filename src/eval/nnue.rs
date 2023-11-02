@@ -112,7 +112,7 @@ mod nnue_tests {
             black_box(board.evaluate());
         }
         let duration = start.elapsed().as_nanos();
-        println!("{} per iter", duration / iters);
+        println!("{} ns per iter", duration / iters);
         dbg!(duration / iters);
     }
 }
