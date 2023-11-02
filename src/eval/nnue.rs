@@ -70,7 +70,8 @@ impl Board {
         // So this is odd... It crashes if I don't take the address and deref
         // I don't know enough rust to fix it
         // ¯\_(ツ)_/¯
-        let mut output = i32::from(*&NET.output_bias);
+        // let mut output = i32::from(*&NET.output_bias);
+        let mut output = i32::from(NET.output_bias);
 
         for (&i, &w) in us.iter().zip(&weights[0]) {
             output += crelu(i) * i32::from(w);
