@@ -3,7 +3,7 @@ use strum::IntoEnumIterator;
 
 use crate::moves::moves::Castle;
 use crate::{
-    eval::nnue::{Accumulator, NET},
+    eval::nnue::Accumulator,
     moves::{
         movegenerator::MG,
         moves::Move,
@@ -168,7 +168,7 @@ impl Board {
             self.array_board[sq.idx()] = None;
             self.bitboards[piece.name.idx()] ^= sq.bitboard();
             self.color_occupancies[piece.color.idx()] ^= sq.bitboard();
-            self.accumulator.remove_feature(&NET, piece.name, piece.color, sq);
+            self.accumulator.remove_feature(piece.name, piece.color, sq);
         }
     }
 
@@ -378,7 +378,7 @@ impl Board {
     }
 
     pub fn refresh_accumulators(&mut self) {
-        self.accumulator.reset();
+        self.accumulator = Accumulator::default();
         for c in Color::iter() {
             for p in PieceName::iter().rev() {
                 for sq in self.bitboard(c, p) {
