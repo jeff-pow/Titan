@@ -97,3 +97,24 @@ const PIECE_OFFSET: usize = NUM_SQUARES;
 fn feature_idx(color: Color, piece: PieceName, sq: Square) -> usize {
     color.idx() * COLOR_OFFSET + piece.idx() * PIECE_OFFSET + sq.idx()
 }
+
+#[cfg(test)]
+mod nnue_tests {
+
+    use std::{hint::black_box, time::Instant};
+
+    use crate::board::fen::{build_board, STARTING_FEN};
+
+    #[test]
+    fn inference_benchmark() {
+        let board = build_board(STARTING_FEN);
+        let start = Instant::now();
+        let iters = 10_000_000_u128;
+        for _ in 0..iters {
+            black_box(board.evaluate());
+        }
+        let duration = start.elapsed().as_nanos();
+        println!("{} ns per iter", duration / iters);
+        dbg!(duration / iters);
+    }
+}
