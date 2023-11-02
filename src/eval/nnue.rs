@@ -12,9 +12,7 @@ const Q: i32 = 255 * 64;
 const SCALE: i32 = 400;
 const NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net.nnue")) };
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[repr(C, align(64))]
-struct Block([i16; HIDDEN_SIZE]);
+type Block = [i16; HIDDEN_SIZE];
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C, align(64))]
@@ -42,13 +40,13 @@ impl Accumulator {
     }
 
     fn deactivate(&mut self, weights: &Block, color: Color) {
-        self.0[color.idx()].0.iter_mut().zip(&weights.0).for_each(|(i, &d)| {
+        self.0[color.idx()].iter_mut().zip(weights).for_each(|(i, &d)| {
             *i -= d;
         });
     }
 
     fn activate(&mut self, weights: &Block, color: Color) {
-        self.0[color.idx()].0.iter_mut().zip(&weights.0).for_each(|(i, &d)| {
+        self.0[color.idx()].iter_mut().zip(weights).for_each(|(i, &d)| {
             *i += d;
         });
     }
@@ -74,11 +72,11 @@ impl Board {
         // ¯\_(ツ)_/¯
         let mut output = i32::from(*&NET.output_bias);
 
-        for (&i, &w) in us.0.iter().zip(&weights[0].0) {
+        for (&i, w) in us.iter().zip(weights[0]) {
             output += crelu(i) * i32::from(w);
         }
 
-        for (&i, &w) in them.0.iter().zip(&weights[1].0) {
+        for (&i, w) in them.iter().zip(weights[1]) {
             output += crelu(i) * i32::from(w);
         }
 
@@ -96,4 +94,25 @@ const COLOR_OFFSET: usize = NUM_SQUARES * NUM_PIECES;
 const PIECE_OFFSET: usize = NUM_SQUARES;
 fn feature_idx(color: Color, piece: PieceName, sq: Square) -> usize {
     color.idx() * COLOR_OFFSET + piece.idx() * PIECE_OFFSET + sq.idx()
+}
+
+#[cfg(test)]
+mod nnue_tests {
+
+    use std::{hint::black_box, time::Instant};
+
+    use crate::board::fen::{build_board, STARTING_FEN};
+
+    #[test]
+    fn inference_benchmark() {
+        let board = build_board(STARTING_FEN);
+        let start = Instant::now();
+        let iters = 1_000_000_0u128;
+        for _ in 0..iters {
+            black_box(board.evaluate());
+        }
+        let duration = start.elapsed().as_nanos();
+        println!("{} per iter", duration / iters);
+        dbg!(duration / iters);
+    }
 }
