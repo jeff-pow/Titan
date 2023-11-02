@@ -12,9 +12,7 @@ const Q: i32 = 255 * 64;
 const SCALE: i32 = 400;
 const NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net.nnue")) };
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[repr(C, align(64))]
-struct Block([i16; HIDDEN_SIZE]);
+type Block = [i16; HIDDEN_SIZE];
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C, align(64))]
@@ -42,13 +40,13 @@ impl Accumulator {
     }
 
     fn deactivate(&mut self, weights: &Block, color: Color) {
-        self.0[color.idx()].0.iter_mut().zip(&weights.0).for_each(|(i, &d)| {
+        self.0[color.idx()].iter_mut().zip(weights).for_each(|(i, &d)| {
             *i -= d;
         });
     }
 
     fn activate(&mut self, weights: &Block, color: Color) {
-        self.0[color.idx()].0.iter_mut().zip(&weights.0).for_each(|(i, &d)| {
+        self.0[color.idx()].iter_mut().zip(weights).for_each(|(i, &d)| {
             *i += d;
         });
     }
@@ -74,11 +72,11 @@ impl Board {
         // ¯\_(ツ)_/¯
         let mut output = i32::from(*&NET.output_bias);
 
-        for (&i, &w) in us.0.iter().zip(&weights[0].0) {
+        for (&i, &w) in us.iter().zip(&weights[0]) {
             output += crelu(i) * i32::from(w);
         }
 
-        for (&i, &w) in them.0.iter().zip(&weights[1].0) {
+        for (&i, &w) in them.iter().zip(&weights[1]) {
             output += crelu(i) * i32::from(w);
         }
 
