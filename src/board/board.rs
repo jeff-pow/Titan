@@ -25,7 +25,7 @@ pub struct Board {
     color_occupancies: [Bitboard; 2],
     pub array_board: [Option<Piece>; 64],
     pub to_move: Color,
-    c: u8,
+    pub castling_rights: u8,
     pub en_passant_square: Option<Square>,
     pub prev_move: Move,
     pub num_moves: usize,
@@ -33,6 +33,7 @@ pub struct Board {
     pub zobrist_hash: u64,
     history: BoardHistory,
     pub accumulator: Accumulator,
+    pub in_check: bool,
 }
 
 impl Default for Board {
@@ -41,7 +42,7 @@ impl Default for Board {
             bitboards: [Bitboard::EMPTY; 6],
             color_occupancies: [Bitboard::EMPTY; 2],
             array_board: [None; 64],
-            c: 0,
+            castling_rights: 0,
             to_move: Color::White,
             en_passant_square: None,
             num_moves: 0,
@@ -50,6 +51,7 @@ impl Default for Board {
             history: BoardHistory::default(),
             prev_move: Move::NULL,
             accumulator: Accumulator::default(),
+            in_check: false,
         }
     }
 }
@@ -65,16 +67,12 @@ impl Board {
 
     pub fn can_castle(&self, c: Castle) -> bool {
         match c {
-            Castle::WhiteKing => self.c & Castle::WhiteKing as u8 != 0,
-            Castle::WhiteQueen => self.c & Castle::WhiteQueen as u8 != 0,
-            Castle::BlackKing => self.c & Castle::BlackKing as u8 != 0,
-            Castle::BlackQueen => self.c & Castle::BlackQueen as u8 != 0,
+            Castle::WhiteKing => self.castling_rights & Castle::WhiteKing as u8 != 0,
+            Castle::WhiteQueen => self.castling_rights & Castle::WhiteQueen as u8 != 0,
+            Castle::BlackKing => self.castling_rights & Castle::BlackKing as u8 != 0,
+            Castle::BlackQueen => self.castling_rights & Castle::BlackQueen as u8 != 0,
             _ => panic!(),
         }
-    }
-
-    pub fn set_castling(&mut self, castling: u8) {
-        self.c = castling;
     }
 
     pub fn bitboard(&self, side: Color, piece: PieceName) -> Bitboard {
@@ -195,7 +193,7 @@ impl Board {
         self.attackers_for_side(attacker, sq, self.occupancies()) != Bitboard::EMPTY
     }
 
-    pub fn in_check(&self, side: Color) -> bool {
+    fn in_check(&self, side: Color) -> bool {
         let king_square = self.king_square(side);
         if !king_square.is_valid() {
             return true;
@@ -350,7 +348,7 @@ impl Board {
             self.half_moves = 0;
         }
 
-        self.c &= CASTLING_RIGHTS[m.origin_square().idx()] & CASTLING_RIGHTS[m.dest_square().idx()];
+        self.castling_rights &= CASTLING_RIGHTS[m.origin_square().idx()] & CASTLING_RIGHTS[m.dest_square().idx()];
 
         self.to_move = !self.to_move;
 
@@ -361,6 +359,8 @@ impl Board {
         self.add_to_history();
 
         self.prev_move = m;
+
+        self.in_check = self.in_check(self.to_move);
 
         // Return false if the move leaves the opposite side in check, denoting an invalid move
         !self.in_check(!self.to_move)

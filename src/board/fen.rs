@@ -85,7 +85,7 @@ pub fn build_board(fen_string: &str) -> Board {
 
     // 10th bucket find who can still castle
     // Order of array is white king castle, white queen castle, black king castle, black queen castle
-    board.set_castling(parse_castling(iter.next().unwrap()));
+    board.castling_rights = parse_castling(iter.next().unwrap());
 
     let en_passant_letters: Vec<char> = iter.next().unwrap().chars().collect();
     let en_passant_idx = find_en_passant_square(en_passant_letters);
