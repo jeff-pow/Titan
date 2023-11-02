@@ -13,14 +13,13 @@ const SCALE: i32 = 400;
 const NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net.nnue")) };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[repr(align(64))]
-#[repr(C)]
+#[repr(C, align(64))]
 struct Block([i16; HIDDEN_SIZE]);
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[repr(align(64))]
-#[repr(C)]
+#[repr(C, align(64))]
 pub struct Accumulator([Block; 2]);
+
 impl Default for Accumulator {
     fn default() -> Self {
         Self([NET.feature_bias; 2])
@@ -55,9 +54,8 @@ impl Accumulator {
     }
 }
 
-#[repr(align(64))]
-#[repr(C)]
 #[derive(Clone, Debug)]
+#[repr(C, align(64))]
 struct Network {
     feature_weights: [Block; INPUT_SIZE],
     feature_bias: Block,
