@@ -73,11 +73,11 @@ pub fn get_table() -> FxHashMap<u64, TableEntry> {
     FxHashMap::with_capacity_and_hasher(TARGET_TABLE_SIZE_MB * BYTES_PER_MB / entry_size, Default::default())
 }
 
-#[derive(Clone, Copy, PartialEq)]
 /// Storing a 32 bit move in the transposition table is a waste of space, as 16 bits contains all
 /// you need. However, 32 bits is nice for extra information such as what piece moved, so moves are
 /// truncated before being placed in transposition table, and extracted back into 32 bits before
 /// being returned to caller
+#[derive(Clone, Copy, PartialEq)]
 struct ShortMove(u16);
 
 impl ShortMove {
