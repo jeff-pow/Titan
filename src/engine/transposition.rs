@@ -1,7 +1,6 @@
 use std::mem;
 
 use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKMATE};
-use rustc_hash::FxHashMap;
 
 pub struct TableEntry {
     depth: i16,
@@ -66,12 +65,32 @@ impl TableEntry {
     }
 }
 
+pub struct TranspositionTable {
+    arr: Vec<TableEntry>,
+}
+
+impl TranspositionTable {
+    pub fn new() -> Self {
+        let entry_size = mem::size_of::<TableEntry>();
+        Self {
+            arr: Vec::with_capacity(BYTES / entry_size),
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.arr.clear();
+    }
+
+    pub fn push(&self, hash: u64, m: Move, depth: i32, flag: EntryFlag, eval: i32, ply: i32) {
+        let key = hash >> 48;
+        let idx = hash as usize & self.arr.len() - 1;
+        let entry = TableEntry::new(depth, ply, flag, eval, m);
+    }
+}
+
 const TARGET_TABLE_SIZE_MB: usize = 64;
 const BYTES_PER_MB: usize = 1024 * 1024;
-pub fn get_table() -> FxHashMap<u64, TableEntry> {
-    let entry_size = mem::size_of::<TableEntry>();
-    FxHashMap::with_capacity_and_hasher(TARGET_TABLE_SIZE_MB * BYTES_PER_MB / entry_size, Default::default())
-}
+const BYTES: usize = TARGET_TABLE_SIZE_MB * BYTES_PER_MB;
 
 /// Storing a 32 bit move in the transposition table is a waste of space, as 16 bits contains all
 /// you need. However, 32 bits is nice for extra information such as what piece moved, so moves are
