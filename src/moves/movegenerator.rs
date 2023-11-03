@@ -82,11 +82,35 @@ impl MoveGenerator {
 /// Generates all pseudolegal moves
 pub fn generate_moves(board: &Board, gen_type: MGT) -> MoveList {
     let mut moves = MoveList::default();
-    generate_bitboard_moves(board, PieceName::Knight, gen_type, &mut moves);
-    generate_bitboard_moves(board, PieceName::King, gen_type, &mut moves);
-    generate_bitboard_moves(board, PieceName::Queen, gen_type, &mut moves);
-    generate_bitboard_moves(board, PieceName::Rook, gen_type, &mut moves);
-    generate_bitboard_moves(board, PieceName::Bishop, gen_type, &mut moves);
+
+    for piece_name in PieceName::iter() {
+        // Don't calculate any moves if no pieces of that type exist for the given color
+        let occ_bitboard = board.bitboard(board.to_move, piece_name);
+        for sq in occ_bitboard {
+            let occupancies = board.occupancies();
+            let attack_bitboard = match piece_name {
+                PieceName::King => MG.king_attacks(sq),
+                PieceName::Queen => MG.rook_attacks(sq, occupancies) | MG.bishop_attacks(sq, occupancies),
+                PieceName::Rook => MG.rook_attacks(sq, occupancies),
+                PieceName::Bishop => MG.bishop_attacks(sq, occupancies),
+                PieceName::Knight => MG.knight_attacks(sq),
+                PieceName::Pawn => Bitboard(0),
+            };
+            let attacks = match gen_type {
+                MoveGenerationType::CapturesOnly => attack_bitboard & board.color_occupancies(!board.to_move),
+                MoveGenerationType::QuietsOnly => attack_bitboard & !board.occupancies(),
+                MoveGenerationType::All => attack_bitboard & (!board.color_occupancies(board.to_move)),
+            };
+            for dest in attacks {
+                moves.push(Move::new(sq, dest, piece_name));
+            }
+        }
+    }
+
+    // generate_bitboard_moves(board, PieceName::King, gen_type, &mut moves);
+    // generate_bitboard_moves(board, PieceName::Queen, gen_type, &mut moves);
+    // generate_bitboard_moves(board, PieceName::Rook, gen_type, &mut moves);
+    // generate_bitboard_moves(board, PieceName::Bishop, gen_type, &mut moves);
     generate_pawn_moves(board, gen_type, &mut moves);
     if gen_type == MGT::QuietsOnly || gen_type == MGT::All {
         generate_castling_moves(board, &mut moves);
