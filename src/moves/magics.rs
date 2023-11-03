@@ -23,7 +23,7 @@ impl Rng {
     pub fn next_u64(&mut self) -> u64 {
         self.0 = self.0.wrapping_mul(0x2360EDC65DA45);
         let rot = (self.0 >> 48) as u32;
-        let xsl = (self.0 >> 32) as u64 ^ self.0 as u64;
+        let xsl = (self.0 >> 32) ^ self.0;
         xsl.rotate_right(rot)
     }
 

@@ -1,7 +1,6 @@
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use crate::moves::moves::Direction::*;
 use crate::types::{bitboard::Bitboard, pieces::Color, square::Square};
 
 const FILE_A_U64: u64 = 0x101010101010101;
@@ -107,24 +106,11 @@ pub(crate) fn gen_knight_attack_boards() -> [Bitboard; 64] {
 pub(crate) fn gen_pawn_attack_boards() -> [[Bitboard; 64]; 2] {
     let mut arr = [[Bitboard::EMPTY; 64]; 2];
     for sq in Square::iter() {
-        let bb_square = sq.bitboard();
-        let mut w = Bitboard::EMPTY;
-        if let Some(w1) = bb_square.checked_shift(NorthEast) {
-            w |= w1;
-        }
-        if let Some(w2) = bb_square.checked_shift(NorthWest) {
-            w |= w2;
-        }
-        arr[Color::White.idx()][sq.idx()] = w;
+        arr[Color::White.idx()][sq.idx()] =
+            Bitboard((sq.bitboard() & !FILE_A).0 << 7 | ((sq.bitboard() & !FILE_H).0 << 9));
 
-        let mut b = Bitboard::EMPTY;
-        if let Some(b1) = bb_square.checked_shift(SouthWest) {
-            b |= b1;
-        }
-        if let Some(b2) = bb_square.checked_shift(SouthEast) {
-            b |= b2;
-        }
-        arr[Color::Black.idx()][sq.idx()] = b;
+        arr[Color::Black.idx()][sq.idx()] =
+            Bitboard((sq.bitboard() & !FILE_A).0 >> 9 | ((sq.bitboard() & !FILE_H).0 >> 7));
     }
     arr
 }
