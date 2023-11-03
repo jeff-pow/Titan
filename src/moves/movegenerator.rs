@@ -199,18 +199,14 @@ fn generate_pawn_moves(board: &Board, gen_type: MGT, moves: &mut MoveList) {
         let no_capture_promotions = promotions.shift(up) & vacancies;
         let left_capture_promotions = promotions.shift(up_left) & enemies;
         let right_capture_promotions = promotions.shift(up_right) & enemies;
-        if matches!(gen_type, MGT::All | MGT::QuietsOnly) {
-            for dest in no_capture_promotions {
-                generate_promotions(dest, down, moves);
-            }
+        for dest in no_capture_promotions {
+            generate_promotions(dest, down, moves);
         }
-        if matches!(gen_type, MGT::All | MGT::CapturesOnly) {
-            for dest in left_capture_promotions {
-                generate_promotions(dest, down_right, moves);
-            }
-            for dest in right_capture_promotions {
-                generate_promotions(dest, down_left, moves);
-            }
+        for dest in left_capture_promotions {
+            generate_promotions(dest, down_right, moves);
+        }
+        for dest in right_capture_promotions {
+            generate_promotions(dest, down_left, moves);
         }
     }
 
