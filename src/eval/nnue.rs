@@ -10,7 +10,7 @@ pub const INPUT_SIZE: usize = 768;
 const HIDDEN_SIZE: usize = 768;
 const Q: i32 = 255 * 64;
 const SCALE: i32 = 400;
-const NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net.nnue")) };
+static NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net.nnue")) };
 
 type Block = [i16; HIDDEN_SIZE];
 
@@ -67,10 +67,6 @@ impl Board {
         let (us, them) = (self.accumulator.0[self.to_move.idx()], self.accumulator.0[(!self.to_move).idx()]);
         let weights = &NET.output_weights;
 
-        // So this is odd... It crashes if I don't take the address and deref
-        // I don't know enough rust to fix it
-        // ¯\_(ツ)_/¯
-        // let mut output = i32::from(*&NET.output_bias);
         let mut output = i32::from(NET.output_bias);
 
         for (&i, &w) in us.iter().zip(&weights[0]) {

@@ -25,7 +25,6 @@ pub const MAX_SEARCH_DEPTH: i32 = 100;
 pub const INIT_ASP: i32 = 10;
 
 /// Begin LMR if more than this many moves have been searched
-// TODO: Test this at 1
 pub const LMR_THRESHOLD: i32 = 2;
 pub const MIN_LMR_DEPTH: i32 = 2;
 const MAX_CAPTURE_SEE_DEPTH: i32 = 6;
@@ -201,8 +200,8 @@ fn alpha_beta(
             return eval;
         }
     }
-    // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval, isn't a
-    // PV node, and is a cutNode (?)
+    // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval and isn't a
+    // PV node
     else if depth >= MIN_IIR_DEPTH && !is_pv_node {
         depth -= 1;
     }

@@ -93,35 +93,30 @@ impl MoveList {
     ) {
         for i in 0..self.len {
             let entry = &mut self.arr[i];
-            let m = &mut entry.m;
-            let score = &mut entry.score;
-            let piece_moving = board.piece_at(m.origin_square()).unwrap();
-            let capture = board.capture(*m);
-            let promotion = m.promotion();
             let prev = info.current_line.last().unwrap_or(&Move::NULL);
             let counter = info.history.get_counter(board.to_move, *prev);
-            if *m == table_move {
-                *score = TTMOVE;
-            } else if let Some(promotion) = promotion {
+            entry.score = if entry.m == table_move {
+                TTMOVE
+            } else if let Some(promotion) = entry.m.promotion() {
                 match promotion {
-                    Promotion::Queen => *score = QUEEN_PROMOTION,
-                    _ => *score = BAD_PROMOTION,
+                    Promotion::Queen => QUEEN_PROMOTION,
+                    _ => BAD_PROMOTION,
                 }
-            } else if let Some(c) = capture {
-                *score = if see(board, *m, -PieceName::Pawn.value()) {
+            } else if let Some(c) = board.capture(entry.m) {
+                (if see(board, entry.m, -PieceName::Pawn.value()) {
                     GOOD_CAPTURE
                 } else {
                     BAD_CAPTURE
-                } + MVV_LVA[piece_moving.idx()][c.idx()];
-            } else if killers[0] == *m {
-                *score = KILLER_ONE;
-            } else if killers[1] == *m {
-                *score = KILLER_TWO;
-            } else if counter == *m {
-                *score = COUNTER_MOVE;
+                }) + MVV_LVA[board.piece_at(entry.m.origin_square()).unwrap().idx()][c.idx()]
+            } else if killers[0] == entry.m {
+                KILLER_ONE
+            } else if killers[1] == entry.m {
+                KILLER_TWO
+            } else if counter == entry.m {
+                COUNTER_MOVE
             } else {
-                *score = info.history.get_history(*m, board.to_move);
-            }
+                info.history.get_history(entry.m, board.to_move)
+            };
         }
     }
 }
