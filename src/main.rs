@@ -6,8 +6,8 @@ pub mod moves;
 pub mod search;
 pub mod types;
 
+use crate::moves::magics::Rng;
 use engine::uci::main_loop;
-use crate::board::fen::build_board;
 
 fn main() {
     main_loop();

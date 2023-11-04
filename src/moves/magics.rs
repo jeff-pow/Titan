@@ -11,20 +11,21 @@ use super::moves::{Direction, Direction::*};
 /// https://github.com/mvanthoor/rustic/
 
 /// Simple Pcg64Mcg implementation
+// No repetitions as 100B iterations
 pub struct Rng(u64);
 
 impl Default for Rng {
     fn default() -> Self {
-        Self(0xE926E6210D9E3486 | 1)
+        Self(0xE926E6210D9E3487)
     }
 }
 
 impl Rng {
     pub fn next_u64(&mut self) -> u64 {
-        self.0 = self.0.wrapping_mul(0x2360EDC65DA45);
-        let rot = (self.0 >> 48) as u32;
-        let xsl = (self.0 >> 32) ^ self.0;
-        xsl.rotate_right(rot)
+        self.0 ^= self.0 << 21;
+        self.0 ^= self.0 >> 35;
+        self.0 ^= self.0 << 4;
+        self.0
     }
 
     /// Method returns u64s with an average of 8 bits active, the desirable range for magic numbers

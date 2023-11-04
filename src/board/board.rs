@@ -354,13 +354,13 @@ impl Board {
 
         self.num_moves += 1;
 
-        self.zobrist_hash = self.generate_hash();
-
         self.add_to_history();
 
         self.prev_move = m;
 
         self.in_check = self.in_check(self.to_move);
+
+        self.zobrist_hash = self.generate_hash();
 
         // Return false if the move leaves the opposite side in check, denoting an invalid move
         !self.in_check(!self.to_move)
@@ -467,13 +467,21 @@ impl fmt::Debug for Board {
             str += "q"
         };
         str += "\n";
+        str += "En Passant Square: ";
         if let Some(s) = &self.en_passant_square {
-            str += "En Passant Square: ";
             str += &s.to_string();
+        }
+        else {
+            str += "None";
         }
         str += "\n";
         str += "Num moves made: ";
         str += &self.num_moves.to_string();
+        str += "\n";
+        str += "Prev move: ";
+        str += &self.prev_move.to_san();
+        str += "\n";
+
         write!(f, "{}", str)
     }
 }

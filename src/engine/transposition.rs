@@ -2,7 +2,7 @@ use std::mem;
 
 use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKMATE};
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct TableEntry {
     key: u16,
     depth: i16,
@@ -34,7 +34,7 @@ impl TableEntry {
     }
 }
 
-#[derive(Clone, Copy, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum EntryFlag {
     #[default]
     None,
@@ -73,6 +73,9 @@ impl TranspositionTable {
         let idx = index(hash);
         let key = hash as u16;
         let entry = self.vec[idx];
+        // dbg!(idx);
+        // dbg!(key);
+        // dbg!(entry);
 
         if entry.key != key {
             // if board != &entry.board {
@@ -113,7 +116,7 @@ impl TranspositionTable {
 
 impl Default for TranspositionTable {
     fn default() -> Self {
-        println!("{} elements in table", TABLE_CAPACITY);
+        println!("{} elements in hash table", TABLE_CAPACITY);
         Self {
             vec: vec![TableEntry::default(); TABLE_CAPACITY],
         }
@@ -125,7 +128,7 @@ fn index(hash: u64) -> usize {
     ((u128::from(hash) * (TABLE_CAPACITY as u128)) >> 64) as usize
 }
 
-const TARGET_TABLE_SIZE_MB: usize = 64;
+const TARGET_TABLE_SIZE_MB: usize = 512;
 const BYTES_PER_MB: usize = 1024 * 1024;
 const BYTES: usize = TARGET_TABLE_SIZE_MB * BYTES_PER_MB;
 const ENTRY_SIZE: usize = mem::size_of::<TableEntry>();
@@ -135,7 +138,7 @@ const TABLE_CAPACITY: usize = BYTES / ENTRY_SIZE;
 /// you need. However, 32 bits is nice for extra information such as what piece moved, so moves are
 /// truncated before being placed in transposition table, and extracted back into 32 bits before
 /// being returned to caller
-#[derive(Clone, Copy, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 struct ShortMove(u16);
 
 impl ShortMove {
@@ -145,10 +148,14 @@ impl ShortMove {
 
     fn to_move(self, board: &Board) -> Move {
         let m = Move(self.0 as u32);
+        let piece_moving = board.piece_at(m.origin_square());
         if m == Move::NULL {
             m
-        } else {
-            Move(self.0 as u32 | (board.piece_at(m.origin_square()).unwrap().idx() << 16) as u32)
+        } else if let Some(p) = piece_moving {
+            Move(self.0 as u32 | (p.idx() << 16) as u32)
+        }
+        else {
+            Move::NULL
         }
     }
 }

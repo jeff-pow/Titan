@@ -186,6 +186,10 @@ fn alpha_beta(
         }
     }
 
+    if board.zobrist_hash ==3013136613770399001 && board.prev_move.to_san() == "e8d7" {
+        dbg!("here");
+    }
+
     let mut table_move = Move::NULL;
     let entry = info
         .transpos_table
@@ -196,22 +200,23 @@ fn alpha_beta(
         let flag = entry.flag();
         let table_eval = entry.eval();
         table_move = entry.best_move(board);
-        assert_eq!(entry.key(), entry.board.zobrist_hash as u16);
-        assert_eq!(entry.key(), board.zobrist_hash as u16);
-        assert_eq!(entry.board.bitboards, board.bitboards);
-        assert_eq!(entry.board.to_move, board.to_move);
-        assert_eq!(entry.board.prev_move, board.prev_move);
-        assert_eq!(entry.board.history, board.history);
-        assert_eq!(entry.board.en_passant_square, board.en_passant_square);
-
-
         if &entry.board != board {
-            dbg!(board);
-            dbg!(entry.board);
-            dbg!(board.zobrist_hash);
-            dbg!(entry.board.zobrist_hash);
-            panic!();
+            // dbg!(board);
+            // dbg!(entry.board);
+            // dbg!(board.zobrist_hash);
+            // dbg!(entry.board.zobrist_hash);
+            // println!();
+            // println!();
+            // println!();
+            // println!();
         }
+        // assert_eq!(entry.key(), entry.board.zobrist_hash as u16);
+        // assert_eq!(entry.key(), board.zobrist_hash as u16);
+        // assert_eq!(entry.board.bitboards, board.bitboards);
+        // assert_eq!(entry.board.to_move, board.to_move);
+        // assert_eq!(entry.board.en_passant_square, board.en_passant_square);
+
+
         if !is_pv_node
             && !is_root
             && depth <= entry.depth()
