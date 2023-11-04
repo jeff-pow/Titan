@@ -26,16 +26,20 @@ pub struct TranspositionTable {
 
 impl TranspositionTable {
     pub fn clear(&mut self) {
-        self.vec.iter_mut().for_each(|x| *x = TableEntry::default());
+        self.vec.clear();
     }
 
     pub fn push(&mut self, hash: u64, m: Move, depth: i32, flag: EntryFlag, eval: i32, ply: i32) {
-        let key = (hash >> 48) as u16;
-        let idx = hash as usize & (TABLE_CAPACITY - 1);
+        let idx = index(hash);
+        let key = hash as u16;
 
         let mut value = eval as i16;
         if value.abs() > NEAR_CHECKMATE as i16 {
             value += value.signum() * ply as i16;
+        }
+
+        if m != Move::NULL || key != self.vec[idx].key {
+            self.vec[idx].best_move = ShortMove::from_move(m);
         }
 
         let entry = TableEntry {
@@ -45,14 +49,18 @@ impl TranspositionTable {
             eval: value,
             best_move: ShortMove::from_move(m),
         };
-        self.vec[idx] = entry;
+
+        if flag == EntryFlag::Exact || key != self.vec[idx].key {
+            self.vec[idx] = entry;
+        }
     }
 
     pub fn get(&self, ply: i32, depth: i32, alpha: i32, beta: i32, board: &Board) -> (Option<i32>, Move) {
-        let idx = board.zobrist_hash as usize & (TABLE_CAPACITY - 1);
-        let entry = self.vec[idx];
+        let idx = index(board.zobrist_hash);
+        let key = board.zobrist_hash as u16;
+        let entry = &self.vec[idx];
 
-        if (board.zobrist_hash >> 48) as u16 != entry.key {
+        if key != entry.key {
             return (None, Move::NULL);
         }
 
@@ -81,6 +89,11 @@ impl Default for TranspositionTable {
             vec: vec![TableEntry::default(); TABLE_CAPACITY],
         }
     }
+}
+
+// Seen in virithidas and Alexandria
+fn index(hash: u64) -> usize {
+    ((u128::from(hash) * (TABLE_CAPACITY as u128)) >> 64) as usize
 }
 
 const TARGET_TABLE_SIZE_MB: usize = 64;

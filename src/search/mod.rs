@@ -40,7 +40,7 @@ pub struct SearchInfo {
 
 impl Default for SearchInfo {
     fn default() -> Self {
-        let mut table = TranspositionTable::default();
+        let table = TranspositionTable::default();
         Self {
             board: build_board(STARTING_FEN),
             transpos_table: Arc::new(RwLock::new(table)),
