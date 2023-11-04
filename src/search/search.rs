@@ -218,11 +218,11 @@ fn alpha_beta(
             return table_eval;
         }
 
-        if !((static_eval > table_eval && flag == EntryFlag::BetaCutOff)
-            || (static_eval < table_eval && flag == EntryFlag::AlphaUnchanged))
-        {
-            static_eval = table_eval;
-        }
+        // if !((static_eval > table_eval && flag == EntryFlag::BetaCutOff)
+        //     || (static_eval < table_eval && flag == EntryFlag::AlphaUnchanged))
+        // {
+        //     static_eval = table_eval;
+        // }
     }
     // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval and isn't a
     // PV node
@@ -252,6 +252,7 @@ fn alpha_beta(
     let hist_bonus = (155 * depth).min(2000);
 
     if !is_root && !is_pv_node && !in_check {
+        let static_eval = board.evaluate();
         // Reverse futility pruning
         if static_eval - RFP_MULTIPLIER * depth >= beta && depth < MAX_RFP_DEPTH && static_eval.abs() < NEAR_CHECKMATE {
             return static_eval;

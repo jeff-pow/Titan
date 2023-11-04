@@ -29,12 +29,12 @@ pub fn quiescence(
         return board.evaluate();
     }
 
-    let (_, table_move) = info.transpos_table.read().unwrap().get(ply, 0, alpha, beta, board);
+    // let (_, table_move) = info.transpos_table.read().unwrap().get(ply, 0, alpha, beta, board);
+    let table_move = Move::NULL;
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
 
     let stand_pat = board.evaluate();
-
     if stand_pat >= beta {
         return stand_pat;
     }
