@@ -59,10 +59,7 @@ impl Board {
             }
         }
 
-        match self.en_passant_square {
-            Some(x) => hash ^= ZOBRIST.en_passant[x.idx()],
-            None => (),
-        }
+        if let Some(x) = self.en_passant_square { hash ^= ZOBRIST.en_passant[x.idx()] }
 
         if self.can_castle(Castle::WhiteKing) {
             hash ^= ZOBRIST.castling[0];

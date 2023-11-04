@@ -7,6 +7,7 @@ pub mod search;
 pub mod types;
 
 use engine::uci::main_loop;
+use crate::board::fen::build_board;
 
 fn main() {
     main_loop();

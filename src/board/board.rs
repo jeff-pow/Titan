@@ -31,7 +31,7 @@ pub struct Board {
     pub num_moves: usize,
     pub half_moves: usize,
     pub zobrist_hash: u64,
-    history: BoardHistory,
+    pub history: BoardHistory,
     pub accumulator: Accumulator,
     pub in_check: bool,
 }
@@ -201,7 +201,7 @@ impl Board {
         self.square_under_attack(!side, king_square)
     }
 
-    fn add_to_history(&mut self) {
+    pub fn add_to_history(&mut self) {
         self.history.push(self.zobrist_hash);
     }
 
@@ -364,6 +364,15 @@ impl Board {
 
         // Return false if the move leaves the opposite side in check, denoting an invalid move
         !self.in_check(!self.to_move)
+    }
+
+    pub fn make_null_move(&mut self) {
+        self.to_move = !self.to_move;
+        self.num_moves += 1;
+        self.en_passant_square = None;
+        self.prev_move = Move::NULL;
+        self.add_to_history();
+        self.zobrist_hash = self.generate_hash();
     }
 
     #[allow(dead_code)]

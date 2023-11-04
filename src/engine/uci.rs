@@ -65,6 +65,7 @@ pub fn main_loop() -> ! {
             }
         } else if buffer.eq("d\n") {
             dbg!(&search_info.board);
+            // println!("{}", &search_info.board);
         } else if buffer.eq("dbg\n") {
             dbg!(&search_info.board);
             search_info.board.debug_bitboards();

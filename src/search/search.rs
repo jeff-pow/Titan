@@ -198,7 +198,13 @@ fn alpha_beta(
         table_move = entry.best_move(board);
         assert_eq!(entry.key(), entry.board.zobrist_hash as u16);
         assert_eq!(entry.key(), board.zobrist_hash as u16);
-        // assert_eq!(&entry.board, board);
+        assert_eq!(entry.board.bitboards, board.bitboards);
+        assert_eq!(entry.board.to_move, board.to_move);
+        assert_eq!(entry.board.prev_move, board.prev_move);
+        assert_eq!(entry.board.history, board.history);
+        assert_eq!(entry.board.en_passant_square, board.en_passant_square);
+
+
         if &entry.board != board {
             dbg!(board);
             dbg!(entry.board);
@@ -245,10 +251,7 @@ fn alpha_beta(
         if board.has_non_pawns(board.to_move) && depth >= MIN_NMP_DEPTH && static_eval >= beta && board.can_nmp() {
             let mut node_pvs = Vec::new();
             let mut new_b = board.to_owned();
-            new_b.to_move = !new_b.to_move;
-            new_b.en_passant_square = None;
-            new_b.prev_move = Move::NULL;
-            new_b.generate_hash();
+            new_b.make_null_move();
             let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
             let mut null_eval = -alpha_beta(depth - r, -beta, -beta + 1, &mut node_pvs, info, &new_b, !cut_node);
             if null_eval >= beta {
