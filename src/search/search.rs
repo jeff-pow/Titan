@@ -3,7 +3,7 @@ use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
 use crate::board::board::Board;
-use crate::engine::transposition::{EntryFlag, TableEntry};
+use crate::engine::transposition::EntryFlag;
 use crate::moves::movegenerator::{generate_moves, MGT};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::moves::Move;
@@ -187,13 +187,7 @@ fn alpha_beta(
     }
 
     // Attempt to read eval, or at least a suggestion for the best move from transposition table
-    let (table_value, table_move) = {
-        if let Some(entry) = info.transpos_table.read().unwrap().get(&board.zobrist_hash) {
-            entry.get(depth, ply, alpha, beta, board)
-        } else {
-            (None, Move::NULL)
-        }
-    };
+    let (table_value, table_move) = info.transpos_table.read().unwrap().get(ply, depth, alpha, beta, board);
     if let Some(eval) = table_value {
         if !is_root && !is_pv_node {
             // This can cut off evals in certain cases, but it's easy to implement :)
@@ -392,7 +386,7 @@ fn alpha_beta(
     info.transpos_table
         .write()
         .unwrap()
-        .insert(board.zobrist_hash, TableEntry::new(depth, ply, entry_flag, best_score, best_move));
+        .push(board.zobrist_hash, best_move, depth, entry_flag, best_score, ply);
 
     best_score
 }

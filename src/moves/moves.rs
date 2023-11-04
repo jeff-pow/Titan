@@ -80,7 +80,7 @@ impl Direction {
 /// bit 16-19: piece moving - useful in continuation history
 /// NOTE: en passant bit is set only when a pawn can be captured
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Move(u32);
+pub struct Move(pub u32);
 
 impl Move {
     pub const NULL: Move = Move(0);
@@ -122,11 +122,6 @@ impl Move {
 
     pub fn new_en_passant(origin: Square, destination: Square) -> Self {
         Self::full_move(origin, destination, None, MoveType::EnPassant, PieceName::Pawn)
-    }
-
-    /// Creates a move from a raw u32. I hope you know what you're doing...
-    pub fn raw(m: u32) -> Self {
-        Self(m)
     }
 
     pub fn is_capture(self, board: &Board) -> bool {
