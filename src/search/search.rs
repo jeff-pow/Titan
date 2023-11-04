@@ -186,25 +186,26 @@ fn alpha_beta(
         }
     }
 
-    // Attempt to read eval, or at least a suggestion for the best move from transposition table
-    // let (table_value, table_move) = info.transpos_table.read().unwrap().get(ply, depth, alpha, beta, board);
-    // if let Some(eval) = table_value {
-    //     if !is_root && !is_pv_node {
-    //         // This can cut off evals in certain cases, but it's easy to implement :)
-    //         return eval;
-    //     }
-    // }
     let mut table_move = Move::NULL;
-    let mut static_eval = -INFINITY;
     let entry = info
         .transpos_table
         .read()
         .unwrap()
-        .tt_entry_get(board.zobrist_hash, ply);
+        .tt_entry_get(board.zobrist_hash, board);
     if let Some(entry) = entry {
         let flag = entry.flag();
         let table_eval = entry.eval();
         table_move = entry.best_move(board);
+        assert_eq!(entry.key(), entry.board.zobrist_hash as u16);
+        assert_eq!(entry.key(), board.zobrist_hash as u16);
+        // assert_eq!(&entry.board, board);
+        if &entry.board != board {
+            dbg!(board);
+            dbg!(entry.board);
+            dbg!(board.zobrist_hash);
+            dbg!(entry.board.zobrist_hash);
+            panic!();
+        }
         if !is_pv_node
             && !is_root
             && depth <= entry.depth()
@@ -217,12 +218,6 @@ fn alpha_beta(
         {
             return table_eval;
         }
-
-        // if !((static_eval > table_eval && flag == EntryFlag::BetaCutOff)
-        //     || (static_eval < table_eval && flag == EntryFlag::AlphaUnchanged))
-        // {
-        //     static_eval = table_eval;
-        // }
     }
     // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval and isn't a
     // PV node
@@ -232,18 +227,6 @@ fn alpha_beta(
 
     if depth <= 0 {
         return quiescence(ply, alpha, beta, pv, info, board);
-    }
-
-    if entry.is_none() {
-        static_eval = board.evaluate();
-        info.transpos_table.write().unwrap().push(
-            board.zobrist_hash,
-            Move::NULL,
-            depth,
-            EntryFlag::None,
-            static_eval,
-            ply,
-        );
     }
 
     let mut best_score = -INFINITY;
@@ -265,6 +248,7 @@ fn alpha_beta(
             new_b.to_move = !new_b.to_move;
             new_b.en_passant_square = None;
             new_b.prev_move = Move::NULL;
+            new_b.generate_hash();
             let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
             let mut null_eval = -alpha_beta(depth - r, -beta, -beta + 1, &mut node_pvs, info, &new_b, !cut_node);
             if null_eval >= beta {
@@ -427,7 +411,7 @@ fn alpha_beta(
     info.transpos_table
         .write()
         .unwrap()
-        .push(board.zobrist_hash, best_move, depth, entry_flag, best_score, ply);
+        .push(board.zobrist_hash, best_move, depth, entry_flag, best_score, board);
 
     best_score
 }

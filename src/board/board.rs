@@ -19,9 +19,9 @@ use crate::{
 
 use super::move_history::BoardHistory;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct Board {
-    bitboards: [Bitboard; NUM_PIECES],
+    pub bitboards: [Bitboard; NUM_PIECES],
     color_occupancies: [Bitboard; 2],
     pub array_board: [Option<Piece>; 64],
     pub to_move: Color,

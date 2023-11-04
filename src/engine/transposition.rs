@@ -9,6 +9,7 @@ pub struct TableEntry {
     flag: EntryFlag,
     eval: i16,
     best_move: ShortMove,
+    pub board: Board,
 }
 
 impl TableEntry {
@@ -52,51 +53,36 @@ impl TranspositionTable {
         self.vec.clear();
     }
 
-    pub fn push(&mut self, hash: u64, m: Move, depth: i32, flag: EntryFlag, eval: i32, ply: i32) {
+    pub fn push(&mut self, hash: u64, m: Move, depth: i32, flag: EntryFlag, eval: i32, board: &Board) {
         let idx = index(hash);
         let key = hash as u16;
-
-        let mut value = eval as i16;
-        if value.abs() > NEAR_CHECKMATE as i16 {
-            value += value.signum() * ply as i16;
-        }
-
-        // if m != Move::NULL || key != self.vec[idx].key {
-        //     self.vec[idx].best_move = ShortMove::from_move(m);
-        // }
 
         let entry = TableEntry {
             key,
             depth: depth as i16,
             flag,
-            eval: value,
+            eval: eval as i16,
             best_move: ShortMove::from_move(m),
+            board: board.clone(),
         };
 
         self.vec[idx] = entry;
-
-        // if flag == EntryFlag::Exact || key != self.vec[idx].key {
-        //     self.vec[idx] = entry;
-        // }
     }
 
-    pub fn tt_entry_get(&self, hash: u64, ply: i32) -> Option<TableEntry> {
+    pub fn tt_entry_get(&self, hash: u64, board: &Board) -> Option<TableEntry> {
         let idx = index(hash);
         let key = hash as u16;
-        let mut entry = self.vec[idx];
+        let entry = self.vec[idx];
 
         if entry.key != key {
+            // if board != &entry.board {
             return None;
         }
-        entry.eval -= if entry.eval.abs() > NEAR_CHECKMATE as i16 {
-            entry.eval.signum() * ply as i16
-        } else {
-            0
-        };
         Some(entry)
     }
 
-    pub fn get(&self, ply: i32, depth: i32, alpha: i32, beta: i32, board: &Board) -> (Option<i32>, Move) {
+    #[allow(dead_code)]
+    fn get(&self, ply: i32, depth: i32, alpha: i32, beta: i32, board: &Board) -> (Option<i32>, Move) {
         let idx = index(board.zobrist_hash);
         let key = board.zobrist_hash as u16;
         let entry = &self.vec[idx];
@@ -127,6 +113,7 @@ impl TranspositionTable {
 
 impl Default for TranspositionTable {
     fn default() -> Self {
+        println!("{} elements in table", TABLE_CAPACITY);
         Self {
             vec: vec![TableEntry::default(); TABLE_CAPACITY],
         }
@@ -186,7 +173,7 @@ mod transpos_tests {
         assert_eq!(m, Move::NULL);
 
         let m = Move::new(Square(12), Square(28), PieceName::Pawn);
-        table.push(b.zobrist_hash, m, 4, EntryFlag::Exact, 25, 3);
+        table.push(b.zobrist_hash, m, 4, EntryFlag::Exact, 25, &b);
         let (eval, m1) = table.get(2, 2, -250, 250, &b);
         assert_eq!(25, eval.unwrap());
         assert_eq!(m, m1);

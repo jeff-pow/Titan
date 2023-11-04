@@ -100,7 +100,8 @@ pub fn quiescence(
     info.transpos_table
         .write()
         .unwrap()
-        .push(board.zobrist_hash, best_move, 0, entry_flag, best_score, ply);
+        .push(board.zobrist_hash, best_move, 0, entry_flag, best_score, board);
+    // TODO: Best move here
 
     if in_check && moves_searched == 0 {
         return -CHECKMATE + ply;
