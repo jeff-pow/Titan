@@ -187,11 +187,41 @@ fn alpha_beta(
     }
 
     // Attempt to read eval, or at least a suggestion for the best move from transposition table
-    let (table_value, table_move) = info.transpos_table.read().unwrap().get(ply, depth, alpha, beta, board);
-    if let Some(eval) = table_value {
-        if !is_root && !is_pv_node {
-            // This can cut off evals in certain cases, but it's easy to implement :)
-            return eval;
+    // let (table_value, table_move) = info.transpos_table.read().unwrap().get(ply, depth, alpha, beta, board);
+    // if let Some(eval) = table_value {
+    //     if !is_root && !is_pv_node {
+    //         // This can cut off evals in certain cases, but it's easy to implement :)
+    //         return eval;
+    //     }
+    // }
+    let mut table_move = Move::NULL;
+    let mut static_eval = -INFINITY;
+    let entry = info
+        .transpos_table
+        .read()
+        .unwrap()
+        .tt_entry_get(board.zobrist_hash, ply);
+    if let Some(entry) = entry {
+        let flag = entry.flag();
+        let table_eval = entry.eval();
+        table_move = entry.best_move(board);
+        if !is_pv_node
+            && !is_root
+            && depth <= entry.depth()
+            && match flag {
+                EntryFlag::None => false,
+                EntryFlag::Exact => true,
+                EntryFlag::AlphaUnchanged => table_eval <= alpha,
+                EntryFlag::BetaCutOff => table_eval >= beta,
+            }
+        {
+            return table_eval;
+        }
+
+        if !((static_eval > table_eval && flag == EntryFlag::BetaCutOff)
+            || (static_eval < table_eval && flag == EntryFlag::AlphaUnchanged))
+        {
+            static_eval = table_eval;
         }
     }
     // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval and isn't a
@@ -204,14 +234,24 @@ fn alpha_beta(
         return quiescence(ply, alpha, beta, pv, info, board);
     }
 
+    if entry.is_none() {
+        static_eval = board.evaluate();
+        info.transpos_table.write().unwrap().push(
+            board.zobrist_hash,
+            Move::NULL,
+            depth,
+            EntryFlag::None,
+            static_eval,
+            ply,
+        );
+    }
+
     let mut best_score = -INFINITY;
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
     let hist_bonus = (155 * depth).min(2000);
 
     if !is_root && !is_pv_node && !in_check {
-        let static_eval = board.evaluate();
-
         // Reverse futility pruning
         if static_eval - RFP_MULTIPLIER * depth >= beta && depth < MAX_RFP_DEPTH && static_eval.abs() < NEAR_CHECKMATE {
             return static_eval;

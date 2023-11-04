@@ -3,7 +3,7 @@ use std::mem;
 use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKMATE};
 
 #[derive(Clone, Copy, Default)]
-struct TableEntry {
+pub struct TableEntry {
     key: u16,
     depth: i16,
     flag: EntryFlag,
@@ -11,9 +11,32 @@ struct TableEntry {
     best_move: ShortMove,
 }
 
+impl TableEntry {
+    pub fn key(&self) -> u16 {
+        self.key
+    }
+
+    pub fn depth(&self) -> i32 {
+        self.depth as i32
+    }
+
+    pub fn flag(&self) -> EntryFlag {
+        self.flag
+    }
+
+    pub fn eval(&self) -> i32 {
+        self.eval as i32
+    }
+
+    pub fn best_move(&self, b: &Board) -> Move {
+        self.best_move.to_move(b)
+    }
+}
+
 #[derive(Clone, Copy, Default, PartialEq)]
 pub enum EntryFlag {
     #[default]
+    None,
     Exact,
     AlphaUnchanged,
     BetaCutOff,
@@ -38,9 +61,9 @@ impl TranspositionTable {
             value += value.signum() * ply as i16;
         }
 
-        if m != Move::NULL || key != self.vec[idx].key {
-            self.vec[idx].best_move = ShortMove::from_move(m);
-        }
+        // if m != Move::NULL || key != self.vec[idx].key {
+        //     self.vec[idx].best_move = ShortMove::from_move(m);
+        // }
 
         let entry = TableEntry {
             key,
@@ -50,9 +73,27 @@ impl TranspositionTable {
             best_move: ShortMove::from_move(m),
         };
 
-        if flag == EntryFlag::Exact || key != self.vec[idx].key {
-            self.vec[idx] = entry;
+        self.vec[idx] = entry;
+
+        // if flag == EntryFlag::Exact || key != self.vec[idx].key {
+        //     self.vec[idx] = entry;
+        // }
+    }
+
+    pub fn tt_entry_get(&self, hash: u64, ply: i32) -> Option<TableEntry> {
+        let idx = index(hash);
+        let key = hash as u16;
+        let mut entry = self.vec[idx];
+
+        if entry.key != key {
+            return None;
         }
+        entry.eval -= if entry.eval.abs() > NEAR_CHECKMATE as i16 {
+            entry.eval.signum() * ply as i16
+        } else {
+            0
+        };
+        Some(entry)
     }
 
     pub fn get(&self, ply: i32, depth: i32, alpha: i32, beta: i32, board: &Board) -> (Option<i32>, Move) {
@@ -71,6 +112,7 @@ impl TranspositionTable {
 
         let eval = if depth <= entry.depth as i32
             && match entry.flag {
+                EntryFlag::None => false,
                 EntryFlag::Exact => true,
                 EntryFlag::AlphaUnchanged => value <= alpha,
                 EntryFlag::BetaCutOff => value >= beta,
