@@ -7,6 +7,7 @@ use itertools::Itertools;
 use crate::board::fen::parse_fen_from_buffer;
 use crate::board::zobrist::ZOBRIST;
 use crate::moves::movegenerator::MG;
+use crate::search::get_reduction;
 use crate::search::killers::empty_killers;
 use crate::search::search::{search, MAX_SEARCH_DEPTH};
 use crate::types::square::Square;
@@ -31,6 +32,7 @@ pub fn main_loop() -> ! {
     // constants. A large difference in STC
     let _ = ZOBRIST.turn_hash;
     let _ = MG.king_attacks(Square(0));
+    let _ = get_reduction(0, 0);
     println!("Ready to go!");
     let mut handle = None;
 
@@ -70,7 +72,7 @@ pub fn main_loop() -> ! {
             dbg!(&search_info.board);
             search_info.board.debug_bitboards();
         } else if buffer.starts_with("clear") {
-            search_info.transpos_table.write().unwrap().clear();
+            search_info.transpos_table.clear();
             search_info.killer_moves = empty_killers();
             println!("Transposition table cleared");
         } else if buffer.starts_with("go") {
