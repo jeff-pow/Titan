@@ -2,6 +2,13 @@ use std::mem;
 
 use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKMATE};
 
+pub static mut probes: usize = 0;
+pub static mut collisions: usize = 0;
+pub static mut successes: usize = 0;
+pub static mut overwrites: usize = 0;
+pub static mut writes: usize = 0;
+pub static mut bad_overwrites: usize = 0;
+
 #[derive(Clone, Copy, Debug, Default)]
 #[repr(C)]
 pub struct TableEntry {
@@ -45,7 +52,7 @@ pub enum EntryFlag {
 
 #[derive(Clone)]
 pub struct TranspositionTable {
-    vec: Box<[TableEntry]>,
+    pub vec: Box<[TableEntry]>,
 }
 
 impl TranspositionTable {
@@ -71,6 +78,16 @@ impl TranspositionTable {
             best_move: ShortMove::from_move(m),
         };
 
+        unsafe {
+            writes += 1;
+            let old_ref = &self.vec[idx];
+            if old_ref.depth > entry.depth {
+                bad_overwrites += 1;
+            } else {
+                overwrites += 1;
+            }
+        }
+
         self.vec[idx] = entry;
     }
 
@@ -78,10 +95,15 @@ impl TranspositionTable {
         let idx = index(hash);
         let key = hash as u16;
         let entry = self.vec[idx];
+        unsafe { probes += 1 };
 
         if entry.key != key {
+            unsafe { collisions += 1 };
             return None;
         }
+
+        unsafe { successes += 1 };
+
         Some(entry)
     }
 

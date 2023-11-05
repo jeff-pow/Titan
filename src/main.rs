@@ -9,6 +9,7 @@ pub mod types;
 use engine::uci::main_loop;
 
 use crate::board::zobrist::ZOBRIST;
+use crate::engine::transposition::{bad_overwrites, collisions, overwrites, probes, successes, writes};
 use crate::moves::movegenerator::MG;
 use crate::search::search::search;
 use crate::search::{SearchInfo, SearchType};
@@ -23,4 +24,23 @@ fn main() {
     search_info.search_type = SearchType::Depth;
     let mut s = search_info.clone();
     println!("bestmove {}", search(&mut s, depth).to_san());
+    unsafe {
+        dbg!(successes);
+        dbg!(collisions);
+        dbg!(probes);
+        dbg!(writes);
+        dbg!(overwrites);
+        dbg!(bad_overwrites);
+    }
+
+    dbg!(search_info
+        .transpos_table
+        .read()
+        .unwrap()
+        .vec
+        .clone()
+        .into_vec()
+        .iter()
+        .filter(|x| x.key() == 0)
+        .count());
 }
