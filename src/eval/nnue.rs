@@ -76,8 +76,9 @@ impl Board {
         for (&i, &w) in them.iter().zip(&weights[1]) {
             output += crelu(i) * i32::from(w);
         }
-
-        (output) * SCALE / Q
+        let a = (output) * SCALE / Q;
+        assert!(i16::MIN as i32 <= a && a <= i16::MAX as i32);
+        a
     }
 }
 

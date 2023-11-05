@@ -195,27 +195,11 @@ fn alpha_beta(
         .transpos_table
         .read()
         .unwrap()
-        .tt_entry_get(board.zobrist_hash, board);
+        .tt_entry_get(board.zobrist_hash);
     if let Some(entry) = entry {
         let flag = entry.flag();
         let table_eval = entry.eval();
         table_move = entry.best_move(board);
-        if &entry.board != board {
-            // dbg!(board);
-            // dbg!(entry.board);
-            // dbg!(board.zobrist_hash);
-            // dbg!(entry.board.zobrist_hash);
-            // println!();
-            // println!();
-            // println!();
-            // println!();
-        }
-        // assert_eq!(entry.key(), entry.board.zobrist_hash as u16);
-        // assert_eq!(entry.key(), board.zobrist_hash as u16);
-        // assert_eq!(entry.board.bitboards, board.bitboards);
-        // assert_eq!(entry.board.to_move, board.to_move);
-        // assert_eq!(entry.board.en_passant_square, board.en_passant_square);
-
 
         if !is_pv_node
             && !is_root
@@ -419,7 +403,7 @@ fn alpha_beta(
     info.transpos_table
         .write()
         .unwrap()
-        .push(board.zobrist_hash, best_move, depth, entry_flag, best_score, board);
+        .push(board.zobrist_hash, best_move, depth, entry_flag, best_score);
 
     best_score
 }

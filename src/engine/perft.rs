@@ -60,7 +60,6 @@ pub fn count_moves(depth: i32, board: &Board) -> usize {
 #[cfg(test)]
 mod movegen_tests {
     use std::{fs::File, io::BufRead, io::BufReader};
-    use rayon::prelude::IntoParallelIterator;
 
     // Positions and expected values from https://www.chessprogramming.org/Perft_Results
     use crate::{

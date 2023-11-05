@@ -187,6 +187,16 @@ impl Board {
             & self.bitboard(attacker, PieceName::Queen);
         let king_attacks = MG.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
         pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | queen_attacks | king_attacks
+
+        // let bishops = self.bitboard(attacker, PieceName::Queen) | self.bitboard(attacker, PieceName::Bishop);
+        // let rooks = self.bitboard(attacker, PieceName::Queen) | self.bitboard(attacker, PieceName::Rook);
+
+        // let pawn_attacks = MG.pawn_attacks(sq, !attacker) & self.bitboard(attacker, PieceName::Pawn);
+        // let knight_attacks = MG.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
+        // let bishop_attacks = MG.bishop_attacks(sq, occupancy) & bishops;
+        // let rook_attacks = MG.rook_attacks(sq, occupancy) & rooks;
+        // let king_attacks = MG.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
+        // pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks
     }
 
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
@@ -247,7 +257,7 @@ impl Board {
         let attack_bitboard = match piece.unwrap() {
             PieceName::Pawn => {
                 return if self.is_quiet(m) {
-                    self.occupancies().square_is_empty(dest)
+                    self.occupancies().empty(dest)
                 } else {
                     let attacks = MG.pawn_attacks(origin, origin_color);
                     let enemy_color = self.color_at(origin).unwrap();
@@ -269,7 +279,7 @@ impl Board {
 
     /// Returns true if a move does not capture a piece, and false if a piece is captured
     pub fn is_quiet(&self, m: Move) -> bool {
-        self.occupancies().square_is_empty(m.dest_square())
+        self.occupancies().empty(m.dest_square())
     }
 
     /// Function makes a move and modifies board state to reflect the move that just happened.
@@ -470,8 +480,7 @@ impl fmt::Debug for Board {
         str += "En Passant Square: ";
         if let Some(s) = &self.en_passant_square {
             str += &s.to_string();
-        }
-        else {
+        } else {
             str += "None";
         }
         str += "\n";
@@ -494,14 +503,14 @@ mod board_tests {
     fn test_place_piece() {
         let mut board = Board::default();
         board.place_piece(Rook, Color::White, Square(0));
-        assert!(board.bitboard(Color::White, PieceName::Rook).square_occupied(Square(0)));
+        assert!(board.bitboard(Color::White, PieceName::Rook).occupied(Square(0)));
     }
 
     #[test]
     fn test_remove_piece() {
         let mut board = fen::build_board(fen::STARTING_FEN);
         board.remove_piece(Square(0));
-        assert!(board.bitboard(Color::White, PieceName::Rook).square_is_empty(Square(0)));
-        assert!(board.occupancies().square_is_empty(Square(0)));
+        assert!(board.bitboard(Color::White, PieceName::Rook).empty(Square(0)));
+        assert!(board.occupancies().empty(Square(0)));
     }
 }

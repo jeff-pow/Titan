@@ -125,7 +125,7 @@ impl Move {
     }
 
     pub fn is_capture(self, board: &Board) -> bool {
-        board.occupancies().square_occupied(self.dest_square())
+        board.occupancies().occupied(self.dest_square())
     }
 
     pub fn is_castle(self) -> bool {

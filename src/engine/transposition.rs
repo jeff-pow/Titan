@@ -3,13 +3,13 @@ use std::mem;
 use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKMATE};
 
 #[derive(Clone, Copy, Debug, Default)]
+#[repr(C)]
 pub struct TableEntry {
-    key: u16,
-    depth: i16,
+    depth: u8,
     flag: EntryFlag,
+    key: u16,
     eval: i16,
     best_move: ShortMove,
-    pub board: Board,
 }
 
 impl TableEntry {
@@ -45,40 +45,39 @@ pub enum EntryFlag {
 
 #[derive(Clone)]
 pub struct TranspositionTable {
-    vec: Vec<TableEntry>,
+    vec: Box<[TableEntry]>,
 }
 
 impl TranspositionTable {
     pub fn clear(&mut self) {
-        self.vec.clear();
+        *self = Self::new()
     }
 
-    pub fn push(&mut self, hash: u64, m: Move, depth: i32, flag: EntryFlag, eval: i32, board: &Board) {
+    fn new () -> Self {
+        Self { vec: vec![TableEntry::default(); TABLE_CAPACITY].into_boxed_slice() }
+    }
+
+    pub fn push(&mut self, hash: u64, m: Move, depth: i32, flag: EntryFlag, eval: i32) {
         let idx = index(hash);
         let key = hash as u16;
 
         let entry = TableEntry {
             key,
-            depth: depth as i16,
+            depth: depth as u8,
             flag,
             eval: eval as i16,
             best_move: ShortMove::from_move(m),
-            board: *board,
         };
 
         self.vec[idx] = entry;
     }
 
-    pub fn tt_entry_get(&self, hash: u64, board: &Board) -> Option<TableEntry> {
+    pub fn tt_entry_get(&self, hash: u64) -> Option<TableEntry> {
         let idx = index(hash);
         let key = hash as u16;
         let entry = self.vec[idx];
-        // dbg!(idx);
-        // dbg!(key);
-        // dbg!(entry);
 
         if entry.key != key {
-            // if board != &entry.board {
             return None;
         }
         Some(entry)
@@ -117,9 +116,7 @@ impl TranspositionTable {
 impl Default for TranspositionTable {
     fn default() -> Self {
         println!("{} elements in hash table", TABLE_CAPACITY);
-        Self {
-            vec: vec![TableEntry::default(); TABLE_CAPACITY],
-        }
+        Self::new()
     }
 }
 
@@ -128,7 +125,7 @@ fn index(hash: u64) -> usize {
     ((u128::from(hash) * (TABLE_CAPACITY as u128)) >> 64) as usize
 }
 
-const TARGET_TABLE_SIZE_MB: usize = 512;
+const TARGET_TABLE_SIZE_MB: usize = 256;
 const BYTES_PER_MB: usize = 1024 * 1024;
 const BYTES: usize = TARGET_TABLE_SIZE_MB * BYTES_PER_MB;
 const ENTRY_SIZE: usize = mem::size_of::<TableEntry>();
@@ -180,7 +177,7 @@ mod transpos_tests {
         assert_eq!(m, Move::NULL);
 
         let m = Move::new(Square(12), Square(28), PieceName::Pawn);
-        table.push(b.zobrist_hash, m, 4, EntryFlag::Exact, 25, &b);
+        table.push(b.zobrist_hash, m, 4, EntryFlag::Exact, 25);
         let (eval, m1) = table.get(2, 2, -250, 250, &b);
         assert_eq!(25, eval.unwrap());
         assert_eq!(m, m1);

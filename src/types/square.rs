@@ -43,15 +43,11 @@ impl Square {
         Square(new_square as u8)
     }
 
-    /// Calculates the distance between two square
-    pub fn dist(self, sq: Square) -> u64 {
-        let y1 = self.rank();
-        let x1 = self.file();
-        let y2 = sq.rank();
-        let x2 = sq.file();
-        let x_diff = x1.abs_diff(x2);
-        let y_diff = y1.abs_diff(y2);
-        x_diff.max(y_diff) as u64
+    /// Calculates the distance between two squares
+    #[rustfmt::skip]
+    pub fn dist(self, other: Square) -> u8 {
+        self.file().abs_diff(other.file())
+            .max(self.rank().abs_diff(other.rank()))
     }
 
     /// Rank is the horizontal row of the piece (y-coord)
@@ -110,27 +106,8 @@ impl Square {
         Bitboard(1 << self.0)
     }
 
-    pub fn iter() -> SquareIter {
-        SquareIter { current: 0, end: 63 }
-    }
-}
-
-pub struct SquareIter {
-    current: u8,
-    end: u8,
-}
-
-impl Iterator for SquareIter {
-    type Item = Square;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.current <= self.end {
-            let square = Square(self.current);
-            self.current += 1;
-            Some(square)
-        } else {
-            None
-        }
+    pub fn iter() -> impl Iterator<Item = Self> {
+        (0..64).map(Self)
     }
 }
 
