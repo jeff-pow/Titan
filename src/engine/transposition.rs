@@ -63,7 +63,7 @@ impl TranspositionTable {
             flag,
             eval: eval as i16,
             best_move: ShortMove::from_move(m),
-            board: board.clone(),
+            board: *board,
         };
 
         self.vec[idx] = entry;
