@@ -7,37 +7,23 @@ use crate::engine::transposition::EntryFlag;
 use crate::moves::movegenerator::{generate_moves, MGT};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::moves::Move;
+use crate::search::INIT_ASP;
 
 use super::history_heuristics::MAX_HIST_VAL;
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
 use super::see::see;
-use super::{get_reduction, store_pv, SearchInfo, SearchType};
+use super::{
+    get_reduction, store_pv, SearchInfo, SearchType, CAPTURE_SEE_COEFFICIENT, LMP_CONST, LMP_DIVISOR, LMR_THRESHOLD,
+    MAX_CAPTURE_SEE_DEPTH, MAX_LMP_DEPTH, MAX_QUIET_SEE_DEPTH, MAX_RFP_DEPTH, MIN_IIR_DEPTH, MIN_LMR_DEPTH,
+    MIN_NMP_DEPTH, QUIET_SEE_COEFFICIENT, RFP_MULTIPLIER,
+};
 
 pub const CHECKMATE: i32 = 30000;
 pub const STALEMATE: i32 = 0;
 pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 50000;
 pub const MAX_SEARCH_DEPTH: i32 = 100;
-
-// Tunable Constants
-/// Initial aspiration window value
-pub const INIT_ASP: i32 = 10;
-
-/// Begin LMR if more than this many moves have been searched
-pub const LMR_THRESHOLD: i32 = 2;
-pub const MIN_LMR_DEPTH: i32 = 2;
-const MAX_CAPTURE_SEE_DEPTH: i32 = 6;
-const CAPTURE_SEE_COEFFICIENT: i32 = 15;
-const MAX_QUIET_SEE_DEPTH: i32 = 8;
-const QUIET_SEE_COEFFICIENT: i32 = 50;
-const MAX_LMP_DEPTH: i32 = 6;
-const LMP_DIVISOR: i32 = 2;
-const LMP_CONST: i32 = 3;
-const RFP_MULTIPLIER: i32 = 70;
-const MAX_RFP_DEPTH: i32 = 9;
-const MIN_NMP_DEPTH: i32 = 3;
-const MIN_IIR_DEPTH: i32 = 4;
 
 pub fn print_search_stats(info: &SearchInfo, eval: i32, pv: &[Move], iter_depth: i32) {
     print!(
@@ -187,7 +173,7 @@ fn alpha_beta(
     }
 
     let mut table_move = Move::NULL;
-    let entry = info.transpos_table.read().unwrap().tt_entry_get(board.zobrist_hash);
+    let entry = info.transpos_table.tt_entry_get(board.zobrist_hash);
     if let Some(entry) = entry {
         let flag = entry.flag();
         let table_eval = entry.eval();
@@ -300,7 +286,7 @@ fn alpha_beta(
             if !can_lmr {
                 1
             } else {
-                let mut r = get_reduction(info, depth, legal_moves_searched);
+                let mut r = get_reduction(depth, legal_moves_searched);
                 r += i32::from(!is_pv_node);
                 if is_quiet && cut_node {
                     r += 2;
@@ -393,8 +379,6 @@ fn alpha_beta(
     };
 
     info.transpos_table
-        .write()
-        .unwrap()
         .push(board.zobrist_hash, best_move, depth, entry_flag, best_score);
 
     best_score

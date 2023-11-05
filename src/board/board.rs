@@ -21,13 +21,13 @@ use super::move_history::BoardHistory;
 
 #[derive(Copy, Clone, PartialEq)]
 pub struct Board {
-    pub bitboards: [Bitboard; NUM_PIECES],
+    bitboards: [Bitboard; NUM_PIECES],
     color_occupancies: [Bitboard; 2],
     pub array_board: [Option<Piece>; 64],
     pub to_move: Color,
     pub castling_rights: u8,
     pub en_passant_square: Option<Square>,
-    pub prev_move: Move,
+    prev_move: Move,
     pub num_moves: usize,
     pub half_moves: usize,
     pub zobrist_hash: u64,

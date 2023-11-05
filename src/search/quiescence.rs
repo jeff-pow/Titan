@@ -29,7 +29,7 @@ pub fn quiescence(
         return board.evaluate();
     }
 
-    let table_move = if let Some(entry) = info.transpos_table.read().unwrap().tt_entry_get(board.zobrist_hash) {
+    let table_move = if let Some(entry) = info.transpos_table.tt_entry_get(board.zobrist_hash) {
         entry.best_move(board)
     } else {
         Move::NULL
@@ -101,8 +101,6 @@ pub fn quiescence(
     };
 
     info.transpos_table
-        .write()
-        .unwrap()
         .push(board.zobrist_hash, best_move, 0, entry_flag, best_score);
 
     if in_check && moves_searched == 0 {

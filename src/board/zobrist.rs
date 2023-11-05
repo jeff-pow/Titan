@@ -1,5 +1,3 @@
-// use std::collections::HashMap;
-
 use lazy_static::lazy_static;
 use strum::IntoEnumIterator;
 
@@ -59,7 +57,9 @@ impl Board {
             }
         }
 
-        if let Some(x) = self.en_passant_square { hash ^= ZOBRIST.en_passant[x.idx()] }
+        if let Some(x) = self.en_passant_square {
+            hash ^= ZOBRIST.en_passant[x.idx()]
+        }
 
         if self.can_castle(Castle::WhiteKing) {
             hash ^= ZOBRIST.castling[0];
