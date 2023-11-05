@@ -85,6 +85,7 @@ pub fn main_loop() -> ! {
                 let mut s = search_info.clone();
                 handle = Some(thread::spawn(move || {
                     println!("bestmove {}", search(&mut s, depth).to_san());
+                    s.transpos_table.age_up();
                 }));
             } else if buffer.contains("perft") {
                 let mut iter = buffer.split_whitespace().skip(2);
@@ -96,12 +97,14 @@ pub fn main_loop() -> ! {
                 let mut s = search_info.clone();
                 handle = Some(thread::spawn(move || {
                     println!("bestmove {}", search(&mut s, MAX_SEARCH_DEPTH).to_san());
+                    s.transpos_table.age_up();
                 }));
             } else {
                 search_info.search_type = SearchType::Infinite;
                 let mut s = search_info.clone();
                 handle = Some(thread::spawn(move || {
                     search(&mut s, MAX_SEARCH_DEPTH);
+                    s.transpos_table.age_up();
                 }));
             }
         } else if buffer.starts_with("stop") {

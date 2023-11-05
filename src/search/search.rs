@@ -85,7 +85,7 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
 
         let mut score;
         loop {
-            score = alpha_beta(info.iter_max_depth, alpha, beta, &mut pv_moves, info, board, false);
+            score = alpha_beta::<true>(info.iter_max_depth, alpha, beta, &mut pv_moves, info, board, false);
             if score <= alpha {
                 beta = (alpha + beta) / 2;
                 alpha = max(score - delta, -INFINITY);
@@ -126,7 +126,7 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
 /// to refute other variations
 #[allow(clippy::too_many_arguments)]
-fn alpha_beta(
+fn alpha_beta<const IS_PV: bool>(
     mut depth: i32,
     mut alpha: i32,
     beta: i32,
@@ -139,7 +139,6 @@ fn alpha_beta(
     let is_root = ply == 0;
     let in_check = board.in_check;
     // Is a zero width search if alpha and beta are one apart
-    let is_pv_node = (beta - alpha).abs() != 1;
     info.sel_depth = info.sel_depth.max(ply);
     // Don't do pvs unless you have a pv - otherwise you're wasting time
     if info.halt.load(Ordering::SeqCst) {
@@ -179,7 +178,7 @@ fn alpha_beta(
         let table_eval = entry.eval();
         table_move = entry.best_move(board);
 
-        if !is_pv_node
+        if !IS_PV
             && !is_root
             && depth <= entry.depth()
             && match flag {
@@ -194,7 +193,7 @@ fn alpha_beta(
     }
     // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval and isn't a
     // PV node
-    else if depth >= MIN_IIR_DEPTH && !is_pv_node {
+    else if depth >= MIN_IIR_DEPTH && !IS_PV {
         depth -= 1;
     }
 
@@ -207,7 +206,7 @@ fn alpha_beta(
     let original_alpha = alpha;
     let hist_bonus = (155 * depth).min(2000);
 
-    if !is_root && !is_pv_node && !in_check {
+    if !is_root && !IS_PV && !in_check {
         let static_eval = board.evaluate();
         // Reverse futility pruning
         if static_eval - RFP_MULTIPLIER * depth >= beta && depth < MAX_RFP_DEPTH && static_eval.abs() < NEAR_CHECKMATE {
@@ -220,7 +219,8 @@ fn alpha_beta(
             let mut new_b = board.to_owned();
             new_b.make_null_move();
             let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
-            let mut null_eval = -alpha_beta(depth - r, -beta, -beta + 1, &mut node_pvs, info, &new_b, !cut_node);
+            let mut null_eval =
+                -alpha_beta::<false>(depth - r, -beta, -beta + 1, &mut node_pvs, info, &new_b, !cut_node);
             if null_eval >= beta {
                 if null_eval > NEAR_CHECKMATE {
                     null_eval = beta;
@@ -230,7 +230,7 @@ fn alpha_beta(
                 }
                 // Concept from stockfish
                 info.nmp_plies = ply + (depth - r) / 3;
-                let null_eval = alpha_beta(depth - r, beta - 1, beta, &mut Vec::new(), info, board, false);
+                let null_eval = alpha_beta::<false>(depth - r, beta - 1, beta, &mut Vec::new(), info, board, false);
                 info.nmp_plies = 0;
                 if null_eval >= beta {
                     return null_eval;
@@ -254,7 +254,7 @@ fn alpha_beta(
                 // Late move pruning (LMP)
                 // By now all quiets have been searched.
                 if depth < MAX_LMP_DEPTH
-                    && !is_pv_node
+                    && !IS_PV
                     && !in_check
                     && legal_moves_searched > (LMP_CONST + depth * depth) / LMP_DIVISOR
                 {
@@ -287,7 +287,7 @@ fn alpha_beta(
                 1
             } else {
                 let mut r = get_reduction(depth, legal_moves_searched);
-                r += i32::from(!is_pv_node);
+                r += i32::from(!IS_PV);
                 if is_quiet && cut_node {
                     r += 2;
                 }
@@ -298,9 +298,6 @@ fn alpha_beta(
                         r += 1;
                     }
                 }
-                // if is_quiet && !see(&new_b, m, -50 * depth) {
-                //     depth += 1;
-                // }
                 // Don't let LMR send us into qsearch
                 r.clamp(1, depth - 1)
             }
@@ -309,16 +306,17 @@ fn alpha_beta(
         let eval = if legal_moves_searched == 0 {
             node_pvs.clear();
             // On the first move, just do a full depth search so we at least have a pv
-            -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
+            -alpha_beta::<true>(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
         } else {
             node_pvs.clear();
             // Start with a zero window reduced search
-            let zero_window = -alpha_beta(depth - r, -alpha - 1, -alpha, &mut Vec::new(), info, &new_b, !cut_node);
+            let zero_window =
+                -alpha_beta::<false>(depth - r, -alpha - 1, -alpha, &mut Vec::new(), info, &new_b, !cut_node);
 
             // If that search raises alpha and the reduction was more than one, do a research at a zero window with full depth
             let verification_score = if zero_window > alpha && r > 1 {
                 node_pvs.clear();
-                -alpha_beta(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node)
+                -alpha_beta::<false>(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node)
             } else {
                 zero_window
             };
@@ -326,7 +324,7 @@ fn alpha_beta(
             // If the verification score falls between alpha and beta, full window full depth search
             if verification_score > alpha && verification_score < beta {
                 node_pvs.clear();
-                -alpha_beta(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
+                -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
             } else {
                 verification_score
             }
@@ -379,7 +377,7 @@ fn alpha_beta(
     };
 
     info.transpos_table
-        .push(board.zobrist_hash, best_move, depth, entry_flag, best_score);
+        .store(board.zobrist_hash, best_move, depth, entry_flag, best_score, IS_PV);
 
     best_score
 }

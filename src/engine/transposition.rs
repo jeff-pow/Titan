@@ -13,7 +13,7 @@ use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKM
 /// being returned to caller
 pub struct TableEntry {
     depth: u8,
-    flag: EntryFlag,
+    other: u8,
     key: u16,
     eval: i16,
     best_move: u16,
@@ -29,7 +29,17 @@ impl TableEntry {
     }
 
     pub fn flag(self) -> EntryFlag {
-        self.flag
+        match self.other & 0b11 {
+            0 => EntryFlag::None,
+            1 => EntryFlag::AlphaUnchanged,
+            2 => EntryFlag::BetaCutOff,
+            3 => EntryFlag::Exact,
+            _ => unreachable!(),
+        }
+    }
+
+    fn age(self) -> u64 {
+        self.other as u64 >> 2
     }
 
     pub fn eval(self) -> i32 {
@@ -50,9 +60,9 @@ impl TableEntry {
 pub enum EntryFlag {
     #[default]
     None,
-    Exact,
     AlphaUnchanged,
     BetaCutOff,
+    Exact,
 }
 
 #[derive(Default)]
@@ -66,6 +76,7 @@ impl Clone for U64Wrapper {
 #[derive(Clone)]
 pub struct TranspositionTable {
     vec: Box<[U64Wrapper]>,
+    age: U64Wrapper,
 }
 
 impl TranspositionTable {
@@ -78,25 +89,51 @@ impl TranspositionTable {
     fn new() -> Self {
         Self {
             vec: vec![U64Wrapper::default(); TABLE_CAPACITY].into_boxed_slice(),
+            age: U64Wrapper::default(),
         }
     }
 
-    pub fn push(&self, hash: u64, m: Move, depth: i32, flag: EntryFlag, eval: i32) {
+    fn age(&self) -> u64 {
+        self.age.0.load(Ordering::Relaxed)
+    }
+
+    pub fn age_up(&self) {
+        // Keep age under 63 b/c that is the max age that fits in a table entry
+        self.age.0.store(63.min(self.age() + 1), Ordering::Relaxed);
+    }
+
+    pub fn store(&self, hash: u64, m: Move, depth: i32, flag: EntryFlag, eval: i32, is_pv: bool) {
         let idx = index(hash);
         let key = hash as u16;
 
-        let entry = TableEntry {
-            key,
-            depth: depth as u8,
-            flag,
-            eval: eval as i16,
-            best_move: m.as_u16(),
-        };
+        let old_entry: TableEntry = unsafe { transmute(self.vec[idx].clone().0.load(Ordering::SeqCst)) };
 
-        let number: u64 = unsafe { transmute(entry) };
+        if self.age() != old_entry.age()
+            || old_entry.key != key
+            || flag == EntryFlag::Exact
+            || depth as usize + 4 + 2 * usize::from(is_pv) > old_entry.depth as usize
+        {
+            // Don't overwrite a best move with a null move
 
-        if let Some(x) = self.vec.get(idx) {
-            x.0.store(number, Ordering::SeqCst)
+            let best_m = if m == Move::NULL && key == old_entry.key {
+                old_entry.best_move
+            } else {
+                m.as_u16()
+            };
+
+            let entry = TableEntry {
+                key,
+                depth: depth as u8,
+                other: (self.age() << 2) as u8 | flag as u8,
+                eval: eval as i16,
+                best_move: best_m,
+            };
+
+            let number: u64 = unsafe { transmute(entry) };
+
+            if let Some(x) = self.vec.get(idx) {
+                x.0.store(number, Ordering::SeqCst)
+            }
         }
     }
 
@@ -118,6 +155,7 @@ impl TranspositionTable {
     fn get(&self, ply: i32, depth: i32, alpha: i32, beta: i32, board: &Board) -> (Option<i32>, Move) {
         let idx = index(board.zobrist_hash);
         let key = board.zobrist_hash as u16;
+
         let wrapper = self.vec[idx].clone();
         let entry: TableEntry = unsafe { transmute(wrapper.0.load(Ordering::SeqCst)) };
 
@@ -131,7 +169,7 @@ impl TranspositionTable {
         }
 
         let eval = if depth <= entry.depth as i32
-            && match entry.flag {
+            && match entry.flag() {
                 EntryFlag::None => false,
                 EntryFlag::Exact => true,
                 EntryFlag::AlphaUnchanged => value <= alpha,
@@ -183,7 +221,7 @@ mod transpos_tests {
         assert_eq!(m, Move::NULL);
 
         let m = Move::new(Square(12), Square(28), PieceName::Pawn);
-        table.push(b.zobrist_hash, m, 4, EntryFlag::Exact, 25);
+        table.store(b.zobrist_hash, m, 4, EntryFlag::Exact, 25, false);
         let (eval, m1) = table.get(2, 2, -250, 250, &b);
         assert_eq!(25, eval.unwrap());
         assert_eq!(m, m1);

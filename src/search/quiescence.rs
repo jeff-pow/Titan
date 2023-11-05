@@ -101,7 +101,7 @@ pub fn quiescence(
     };
 
     info.transpos_table
-        .push(board.zobrist_hash, best_move, 0, entry_flag, best_score);
+        .store(board.zobrist_hash, best_move, 0, entry_flag, best_score, false);
 
     if in_check && moves_searched == 0 {
         return -CHECKMATE + ply;
