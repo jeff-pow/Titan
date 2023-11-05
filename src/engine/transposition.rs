@@ -53,8 +53,10 @@ impl TranspositionTable {
         *self = Self::new()
     }
 
-    fn new () -> Self {
-        Self { vec: vec![TableEntry::default(); TABLE_CAPACITY].into_boxed_slice() }
+    fn new() -> Self {
+        Self {
+            vec: vec![TableEntry::default(); TABLE_CAPACITY].into_boxed_slice(),
+        }
     }
 
     pub fn push(&mut self, hash: u64, m: Move, depth: i32, flag: EntryFlag, eval: i32) {
@@ -145,15 +147,11 @@ impl ShortMove {
 
     fn to_move(self, board: &Board) -> Move {
         let m = Move(self.0 as u32);
-        let piece_moving = board.piece_at(m.origin_square());
-        if m == Move::NULL {
-            m
-        } else if let Some(p) = piece_moving {
-            Move(self.0 as u32 | (p.idx() << 16) as u32)
-        }
-        else {
-            Move::NULL
-        }
+        // The reasoning here is if there is indeed a piece at the square in question, we can extract it.
+        // Otherwise use 0b111 which isn't a flag at all, and will thus not show equivalent to any
+        // generated moves. If the move is null, it won't be generated, and won't be falsely scored either
+        let p = board.piece_at(m.origin_square()).map_or(0b111, |p| p.idx());
+        Move(self.0 as u32 | (p as u32 & 0b111) << 16)
     }
 }
 

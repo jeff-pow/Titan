@@ -106,55 +106,55 @@ pub fn see(board: &Board, m: Move, threshold: i32) -> bool {
     to_move != board.to_move
 }
 
-use strum::IntoEnumIterator;
-
-use crate::{
-    board::board::Board,
-    moves::{
-        movegenerator::MG,
-        moves::{Move, Promotion},
-    },
-    types::{
-        bitboard::Bitboard,
-        pieces::{Color, PieceName},
-        square::Square,
-    },
-};
-
-fn gain(board: &Board, m: Move) -> i32 {
-    if m.is_castle() {
-        return 0;
-    }
-    if m.is_en_passant() {
-        return PieceName::Pawn.value();
-    }
-    let mut score = if let Some(capture) = board.piece_at(m.dest_square()) {
-        capture.value()
-    } else {
-        0
-    };
-    if let Some(p) = m.promotion() {
-        score += match p {
-            Promotion::Queen => PieceName::Queen.value(),
-            Promotion::Rook => PieceName::Rook.value(),
-            Promotion::Bishop => PieceName::Bishop.value(),
-            Promotion::Knight => PieceName::Knight.value(),
-        };
-        score -= PieceName::Pawn.value()
-    }
-    score
-}
-
-fn next_attacker(board: &Board, occupied: &mut Bitboard, attackers: Bitboard, side: Color) -> PieceName {
-    for p in PieceName::iter() {
-        let bb = attackers & board.bitboard(side, p);
-        if bb != Bitboard::EMPTY {
-            *occupied ^= bb.get_lsb().bitboard();
-            return p;
-        }
-    }
-    unreachable!()
-}
+// use strum::IntoEnumIterator;
+//
+// use crate::{
+//     board::board::Board,
+//     moves::{
+//         movegenerator::MG,
+//         moves::{Move, Promotion},
+//     },
+//     types::{
+//         bitboard::Bitboard,
+//         pieces::{Color, PieceName},
+//         square::Square,
+//     },
+// };
+//
+// fn gain(board: &Board, m: Move) -> i32 {
+//     if m.is_castle() {
+//         return 0;
+//     }
+//     if m.is_en_passant() {
+//         return PieceName::Pawn.value();
+//     }
+//     let mut score = if let Some(capture) = board.piece_at(m.dest_square()) {
+//         capture.value()
+//     } else {
+//         0
+//     };
+//     if let Some(p) = m.promotion() {
+//         score += match p {
+//             Promotion::Queen => PieceName::Queen.value(),
+//             Promotion::Rook => PieceName::Rook.value(),
+//             Promotion::Bishop => PieceName::Bishop.value(),
+//             Promotion::Knight => PieceName::Knight.value(),
+//         };
+//         score -= PieceName::Pawn.value()
+//     }
+//     score
+// }
+//
+// fn next_attacker(board: &Board, occupied: &mut Bitboard, attackers: Bitboard, side: Color) -> PieceName {
+//     for p in PieceName::iter() {
+//         let bb = attackers & board.bitboard(side, p);
+//         if bb != Bitboard::EMPTY {
+//             *occupied ^= bb.get_lsb().bitboard();
+//             return p;
+//         }
+//     }
+//     unreachable!()
+// }
 
 // Function that returns true if the side to move of the board would come out on top directly
 // trading pieces, and false if they would come out behind in piece value

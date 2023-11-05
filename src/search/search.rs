@@ -186,16 +186,8 @@ fn alpha_beta(
         }
     }
 
-    if board.zobrist_hash ==3013136613770399001 && board.prev_move.to_san() == "e8d7" {
-        dbg!("here");
-    }
-
     let mut table_move = Move::NULL;
-    let entry = info
-        .transpos_table
-        .read()
-        .unwrap()
-        .tt_entry_get(board.zobrist_hash);
+    let entry = info.transpos_table.read().unwrap().tt_entry_get(board.zobrist_hash);
     if let Some(entry) = entry {
         let flag = entry.flag();
         let table_eval = entry.eval();
