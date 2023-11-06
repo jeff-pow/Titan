@@ -102,7 +102,7 @@ impl TranspositionTable {
         self.age.0.store(63.min(self.age() + 1), Ordering::Relaxed);
     }
 
-    pub fn store(&self, hash: u64, m: Move, depth: i32, flag: EntryFlag, eval: i32, is_pv: bool, ply: i32) {
+    pub fn store(&self, hash: u64, m: Move, depth: i32, flag: EntryFlag, eval: i32, ply: i32) {
         let idx = index(hash);
         let key = hash as u16;
 
@@ -110,8 +110,8 @@ impl TranspositionTable {
 
         if self.age() != old_entry.age()
             || old_entry.key != key
-            || flag == EntryFlag::Exact
-            || depth as usize + 4 + 2 * usize::from(is_pv) > old_entry.depth as usize
+            || flag == EntryFlag::Exact && old_entry.flag() != EntryFlag::Exact
+            || depth as usize + 3 > old_entry.depth as usize
         {
             // Don't overwrite a best move with a null move
 
@@ -234,7 +234,7 @@ mod transpos_tests {
         assert_eq!(m, Move::NULL);
 
         let m = Move::new(Square(12), Square(28), PieceName::Pawn);
-        table.store(b.zobrist_hash, m, 4, EntryFlag::Exact, 25, false, 0);
+        table.store(b.zobrist_hash, m, 4, EntryFlag::Exact, 25, 0);
         let (eval, m1) = table.get(2, 2, -250, 250, &b);
         assert_eq!(25, eval.unwrap());
         assert_eq!(m, m1);
