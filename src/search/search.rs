@@ -377,7 +377,7 @@ fn alpha_beta<const IS_PV: bool>(
     };
 
     info.transpos_table
-        .store(board.zobrist_hash, best_move, depth, entry_flag, best_score, ply);
+        .store(board.zobrist_hash, best_move, depth, entry_flag, best_score, ply, IS_PV);
 
     best_score
 }
