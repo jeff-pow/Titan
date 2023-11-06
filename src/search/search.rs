@@ -196,9 +196,13 @@ fn alpha_beta<const IS_PV: bool>(
             assert!(other_eval.is_some_and(|x| x == table_eval));
             return table_eval;
         }
+        assert!(other_eval.is_none());
     } else if depth >= MIN_IIR_DEPTH && !IS_PV {
+        assert!(depth >= MIN_IIR_DEPTH && !IS_PV && other_eval.is_none() && table_move == Move::NULL);
         depth -= 1;
     }
+    assert_eq!(table_move, other_move);
+    // if depth >= MIN_IIR_DEPTH && !IS_PV && table_eval.is_none() && table_move == Move::NULL {
     // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval and isn't a
     // PV node
 
