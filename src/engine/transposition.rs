@@ -102,7 +102,7 @@ impl TranspositionTable {
         self.age.0.store(63.min(self.age() + 1), Ordering::Relaxed);
     }
 
-    pub fn store(&self, hash: u64, m: Move, depth: i32, flag: EntryFlag, eval: i32, ply: i32, is_pv: bool) {
+    pub fn store(&self, hash: u64, m: Move, depth: i32, flag: EntryFlag, mut eval: i32, ply: i32, is_pv: bool) {
         let idx = index(hash);
         let key = hash as u16;
 
@@ -114,20 +114,17 @@ impl TranspositionTable {
             || depth as usize + 4 + 2 * usize::from(is_pv) > old_entry.depth as usize
         {
             // Don't overwrite a best move with a null move
-
             let best_m = if m == Move::NULL && key == old_entry.key {
                 old_entry.best_move
             } else {
                 m.as_u16()
             };
 
-            let mut eval = eval;
-
-            eval += if eval.abs() > NEAR_CHECKMATE {
-                eval.signum() * ply
-            } else {
-                0
-            };
+            if eval > NEAR_CHECKMATE {
+                eval += ply;
+            } else if eval < -NEAR_CHECKMATE {
+                eval -= ply;
+            }
 
             let entry = TableEntry {
                 key,
@@ -158,6 +155,12 @@ impl TranspositionTable {
         } else {
             0
         };
+
+        if entry.eval > NEAR_CHECKMATE as i16 {
+            entry.eval -= ply as i16;
+        } else if entry.eval < -NEAR_CHECKMATE as i16 {
+            entry.eval += ply as i16;
+        }
 
         Some(entry)
     }
@@ -206,7 +209,7 @@ fn index(hash: u64) -> usize {
     ((u128::from(hash) * (TABLE_CAPACITY as u128)) >> 64) as usize
 }
 
-const TARGET_TABLE_SIZE_MB: usize = 256;
+const TARGET_TABLE_SIZE_MB: usize = 64;
 const BYTES_PER_MB: usize = 1024 * 1024;
 const TARGET_BYTES: usize = TARGET_TABLE_SIZE_MB * BYTES_PER_MB;
 const ENTRY_SIZE: usize = mem::size_of::<TableEntry>();

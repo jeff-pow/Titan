@@ -141,7 +141,7 @@ fn alpha_beta<const IS_PV: bool>(
     // Is a zero width search if alpha and beta are one apart
     info.sel_depth = info.sel_depth.max(ply);
     // Don't do pvs unless you have a pv - otherwise you're wasting time
-    if info.halt.load(Ordering::SeqCst) {
+    if info.search_stats.nodes_searched % 1024 == 0 && info.halt.load(Ordering::Relaxed) {
         return board.evaluate();
     }
 
