@@ -172,7 +172,7 @@ fn alpha_beta<const IS_PV: bool>(
     }
 
     let mut table_move = Move::NULL;
-    let entry = info.transpos_table.tt_entry_get(board.zobrist_hash);
+    let entry = info.transpos_table.tt_entry_get(board.zobrist_hash, ply);
     if let Some(entry) = entry {
         let flag = entry.flag();
         let table_eval = entry.eval();
@@ -377,7 +377,7 @@ fn alpha_beta<const IS_PV: bool>(
     };
 
     info.transpos_table
-        .store(board.zobrist_hash, best_move, depth, entry_flag, best_score, IS_PV);
+        .store(board.zobrist_hash, best_move, depth, entry_flag, best_score, IS_PV, ply);
 
     best_score
 }
