@@ -234,16 +234,7 @@ fn alpha_beta<const IS_PV: bool>(
                 if null_eval > NEAR_CHECKMATE {
                     null_eval = beta;
                 }
-                if info.nmp_plies == 0 || depth < 10 {
-                    return null_eval;
-                }
-                // Concept from stockfish
-                info.nmp_plies = ply + (depth - r) / 3;
-                let null_eval = alpha_beta::<false>(depth - r, beta - 1, beta, &mut Vec::new(), info, board, false);
-                info.nmp_plies = 0;
-                if null_eval >= beta {
-                    return null_eval;
-                }
+                return null_eval;
             }
         }
     }
