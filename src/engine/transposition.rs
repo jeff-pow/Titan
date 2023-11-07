@@ -109,7 +109,8 @@ impl TranspositionTable {
         let old_entry: TableEntry = unsafe { transmute(self.vec[idx].0.load(Ordering::Relaxed)) };
 
         // Conditions from Alexandria
-        if old_entry.key != key
+        if old_entry.age() != self.age()
+            || old_entry.key != key
             || flag == EntryFlag::Exact
             || depth as usize + 5 + 2 * usize::from(is_pv) > old_entry.depth as usize
         {
@@ -209,7 +210,6 @@ impl Default for TranspositionTable {
     }
 }
 
-// Seen in virithidas and Alexandria
 fn index(hash: u64) -> usize {
     ((u128::from(hash) * (TABLE_CAPACITY as u128)) >> 64) as usize
 }

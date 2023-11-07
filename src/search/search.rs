@@ -171,17 +171,12 @@ fn alpha_beta<const IS_PV: bool>(
         }
     }
 
-    let (other_eval, other_move) = info.transpos_table.get(ply, depth, alpha, beta, board, IS_PV, false);
-    // if depth >= MIN_IIR_DEPTH && !IS_PV && table_eval.is_none() && table_move == Move::NULL {
-    //     depth -= 1;
-    // }
     let mut table_move = Move::NULL;
     let entry = info.transpos_table.tt_entry_get(board.zobrist_hash, ply);
     if let Some(entry) = entry {
         let flag = entry.flag();
         let table_eval = entry.eval();
         table_move = entry.best_move(board);
-        assert_eq!(table_move, other_move);
 
         if !IS_PV
             && !is_root
@@ -193,18 +188,14 @@ fn alpha_beta<const IS_PV: bool>(
                 EntryFlag::BetaCutOff => table_eval >= beta,
             }
         {
-            assert!(other_eval.is_some_and(|x| x == table_eval));
             return table_eval;
         }
-        assert!(other_eval.is_none());
-    } else if depth >= MIN_IIR_DEPTH && !IS_PV {
-        assert!(depth >= MIN_IIR_DEPTH && !IS_PV && other_eval.is_none() && table_move == Move::NULL);
-        depth -= 1;
     }
-    assert_eq!(table_move, other_move);
-    // if depth >= MIN_IIR_DEPTH && !IS_PV && table_eval.is_none() && table_move == Move::NULL {
     // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval and isn't a
     // PV node
+    else if depth >= MIN_IIR_DEPTH && !IS_PV {
+        depth -= 1;
+    }
 
     if depth <= 0 {
         return quiescence(ply, alpha, beta, pv, info, board);
