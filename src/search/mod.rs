@@ -1,17 +1,17 @@
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
-use rustc_hash::FxHashMap;
+use lazy_static::lazy_static;
 
 use crate::board::board::Board;
 use crate::board::fen::{build_board, STARTING_FEN};
-use crate::engine::transposition::{get_table, TableEntry};
+use crate::engine::transposition::TranspositionTable;
 use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
 
 use self::history_heuristics::MoveHistory;
 use self::killers::{empty_killers, KillerMoves};
-use self::search::{LMR_THRESHOLD, MAX_SEARCH_DEPTH, MIN_LMR_DEPTH};
+use self::search::MAX_SEARCH_DEPTH;
 use self::{game_time::GameTime, search_stats::SearchStats};
 
 pub(crate) mod game_time;
@@ -22,10 +22,28 @@ pub mod search;
 pub(crate) mod search_stats;
 pub mod see;
 
+// Tunable Constants
+/// Initial aspiration window value
+pub const INIT_ASP: i32 = 10;
+/// Begin LMR if more than this many moves have been searched
+pub const LMR_THRESHOLD: i32 = 2;
+pub const MIN_LMR_DEPTH: i32 = 2;
+pub const MAX_CAPTURE_SEE_DEPTH: i32 = 6;
+pub const CAPTURE_SEE_COEFFICIENT: i32 = 15;
+pub const MAX_QUIET_SEE_DEPTH: i32 = 8;
+pub const QUIET_SEE_COEFFICIENT: i32 = 50;
+pub const MAX_LMP_DEPTH: i32 = 6;
+pub const LMP_DIVISOR: i32 = 2;
+pub const LMP_CONST: i32 = 3;
+pub const RFP_MULTIPLIER: i32 = 70;
+pub const MAX_RFP_DEPTH: i32 = 9;
+pub const MIN_NMP_DEPTH: i32 = 3;
+pub const MIN_IIR_DEPTH: i32 = 4;
+
 #[derive(Clone)]
 pub struct SearchInfo {
     pub board: Board,
-    pub transpos_table: Arc<RwLock<FxHashMap<u64, TableEntry>>>,
+    pub transpos_table: TranspositionTable,
     pub search_stats: SearchStats,
     pub game_time: GameTime,
     pub search_type: SearchType,
@@ -34,7 +52,6 @@ pub struct SearchInfo {
     pub nmp_plies: i32,
     pub killer_moves: KillerMoves,
     pub sel_depth: i32,
-    pub lmr_reductions: LmrReductions,
     pub history: MoveHistory,
     pub halt: Arc<AtomicBool>,
     pub current_line: Vec<Move>,
@@ -44,7 +61,7 @@ impl Default for SearchInfo {
     fn default() -> Self {
         Self {
             board: build_board(STARTING_FEN),
-            transpos_table: Arc::new(RwLock::new(get_table())),
+            transpos_table: TranspositionTable::default(),
             search_stats: Default::default(),
             game_time: Default::default(),
             search_type: Default::default(),
@@ -53,7 +70,6 @@ impl Default for SearchInfo {
             max_depth: MAX_SEARCH_DEPTH,
             killer_moves: empty_killers(),
             sel_depth: 0,
-            lmr_reductions: lmr_reductions(),
             history: MoveHistory::default(),
             halt: Arc::new(AtomicBool::from(false)),
             current_line: Vec::new(),
@@ -69,6 +85,10 @@ pub enum SearchType {
     Infinite, // Search forever
 }
 
+lazy_static! {
+    pub static ref LMR_REDUCTIONS: LmrReductions = lmr_reductions();
+}
+
 type LmrReductions = [[i32; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
 fn lmr_reductions() -> LmrReductions {
     let mut arr = [[0; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
@@ -80,8 +100,8 @@ fn lmr_reductions() -> LmrReductions {
     arr
 }
 
-pub fn get_reduction(info: &SearchInfo, depth: i32, moves_played: i32) -> i32 {
-    info.lmr_reductions[depth as usize][moves_played as usize]
+pub fn get_reduction(depth: i32, moves_played: i32) -> i32 {
+    LMR_REDUCTIONS[depth as usize][moves_played as usize]
 }
 
 pub fn reduction(depth: i32, moves_played: i32) -> i32 {

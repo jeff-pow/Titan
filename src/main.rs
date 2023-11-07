@@ -8,6 +8,39 @@ pub mod types;
 
 use engine::uci::main_loop;
 
+// use crate::board::zobrist::ZOBRIST;
+// use crate::engine::transposition::{BAD_OVERWRITES, COLLISIONS, OVERWRITES, PROBES, SUCCESSES, WRITES};
+// use crate::moves::movegenerator::MG;
+// use crate::search::search::search;
+// use crate::search::{SearchInfo, SearchType};
+// use crate::types::square::Square;
 fn main() {
     main_loop();
+    // let mut search_info = SearchInfo::default();
+    // let _ = ZOBRIST.turn_hash;
+    // let _ = MG.king_attacks(Square(0));
+    // let depth = 25;
+    // search_info.max_depth = depth;
+    // search_info.search_type = SearchType::Depth;
+    // let mut s = search_info.clone();
+    // println!("bestmove {}", search(&mut s, depth).to_san());
+    // unsafe {
+    //     dbg!(SUCCESSES);
+    //     dbg!(COLLISIONS);
+    //     dbg!(PROBES);
+    //     dbg!(WRITES);
+    //     dbg!(OVERWRITES);
+    //     dbg!(BAD_OVERWRITES);
+    // }
+
+    // dbg!(search_info
+    //     .transpos_table
+    //     .read()
+    //     .unwrap()
+    //     .vec
+    //     .clone()
+    //     .into_vec()
+    //     .iter()
+    //     .filter(|x| x.key() == 0)
+    //     .count());
 }

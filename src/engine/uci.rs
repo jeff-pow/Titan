@@ -7,6 +7,7 @@ use itertools::Itertools;
 use crate::board::fen::parse_fen_from_buffer;
 use crate::board::zobrist::ZOBRIST;
 use crate::moves::movegenerator::MG;
+use crate::search::get_reduction;
 use crate::search::killers::empty_killers;
 use crate::search::search::{search, MAX_SEARCH_DEPTH};
 use crate::types::square::Square;
@@ -31,6 +32,7 @@ pub fn main_loop() -> ! {
     // constants. A large difference in STC
     let _ = ZOBRIST.turn_hash;
     let _ = MG.king_attacks(Square(0));
+    let _ = get_reduction(0, 0);
     println!("Ready to go!");
     let mut handle = None;
 
@@ -65,11 +67,12 @@ pub fn main_loop() -> ! {
             }
         } else if buffer.eq("d\n") {
             dbg!(&search_info.board);
+            // println!("{}", &search_info.board);
         } else if buffer.eq("dbg\n") {
             dbg!(&search_info.board);
             search_info.board.debug_bitboards();
         } else if buffer.starts_with("clear") {
-            search_info.transpos_table.write().unwrap().clear();
+            search_info.transpos_table.clear();
             search_info.killer_moves = empty_killers();
             println!("Transposition table cleared");
         } else if buffer.starts_with("go") {
@@ -82,6 +85,7 @@ pub fn main_loop() -> ! {
                 let mut s = search_info.clone();
                 handle = Some(thread::spawn(move || {
                     println!("bestmove {}", search(&mut s, depth).to_san());
+                    s.transpos_table.age_up();
                 }));
             } else if buffer.contains("perft") {
                 let mut iter = buffer.split_whitespace().skip(2);
@@ -93,12 +97,14 @@ pub fn main_loop() -> ! {
                 let mut s = search_info.clone();
                 handle = Some(thread::spawn(move || {
                     println!("bestmove {}", search(&mut s, MAX_SEARCH_DEPTH).to_san());
+                    s.transpos_table.age_up();
                 }));
             } else {
                 search_info.search_type = SearchType::Infinite;
                 let mut s = search_info.clone();
                 handle = Some(thread::spawn(move || {
                     search(&mut s, MAX_SEARCH_DEPTH);
+                    s.transpos_table.age_up();
                 }));
             }
         } else if buffer.starts_with("stop") {

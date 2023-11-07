@@ -1,5 +1,5 @@
 use crate::board::board::Board;
-use crate::engine::transposition::{EntryFlag, TableEntry};
+use crate::engine::transposition::EntryFlag;
 use crate::moves::movegenerator::{generate_moves, MGT};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::moves::Move;
@@ -29,19 +29,15 @@ pub fn quiescence(
         return board.evaluate();
     }
 
-    let (_, table_move) = {
-        // Returning an eval from this has been uncooperative, but we can definitely get a best move
-        if let Some(entry) = info.transpos_table.read().unwrap().get(&board.zobrist_hash) {
-            entry.get(0, ply, alpha, beta, board)
-        } else {
-            (None, Move::NULL)
-        }
+    let table_move = if let Some(entry) = info.transpos_table.get(board.zobrist_hash, ply) {
+        entry.best_move(board)
+    } else {
+        Move::NULL
     };
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
 
     let stand_pat = board.evaluate();
-
     if stand_pat >= beta {
         return stand_pat;
     }
@@ -105,9 +101,7 @@ pub fn quiescence(
     };
 
     info.transpos_table
-        .write()
-        .unwrap()
-        .insert(board.zobrist_hash, TableEntry::new(0, ply, entry_flag, best_score, best_move));
+        .store(board.zobrist_hash, best_move, 0, entry_flag, best_score, ply, false);
 
     if in_check && moves_searched == 0 {
         return -CHECKMATE + ply;

@@ -26,13 +26,14 @@ impl Bitboard {
         Square(lsb.trailing_zeros() as u8)
     }
 
-    pub fn square_occupied(self, sq: Square) -> bool {
+    pub fn occupied(self, sq: Square) -> bool {
         debug_assert!(sq.is_valid());
-        self.0 & (1 << sq.0) != 0
+        // self.0 & (1 << sq.0) != 0
+        self & sq.bitboard() != Bitboard::EMPTY
     }
 
-    pub fn square_is_empty(self, sq: Square) -> bool {
-        !self.square_occupied(sq)
+    pub fn empty(self, sq: Square) -> bool {
+        !self.occupied(sq)
     }
 
     pub fn count_bits(self) -> i32 {

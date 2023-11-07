@@ -19,7 +19,7 @@ use crate::{
 
 use super::move_history::BoardHistory;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct Board {
     bitboards: [Bitboard; NUM_PIECES],
     color_occupancies: [Bitboard; 2],
@@ -27,11 +27,11 @@ pub struct Board {
     pub to_move: Color,
     pub castling_rights: u8,
     pub en_passant_square: Option<Square>,
-    pub prev_move: Move,
+    prev_move: Move,
     pub num_moves: usize,
     pub half_moves: usize,
     pub zobrist_hash: u64,
-    history: BoardHistory,
+    pub history: BoardHistory,
     pub accumulator: Accumulator,
     pub in_check: bool,
 }
@@ -187,6 +187,16 @@ impl Board {
             & self.bitboard(attacker, PieceName::Queen);
         let king_attacks = MG.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
         pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | queen_attacks | king_attacks
+
+        // let bishops = self.bitboard(attacker, PieceName::Queen) | self.bitboard(attacker, PieceName::Bishop);
+        // let rooks = self.bitboard(attacker, PieceName::Queen) | self.bitboard(attacker, PieceName::Rook);
+
+        // let pawn_attacks = MG.pawn_attacks(sq, !attacker) & self.bitboard(attacker, PieceName::Pawn);
+        // let knight_attacks = MG.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
+        // let bishop_attacks = MG.bishop_attacks(sq, occupancy) & bishops;
+        // let rook_attacks = MG.rook_attacks(sq, occupancy) & rooks;
+        // let king_attacks = MG.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
+        // pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks
     }
 
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
@@ -201,7 +211,7 @@ impl Board {
         self.square_under_attack(!side, king_square)
     }
 
-    fn add_to_history(&mut self) {
+    pub fn add_to_history(&mut self) {
         self.history.push(self.zobrist_hash);
     }
 
@@ -247,7 +257,7 @@ impl Board {
         let attack_bitboard = match piece.unwrap() {
             PieceName::Pawn => {
                 return if self.is_quiet(m) {
-                    self.occupancies().square_is_empty(dest)
+                    self.occupancies().empty(dest)
                 } else {
                     let attacks = MG.pawn_attacks(origin, origin_color);
                     let enemy_color = self.color_at(origin).unwrap();
@@ -269,7 +279,7 @@ impl Board {
 
     /// Returns true if a move does not capture a piece, and false if a piece is captured
     pub fn is_quiet(&self, m: Move) -> bool {
-        self.occupancies().square_is_empty(m.dest_square())
+        self.occupancies().empty(m.dest_square())
     }
 
     /// Function makes a move and modifies board state to reflect the move that just happened.
@@ -354,16 +364,25 @@ impl Board {
 
         self.num_moves += 1;
 
-        self.zobrist_hash = self.generate_hash();
-
         self.add_to_history();
 
         self.prev_move = m;
 
         self.in_check = self.in_check(self.to_move);
 
+        self.zobrist_hash = self.generate_hash();
+
         // Return false if the move leaves the opposite side in check, denoting an invalid move
         !self.in_check(!self.to_move)
+    }
+
+    pub fn make_null_move(&mut self) {
+        self.to_move = !self.to_move;
+        self.num_moves += 1;
+        self.en_passant_square = None;
+        self.prev_move = Move::NULL;
+        self.add_to_history();
+        self.zobrist_hash = self.generate_hash();
     }
 
     #[allow(dead_code)]
@@ -458,13 +477,20 @@ impl fmt::Debug for Board {
             str += "q"
         };
         str += "\n";
+        str += "En Passant Square: ";
         if let Some(s) = &self.en_passant_square {
-            str += "En Passant Square: ";
             str += &s.to_string();
+        } else {
+            str += "None";
         }
         str += "\n";
         str += "Num moves made: ";
         str += &self.num_moves.to_string();
+        str += "\n";
+        str += "Prev move: ";
+        str += &self.prev_move.to_san();
+        str += "\n";
+
         write!(f, "{}", str)
     }
 }
@@ -477,14 +503,14 @@ mod board_tests {
     fn test_place_piece() {
         let mut board = Board::default();
         board.place_piece(Rook, Color::White, Square(0));
-        assert!(board.bitboard(Color::White, PieceName::Rook).square_occupied(Square(0)));
+        assert!(board.bitboard(Color::White, PieceName::Rook).occupied(Square(0)));
     }
 
     #[test]
     fn test_remove_piece() {
         let mut board = fen::build_board(fen::STARTING_FEN);
         board.remove_piece(Square(0));
-        assert!(board.bitboard(Color::White, PieceName::Rook).square_is_empty(Square(0)));
-        assert!(board.occupancies().square_is_empty(Square(0)));
+        assert!(board.bitboard(Color::White, PieceName::Rook).empty(Square(0)));
+        assert!(board.occupancies().empty(Square(0)));
     }
 }

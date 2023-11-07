@@ -1,5 +1,3 @@
-// use std::collections::HashMap;
-
 use lazy_static::lazy_static;
 use strum::IntoEnumIterator;
 
@@ -15,7 +13,7 @@ pub struct Zobrist {
     pub castling: [u64; 4],
     // 64 squares plus an invalid square
     // Don't bother figuring out invalid enpassant squares, literally not worth the squeeze
-    pub en_passant: [u64; 65],
+    pub en_passant: [u64; 64],
 }
 
 lazy_static! {
@@ -34,7 +32,7 @@ impl Default for Zobrist {
             .for_each(|x| *x = rng.next_u64());
         let mut castling = [0; 4];
         castling.iter_mut().for_each(|x| *x = rng.next_u64());
-        let mut en_passant = [0; 65];
+        let mut en_passant = [0; 64];
         en_passant.iter_mut().for_each(|x| *x = rng.next_u64());
         Self {
             turn_hash,
@@ -59,9 +57,8 @@ impl Board {
             }
         }
 
-        match self.en_passant_square {
-            Some(x) => hash ^= ZOBRIST.en_passant[x.idx()],
-            None => hash ^= ZOBRIST.en_passant[64],
+        if let Some(x) = self.en_passant_square {
+            hash ^= ZOBRIST.en_passant[x.idx()]
         }
 
         if self.can_castle(Castle::WhiteKing) {

@@ -11,11 +11,12 @@ use super::moves::{Direction, Direction::*};
 /// https://github.com/mvanthoor/rustic/
 
 /// Simple Pcg64Mcg implementation
+// No repetitions as 100B iterations
 pub struct Rng(u64);
 
 impl Default for Rng {
     fn default() -> Self {
-        Self(0xE926E6210D9E3486 | 1)
+        Self(0xE926E6210D9E3487)
     }
 }
 
