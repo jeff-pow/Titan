@@ -297,8 +297,8 @@ fn sliding_attack(deltas: &[Direction; 4], sq: Square, occupied: Bitboard) -> Bi
         // let mut s: u8 = ((square as i16) + (*delta as i16)) as u8;
         let mut s = sq.shift(*delta);
         'inner: while s.is_valid() && s.dist(s.shift(delta.opp())) == 1 {
-            attack |= Bitboard(1_u64.wrapping_shl(s.0.into()));
-            if occupied & Bitboard(1_u64.wrapping_shl(s.0.into())) != Bitboard::EMPTY {
+            attack |= Bitboard(1_u64.wrapping_shl(s.0));
+            if occupied & Bitboard(1_u64.wrapping_shl(s.0)) != Bitboard::EMPTY {
                 break 'inner;
             }
             s = s.shift(*delta);
