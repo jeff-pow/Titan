@@ -107,7 +107,7 @@ impl MoveList {
                     GOOD_CAPTURE
                 } else {
                     BAD_CAPTURE
-                }) + MVV_LVA[board.piece_at(entry.m.origin_square()).unwrap().idx()][c.idx()]
+                }) + MVV_LVA[board.piece_at(entry.m.origin_square()).unwrap()][c]
             } else if killers[0] == entry.m {
                 KILLER_ONE
             } else if killers[1] == entry.m {

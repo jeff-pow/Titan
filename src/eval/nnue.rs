@@ -40,13 +40,13 @@ impl Accumulator {
     }
 
     fn deactivate(&mut self, weights: &Block, color: Color) {
-        self.0[color.idx()].iter_mut().zip(weights).for_each(|(i, &d)| {
+        self.0[color].iter_mut().zip(weights).for_each(|(i, &d)| {
             *i -= d;
         });
     }
 
     fn activate(&mut self, weights: &Block, color: Color) {
-        self.0[color.idx()].iter_mut().zip(weights).for_each(|(i, &d)| {
+        self.0[color].iter_mut().zip(weights).for_each(|(i, &d)| {
             *i += d;
         });
     }
@@ -64,7 +64,7 @@ struct Network {
 impl Board {
     #[allow(clippy::deref_addrof)]
     pub fn evaluate(&self) -> i32 {
-        let (us, them) = (self.accumulator.0[self.to_move.idx()], self.accumulator.0[(!self.to_move).idx()]);
+        let (us, them) = (self.accumulator.0[self.to_move], self.accumulator.0[!self.to_move]);
         let weights = &NET.output_weights;
 
         let mut output = i32::from(NET.output_bias);

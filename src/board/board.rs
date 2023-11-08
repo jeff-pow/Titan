@@ -76,7 +76,7 @@ impl Board {
     }
 
     pub fn bitboard(&self, side: Color, piece: PieceName) -> Bitboard {
-        self.bitboards[piece.idx()] & self.color_occupancies(side)
+        self.bitboards[piece] & self.color_occupancies(side)
     }
 
     fn is_material_draw(&self) -> bool {
@@ -118,7 +118,7 @@ impl Board {
     }
 
     pub fn piece_bitboard(&self, p: PieceName) -> Bitboard {
-        self.bitboards[p.idx()]
+        self.bitboards[p]
     }
 
     pub fn is_draw(&self) -> bool {
@@ -126,7 +126,7 @@ impl Board {
     }
 
     pub fn color_occupancies(&self, color: Color) -> Bitboard {
-        self.color_occupancies[color.idx()]
+        self.color_occupancies[color]
     }
 
     pub fn occupancies(&self) -> Bitboard {
@@ -156,16 +156,16 @@ impl Board {
 
     pub fn place_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
         self.array_board[sq.idx()] = Some(Piece::new(piece_type, color));
-        self.bitboards[piece_type.idx()] ^= sq.bitboard();
-        self.color_occupancies[color.idx()] ^= sq.bitboard();
+        self.bitboards[piece_type] ^= sq.bitboard();
+        self.color_occupancies[color] ^= sq.bitboard();
         self.accumulator.add_feature(piece_type, color, sq);
     }
 
     fn remove_piece(&mut self, sq: Square) {
         if let Some(piece) = self.array_board[sq.idx()] {
             self.array_board[sq.idx()] = None;
-            self.bitboards[piece.name.idx()] ^= sq.bitboard();
-            self.color_occupancies[piece.color.idx()] ^= sq.bitboard();
+            self.bitboards[piece.name] ^= sq.bitboard();
+            self.color_occupancies[piece.color] ^= sq.bitboard();
             self.accumulator.remove_feature(piece.name, piece.color, sq);
         }
     }

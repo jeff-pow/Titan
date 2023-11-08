@@ -15,7 +15,7 @@ pub struct MoveHistory {
 
 impl MoveHistory {
     fn update_search_history(&mut self, m: Move, bonus: i32, side: Color) {
-        let i = &mut self.search_history[side as usize][m.piece_moving().idx()][m.dest_square().idx()].score;
+        let i = &mut self.search_history[side as usize][m.piece_moving()][m.dest_square().idx()].score;
         *i += bonus - *i * bonus.abs() / MAX_HIST_VAL;
     }
 
@@ -28,18 +28,18 @@ impl MoveHistory {
     }
 
     fn get_search_history(&self, m: Move, side: Color) -> i32 {
-        self.search_history[side as usize][m.piece_moving().idx()][m.dest_square().idx()].score
+        self.search_history[side as usize][m.piece_moving()][m.dest_square().idx()].score
     }
 
     pub fn set_counter(&mut self, side: Color, prev: Move, m: Move) {
-        self.search_history[side.idx()][prev.piece_moving().idx()][prev.dest_square().idx()].counter = m;
+        self.search_history[side][prev.piece_moving()][prev.dest_square().idx()].counter = m;
     }
 
     pub fn get_counter(&self, side: Color, m: Move) -> Move {
         if m == Move::NULL {
             Move::NULL
         } else {
-            self.search_history[side.idx()][m.piece_moving().idx()][m.dest_square().idx()].counter
+            self.search_history[side][m.piece_moving()][m.dest_square().idx()].counter
         }
     }
 }

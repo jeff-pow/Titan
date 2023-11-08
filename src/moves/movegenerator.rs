@@ -75,7 +75,7 @@ impl MoveGenerator {
     }
 
     pub fn pawn_attacks(&self, square: Square, attacker: Color) -> Bitboard {
-        self.pawn_table[attacker.idx()][square.idx()]
+        self.pawn_table[attacker][square.idx()]
     }
 }
 
