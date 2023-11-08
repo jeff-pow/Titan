@@ -1,4 +1,4 @@
-use core::ops;
+use std::ops::{Index, IndexMut};
 
 use crate::moves::{
     attack_boards::{
@@ -111,24 +111,17 @@ impl Square {
     }
 }
 
-impl ops::BitAnd for Square {
-    type Output = Self;
-    fn bitand(self, rhs: Self) -> Self::Output {
-        Square(self.0 & rhs.0)
+impl<T, const N: usize> Index<Square> for [T; N] {
+    type Output = T;
+
+    fn index(&self, index: Square) -> &Self::Output {
+        &self[index.0 as usize]
     }
 }
 
-impl ops::BitOr for Square {
-    type Output = Self;
-    fn bitor(self, rhs: Self) -> Self::Output {
-        Square(self.0 | rhs.0)
-    }
-}
-
-impl ops::BitXor for Square {
-    type Output = Self;
-    fn bitxor(self, rhs: Self) -> Self::Output {
-        Square(self.0 ^ rhs.0)
+impl<T, const N: usize> IndexMut<Square> for [T; N] {
+    fn index_mut(&mut self, index: Square) -> &mut Self::Output {
+        &mut self[index.0 as usize]
     }
 }
 

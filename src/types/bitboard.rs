@@ -16,19 +16,16 @@ impl Bitboard {
     /// Returns the index of the lowest bit of a bitboard, and modifies the bitboard to exclude
     /// that bit
     pub fn pop_lsb(&mut self) -> Square {
-        let lsb = self.0 & self.0.wrapping_neg();
-        self.0 ^= lsb;
-        Square(lsb.trailing_zeros())
+        let lsb = self.get_lsb();
+        *self ^= lsb.bitboard();
+        lsb
     }
 
     pub fn get_lsb(self) -> Square {
-        let lsb = self.0 & self.0.wrapping_neg();
-        Square(lsb.trailing_zeros())
+        unsafe { std::mem::transmute(self.0.trailing_zeros()) }
     }
 
     pub fn occupied(self, sq: Square) -> bool {
-        debug_assert!(sq.is_valid());
-        // self.0 & (1 << sq.0) != 0
         self & sq.bitboard() != Bitboard::EMPTY
     }
 
@@ -63,7 +60,11 @@ impl Iterator for Bitboard {
         if *self == Bitboard::EMPTY {
             None
         } else {
-            Some(self.pop_lsb())
+            Some({
+                let lsb = self.get_lsb();
+                *self ^= lsb.bitboard();
+                lsb
+            })
         }
     }
 }
@@ -102,58 +103,41 @@ impl ops::Not for Bitboard {
         Bitboard(!self.0)
     }
 }
-impl ops::BitAnd for Bitboard {
-    type Output = Self;
 
-    fn bitand(self, rhs: Self) -> Self::Output {
-        Bitboard(self.0 & rhs.0)
-    }
-}
-impl ops::BitAndAssign for Bitboard {
-    fn bitand_assign(&mut self, rhs: Self) {
-        self.0 &= rhs.0
-    }
-}
-impl ops::BitOr for Bitboard {
-    type Output = Self;
+// Macros from carp
+macro_rules! impl_math_ops {
+    ($($trait:ident::$fn:ident),*) => {
+        $(impl std::ops::$trait for Bitboard {
+            type Output = Self;
 
-    fn bitor(self, rhs: Self) -> Self::Output {
-        Bitboard(self.0 | rhs.0)
-    }
+            fn $fn(self, other: Self) -> Self::Output {
+                Self(std::ops::$trait::$fn(self.0, other.0))
+            }
+        })*
+    };
 }
-impl ops::BitOrAssign for Bitboard {
-    fn bitor_assign(&mut self, rhs: Self) {
-        self.0 |= rhs.0;
-    }
-}
-impl ops::BitXorAssign for Bitboard {
-    fn bitxor_assign(&mut self, rhs: Self) {
-        self.0 ^= rhs.0
-    }
-}
-impl ops::BitXor for Bitboard {
-    type Output = Self;
 
-    fn bitxor(self, rhs: Self) -> Self::Output {
-        Bitboard(self.0 ^ rhs.0)
-    }
+impl_math_ops! {
+    BitAnd::bitand,
+    BitOr::bitor,
+    BitXor::bitxor,
+    Shl::shl,
+    Shr::shr
 }
-impl std::cmp::PartialOrd for Bitboard {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.0.partial_cmp(&other.0)
-    }
-}
-impl std::ops::Shl for Bitboard {
-    type Output = Self;
 
-    fn shl(self, rhs: Self) -> Self::Output {
-        Bitboard(self.0.shl(rhs.0))
-    }
-}
-impl std::ops::Shr for Bitboard {
-    type Output = Self;
+macro_rules! impl_math_assign_ops {
+    ($($trait:ident::$fn:ident),*) => {
+        $(impl std::ops::$trait for Bitboard {
 
-    fn shr(self, rhs: Self) -> Self::Output {
-        Bitboard(self.0.shr(rhs.0))
-    }
+            fn $fn(&mut self, other: Self) {
+                std::ops::$trait::$fn(&mut self.0, other.0)
+            }
+        })*
+    };
+}
+
+impl_math_assign_ops! {
+    BitAndAssign::bitand_assign,
+    BitOrAssign::bitor_assign,
+    BitXorAssign::bitxor_assign
 }

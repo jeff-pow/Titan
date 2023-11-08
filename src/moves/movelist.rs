@@ -58,12 +58,6 @@ impl MoveList {
         self.arr[idx]
     }
 
-    pub fn into_vec(self) -> Vec<Move> {
-        let mut v = Vec::new();
-        self.into_iter().for_each(|x| v.push(x.m));
-        v
-    }
-
     pub fn perft_next(&mut self) -> Option<Move> {
         if self.current_idx >= self.len {
             None

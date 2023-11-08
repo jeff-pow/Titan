@@ -179,24 +179,15 @@ impl Board {
     }
 
     pub fn attackers_for_side(&self, attacker: Color, sq: Square, occupancy: Bitboard) -> Bitboard {
+        let bishops = self.bitboard(attacker, PieceName::Queen) | self.bitboard(attacker, PieceName::Bishop);
+        let rooks = self.bitboard(attacker, PieceName::Queen) | self.bitboard(attacker, PieceName::Rook);
+
         let pawn_attacks = MG.pawn_attacks(sq, !attacker) & self.bitboard(attacker, PieceName::Pawn);
         let knight_attacks = MG.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
-        let bishop_attacks = MG.bishop_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Bishop);
-        let rook_attacks = MG.rook_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Rook);
-        let queen_attacks = (MG.rook_attacks(sq, occupancy) | MG.bishop_attacks(sq, occupancy))
-            & self.bitboard(attacker, PieceName::Queen);
+        let bishop_attacks = MG.bishop_attacks(sq, occupancy) & bishops;
+        let rook_attacks = MG.rook_attacks(sq, occupancy) & rooks;
         let king_attacks = MG.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
-        pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | queen_attacks | king_attacks
-
-        // let bishops = self.bitboard(attacker, PieceName::Queen) | self.bitboard(attacker, PieceName::Bishop);
-        // let rooks = self.bitboard(attacker, PieceName::Queen) | self.bitboard(attacker, PieceName::Rook);
-
-        // let pawn_attacks = MG.pawn_attacks(sq, !attacker) & self.bitboard(attacker, PieceName::Pawn);
-        // let knight_attacks = MG.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
-        // let bishop_attacks = MG.bishop_attacks(sq, occupancy) & bishops;
-        // let rook_attacks = MG.rook_attacks(sq, occupancy) & rooks;
-        // let king_attacks = MG.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
-        // pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks
+        pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks
     }
 
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {

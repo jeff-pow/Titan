@@ -213,15 +213,13 @@ fn generate_pawn_moves(board: &Board, gen_type: MGT, moves: &mut MoveList) {
     if matches!(gen_type, MGT::All | MGT::CapturesOnly) {
         // Captures that do not lead to promotions
         if non_promotions != Bitboard::EMPTY {
-            let mut left_captures = non_promotions.shift(up_left) & enemies;
-            let mut right_captures = non_promotions.shift(up_right) & enemies;
-            while left_captures > Bitboard::EMPTY {
-                let dest = left_captures.pop_lsb();
+            let left_captures = non_promotions.shift(up_left) & enemies;
+            let right_captures = non_promotions.shift(up_right) & enemies;
+            for dest in left_captures {
                 let src = dest.checked_shift(down_right).expect("Valid shift");
                 moves.push(Move::new(src, dest, PieceName::Pawn));
             }
-            while right_captures > Bitboard::EMPTY {
-                let dest = right_captures.pop_lsb();
+            for dest in right_captures {
                 let src = dest.checked_shift(down_left).expect("Valid shift");
                 moves.push(Move::new(src, dest, PieceName::Pawn));
             }
