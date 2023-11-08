@@ -27,8 +27,8 @@ pub const RANK8: Bitboard = Bitboard(RANK1_U64 << 56);
 pub(crate) fn gen_king_attack_boards() -> [Bitboard; 64] {
     let mut arr = [Bitboard::EMPTY; 64];
         arr.iter_mut().enumerate().for_each(|(sq, bitboard)| {
-            let x = Square(sq as u8).file();
-            let y = Square(sq as u8).rank();
+            let x = Square(sq as u32).file();
+            let y = Square(sq as u32).rank();
             if y >= 1 {
                 if x >= 1 { *bitboard |= Bitboard(1 << (sq as u32 - 9)); }
                 *bitboard |= Bitboard(1 << (sq as u32 - 8));
@@ -63,7 +63,7 @@ enum KnightMovement {
 
 /// Converts a direction of moves into a tuple of x,y movement
 impl KnightMovement {
-    fn deltas(&self) -> (i8, i8) {
+    fn deltas(&self) -> (i32, i32) {
         match self {
             KnightMovement::WWN => (-2, 1),
             KnightMovement::WNN => (-1, 2),
@@ -81,17 +81,17 @@ impl KnightMovement {
 pub(crate) fn gen_knight_attack_boards() -> [Bitboard; 64] {
     let mut arr = [Bitboard::EMPTY; 64];
         arr.iter_mut().enumerate().for_each(|(sq, bitboard)| {
-            let current_rank = Square(sq as u8).rank();
-            let current_file = Square(sq as u8).file();
+            let current_rank = Square(sq as u32).rank();
+            let current_file = Square(sq as u32).file();
             for mv in KnightMovement::iter() {
                 let (dir_x, dir_y) = mv.deltas();
-                if !(0..8).contains(&(current_file as i8 + dir_x)) {
+                if !(0..8).contains(&(current_file as i32 + dir_x)) {
                     continue;
                 }
-                if !(0..8).contains(&(current_rank as i8 + dir_y)) {
+                if !(0..8).contains(&(current_rank as i32 + dir_y)) {
                     continue;
                 }
-                let new_index = (sq as i32 + mv as i32) as u8;
+                let new_index = (sq as i32 + mv as i32) as u32;
 
                 if (0..64).contains(&new_index) {
                     *bitboard |= Square(new_index).bitboard();

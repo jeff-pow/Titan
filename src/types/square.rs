@@ -11,7 +11,7 @@ use crate::moves::{
 use super::bitboard::Bitboard;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Square(pub u8);
+pub struct Square(pub u32);
 
 pub const NUM_SQUARES: usize = 64;
 
@@ -21,13 +21,13 @@ impl Square {
         let current_file = self.file();
         let current_rank = self.rank();
         let (dir_x, dir_y) = dir.to_xy();
-        if !(0..8).contains(&(current_file as i8 + dir_x)) {
+        if !(0..8).contains(&(current_file as i32 + dir_x)) {
             return None;
         }
-        if !(0..8).contains(&(current_rank as i8 + dir_y)) {
+        if !(0..8).contains(&(current_rank as i32 + dir_y)) {
             return None;
         }
-        let new_index = (self.0 as i32 + dir as i32) as u8;
+        let new_index = (self.0 as i32 + dir as i32) as u32;
 
         if (0..64).contains(&new_index) {
             Some(Square(new_index))
@@ -39,19 +39,19 @@ impl Square {
     /// Function does not check a shift's validity before returning it. Only to be used when the
     /// shifts validity has already been proven valid elsewhere
     pub fn shift(self, dir: Direction) -> Square {
-        let new_square = self.0 as i8 + dir as i8;
-        Square(new_square as u8)
+        let new_square = self.0 as i32 + dir as i32;
+        Square(new_square as u32)
     }
 
     /// Calculates the distance between two squares
     #[rustfmt::skip]
-    pub fn dist(self, other: Square) -> u8 {
+    pub fn dist(self, other: Square) -> u32 {
         self.file().abs_diff(other.file())
             .max(self.rank().abs_diff(other.rank()))
     }
 
     /// Rank is the horizontal row of the piece (y-coord)
-    pub fn rank(self) -> u8 {
+    pub fn rank(self) -> u32 {
         self.0 >> 3
     }
 
@@ -60,7 +60,7 @@ impl Square {
     }
 
     /// File is the vertical column of the piece (x-coord)
-    pub fn file(self) -> u8 {
+    pub fn file(self) -> u32 {
         self.0 & 0b111
     }
 

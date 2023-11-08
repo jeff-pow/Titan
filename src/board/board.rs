@@ -25,7 +25,7 @@ pub struct Board {
     color_occupancies: [Bitboard; 2],
     pub array_board: [Option<Piece>; 64],
     pub to_move: Color,
-    pub castling_rights: u8,
+    pub castling_rights: u32,
     pub en_passant_square: Option<Square>,
     prev_move: Move,
     pub num_moves: usize,
@@ -67,10 +67,10 @@ impl Board {
 
     pub fn can_castle(&self, c: Castle) -> bool {
         match c {
-            Castle::WhiteKing => self.castling_rights & Castle::WhiteKing as u8 != 0,
-            Castle::WhiteQueen => self.castling_rights & Castle::WhiteQueen as u8 != 0,
-            Castle::BlackKing => self.castling_rights & Castle::BlackKing as u8 != 0,
-            Castle::BlackQueen => self.castling_rights & Castle::BlackQueen as u8 != 0,
+            Castle::WhiteKing => self.castling_rights & Castle::WhiteKing as u32 != 0,
+            Castle::WhiteQueen => self.castling_rights & Castle::WhiteQueen as u32 != 0,
+            Castle::BlackKing => self.castling_rights & Castle::BlackKing as u32 != 0,
+            Castle::BlackQueen => self.castling_rights & Castle::BlackQueen as u32 != 0,
             _ => panic!(),
         }
     }

@@ -31,7 +31,7 @@ pub fn build_board(fen_string: &str) -> Board {
                 continue;
             }
             let square = row * 8 + idx;
-            let square = Square(square as u8);
+            let square = Square(square as u32);
             match c {
                 'K' => {
                     board.place_piece(PieceName::King, Color::White, square);
@@ -113,20 +113,20 @@ pub fn build_board(fen_string: &str) -> Board {
     board
 }
 
-fn parse_castling(buf: &&str) -> u8 {
+fn parse_castling(buf: &&str) -> u32 {
     let rights = buf.chars().fold(0, |x, ch| {
         x | match ch {
-            'K' => Castle::WhiteKing as u8,
-            'Q' => Castle::WhiteQueen as u8,
-            'k' => Castle::BlackKing as u8,
-            'q' => Castle::BlackQueen as u8,
+            'K' => Castle::WhiteKing as u32,
+            'Q' => Castle::WhiteQueen as u32,
+            'k' => Castle::BlackKing as u32,
+            'q' => Castle::BlackQueen as u32,
             _ => 0,
         }
     });
     rights
 }
 
-fn find_en_passant_square(vec: Vec<char>) -> Option<u8> {
+fn find_en_passant_square(vec: Vec<char>) -> Option<u32> {
     if vec[0] == '-' {
         return None;
     }
@@ -134,7 +134,7 @@ fn find_en_passant_square(vec: Vec<char>) -> Option<u8> {
     // against letters or some other workaround
     let column = vec[0].to_digit(20).unwrap() - 10;
     let row = (vec[1].to_digit(10).unwrap() - 1) * 8;
-    Some((row + column) as u8)
+    Some(row + column)
 }
 #[allow(clippy::ptr_arg)]
 pub fn parse_fen_from_buffer(buf: &[&str]) -> String {
@@ -171,28 +171,28 @@ mod fen_tests {
     fn test_parse_castling_white_king() {
         let input = "K";
         let result = parse_castling(&input);
-        assert_eq!(result, Castle::WhiteKing as u8);
+        assert_eq!(result, Castle::WhiteKing as u32);
     }
 
     #[test]
     fn test_parse_castling_white_queen() {
         let input = "Q";
         let result = parse_castling(&input);
-        assert_eq!(result, Castle::WhiteQueen as u8);
+        assert_eq!(result, Castle::WhiteQueen as u32);
     }
 
     #[test]
     fn test_parse_castling_black_king() {
         let input = "k";
         let result = parse_castling(&input);
-        assert_eq!(result, Castle::BlackKing as u8);
+        assert_eq!(result, Castle::BlackKing as u32);
     }
 
     #[test]
     fn test_parse_castling_black_queen() {
         let input = "q";
         let result = parse_castling(&input);
-        assert_eq!(result, Castle::BlackQueen as u8);
+        assert_eq!(result, Castle::BlackQueen as u32);
     }
 
     #[test]
@@ -209,7 +209,7 @@ mod fen_tests {
         // You need to define the expected result based on the combination of castling rights.
         // For example, if all castling rights are allowed (KQkq), you can set the expected result to a specific value.
         let expected_result =
-            Castle::WhiteKing as u8 | Castle::WhiteQueen as u8 | Castle::BlackKing as u8 | Castle::BlackQueen as u8;
+            Castle::WhiteKing as u32 | Castle::WhiteQueen as u32 | Castle::BlackKing as u32 | Castle::BlackQueen as u32;
         assert_eq!(result, expected_result);
     }
 
@@ -218,7 +218,7 @@ mod fen_tests {
         let input = "Kk";
         let result = parse_castling(&input);
         // Define the expected result for the combination of castling rights in the input.
-        let expected_result = Castle::WhiteKing as u8 | Castle::BlackKing as u8;
+        let expected_result = Castle::WhiteKing as u32 | Castle::BlackKing as u32;
         assert_eq!(result, expected_result);
     }
 }

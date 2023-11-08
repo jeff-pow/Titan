@@ -57,7 +57,7 @@ impl Direction {
         }
     }
 
-    pub fn to_xy(self) -> (i8, i8) {
+    pub fn to_xy(self) -> (i32, i32) {
         match self {
             North => (0, 1),
             NorthWest => (-1, 1),
@@ -104,7 +104,7 @@ impl Move {
             MoveType::Castle => 3,
         };
         let piece = piece_moving.idx() as u32;
-        let m = origin.0 as u32 | ((destination.0 as u32) << 6) | (promotion << 12) | (move_type << 14) | (piece << 16);
+        let m = origin.0 | (destination.0 << 6) | (promotion << 12) | (move_type << 14) | (piece << 16);
         Move(m)
     }
 
@@ -166,11 +166,11 @@ impl Move {
     }
 
     pub fn origin_square(self) -> Square {
-        Square((self.0 & 0b111111) as u8)
+        Square(self.0 & 0b111111)
     }
 
     pub fn dest_square(self) -> Square {
-        Square(((self.0 >> 6) & 0b111111) as u8)
+        Square(self.0 >> 6 & 0b111111)
     }
 
     pub fn as_u16(self) -> u16 {
@@ -225,11 +225,11 @@ pub fn from_san(str: &str, board: &Board) -> Move {
     // against letters or some other workaround
     let start_column = vec[0].to_digit(20).unwrap() - 10;
     let start_row = (vec[1].to_digit(10).unwrap() - 1) * 8;
-    let origin_sq = Square((start_row + start_column) as u8);
+    let origin_sq = Square(start_row + start_column);
 
     let end_column = vec[2].to_digit(20).unwrap() - 10;
     let end_row = (vec[3].to_digit(10).unwrap() - 1) * 8;
-    let dest_sq = Square((end_row + end_column) as u8);
+    let dest_sq = Square(end_row + end_column);
 
     let promotion = if vec.len() > 4 {
         match vec[4] {
@@ -286,7 +286,7 @@ pub enum Castle {
 }
 
 #[rustfmt::skip]
-pub const CASTLING_RIGHTS: [u8; 64] = [
+pub const CASTLING_RIGHTS: [u32; 64] = [
     13, 15, 15, 15, 12, 15, 15, 14,
     15, 15, 15, 15, 15, 15, 15, 15,
     15, 15, 15, 15, 15, 15, 15, 15,

@@ -18,12 +18,12 @@ impl Bitboard {
     pub fn pop_lsb(&mut self) -> Square {
         let lsb = self.0 & self.0.wrapping_neg();
         self.0 ^= lsb;
-        Square(lsb.trailing_zeros() as u8)
+        Square(lsb.trailing_zeros())
     }
 
     pub fn get_lsb(self) -> Square {
         let lsb = self.0 & self.0.wrapping_neg();
-        Square(lsb.trailing_zeros() as u8)
+        Square(lsb.trailing_zeros())
     }
 
     pub fn occupied(self, sq: Square) -> bool {
