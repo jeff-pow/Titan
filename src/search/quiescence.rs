@@ -29,11 +29,10 @@ pub fn quiescence(
         return board.evaluate();
     }
 
-    let table_move = if let Some(entry) = info.transpos_table.get(board.zobrist_hash, ply) {
-        entry.best_move(board)
-    } else {
-        Move::NULL
-    };
+    let table_move = info
+        .transpos_table
+        .get(board.zobrist_hash, ply)
+        .map_or(Move::NULL, |e| e.best_move(board));
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
 
