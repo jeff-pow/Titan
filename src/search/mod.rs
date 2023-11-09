@@ -27,12 +27,7 @@ pub const INIT_ASP: i32 = 10;
 /// Begin LMR if more than this many moves have been searched
 pub const LMR_THRESHOLD: i32 = 2;
 pub const MIN_LMR_DEPTH: i32 = 2;
-pub const MAX_CAPTURE_SEE_DEPTH: i32 = 6;
-pub const CAPTURE_SEE_COEFFICIENT: i32 = 15;
-pub const MAX_QUIET_SEE_DEPTH: i32 = 8;
-pub const QUIET_SEE_COEFFICIENT: i32 = 50;
 pub const MAX_LMP_DEPTH: i32 = 6;
-pub const LMP_DIVISOR: i32 = 2;
 pub const LMP_CONST: i32 = 3;
 pub const RFP_MULTIPLIER: i32 = 70;
 pub const MAX_RFP_DEPTH: i32 = 9;

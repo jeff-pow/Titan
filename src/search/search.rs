@@ -14,9 +14,8 @@ use super::killers::store_killer_move;
 use super::quiescence::quiescence;
 use super::see::see;
 use super::{
-    get_reduction, store_pv, SearchInfo, SearchType, CAPTURE_SEE_COEFFICIENT, LMP_CONST, LMP_DIVISOR, LMR_THRESHOLD,
-    MAX_CAPTURE_SEE_DEPTH, MAX_LMP_DEPTH, MAX_QUIET_SEE_DEPTH, MAX_RFP_DEPTH, MIN_IIR_DEPTH, MIN_LMR_DEPTH,
-    MIN_NMP_DEPTH, QUIET_SEE_COEFFICIENT, RFP_MULTIPLIER,
+    get_reduction, store_pv, SearchInfo, SearchType, LMP_CONST, LMR_THRESHOLD, MAX_LMP_DEPTH, MAX_RFP_DEPTH,
+    MIN_IIR_DEPTH, MIN_LMR_DEPTH, MIN_NMP_DEPTH, RFP_MULTIPLIER,
 };
 
 pub const CHECKMATE: i32 = 30000;
