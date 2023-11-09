@@ -102,6 +102,7 @@ impl TranspositionTable {
         self.age.0.store(63.min(self.age() + 1), Ordering::Relaxed);
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn store(&self, hash: u64, m: Move, depth: i32, flag: EntryFlag, mut eval: i32, ply: i32, is_pv: bool) {
         let idx = index(hash);
         let key = hash as u16;

@@ -49,7 +49,7 @@ pub fn quiescence(
     } else {
         generate_moves(board, MGT::CapturesOnly)
     };
-    moves.score_moves(board, table_move, &info.killer_moves[ply as usize], info);
+    moves.score_moves(board, table_move, info.stack[ply as usize].killers, info);
 
     let mut best_score = if in_check { -INFINITY } else { board.evaluate() };
 
@@ -58,7 +58,7 @@ pub fn quiescence(
 
     for MoveListEntry { m, .. } in moves {
         let mut node_pvs = Vec::new();
-        let mut new_b = board.to_owned();
+        let mut new_b = *board;
 
         // We want to find at least one evasion so we know we aren't in checkmate, so don't prune
         // moves before then
