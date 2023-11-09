@@ -51,8 +51,8 @@ impl TableEntry {
         // The reasoning here is if there is indeed a piece at the square in question, we can extract it.
         // Otherwise use 0b111 which isn't a flag at all, and will thus not show equivalent to any
         // generated moves. If the move is null, it won't be generated, and won't be falsely scored either
-        let p = b.piece_at(m.origin_square()).map_or(0b111, |p| p.idx());
-        Move(self.best_move as u32 | (p as u32 & 0b111) << 16)
+        let p = b.piece_at(m.origin_square()).map_or(0b111, |p| p as u32);
+        Move(self.best_move as u32 | (p & 0b111) << 16)
     }
 }
 

@@ -139,21 +139,19 @@ fn parse_time(buff: &str, search_info: &mut SearchInfo) -> GameTime {
         match entry {
             ("wtime", wtime) => {
                 search_info.search_type = SearchType::Time;
-                game_time.time_remaining[Color::White.idx()] =
-                    Duration::from_millis(wtime.parse::<u64>().expect("Valid u64"))
+                game_time.time_remaining[Color::White] = Duration::from_millis(wtime.parse::<u64>().expect("Valid u64"))
             }
             ("btime", btime) => {
                 search_info.search_type = SearchType::Time;
-                game_time.time_remaining[Color::Black.idx()] =
-                    Duration::from_millis(btime.parse::<u64>().expect("Valid u64"))
+                game_time.time_remaining[Color::Black] = Duration::from_millis(btime.parse::<u64>().expect("Valid u64"))
             }
             ("winc", winc) => {
                 search_info.search_type = SearchType::Time;
-                game_time.time_inc[Color::White.idx()] = Duration::from_millis(winc.parse::<u64>().expect("Valid u64"))
+                game_time.time_inc[Color::White] = Duration::from_millis(winc.parse::<u64>().expect("Valid u64"))
             }
             ("binc", binc) => {
                 search_info.search_type = SearchType::Time;
-                game_time.time_inc[Color::Black.idx()] = Duration::from_millis(binc.parse::<u64>().expect("Valid u64"))
+                game_time.time_inc[Color::Black] = Duration::from_millis(binc.parse::<u64>().expect("Valid u64"))
             }
             ("movestogo", moves) => game_time.movestogo = moves.parse::<i32>().expect("Valid i32"),
             _ => return game_time,

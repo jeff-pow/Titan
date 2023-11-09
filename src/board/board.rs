@@ -76,7 +76,7 @@ impl Board {
     }
 
     pub fn bitboard(&self, side: Color, piece: PieceName) -> Bitboard {
-        self.bitboards[piece.idx()] & self.color_occupancies(side)
+        self.bitboards[piece] & self.color_occupancies(side)
     }
 
     fn is_material_draw(&self) -> bool {
@@ -118,7 +118,7 @@ impl Board {
     }
 
     pub fn piece_bitboard(&self, p: PieceName) -> Bitboard {
-        self.bitboards[p.idx()]
+        self.bitboards[p]
     }
 
     pub fn is_draw(&self) -> bool {
@@ -126,7 +126,7 @@ impl Board {
     }
 
     pub fn color_occupancies(&self, color: Color) -> Bitboard {
-        self.color_occupancies[color.idx()]
+        self.color_occupancies[color]
     }
 
     pub fn occupancies(&self) -> Bitboard {
@@ -134,7 +134,7 @@ impl Board {
     }
 
     pub fn color_at(&self, sq: Square) -> Option<Color> {
-        self.array_board[sq.idx()].map(|piece| piece.color)
+        self.array_board[sq].map(|piece| piece.color)
         // self.color_occupancies
         //     .iter()
         //     .position(|x| *x & sq.bitboard() != Bitboard::EMPTY)
@@ -142,7 +142,7 @@ impl Board {
     }
 
     pub fn piece_at(&self, sq: Square) -> Option<PieceName> {
-        self.array_board[sq.idx()].map(|piece| piece.name)
+        self.array_board[sq].map(|piece| piece.name)
         // self.bitboards
         //     .iter()
         //     .position(|x| *x & sq.bitboard() != Bitboard::EMPTY)
@@ -155,17 +155,17 @@ impl Board {
     }
 
     pub fn place_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
-        self.array_board[sq.idx()] = Some(Piece::new(piece_type, color));
-        self.bitboards[piece_type.idx()] ^= sq.bitboard();
-        self.color_occupancies[color.idx()] ^= sq.bitboard();
+        self.array_board[sq] = Some(Piece::new(piece_type, color));
+        self.bitboards[piece_type] ^= sq.bitboard();
+        self.color_occupancies[color] ^= sq.bitboard();
         self.accumulator.add_feature(piece_type, color, sq);
     }
 
     fn remove_piece(&mut self, sq: Square) {
-        if let Some(piece) = self.array_board[sq.idx()] {
-            self.array_board[sq.idx()] = None;
-            self.bitboards[piece.name.idx()] ^= sq.bitboard();
-            self.color_occupancies[piece.color.idx()] ^= sq.bitboard();
+        if let Some(piece) = self.array_board[sq] {
+            self.array_board[sq] = None;
+            self.bitboards[piece.name] ^= sq.bitboard();
+            self.color_occupancies[piece.color] ^= sq.bitboard();
             self.accumulator.remove_feature(piece.name, piece.color, sq);
         }
     }
@@ -179,24 +179,15 @@ impl Board {
     }
 
     pub fn attackers_for_side(&self, attacker: Color, sq: Square, occupancy: Bitboard) -> Bitboard {
+        let bishops = self.bitboard(attacker, PieceName::Queen) | self.bitboard(attacker, PieceName::Bishop);
+        let rooks = self.bitboard(attacker, PieceName::Queen) | self.bitboard(attacker, PieceName::Rook);
+
         let pawn_attacks = MG.pawn_attacks(sq, !attacker) & self.bitboard(attacker, PieceName::Pawn);
         let knight_attacks = MG.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
-        let bishop_attacks = MG.bishop_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Bishop);
-        let rook_attacks = MG.rook_attacks(sq, occupancy) & self.bitboard(attacker, PieceName::Rook);
-        let queen_attacks = (MG.rook_attacks(sq, occupancy) | MG.bishop_attacks(sq, occupancy))
-            & self.bitboard(attacker, PieceName::Queen);
+        let bishop_attacks = MG.bishop_attacks(sq, occupancy) & bishops;
+        let rook_attacks = MG.rook_attacks(sq, occupancy) & rooks;
         let king_attacks = MG.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
-        pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | queen_attacks | king_attacks
-
-        // let bishops = self.bitboard(attacker, PieceName::Queen) | self.bitboard(attacker, PieceName::Bishop);
-        // let rooks = self.bitboard(attacker, PieceName::Queen) | self.bitboard(attacker, PieceName::Rook);
-
-        // let pawn_attacks = MG.pawn_attacks(sq, !attacker) & self.bitboard(attacker, PieceName::Pawn);
-        // let knight_attacks = MG.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
-        // let bishop_attacks = MG.bishop_attacks(sq, occupancy) & bishops;
-        // let rook_attacks = MG.rook_attacks(sq, occupancy) & rooks;
-        // let king_attacks = MG.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
-        // pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks
+        pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks
     }
 
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
@@ -358,7 +349,7 @@ impl Board {
             self.half_moves = 0;
         }
 
-        self.castling_rights &= CASTLING_RIGHTS[m.origin_square().idx()] & CASTLING_RIGHTS[m.dest_square().idx()];
+        self.castling_rights &= CASTLING_RIGHTS[m.origin_square()] & CASTLING_RIGHTS[m.dest_square()];
 
         self.to_move = !self.to_move;
 

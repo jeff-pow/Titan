@@ -77,7 +77,7 @@ impl Default for Magics {
 impl Magics {
     pub fn bishop_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
         let mut occupied = occupied.0;
-        let magic_entry: &SMagic = &self.bishop_magics[square.idx()];
+        let magic_entry: &SMagic = &self.bishop_magics[square];
         occupied &= magic_entry.mask;
         occupied = occupied.wrapping_mul(magic_entry.magic);
         occupied = occupied.wrapping_shr(magic_entry.shift);
@@ -86,7 +86,7 @@ impl Magics {
 
     pub fn rook_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
         let mut occupied = occupied.0;
-        let magic_entry: &SMagic = &self.rook_magics[square.idx()];
+        let magic_entry: &SMagic = &self.rook_magics[square];
         occupied &= magic_entry.mask;
         occupied = occupied.wrapping_mul(magic_entry.magic);
         occupied = occupied.wrapping_shr(magic_entry.shift);
@@ -214,11 +214,11 @@ unsafe fn gen_magic_board(
         }
 
         // Set current PreSMagic length to be of size
-        pre_sq_table[s.idx()].len = size;
+        pre_sq_table[s].len = size;
 
         // If there is a next square, set the start of it.
         if s.idx() < 63 {
-            pre_sq_table[s.idx() + 1].start = pre_sq_table[s.idx()].next_idx();
+            pre_sq_table[s.idx() + 1].start = pre_sq_table[s].next_idx();
         }
         // Create our Random Number Generator with a seed
         let mut rng = Rng::default();
@@ -245,8 +245,8 @@ unsafe fn gen_magic_board(
                     // If we have visited with lower current, we replace it with this current number,
                     // as this current is higher and has gone through more passes
                     age[index] = current;
-                    *attacks.add(pre_sq_table[s.idx()].start + index) = Bitboard(reference[i]);
-                } else if *attacks.add(pre_sq_table[s.idx()].start + index) != Bitboard(reference[i]) {
+                    *attacks.add(pre_sq_table[s].start + index) = Bitboard(reference[i]);
+                } else if *attacks.add(pre_sq_table[s].start + index) != Bitboard(reference[i]) {
                     // If a magic maps to the same index but different result, either magic is bad or we are done
                     break;
                 }
@@ -258,9 +258,9 @@ unsafe fn gen_magic_board(
             }
         }
         // Set the remaining variables for the PreSMagic Struct
-        pre_sq_table[s.idx()].magic = magic;
-        pre_sq_table[s.idx()].mask = mask.0;
-        pre_sq_table[s.idx()].shift = shift;
+        pre_sq_table[s].magic = magic;
+        pre_sq_table[s].mask = mask.0;
+        pre_sq_table[s].shift = shift;
     }
 
     // size = running total of total size

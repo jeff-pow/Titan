@@ -8,7 +8,8 @@ pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
     let total = RwLock::new(0);
     let moves = generate_legal_moves(&board);
 
-    moves.into_vec().into_par_iter().for_each(|m| {
+    (0..moves.len()).into_par_iter().for_each(|idx| {
+        let m = moves[idx];
         let mut new_b = board.to_owned();
         assert!(new_b.make_move(m));
         let count = count_moves(depth - 1, &new_b);

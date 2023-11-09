@@ -58,12 +58,6 @@ impl MoveList {
         self.arr[idx]
     }
 
-    pub fn into_vec(self) -> Vec<Move> {
-        let mut v = Vec::new();
-        self.into_iter().for_each(|x| v.push(x.m));
-        v
-    }
-
     pub fn perft_next(&mut self) -> Option<Move> {
         if self.current_idx >= self.len {
             None
@@ -107,7 +101,7 @@ impl MoveList {
                     GOOD_CAPTURE
                 } else {
                     BAD_CAPTURE
-                }) + MVV_LVA[board.piece_at(entry.m.origin_square()).unwrap().idx()][c.idx()]
+                }) + MVV_LVA[board.piece_at(entry.m.origin_square()).unwrap()][c]
             } else if killers[0] == entry.m {
                 KILLER_ONE
             } else if killers[1] == entry.m {

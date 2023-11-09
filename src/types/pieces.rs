@@ -1,4 +1,5 @@
-use std::ops;
+use crate::impl_index;
+use std::ops::{self, Index, IndexMut};
 
 use strum_macros::EnumIter;
 
@@ -10,10 +11,30 @@ pub const KNIGHT_PTS: i32 = 350;
 pub const PAWN_PTS: i32 = 100;
 pub const NUM_PIECES: usize = 6;
 
+impl_index!(Color);
 #[derive(EnumIter, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Color {
     White,
     Black,
+}
+
+#[macro_export]
+macro_rules! impl_index {
+    ($enum_name:ident) => {
+        impl<T, const N: usize> Index<$enum_name> for [T; N] {
+            type Output = T;
+
+            fn index(&self, index: $enum_name) -> &Self::Output {
+                &self[index as usize]
+            }
+        }
+
+        impl<T, const N: usize> IndexMut<$enum_name> for [T; N] {
+            fn index_mut(&mut self, index: $enum_name) -> &mut Self::Output {
+                &mut self[index as usize]
+            }
+        }
+    };
 }
 
 impl Color {
@@ -45,6 +66,7 @@ impl From<usize> for Color {
     }
 }
 
+impl_index!(PieceName);
 #[derive(Debug, EnumIter, Copy, Clone, PartialEq, Eq)]
 pub enum PieceName {
     Pawn,
