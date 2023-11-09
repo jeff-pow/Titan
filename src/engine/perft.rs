@@ -12,7 +12,7 @@ pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
         let m = moves[idx];
         let mut new_b = board.to_owned();
         assert!(new_b.make_move(m));
-        let count = count_moves(depth - 1, &new_b);
+        let count = count_moves::<true>(depth - 1, &new_b);
         *total.write().unwrap() += count;
         println!("{}: {}", m.to_san(), count);
     });
@@ -22,7 +22,7 @@ pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
     x
 }
 
-pub fn perft(board: Board, depth: i32) -> usize {
+pub fn perft<const BULK: bool>(board: Board, depth: i32) -> usize {
     let mut total = 0;
     let moves = generate_legal_moves(&board);
     // for MoveListEntry { m, .. } in moves {
@@ -30,7 +30,7 @@ pub fn perft(board: Board, depth: i32) -> usize {
         let m = moves[i];
         let mut new_b = board.to_owned();
         assert!(new_b.make_move(m));
-        let count = count_moves(depth - 1, &new_b);
+        let count = count_moves::<BULK>(depth - 1, &new_b);
         total += count;
         println!("{}: {}", m.to_san(), count);
     }
@@ -39,12 +39,12 @@ pub fn perft(board: Board, depth: i32) -> usize {
 }
 
 /// Recursively counts the number of moves down to a certain depth
-pub fn count_moves(depth: i32, board: &Board) -> usize {
+pub fn count_moves<const BULK: bool>(depth: i32, board: &Board) -> usize {
     let mut count = 0;
     let moves = generate_legal_moves(board);
     assert!(depth >= 0);
 
-    if depth == 1 {
+    if depth == 1 && BULK {
         return moves.len();
     }
     if depth == 0 {
@@ -55,7 +55,7 @@ pub fn count_moves(depth: i32, board: &Board) -> usize {
         let m = moves[i];
         let mut new_b = board.to_owned();
         assert!(new_b.make_move(m));
-        count += count_moves(depth - 1, &new_b);
+        count += count_moves::<BULK>(depth - 1, &new_b);
     }
     count
 }
@@ -103,7 +103,7 @@ mod movegen_tests {
     #[test]
     fn test_position_6() {
         let board = build_board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
-        assert_eq!(164_075_551, perft(board, 5));
+        assert_eq!(164_075_551, perft::<true>(board, 5));
     }
 
     #[test]
