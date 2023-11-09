@@ -24,9 +24,10 @@ pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
 
 pub fn perft(board: Board, depth: i32) -> usize {
     let mut total = 0;
-    let mut moves = generate_legal_moves(&board);
+    let moves = generate_legal_moves(&board);
     // for MoveListEntry { m, .. } in moves {
-    while let Some(m) = moves.perft_next() {
+    for i in 0..moves.len() {
+        let m = moves[i];
         let mut new_b = board.to_owned();
         assert!(new_b.make_move(m));
         let count = count_moves(depth - 1, &new_b);
@@ -40,7 +41,7 @@ pub fn perft(board: Board, depth: i32) -> usize {
 /// Recursively counts the number of moves down to a certain depth
 pub fn count_moves(depth: i32, board: &Board) -> usize {
     let mut count = 0;
-    let mut moves = generate_legal_moves(board);
+    let moves = generate_legal_moves(board);
     assert!(depth >= 0);
 
     if depth == 1 {
@@ -50,7 +51,8 @@ pub fn count_moves(depth: i32, board: &Board) -> usize {
         return 1;
     }
 
-    while let Some(m) = moves.perft_next() {
+    for i in 0..moves.len() {
+        let m = moves[i];
         let mut new_b = board.to_owned();
         assert!(new_b.make_move(m));
         count += count_moves(depth - 1, &new_b);
@@ -130,7 +132,6 @@ mod movegen_tests {
                 let depth = depth[1..].parse::<i32>().unwrap();
                 let nodes = nodes.parse::<usize>().unwrap();
                 assert_eq!(nodes, multi_threaded_perft(board, depth));
-                // assert_eq!(nodes, perft(board, depth));
             }
             println!("{test_num} passed");
         }

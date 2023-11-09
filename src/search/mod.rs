@@ -10,7 +10,6 @@ use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
 
 use self::history_heuristics::MoveHistory;
-use self::killers::{empty_killers, KillerMoves};
 use self::search::MAX_SEARCH_DEPTH;
 use self::{game_time::GameTime, search_stats::SearchStats};
 
@@ -50,11 +49,11 @@ pub struct SearchInfo {
     pub iter_max_depth: i32,
     pub max_depth: i32,
     pub nmp_plies: i32,
-    pub killer_moves: KillerMoves,
     pub sel_depth: i32,
     pub history: MoveHistory,
     pub halt: Arc<AtomicBool>,
     pub current_line: Vec<Move>,
+    stack: [PlyEntry; MAX_SEARCH_DEPTH as usize],
 }
 
 impl Default for SearchInfo {
@@ -68,13 +67,20 @@ impl Default for SearchInfo {
             iter_max_depth: 0,
             nmp_plies: 0,
             max_depth: MAX_SEARCH_DEPTH,
-            killer_moves: empty_killers(),
             sel_depth: 0,
             history: MoveHistory::default(),
             halt: Arc::new(AtomicBool::from(false)),
             current_line: Vec::new(),
+            stack: [PlyEntry::default(); MAX_SEARCH_DEPTH as usize],
         }
     }
+}
+
+#[derive(Clone, Copy, Default)]
+struct PlyEntry {
+    pub killers: [Move; 2],
+    pub played_move: Move,
+    pub eval: i32,
 }
 
 #[derive(Clone, Copy, Default, PartialEq)]

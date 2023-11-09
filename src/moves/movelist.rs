@@ -58,16 +58,6 @@ impl MoveList {
         self.arr[idx]
     }
 
-    pub fn perft_next(&mut self) -> Option<Move> {
-        if self.current_idx >= self.len {
-            None
-        } else {
-            let m = self.arr[self.current_idx];
-            self.current_idx += 1;
-            Some(m.m)
-        }
-    }
-
     fn sort_next_move(&mut self, idx: usize) {
         let mut max_idx = idx;
         for i in (idx + 1)..self.len {
@@ -82,7 +72,7 @@ impl MoveList {
         &mut self,
         board: &Board,
         table_move: Move,
-        killers: &[Move; NUM_KILLER_MOVES],
+        killers: [Move; NUM_KILLER_MOVES],
         info: &SearchInfo,
     ) {
         for i in 0..self.len {

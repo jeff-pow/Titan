@@ -206,10 +206,16 @@ fn alpha_beta<const IS_PV: bool>(
     let original_alpha = alpha;
     let hist_bonus = (155 * depth).min(2000);
 
+    let static_eval = board.evaluate();
+    info.stack[ply as usize].eval = static_eval;
+    let improving = ply > 1 && static_eval > info.stack[ply as usize - 2].eval;
+
     if !is_root && !IS_PV && !in_check {
-        let static_eval = board.evaluate();
         // Reverse futility pruning
-        if static_eval - RFP_MULTIPLIER * depth >= beta && depth < MAX_RFP_DEPTH && static_eval.abs() < NEAR_CHECKMATE {
+        if static_eval - RFP_MULTIPLIER * depth / if improving { 2 } else { 1 } >= beta
+            && depth < MAX_RFP_DEPTH
+            && static_eval.abs() < NEAR_CHECKMATE
+        {
             return static_eval;
         }
 
@@ -232,7 +238,7 @@ fn alpha_beta<const IS_PV: bool>(
 
     let mut moves = generate_moves(board, MGT::All);
     let mut legal_moves_searched = 0;
-    moves.score_moves(board, table_move, &info.killer_moves[ply as usize], info);
+    moves.score_moves(board, table_move, info.stack[ply as usize].killers, info);
     info.search_stats.nodes_searched += 1;
 
     // Start of search
@@ -245,22 +251,14 @@ fn alpha_beta<const IS_PV: bool>(
                 // Late move pruning (LMP)
                 // By now all quiets have been searched.
                 if depth < MAX_LMP_DEPTH
-                    && !IS_PV
-                    && !in_check
-                    && legal_moves_searched > (LMP_CONST + depth * depth) / LMP_DIVISOR
+                    && legal_moves_searched > (LMP_CONST + depth * depth) / if improving { 1 } else { 2 }
                 {
                     break;
                 }
-
-                // Quiet SEE pruning
-                if depth <= MAX_QUIET_SEE_DEPTH && !see(board, m, -QUIET_SEE_COEFFICIENT * depth) {
-                    continue;
-                }
-            } else {
-                // Capture SEE pruning
-                if depth <= MAX_CAPTURE_SEE_DEPTH && !see(board, m, -CAPTURE_SEE_COEFFICIENT * depth * depth) {
-                    continue;
-                }
+            }
+            let margin = if m.is_capture(board) { -90 } else { -50 };
+            if depth < 7 && !see(board, m, margin * depth) {
+                continue;
             }
         }
 
@@ -269,6 +267,7 @@ fn alpha_beta<const IS_PV: bool>(
             continue;
         }
         info.current_line.push(m);
+        info.stack[ply as usize].played_move = m;
         let mut node_pvs = Vec::new();
 
         let can_lmr = legal_moves_searched >= LMR_THRESHOLD && depth >= MIN_LMR_DEPTH;

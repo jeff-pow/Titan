@@ -11,14 +11,19 @@ pub fn empty_killers() -> KillerMoves {
 }
 
 pub fn store_killer_move(ply: i32, m: Move, info: &mut SearchInfo) {
-    let first_killer = info.killer_moves[ply as usize][0];
-
-    if first_killer != m {
-        for i in (1..NUM_KILLER_MOVES).rev() {
-            let n = i;
-            let previous = info.killer_moves[ply as usize][n - 1];
-            info.killer_moves[ply as usize][n] = previous;
-        }
-        info.killer_moves[ply as usize][0] = m;
+    let ply = ply as usize;
+    if info.stack[ply].killers[0] != m {
+        info.stack[ply].killers[1] = info.stack[ply].killers[0];
+        info.stack[ply].killers[0] = m;
     }
+    // let first_killer = info.killer_moves[ply as usize][0];
+    //
+    // if first_killer != m {
+    //     for i in (1..NUM_KILLER_MOVES).rev() {
+    //         let n = i;
+    //         let previous = info.killer_moves[ply as usize][n - 1];
+    //         info.killer_moves[ply as usize][n] = previous;
+    //     }
+    //     info.killer_moves[ply as usize][0] = m;
+    // }
 }
