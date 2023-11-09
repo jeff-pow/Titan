@@ -52,13 +52,13 @@ impl Board {
             for piece in PieceName::iter() {
                 let occupancies = self.bitboard(color, piece);
                 for sq in occupancies {
-                    hash ^= ZOBRIST.piece_square_hashes[color as usize][piece as usize][sq.idx()]
+                    hash ^= ZOBRIST.piece_square_hashes[color as usize][piece as usize][sq]
                 }
             }
         }
 
         if let Some(x) = self.en_passant_square {
-            hash ^= ZOBRIST.en_passant[x.idx()]
+            hash ^= ZOBRIST.en_passant[x]
         }
 
         if self.can_castle(Castle::WhiteKing) {

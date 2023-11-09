@@ -134,7 +134,7 @@ impl Board {
     }
 
     pub fn color_at(&self, sq: Square) -> Option<Color> {
-        self.array_board[sq.idx()].map(|piece| piece.color)
+        self.array_board[sq].map(|piece| piece.color)
         // self.color_occupancies
         //     .iter()
         //     .position(|x| *x & sq.bitboard() != Bitboard::EMPTY)
@@ -142,7 +142,7 @@ impl Board {
     }
 
     pub fn piece_at(&self, sq: Square) -> Option<PieceName> {
-        self.array_board[sq.idx()].map(|piece| piece.name)
+        self.array_board[sq].map(|piece| piece.name)
         // self.bitboards
         //     .iter()
         //     .position(|x| *x & sq.bitboard() != Bitboard::EMPTY)
@@ -155,15 +155,15 @@ impl Board {
     }
 
     pub fn place_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
-        self.array_board[sq.idx()] = Some(Piece::new(piece_type, color));
+        self.array_board[sq] = Some(Piece::new(piece_type, color));
         self.bitboards[piece_type] ^= sq.bitboard();
         self.color_occupancies[color] ^= sq.bitboard();
         self.accumulator.add_feature(piece_type, color, sq);
     }
 
     fn remove_piece(&mut self, sq: Square) {
-        if let Some(piece) = self.array_board[sq.idx()] {
-            self.array_board[sq.idx()] = None;
+        if let Some(piece) = self.array_board[sq] {
+            self.array_board[sq] = None;
             self.bitboards[piece.name] ^= sq.bitboard();
             self.color_occupancies[piece.color] ^= sq.bitboard();
             self.accumulator.remove_feature(piece.name, piece.color, sq);
@@ -349,7 +349,7 @@ impl Board {
             self.half_moves = 0;
         }
 
-        self.castling_rights &= CASTLING_RIGHTS[m.origin_square().idx()] & CASTLING_RIGHTS[m.dest_square().idx()];
+        self.castling_rights &= CASTLING_RIGHTS[m.origin_square()] & CASTLING_RIGHTS[m.dest_square()];
 
         self.to_move = !self.to_move;
 
