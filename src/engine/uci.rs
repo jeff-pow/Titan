@@ -4,6 +4,7 @@ use std::{io, time::Duration};
 
 use itertools::Itertools;
 
+use crate::bench::bench;
 use crate::board::fen::parse_fen_from_buffer;
 use crate::board::zobrist::ZOBRIST;
 use crate::moves::movegenerator::MG;
@@ -70,6 +71,8 @@ pub fn main_loop() -> ! {
         } else if buffer.eq("dbg\n") {
             dbg!(&search_info.board);
             search_info.board.debug_bitboards();
+        } else if buffer.starts_with("bench") {
+            bench();
         } else if buffer.starts_with("clear") {
             search_info = SearchInfo::default();
             println!("Transposition table cleared");
