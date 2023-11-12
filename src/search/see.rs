@@ -2,10 +2,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     board::board::Board,
-    moves::{
-        movegenerator::MG,
-        moves::{Move, Promotion},
-    },
+    moves::{movegenerator::MG, moves::Move},
     types::{
         bitboard::Bitboard,
         pieces::{Color, PieceName},
@@ -25,12 +22,7 @@ fn gain(board: &Board, m: Move) -> i32 {
         0
     };
     if let Some(p) = m.promotion() {
-        score += match p {
-            Promotion::Queen => PieceName::Queen.value(),
-            Promotion::Rook => PieceName::Rook.value(),
-            Promotion::Bishop => PieceName::Bishop.value(),
-            Promotion::Knight => PieceName::Knight.value(),
-        };
+        score += p.value();
         score -= PieceName::Pawn.value()
     }
     score

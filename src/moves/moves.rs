@@ -9,24 +9,27 @@ use crate::{
 
 use strum_macros::EnumIter;
 
-#[derive(Clone, Copy)]
-pub(crate) enum MoveType {
-    Normal,
-    Promotion,
-    EnPassant,
-    Castle,
-}
+use MoveType::*;
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum MoveType {
+    Normal = 0b0000,
 
-fn get_move_type(promotion: bool, en_passant: bool, castle: bool) -> MoveType {
-    if promotion {
-        MoveType::Promotion
-    } else if en_passant {
-        return MoveType::EnPassant;
-    } else if castle {
-        return MoveType::Castle;
-    } else {
-        MoveType::Normal
-    }
+    QueenPromotion = 0b0001,
+    RookPromotion = 0b0010,
+    BishopPromotion = 0b0011,
+    KnightPromotion = 0b0100,
+
+    DoublePush = 0b0110,
+
+    CastleMove = 0b0111,
+
+    Capture = 0b1000,
+    EnPassant = 0b1101,
+
+    CaptureQueenPromotion = 0b1001,
+    CaptureRookPromotion = 0b1010,
+    CaptureBishopPromotion = 0b1011,
+    CaptureKnightPromotion = 0b1100,
 }
 
 /// Cardinal directions from the point of view of white side
@@ -73,10 +76,9 @@ impl Direction {
 
 /// A move needs 16 bits to be stored
 ///
-/// bit  0- 5: origin square (from 0 to 63)
+/// bit  0-5: origin square (from 0 to 63)
 /// bit  6-11: destination square (from 0 to 63)
-/// bit 12-13: promotion piece
-/// bit 14-15: special move flag: normal move(0), promotion (1), en passant (2), castling (3)
+/// bit 12-15: special move flag: normal move(0), promotion (1), en passant (2), castling (3)
 /// bit 16-19: piece moving - useful in continuation history
 /// NOTE: en passant bit is set only when a pawn can be captured
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -84,44 +86,10 @@ pub struct Move(pub u32);
 
 impl Move {
     pub const NULL: Move = Move(0);
-    fn full_move(
-        origin: Square,
-        destination: Square,
-        promotion: Option<Promotion>,
-        move_type: MoveType,
-        piece_moving: PieceName,
-    ) -> Self {
-        let promotion = match promotion {
-            Some(Promotion::Queen) => 3,
-            Some(Promotion::Rook) => 2,
-            Some(Promotion::Bishop) => 1,
-            Some(Promotion::Knight) | None => 0,
-        };
-        let move_type = match move_type {
-            MoveType::Normal => 0,
-            MoveType::Promotion => 1,
-            MoveType::EnPassant => 2,
-            MoveType::Castle => 3,
-        };
+    pub fn new(origin: Square, destination: Square, move_type: MoveType, piece_moving: PieceName) -> Self {
         let piece = piece_moving.idx() as u32;
-        let m = origin.0 | (destination.0 << 6) | (promotion << 12) | (move_type << 14) | (piece << 16);
+        let m = origin.0 | (destination.0 << 6) | ((move_type as u32) << 12) | (piece << 16);
         Move(m)
-    }
-
-    pub fn new(origin: Square, destination: Square, piece_moving: PieceName) -> Self {
-        Self::full_move(origin, destination, None, MoveType::Normal, piece_moving)
-    }
-
-    pub fn new_castling(origin: Square, destination: Square) -> Self {
-        Self::full_move(origin, destination, None, MoveType::Castle, PieceName::King)
-    }
-
-    pub fn new_promotion(origin: Square, destination: Square, promotion: Promotion) -> Self {
-        Self::full_move(origin, destination, Some(promotion), MoveType::Promotion, PieceName::Pawn)
-    }
-
-    pub fn new_en_passant(origin: Square, destination: Square) -> Self {
-        Self::full_move(origin, destination, None, MoveType::EnPassant, PieceName::Pawn)
     }
 
     pub fn is_capture(self, board: &Board) -> bool {
@@ -129,39 +97,31 @@ impl Move {
     }
 
     pub fn is_castle(self) -> bool {
-        let castle_flag = (self.0 >> 14) & 0b11;
-        castle_flag == MoveType::Castle as u32
+        let castle_flag = (self.0 >> 12) & 0b1111;
+        castle_flag == MoveType::CastleMove as u32
     }
 
     pub fn piece_moving(self) -> PieceName {
-        let piece_flag = (self.0 >> 16) & 0b111;
+        let piece_flag = (self.0 >> 16) & 0b1111;
         PieceName::from(piece_flag as usize)
     }
 
+    fn flag(self) -> MoveType {
+        unsafe { std::mem::transmute((self.0 >> 12) as u8 & 0b1111) }
+    }
+
     pub fn is_en_passant(self) -> bool {
-        let en_passant_flag = (self.0 >> 14) & 0b11;
+        let en_passant_flag = (self.0 >> 12) & 0b1111;
         en_passant_flag == MoveType::EnPassant as u32
     }
 
-    pub fn is_normal(self, board: &Board) -> bool {
-        self.promotion().is_none()
-            && !self.is_castle()
-            && !self.is_en_passant()
-            && !self.is_castle()
-            && !self.is_capture(board)
-    }
-
-    pub fn promotion(self) -> Option<Promotion> {
-        let promotion_flag = (self.0 >> 14) & 0b11;
-        if promotion_flag != MoveType::Promotion as u32 {
-            return None;
-        }
-        match (self.0 >> 12) & 0b11 {
-            0 => Some(Promotion::Knight),
-            1 => Some(Promotion::Bishop),
-            2 => Some(Promotion::Rook),
-            3 => Some(Promotion::Queen),
-            _ => unreachable!(),
+    pub fn promotion(self) -> Option<PieceName> {
+        match self.flag() {
+            QueenPromotion | CaptureQueenPromotion => Some(PieceName::Queen),
+            RookPromotion | CaptureRookPromotion => Some(PieceName::Rook),
+            BishopPromotion | CaptureBishopPromotion => Some(PieceName::Bishop),
+            KnightPromotion | CaptureKnightPromotion => Some(PieceName::Knight),
+            _ => None,
         }
     }
 
@@ -190,11 +150,11 @@ impl Move {
         str += arr[end_letter as usize];
         str += &end_number.to_string();
         match self.promotion() {
-            Some(Promotion::Queen) => str += "q",
-            Some(Promotion::Rook) => str += "r",
-            Some(Promotion::Bishop) => str += "b",
-            Some(Promotion::Knight) => str += "n",
-            None => (),
+            Some(PieceName::Queen) => str += "q",
+            Some(PieceName::Rook) => str += "r",
+            Some(PieceName::Bishop) => str += "b",
+            Some(PieceName::Knight) => str += "n",
+            _ => (),
         }
         str
     }
@@ -233,10 +193,10 @@ pub fn from_san(str: &str, board: &Board) -> Move {
 
     let promotion = if vec.len() > 4 {
         match vec[4] {
-            'q' => Some(Promotion::Queen),
-            'r' => Some(Promotion::Rook),
-            'b' => Some(Promotion::Bishop),
-            'n' => Some(Promotion::Knight),
+            'q' => Some(PieceName::Queen),
+            'r' => Some(PieceName::Rook),
+            'b' => Some(PieceName::Bishop),
+            'n' => Some(PieceName::Knight),
             _ => panic!(),
         }
     } else {
@@ -264,16 +224,27 @@ pub fn from_san(str: &str, board: &Board) -> Move {
     };
     let castle = castle != Castle::None;
     let en_passant = { piece_moving == PieceName::Pawn && captured.is_none() && start_column != end_column };
-    let move_type = get_move_type(promotion.is_some(), en_passant, castle);
-    Move::full_move(origin_sq, dest_sq, promotion, move_type, piece_moving)
-}
-
-#[derive(Clone, Copy, Debug, EnumIter, PartialEq)]
-pub enum Promotion {
-    Queen,
-    Rook,
-    Bishop,
-    Knight,
+    let move_type = {
+        if castle {
+            CastleMove
+        } else if en_passant {
+            EnPassant
+        } else if promotion.is_some() {
+            match promotion {
+                Some(p) => match p {
+                    PieceName::Knight => KnightPromotion,
+                    PieceName::Bishop => BishopPromotion,
+                    PieceName::Rook => RookPromotion,
+                    PieceName::Queen => QueenPromotion,
+                    _ => Normal,
+                },
+                None => Normal,
+            }
+        } else {
+            Normal
+        }
+    };
+    Move::new(origin_sq, dest_sq, move_type, piece_moving)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -308,11 +279,11 @@ impl Display for Move {
         str += &self.is_castle().to_string();
         str += " Promotion: ";
         match self.promotion() {
-            Some(Promotion::Queen) => str += "Queen ",
-            Some(Promotion::Rook) => str += "Rook ",
-            Some(Promotion::Bishop) => str += "Bishop ",
-            Some(Promotion::Knight) => str += "Knight ",
-            None => str += "None ",
+            Some(PieceName::Queen) => str += "Queen ",
+            Some(PieceName::Rook) => str += "Rook ",
+            Some(PieceName::Bishop) => str += "Bishop ",
+            Some(PieceName::Knight) => str += "Knight ",
+            _ => str += "None ",
         }
         str += " En Passant: ";
         str += &self.is_en_passant().to_string();
@@ -328,29 +299,28 @@ mod move_test {
 
     #[test]
     fn test_move_creation() {
-        let normal_move = Move::full_move(Square(10), Square(20), None, MoveType::Normal, PieceName::Pawn);
+        let normal_move = Move::new(Square(10), Square(20), MoveType::Normal, PieceName::Pawn);
         assert_eq!(normal_move.origin_square(), Square(10));
         assert_eq!(normal_move.dest_square(), Square(20));
         assert!(!normal_move.is_castle());
         assert!(!normal_move.is_en_passant());
         assert_eq!(normal_move.promotion(), None);
 
-        let promotion_move =
-            Move::full_move(Square(15), Square(25), Some(Promotion::Queen), MoveType::Promotion, PieceName::Pawn);
+        let promotion_move = Move::new(Square(15), Square(25), QueenPromotion, PieceName::Pawn);
         assert_eq!(promotion_move.origin_square(), Square(15));
         assert_eq!(promotion_move.dest_square(), Square(25));
         assert!(!promotion_move.is_castle());
         assert!(!promotion_move.is_en_passant());
-        assert_eq!(promotion_move.promotion(), Some(Promotion::Queen));
+        assert_eq!(promotion_move.promotion(), Some(PieceName::Queen));
 
-        let castle_move = Move::full_move(Square(4), Square(2), None, MoveType::Castle, PieceName::King);
+        let castle_move = Move::new(Square(4), Square(2), CastleMove, PieceName::King);
         assert_eq!(castle_move.origin_square(), Square(4));
         assert_eq!(castle_move.dest_square(), Square(2));
         assert!(castle_move.is_castle());
         assert!(!castle_move.is_en_passant());
         assert_eq!(castle_move.promotion(), None);
 
-        let en_passant_move = Move::full_move(Square(7), Square(5), None, MoveType::EnPassant, PieceName::King);
+        let en_passant_move = Move::new(Square(7), Square(5), MoveType::EnPassant, PieceName::King);
         assert_eq!(en_passant_move.origin_square(), Square(7));
         assert_eq!(en_passant_move.dest_square(), Square(5));
         assert!(!en_passant_move.is_castle());
@@ -360,20 +330,16 @@ mod move_test {
 
     #[test]
     fn test_promotion_conversion() {
-        let knight_promotion =
-            Move::full_move(Square(0), Square(7), Some(Promotion::Knight), MoveType::Promotion, PieceName::Pawn);
-        assert_eq!(knight_promotion.promotion(), Some(Promotion::Knight));
+        let knight_promotion = Move::new(Square(0), Square(7), KnightPromotion, PieceName::Pawn);
+        assert_eq!(knight_promotion.promotion(), Some(PieceName::Knight));
 
-        let bishop_promotion =
-            Move::full_move(Square(15), Square(23), Some(Promotion::Bishop), MoveType::Promotion, PieceName::Pawn);
-        assert_eq!(bishop_promotion.promotion(), Some(Promotion::Bishop));
+        let bishop_promotion = Move::new(Square(15), Square(23), BishopPromotion, PieceName::Pawn);
+        assert_eq!(bishop_promotion.promotion(), Some(PieceName::Bishop));
 
-        let rook_promotion =
-            Move::full_move(Square(28), Square(31), Some(Promotion::Rook), MoveType::Promotion, PieceName::Pawn);
-        assert_eq!(rook_promotion.promotion(), Some(Promotion::Rook));
+        let rook_promotion = Move::new(Square(28), Square(31), RookPromotion, PieceName::Pawn);
+        assert_eq!(rook_promotion.promotion(), Some(PieceName::Rook));
 
-        let queen_promotion =
-            Move::full_move(Square(62), Square(61), Some(Promotion::Queen), MoveType::Promotion, PieceName::Pawn);
-        assert_eq!(queen_promotion.promotion(), Some(Promotion::Queen));
+        let queen_promotion = Move::new(Square(62), Square(61), CaptureQueenPromotion, PieceName::Pawn);
+        assert_eq!(queen_promotion.promotion(), Some(PieceName::Queen));
     }
 }
