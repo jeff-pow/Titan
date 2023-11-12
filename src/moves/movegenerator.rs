@@ -205,16 +205,16 @@ fn generate_pawn_moves(board: &Board, gen_type: MGT, moves: &mut MoveList) {
             moves.push(Move::new(dest.shift(down), dest, MoveType::KnightPromotion, PieceName::Pawn));
         }
         for dest in left_capture_promotions {
-            moves.push(Move::new(dest.shift(down_right), dest, MoveType::CaptureQueenPromotion, PieceName::Pawn));
-            moves.push(Move::new(dest.shift(down_right), dest, MoveType::CaptureRookPromotion, PieceName::Pawn));
-            moves.push(Move::new(dest.shift(down_right), dest, MoveType::CaptureBishopPromotion, PieceName::Pawn));
-            moves.push(Move::new(dest.shift(down_right), dest, MoveType::CaptureKnightPromotion, PieceName::Pawn));
+            moves.push(Move::new(dest.shift(down_right), dest, MoveType::QueenPromotion, PieceName::Pawn));
+            moves.push(Move::new(dest.shift(down_right), dest, MoveType::RookPromotion, PieceName::Pawn));
+            moves.push(Move::new(dest.shift(down_right), dest, MoveType::BishopPromotion, PieceName::Pawn));
+            moves.push(Move::new(dest.shift(down_right), dest, MoveType::KnightPromotion, PieceName::Pawn));
         }
         for dest in right_capture_promotions {
-            moves.push(Move::new(dest.shift(down_left), dest, MoveType::CaptureQueenPromotion, PieceName::Pawn));
-            moves.push(Move::new(dest.shift(down_left), dest, MoveType::CaptureRookPromotion, PieceName::Pawn));
-            moves.push(Move::new(dest.shift(down_left), dest, MoveType::CaptureBishopPromotion, PieceName::Pawn));
-            moves.push(Move::new(dest.shift(down_left), dest, MoveType::CaptureKnightPromotion, PieceName::Pawn));
+            moves.push(Move::new(dest.shift(down_left), dest, MoveType::QueenPromotion, PieceName::Pawn));
+            moves.push(Move::new(dest.shift(down_left), dest, MoveType::RookPromotion, PieceName::Pawn));
+            moves.push(Move::new(dest.shift(down_left), dest, MoveType::BishopPromotion, PieceName::Pawn));
+            moves.push(Move::new(dest.shift(down_left), dest, MoveType::KnightPromotion, PieceName::Pawn));
         }
     }
 
@@ -225,11 +225,11 @@ fn generate_pawn_moves(board: &Board, gen_type: MGT, moves: &mut MoveList) {
             let right_captures = non_promotions.shift(up_right) & enemies;
             for dest in left_captures {
                 let src = dest.checked_shift(down_right).expect("Valid shift");
-                moves.push(Move::new(src, dest, MoveType::Capture, PieceName::Pawn));
+                moves.push(Move::new(src, dest, MoveType::Normal, PieceName::Pawn));
             }
             for dest in right_captures {
                 let src = dest.checked_shift(down_left).expect("Valid shift");
-                moves.push(Move::new(src, dest, MoveType::Capture, PieceName::Pawn));
+                moves.push(Move::new(src, dest, MoveType::Normal, PieceName::Pawn));
             }
         }
 
@@ -275,12 +275,7 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName, gen_type: MGT, 
             MoveGenerationType::All => attack_bitboard & (!board.color_occupancies(board.to_move)),
         };
         for dest in attacks {
-            let move_type = if board.occupancies().occupied(dest) {
-                MoveType::Capture
-            } else {
-                MoveType::Normal
-            };
-            moves.push(Move::new(sq, dest, move_type, piece_name));
+            moves.push(Move::new(sq, dest, MoveType::Normal, piece_name));
         }
     }
 }

@@ -33,69 +33,21 @@ pub const CASTLING_RIGHTS: [u32; 64] = [
 use MoveType::*;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MoveType {
-    Normal = 0b0000,
+    Normal = 0,
 
-    QueenPromotion = 0b0001,
-    RookPromotion = 0b0010,
-    BishopPromotion = 0b0011,
-    KnightPromotion = 0b0100,
+    QueenPromotion = 1,
+    RookPromotion = 2,
+    BishopPromotion = 3,
+    KnightPromotion = 4,
 
-    DoublePush = 0b0110,
+    DoublePush = 5,
 
-    CastleMove = 0b0111,
+    CastleMove = 6,
 
-    Capture = 0b1000,
-    EnPassant = 0b1101,
-
-    CaptureQueenPromotion = 0b1001,
-    CaptureRookPromotion = 0b1010,
-    CaptureBishopPromotion = 0b1011,
-    CaptureKnightPromotion = 0b1100,
+    EnPassant = 7,
 }
 
-/// Cardinal directions from the point of view of white side
-#[derive(EnumIter, Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Direction {
-    North = 8,
-    NorthWest = 7,
-    West = -1,
-    SouthWest = -9,
-    South = -8,
-    SouthEast = -7,
-    East = 1,
-    NorthEast = 9,
-}
-
-impl Direction {
-    /// Returns the opposite direction of the given direction
-    pub fn opp(self) -> Self {
-        match self {
-            North => South,
-            NorthWest => SouthEast,
-            West => East,
-            SouthWest => NorthEast,
-            South => North,
-            SouthEast => NorthWest,
-            East => West,
-            NorthEast => SouthWest,
-        }
-    }
-
-    pub fn to_xy(self) -> (i32, i32) {
-        match self {
-            North => (0, 1),
-            NorthWest => (-1, 1),
-            West => (-1, 0),
-            SouthWest => (-1, -1),
-            South => (0, -1),
-            SouthEast => (1, -1),
-            East => (1, 0),
-            NorthEast => (1, 1),
-        }
-    }
-}
-
-/// A move needs 16 bits to be stored
+/// A move needs 16 bits to be stored, but extra information is stored in more bits
 ///
 /// bit  0-5: origin square (from 0 to 63)
 /// bit  6-11: destination square (from 0 to 63)
@@ -138,10 +90,10 @@ impl Move {
 
     pub fn promotion(self) -> Option<PieceName> {
         match self.flag() {
-            QueenPromotion | CaptureQueenPromotion => Some(PieceName::Queen),
-            RookPromotion | CaptureRookPromotion => Some(PieceName::Rook),
-            BishopPromotion | CaptureBishopPromotion => Some(PieceName::Bishop),
-            KnightPromotion | CaptureKnightPromotion => Some(PieceName::Knight),
+            QueenPromotion => Some(PieceName::Queen),
+            RookPromotion => Some(PieceName::Rook),
+            BishopPromotion => Some(PieceName::Bishop),
+            KnightPromotion => Some(PieceName::Knight),
             _ => None,
         }
     }
@@ -293,6 +245,47 @@ impl Display for Move {
     }
 }
 
+/// Cardinal directions from the point of view of white side
+#[derive(EnumIter, Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Direction {
+    North = 8,
+    NorthWest = 7,
+    West = -1,
+    SouthWest = -9,
+    South = -8,
+    SouthEast = -7,
+    East = 1,
+    NorthEast = 9,
+}
+
+impl Direction {
+    /// Returns the opposite direction of the given direction
+    pub fn opp(self) -> Self {
+        match self {
+            North => South,
+            NorthWest => SouthEast,
+            West => East,
+            SouthWest => NorthEast,
+            South => North,
+            SouthEast => NorthWest,
+            East => West,
+            NorthEast => SouthWest,
+        }
+    }
+
+    pub fn to_xy(self) -> (i32, i32) {
+        match self {
+            North => (0, 1),
+            NorthWest => (-1, 1),
+            West => (-1, 0),
+            SouthWest => (-1, -1),
+            South => (0, -1),
+            SouthEast => (1, -1),
+            East => (1, 0),
+            NorthEast => (1, 1),
+        }
+    }
+}
 #[cfg(test)]
 mod move_test {
     use super::*;
@@ -339,7 +332,7 @@ mod move_test {
         let rook_promotion = Move::new(Square(28), Square(31), RookPromotion, PieceName::Pawn);
         assert_eq!(rook_promotion.promotion(), Some(PieceName::Rook));
 
-        let queen_promotion = Move::new(Square(62), Square(61), CaptureQueenPromotion, PieceName::Pawn);
+        let queen_promotion = Move::new(Square(62), Square(61), QueenPromotion, PieceName::Pawn);
         assert_eq!(queen_promotion.promotion(), Some(PieceName::Queen));
     }
 }
