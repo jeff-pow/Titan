@@ -9,6 +9,27 @@ use crate::{
 
 use strum_macros::EnumIter;
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Castle {
+    WhiteKing = 1,
+    WhiteQueen = 2,
+    BlackKing = 4,
+    BlackQueen = 8,
+    None,
+}
+
+#[rustfmt::skip]
+pub const CASTLING_RIGHTS: [u32; 64] = [
+    13, 15, 15, 15, 12, 15, 15, 14,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    7,  15, 15, 15,  3, 15, 15, 11,
+];
+
 use MoveType::*;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MoveType {
@@ -246,27 +267,6 @@ pub fn from_san(str: &str, board: &Board) -> Move {
     };
     Move::new(origin_sq, dest_sq, move_type, piece_moving)
 }
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Castle {
-    WhiteKing = 1,
-    WhiteQueen = 2,
-    BlackKing = 4,
-    BlackQueen = 8,
-    None,
-}
-
-#[rustfmt::skip]
-pub const CASTLING_RIGHTS: [u32; 64] = [
-    13, 15, 15, 15, 12, 15, 15, 14,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    7, 15, 15, 15, 3, 15, 15, 11,
-];
 
 impl Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
