@@ -277,6 +277,7 @@ fn alpha_beta<const IS_PV: bool>(
             } else {
                 let mut r = get_reduction(depth, legal_moves_searched);
                 r += i32::from(!IS_PV);
+                r += i32::from(!improving);
                 if is_quiet && cut_node {
                     r += 2;
                 }
