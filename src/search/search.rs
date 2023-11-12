@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use crate::board::board::Board;
 use crate::engine::transposition::EntryFlag;
 use crate::moves::movegenerator::{generate_moves, MGT};
-use crate::moves::movelist::MoveListEntry;
+use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
 use crate::search::INIT_ASP;
 
@@ -287,6 +287,9 @@ fn alpha_beta<const IS_PV: bool>(
                         r += 1;
                     }
                 }
+                if m.is_capture(board) && hist_score < BAD_CAPTURE + 100 {
+                    r += 1;
+                }
                 // Don't let LMR send us into qsearch
                 r.clamp(1, depth - 1)
             }
@@ -300,7 +303,7 @@ fn alpha_beta<const IS_PV: bool>(
             node_pvs.clear();
             // Start with a zero window reduced search
             let zero_window =
-                -alpha_beta::<false>(depth - r, -alpha - 1, -alpha, &mut Vec::new(), info, &new_b, !cut_node);
+                -alpha_beta::<false>(depth - r, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node);
 
             // If that search raises alpha and the reduction was more than one, do a research at a zero window with full depth
             let verification_score = if zero_window > alpha && r > 1 {

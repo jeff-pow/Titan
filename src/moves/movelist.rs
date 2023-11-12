@@ -105,14 +105,14 @@ impl MoveList {
     }
 }
 
-const QUEEN_PROMOTION: i32 = 20000001;
-const GOOD_CAPTURE: i32 = 3000000;
+const TTMOVE: i32 = i32::MAX - 1000;
+pub const GOOD_CAPTURE: i32 = 3000000;
+pub const BAD_CAPTURE: i32 = -10000;
 const KILLER_ONE: i32 = 2000000;
 const KILLER_TWO: i32 = 1000000;
 const COUNTER_MOVE: i32 = 900000;
-const BAD_CAPTURE: i32 = -10000;
+const QUEEN_PROMOTION: i32 = 20000001;
 const BAD_PROMOTION: i32 = -20000001;
-const TTMOVE: i32 = i32::MAX - 1000;
 /// [Attacker][Victim]
 #[rustfmt::skip]
 const MVV_LVA: [[i32; 6]; 6] = [
