@@ -1,4 +1,5 @@
 #![allow(clippy::module_inception)]
+mod bench;
 pub mod board;
 pub mod engine;
 pub mod eval;
