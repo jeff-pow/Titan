@@ -5,7 +5,7 @@ use crate::{
 };
 use std::{mem::MaybeUninit, ops::Index};
 
-use super::moves::{Move, Promotion};
+use super::moves::Move;
 
 pub const MAX_LEN: usize = 218;
 #[derive(Copy, Clone, Debug)]
@@ -83,7 +83,7 @@ impl MoveList {
                 TTMOVE
             } else if let Some(promotion) = entry.m.promotion() {
                 match promotion {
-                    Promotion::Queen => QUEEN_PROMOTION,
+                    PieceName::Queen => QUEEN_PROMOTION,
                     _ => BAD_PROMOTION,
                 }
             } else if let Some(c) = board.capture(entry.m) {

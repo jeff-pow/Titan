@@ -7,7 +7,6 @@ use crate::{
     moves::{
         movegenerator::MG,
         moves::Move,
-        moves::Promotion,
         moves::{Direction::*, CASTLING_RIGHTS},
     },
     types::{
@@ -307,12 +306,7 @@ impl Board {
             }
         } else if let Some(p) = m.promotion() {
             self.remove_piece(m.dest_square());
-            match p {
-                Promotion::Queen => self.place_piece(PieceName::Queen, self.to_move, m.dest_square()),
-                Promotion::Rook => self.place_piece(PieceName::Rook, self.to_move, m.dest_square()),
-                Promotion::Bishop => self.place_piece(PieceName::Bishop, self.to_move, m.dest_square()),
-                Promotion::Knight => self.place_piece(PieceName::Knight, self.to_move, m.dest_square()),
-            }
+            self.place_piece(p, self.to_move, m.dest_square());
         } else if m.is_en_passant() {
             match self.to_move {
                 Color::White => {
