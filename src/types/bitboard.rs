@@ -7,7 +7,7 @@ use crate::moves::{
 
 use super::square::Square;
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Default, Eq, PartialEq)]
 pub struct Bitboard(pub u64);
 
 impl Bitboard {

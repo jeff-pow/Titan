@@ -319,6 +319,16 @@ impl Board {
         }
 
         // If the end index of a move is 16 squares from the start (and a pawn moved), an en passant is possible
+        // if m.flag() == MoveType::DoublePush {
+        //     match self.to_move {
+        //         Color::White => {
+        //             self.en_passant_square = Some(m.dest_square().shift(South));
+        //         }
+        //         Color::Black => {
+        //             self.en_passant_square = Some(m.origin_square().shift(South));
+        //         }
+        //     }
+        // }
         self.en_passant_square = None;
         if piece_moving == PieceName::Pawn {
             match self.to_move {
