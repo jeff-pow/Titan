@@ -1,5 +1,3 @@
-use std::ptr;
-
 use crate::{
     moves::attack_boards::{FILE_A, FILE_H, RANK1, RANK8},
     types::{bitboard::Bitboard, square::Square},
@@ -7,8 +5,7 @@ use crate::{
 
 use super::moves::{Direction, Direction::*};
 
-/// Credit for this magic bitboards implementation goes to the rustic chess engine by mvanthoor
-/// https://github.com/mvanthoor/rustic/
+/// https://analog-hors.github.io/site/magic-bitboards/
 
 /// Simple Pcg64Mcg implementation
 // No repetitions as 100B iterations
@@ -42,249 +39,120 @@ const R_DELTAS: [Direction; 4] = [North, South, East, West];
 pub const BISHOP_M_SIZE: usize = 5248;
 const B_DELTAS: [Direction; 4] = [SouthEast, SouthWest, NorthEast, NorthWest];
 
-#[derive(Clone)]
-pub struct Magics {
-    #[allow(dead_code)]
-    rook_table: Vec<Bitboard>,
-    rook_magics: [SMagic; 64],
-    #[allow(dead_code)]
-    bishop_table: Vec<Bitboard>,
-    bishop_magics: [SMagic; 64],
+#[derive(Clone, Copy, Default, Debug)]
+struct MagicEntry {
+    mask: Bitboard,
+    magic: u64,
+    shift: u32,
+    offset: usize,
 }
 
-impl Default for Magics {
-    #[cold]
-    fn default() -> Self {
-        unsafe {
-            let mut rook_magics = [SMagic::init(); 64];
-            let mut rook_table = Vec::with_capacity(ROOK_M_SIZE);
-            gen_magic_board(ROOK_M_SIZE, R_DELTAS, rook_magics.as_mut_ptr(), rook_table.as_mut_ptr());
+#[derive(Clone)]
+pub struct Magics {
+    rook_table: Vec<Bitboard>,
+    rook_magics: [MagicEntry; 64],
+    bishop_table: Vec<Bitboard>,
+    bishop_magics: [MagicEntry; 64],
+}
 
-            let mut bishop_magics = [SMagic::init(); 64];
-            let mut bishop_table = Vec::with_capacity(BISHOP_M_SIZE);
-            gen_magic_board(BISHOP_M_SIZE, B_DELTAS, bishop_magics.as_mut_ptr(), bishop_table.as_mut_ptr());
-
-            Self {
-                rook_table,
-                rook_magics,
-                bishop_table,
-                bishop_magics,
-            }
-        }
-    }
+fn index(entry: &MagicEntry, occupied: Bitboard) -> usize {
+    let blockers = occupied.0 & entry.mask.0;
+    let hash = blockers.wrapping_mul(entry.magic);
+    let index = (hash >> entry.shift) as usize;
+    entry.offset + index
 }
 
 impl Magics {
-    pub fn bishop_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
-        let mut occupied = occupied.0;
-        let magic_entry: &SMagic = &self.bishop_magics[square];
-        occupied &= magic_entry.mask;
-        occupied = occupied.wrapping_mul(magic_entry.magic);
-        occupied = occupied.wrapping_shr(magic_entry.shift);
-        unsafe { Bitboard(*(magic_entry.ptr as *const u64).add(occupied as usize)) }
+    pub fn bishop_attacks(&self, occupied: Bitboard, sq: Square) -> Bitboard {
+        let magic = &self.bishop_magics[sq];
+        self.bishop_table[index(magic, occupied)]
     }
 
-    pub fn rook_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
-        let mut occupied = occupied.0;
-        let magic_entry: &SMagic = &self.rook_magics[square];
-        occupied &= magic_entry.mask;
-        occupied = occupied.wrapping_mul(magic_entry.magic);
-        occupied = occupied.wrapping_shr(magic_entry.shift);
-        unsafe { Bitboard(*(magic_entry.ptr as *const u64).add(occupied as usize)) }
+    pub fn rook_attacks(&self, occupied: Bitboard, sq: Square) -> Bitboard {
+        let magic = &self.rook_magics[sq];
+        self.rook_table[index(magic, occupied)]
     }
 }
 
-/// Structure inside a `MagicTable` for a specific hash. For a certain square,
-/// contains a mask,  magic number, number to shift by, and a pointer into the array slice
-/// where the position is held.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct SMagic {
-    ptr: usize,
-    mask: u64,
-    magic: u64,
-    shift: u32,
-}
-
-impl SMagic {
-    pub const fn init() -> Self {
-        SMagic {
-            ptr: 0,
-            mask: 0,
-            magic: 0,
-            shift: 0,
-        }
-    }
-}
-
-/// Temporary struct used to create an actual `SMagic` Object.
-#[derive(Clone, Copy)]
-struct PreSMagic {
-    start: usize,
-    len: usize,
-    mask: u64,
-    magic: u64,
-    shift: u32,
-}
-
-impl PreSMagic {
-    pub fn init() -> PreSMagic {
-        PreSMagic {
-            start: 0,
-            len: 0,
-            mask: 0,
-            magic: 0,
-            shift: 0,
-        }
-    }
-
-    // creates an array of PreSMagic
-    pub fn init64() -> [PreSMagic; 64] {
-        [PreSMagic::init(); 64]
-    }
-
-    // Helper method to compute the next index
-    pub fn next_idx(&self) -> usize {
-        self.start + self.len
-    }
-}
-
-/// Creates the `MagicTable` struct. The table size is relative to the piece for computation,
-/// and the deltas are the directions on the board the piece can go.
-#[cold]
-unsafe fn gen_magic_board(
-    table_size: usize,
-    deltas: [Direction; 4],
-    static_magics: *mut SMagic,
-    attacks: *mut Bitboard,
-) {
-    // Creates PreSMagic to hold raw numbers. Technically just adds room to stack
-    let mut pre_sq_table: [PreSMagic; 64] = PreSMagic::init64();
-
-    // Initializes each PreSMagic
-    for table in pre_sq_table.iter_mut() {
-        *table = PreSMagic::init();
-    }
-
-    // Occupancy tracks occupancy permutations. MAX permutations = subset of 12 bits = 2^12
-    // Reference is similar, tracks the sliding moves from a given occupancy
-    // Age tracks the best index for a current permutation
-    let mut occupancy: [u64; 4096] = [0; 4096];
-    let mut reference: [u64; 4096] = [0; 4096];
-    let mut age: [i32; 4096] = [0; 4096];
-
-    // Size tracks the size of permutations of the current block
-    let mut size: usize;
-
-    // b is used for generating the permutations through ripple - carry
-    let mut b: u64;
-
-    // current and i is a placeholder for actually generating correct magic numbers
-    let mut current: i32 = 0;
-    let mut i: usize;
-
-    // set the first PreSMagic start = 0. Just in case.
-    pre_sq_table[0].start = 0;
-
-    // Loop through each square! s is a SQ
-    for s in Square::iter() {
-        // Magic number for later
-        let mut magic: u64;
-
-        // edges is the bitboard representation of the edges s is not on.
-        // e.g. sq A1 is on FileA and Rank1, so edges = bitboard of FileH and Rank8
-        // mask = occupancy mask of square s
-        // let edges: u64 = ((RANK1.0 | RANK8.0) & !get_rank_bitboard(s))
-        let edges = ((RANK1 | RANK8) & !(s.get_rank_bitboard())) | ((FILE_A | FILE_H) & !(s.get_file_bitboard()));
-        let mask = sliding_attack(deltas, s, Bitboard::EMPTY) & !edges;
-
-        // Shift = number of bits in 64 - bits in mask = log2(size)
-        let shift: u32 = 64 - mask.0.count_ones();
-        b = 0;
-        size = 0;
-
-        // Ripple carry to determine occupancy, reference, and size
-        'bit: loop {
-            occupancy[size] = b;
-            reference[size] = sliding_attack(deltas, s, Bitboard(b)).0;
-            size += 1;
-            b = ((b).wrapping_sub(mask.0)) & mask.0;
-            if b == 0 {
-                break 'bit;
-            }
-        }
-
-        // Set current PreSMagic length to be of size
-        pre_sq_table[s].len = size;
-
-        // If there is a next square, set the start of it.
-        if s.idx() < 63 {
-            pre_sq_table[s.idx() + 1].start = pre_sq_table[s].next_idx();
-        }
-        // Create our Random Number Generator with a seed
+impl Default for Magics {
+    fn default() -> Self {
         let mut rng = Rng::default();
+        let mut rook_table = Vec::with_capacity(ROOK_M_SIZE);
+        let mut rook_magics = [MagicEntry::default(); 64];
+        let mut bishop_table = Vec::with_capacity(BISHOP_M_SIZE);
+        let mut bishop_magics = [MagicEntry::default(); 64];
 
-        // Loop until we have found our magics!
-        'outer: loop {
-            // Create a magic with our desired number of bits in the first 8 places
-            'first_in: loop {
-                magic = rng.next_magic();
-                if (magic.wrapping_mul(mask.0)).wrapping_shr(56).count_ones() >= 6 {
-                    break 'first_in;
-                }
-            }
-            current += 1;
-            i = 0;
+        for sq in Square::iter() {
+            let edges = ((RANK1 | RANK8) & !(sq.get_rank_bitboard())) | ((FILE_A | FILE_H) & !(sq.get_file_bitboard()));
 
-            // Filling the attacks Vector up to size digits
-            while i < size {
-                // Magic part! The index is = ((occupancy[s] & mask) * magic >> shift)
-                let index: usize = (occupancy[i] & mask.0).wrapping_mul(magic).wrapping_shr(shift) as usize;
+            let rook_bits = sliding_attack(R_DELTAS, sq, Bitboard::EMPTY);
+            let mask = rook_bits & !edges;
+            let (mut entry, mut table) = find_magic(mask, sq, R_DELTAS, &mut rng);
+            entry.offset = rook_table.len();
+            rook_magics[sq] = entry;
+            rook_table.append(&mut table);
 
-                // Checking to see if we have visited this index already with a lower current number
-                if age[index] < current {
-                    // If we have visited with lower current, we replace it with this current number,
-                    // as this current is higher and has gone through more passes
-                    age[index] = current;
-                    *attacks.add(pre_sq_table[s].start + index) = Bitboard(reference[i]);
-                } else if *attacks.add(pre_sq_table[s].start + index) != Bitboard(reference[i]) {
-                    // If a magic maps to the same index but different result, either magic is bad or we are done
-                    break;
-                }
-                i += 1;
-            }
-            // If we have filled it up to size or greater, we are done
-            if i >= size {
-                break 'outer;
-            }
+            let bishop_bits = sliding_attack(B_DELTAS, sq, Bitboard::EMPTY);
+            let mask = bishop_bits & !edges;
+            let (mut entry, mut table) = find_magic(mask, sq, B_DELTAS, &mut rng);
+            entry.offset = bishop_table.len();
+            bishop_magics[sq] = entry;
+            bishop_table.append(&mut table);
         }
-        // Set the remaining variables for the PreSMagic Struct
-        pre_sq_table[s].magic = magic;
-        pre_sq_table[s].mask = mask.0;
-        pre_sq_table[s].shift = shift;
+
+        assert_eq!(ROOK_M_SIZE, rook_table.len());
+        assert_eq!(BISHOP_M_SIZE, bishop_table.len());
+
+        Self {
+            rook_table,
+            rook_magics,
+            bishop_table,
+            bishop_magics,
+        }
     }
+}
 
-    // size = running total of total size
-    let mut size = 0;
-    (0..64).for_each(|i| {
-        // begin ptr points to the beginning of the current slice in the vector
-        let beginptr = attacks.add(size);
-
-        // points to the static entry
-        let staticptr: *mut SMagic = static_magics.add(i);
-        let table_i: SMagic = SMagic {
-            ptr: beginptr as usize,
-            mask: pre_sq_table[i].mask,
-            magic: pre_sq_table[i].magic,
-            shift: pre_sq_table[i].shift,
+fn find_magic(
+    mask: Bitboard,
+    sq: Square,
+    deltas: [Direction; 4],
+    rng: &mut Rng,
+) -> (MagicEntry, Vec<Bitboard>) {
+    loop {
+        let magic = rng.next_magic();
+        let shift = 64 - mask.count_bits();
+        let magic_entry = MagicEntry {
+            mask,
+            magic,
+            shift,
+            offset: 0,
         };
+        if let Some(table) = make_table(deltas, sq, &magic_entry) {
+            return (magic_entry, table);
+        }
+    }
+}
 
-        ptr::copy::<SMagic>(&table_i, staticptr, 1);
+fn make_table(deltas: [Direction; 4], sq: Square, magic_entry: &MagicEntry) -> Option<Vec<Bitboard>> {
+    let idx_bits = 64 - magic_entry.shift;
+    let mut table = vec![Bitboard::EMPTY; 1 << idx_bits];
+    let mut blockers = Bitboard::EMPTY;
+    loop {
+        let moves = sliding_attack(deltas, sq, blockers);
+        let index = index(magic_entry, blockers);
+        let table_entry = &mut table[index];
+        if *table_entry == Bitboard::EMPTY {
+            *table_entry = moves;
+        } else if *table_entry != moves {
+            return None;
+        }
 
-        // Create the pointer to the slice with begin_ptr / length
-        size += pre_sq_table[i].len;
-    });
-    // Sanity check
-    assert_eq!(size, table_size);
+        blockers.0 = blockers.0.wrapping_sub(magic_entry.mask.0) & magic_entry.mask.0;
+        if blockers == Bitboard::EMPTY {
+            break;
+        }
+    }
+    Some(table)
 }
 
 /// Returns a bitboards of sliding attacks given an array of 4 deltas/
@@ -306,3 +174,4 @@ fn sliding_attack(deltas: [Direction; 4], sq: Square, occupied: Bitboard) -> Bit
     }
     attack
 }
+// Never want square I'm at, if i want moves include edges, blockers dont include edges

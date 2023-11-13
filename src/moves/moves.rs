@@ -79,7 +79,7 @@ impl Move {
         PieceName::from(piece_flag as usize)
     }
 
-    fn flag(self) -> MoveType {
+    pub fn flag(self) -> MoveType {
         unsafe { std::mem::transmute((self.0 >> 12) as u8 & 0b1111) }
     }
 
