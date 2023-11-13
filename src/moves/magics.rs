@@ -5,8 +5,7 @@ use crate::{
 
 use super::moves::{Direction, Direction::*};
 
-/// Credit for this magic bitboards implementation goes to the rustic chess engine by mvanthoor
-/// https://github.com/mvanthoor/rustic/
+/// https://analog-hors.github.io/site/magic-bitboards/
 
 /// Simple Pcg64Mcg implementation
 // No repetitions as 100B iterations
@@ -40,11 +39,11 @@ const R_DELTAS: [Direction; 4] = [North, South, East, West];
 pub const BISHOP_M_SIZE: usize = 5248;
 const B_DELTAS: [Direction; 4] = [SouthEast, SouthWest, NorthEast, NorthWest];
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, Debug)]
 struct MagicEntry {
     mask: Bitboard,
     magic: u64,
-    shift: u8,
+    shift: u32,
     offset: usize,
 }
 
@@ -57,8 +56,8 @@ pub struct Magics {
 }
 
 fn index(entry: &MagicEntry, occupied: Bitboard) -> usize {
-    let blockers = occupied & entry.mask;
-    let hash = blockers.0.wrapping_mul(entry.magic);
+    let blockers = occupied.0 & entry.mask.0;
+    let hash = blockers.wrapping_mul(entry.magic);
     let index = (hash >> entry.shift) as usize;
     entry.offset + index
 }
@@ -84,13 +83,19 @@ impl Default for Magics {
         let mut bishop_magics = [MagicEntry::default(); 64];
 
         for sq in Square::iter() {
-            let rook_bits = blockers(R_DELTAS, sq).count_bits() as u8;
-            let (entry, mut table) = find_magic(sq, rook_bits, R_DELTAS, &mut rng, rook_table.len());
+            let edges = ((RANK1 | RANK8) & !(sq.get_rank_bitboard())) | ((FILE_A | FILE_H) & !(sq.get_file_bitboard()));
+
+            let rook_bits = sliding_attack(R_DELTAS, sq, Bitboard::EMPTY);
+            let mask = rook_bits & !edges;
+            let (mut entry, mut table) = find_magic(mask, sq, R_DELTAS, &mut rng);
+            entry.offset = rook_table.len();
             rook_magics[sq] = entry;
             rook_table.append(&mut table);
 
-            let bishop_bits = blockers(B_DELTAS, sq).count_bits() as u8;
-            let (entry, mut table) = find_magic(sq, bishop_bits, B_DELTAS, &mut rng, bishop_table.len());
+            let bishop_bits = sliding_attack(B_DELTAS, sq, Bitboard::EMPTY);
+            let mask = bishop_bits & !edges;
+            let (mut entry, mut table) = find_magic(mask, sq, B_DELTAS, &mut rng);
+            entry.offset = bishop_table.len();
             bishop_magics[sq] = entry;
             bishop_table.append(&mut table);
         }
@@ -108,22 +113,19 @@ impl Default for Magics {
 }
 
 fn find_magic(
+    mask: Bitboard,
     sq: Square,
-    idx_bits: u8,
     deltas: [Direction; 4],
     rng: &mut Rng,
-    offset: usize,
 ) -> (MagicEntry, Vec<Bitboard>) {
-    let edges = ((RANK1 | RANK8) & !(sq.get_rank_bitboard())) | ((FILE_A | FILE_H) & !(sq.get_file_bitboard()));
-    let mask = blockers(deltas, sq) & !edges;
     loop {
         let magic = rng.next_magic();
-        let shift = 64 - idx_bits;
+        let shift = 64 - mask.count_bits();
         let magic_entry = MagicEntry {
             mask,
             magic,
             shift,
-            offset,
+            offset: 0,
         };
         if let Some(table) = make_table(deltas, sq, &magic_entry) {
             return (magic_entry, table);
@@ -137,7 +139,8 @@ fn make_table(deltas: [Direction; 4], sq: Square, magic_entry: &MagicEntry) -> O
     let mut blockers = Bitboard::EMPTY;
     loop {
         let moves = sliding_attack(deltas, sq, blockers);
-        let table_entry = &mut table[index(magic_entry, blockers)];
+        let index = index(magic_entry, blockers);
+        let table_entry = &mut table[index];
         if *table_entry == Bitboard::EMPTY {
             *table_entry = moves;
         } else if *table_entry != moves {
@@ -156,29 +159,19 @@ fn make_table(deltas: [Direction; 4], sq: Square, magic_entry: &MagicEntry) -> O
 /// Does not include the original position/
 /// Includes occupied bits if it runs into them, but stops before going further.
 fn sliding_attack(deltas: [Direction; 4], sq: Square, occupied: Bitboard) -> Bitboard {
+    assert!(sq.0 < 64);
     let mut attack = Bitboard::EMPTY;
     for dir in deltas {
-        let mut s = sq;
-        while occupied & s.bitboard() == Bitboard::EMPTY {
-            if let Some(shifted) = s.checked_shift(dir) {
-                attack |= s.bitboard();
-                s = shifted;
-            } else {
-                break;
+        let mut s = sq.shift(dir);
+        'inner: while s.is_valid() && s.dist(s.shift(dir.opp())) == 1 {
+            attack |= Bitboard(1_u64.wrapping_shl(s.0));
+            attack |= s.bitboard();
+            if occupied & s.bitboard() != Bitboard::EMPTY {
+                break 'inner;
             }
+            s = s.shift(dir);
         }
     }
     attack
 }
-
-fn blockers(deltas: [Direction; 4], sq: Square) -> Bitboard {
-    let mut blockers = Bitboard::EMPTY;
-    for dir in deltas {
-        let mut s = sq;
-        while let Some(shifted) = s.checked_shift(dir) {
-            blockers |= s.bitboard();
-            s = shifted;
-        }
-    }
-    blockers
-}
+// Never want square I'm at, if i want moves include edges, blockers dont include edges

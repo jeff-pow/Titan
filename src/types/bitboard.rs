@@ -33,8 +33,8 @@ impl Bitboard {
         !self.occupied(sq)
     }
 
-    pub fn count_bits(self) -> i32 {
-        self.0.count_ones().try_into().expect("Valid conversion")
+    pub fn count_bits(self) -> u32 {
+        self.0.count_ones()
     }
 
     /// Executes a shift without checking to ensure no information is lost. Only to be used when a
@@ -71,15 +71,16 @@ impl Iterator for Bitboard {
 
 impl fmt::Debug for Bitboard {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "\n")?;
         for row in (0..8).rev() {
             for col in 0..8 {
                 let index = row * 8 + col;
                 let bit_is_set = self.0 & (1 << index) != 0;
 
                 if bit_is_set {
-                    write!(f, "1")?;
+                    write!(f, "X")?;
                 } else {
-                    write!(f, "0")?;
+                    write!(f, ".")?;
                 }
 
                 if col < 7 {
