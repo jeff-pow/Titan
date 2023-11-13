@@ -16,12 +16,16 @@ pub struct TableEntry {
     key: u64,
     depth: u8,
     other: u8,
-    eval: i16,
+    score: i16,
     best_move: u16,
-    dummy: [u8; 2],
+    static_eval: i16,
 }
 
 impl TableEntry {
+    pub fn static_eval(self) -> i32 {
+        self.static_eval as i32
+    }
+
     pub fn key(self) -> u64 {
         self.key
     }
@@ -45,7 +49,7 @@ impl TableEntry {
     }
 
     pub fn eval(self) -> i32 {
-        self.eval as i32
+        self.score as i32
     }
 
     pub fn best_move(self, b: &Board) -> Move {
@@ -105,7 +109,17 @@ impl TranspositionTable {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn store(&self, hash: u64, m: Move, depth: i32, flag: EntryFlag, mut eval: i32, ply: i32, is_pv: bool) {
+    pub fn store(
+        &self,
+        hash: u64,
+        m: Move,
+        depth: i32,
+        flag: EntryFlag,
+        mut score: i32,
+        ply: i32,
+        is_pv: bool,
+        static_eval: i32,
+    ) {
         let idx = index(hash);
         let key = hash;
 
@@ -124,19 +138,19 @@ impl TranspositionTable {
                 m.as_u16()
             };
 
-            if eval > NEAR_CHECKMATE {
-                eval += ply;
-            } else if eval < -NEAR_CHECKMATE {
-                eval -= ply;
+            if score > NEAR_CHECKMATE {
+                score += ply;
+            } else if score < -NEAR_CHECKMATE {
+                score -= ply;
             }
 
             let entry = TableEntry {
                 key,
                 depth: depth as u8,
                 other: (self.age() << 2) as u8 | flag as u8,
-                eval: eval as i16,
+                score: score as i16,
                 best_move: best_m,
-                dummy: [0; 2],
+                static_eval: static_eval as i16,
             };
 
             let number: u128 = unsafe { transmute(entry) };
@@ -155,10 +169,10 @@ impl TranspositionTable {
             return None;
         }
 
-        if entry.eval > NEAR_CHECKMATE as i16 {
-            entry.eval -= ply as i16;
-        } else if entry.eval < -NEAR_CHECKMATE as i16 {
-            entry.eval += ply as i16;
+        if entry.score > NEAR_CHECKMATE as i16 {
+            entry.score -= ply as i16;
+        } else if entry.score < -NEAR_CHECKMATE as i16 {
+            entry.score += ply as i16;
         }
 
         Some(entry)

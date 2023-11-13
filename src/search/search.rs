@@ -205,9 +205,15 @@ fn alpha_beta<const IS_PV: bool>(
     let original_alpha = alpha;
     let hist_bonus = (155 * depth).min(2000);
 
-    let static_eval = board.evaluate();
-    info.stack[ply as usize].eval = static_eval;
-    let improving = ply > 1 && static_eval > info.stack[ply as usize - 2].eval;
+    let static_eval = if in_check {
+        -CHECKMATE
+    } else if let Some(entry) = entry {
+        entry.static_eval()
+    } else {
+        board.evaluate()
+    };
+    info.stack[ply as usize].static_eval = static_eval;
+    let improving = !in_check && ply > 1 && static_eval > info.stack[ply as usize - 2].static_eval;
 
     if !is_root && !IS_PV && !in_check {
         // Reverse futility pruning
@@ -369,7 +375,7 @@ fn alpha_beta<const IS_PV: bool>(
     };
 
     info.transpos_table
-        .store(board.zobrist_hash, best_move, depth, entry_flag, best_score, ply, IS_PV);
+        .store(board.zobrist_hash, best_move, depth, entry_flag, best_score, ply, IS_PV, static_eval);
 
     best_score
 }
