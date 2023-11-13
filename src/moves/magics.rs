@@ -112,12 +112,7 @@ impl Default for Magics {
     }
 }
 
-fn find_magic(
-    mask: Bitboard,
-    sq: Square,
-    deltas: [Direction; 4],
-    rng: &mut Rng,
-) -> (MagicEntry, Vec<Bitboard>) {
+fn find_magic(mask: Bitboard, sq: Square, deltas: [Direction; 4], rng: &mut Rng) -> (MagicEntry, Vec<Bitboard>) {
     loop {
         let magic = rng.next_magic();
         let shift = 64 - mask.count_bits();

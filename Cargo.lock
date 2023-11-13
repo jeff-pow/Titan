@@ -30,6 +30,7 @@ dependencies = [
  "lazy_static",
  "log",
  "microbench",
+ "portable-atomic",
  "rayon",
  "rustc-hash",
  "strum",
@@ -122,6 +123,12 @@ name = "microbench"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4c44e40aee4e6fd2f4257bb91e5948ce79285aeb949129448889cf2fbf6da0b"
+
+[[package]]
+name = "portable-atomic"
+version = "1.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bccab0e7fd7cc19f820a1c8c91720af652d0c88dc9664dd72aef2614f04af3b"
 
 [[package]]
 name = "proc-macro2"

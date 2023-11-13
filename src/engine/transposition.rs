@@ -1,6 +1,7 @@
+use portable_atomic::AtomicU128;
 use std::{
     mem::{self, transmute},
-    sync::atomic::{AtomicU64, Ordering},
+    sync::atomic::Ordering,
 };
 
 use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKMATE};
@@ -12,15 +13,16 @@ use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKM
 /// truncated before being placed in transposition table, and extracted back into 32 bits before
 /// being returned to caller
 pub struct TableEntry {
+    key: u64,
     depth: u8,
     other: u8,
-    key: u16,
     eval: i16,
     best_move: u16,
+    dummy: [u8; 2],
 }
 
 impl TableEntry {
-    pub fn key(self) -> u16 {
+    pub fn key(self) -> u64 {
         self.key
     }
 
@@ -66,17 +68,17 @@ pub enum EntryFlag {
 }
 
 #[derive(Default)]
-struct U64Wrapper(AtomicU64);
-impl Clone for U64Wrapper {
+struct U128Wrapper(AtomicU128);
+impl Clone for U128Wrapper {
     fn clone(&self) -> Self {
-        Self(AtomicU64::new(self.0.load(std::sync::atomic::Ordering::Relaxed)))
+        Self(AtomicU128::new(self.0.load(std::sync::atomic::Ordering::Relaxed)))
     }
 }
 
 #[derive(Clone)]
 pub struct TranspositionTable {
-    vec: Box<[U64Wrapper]>,
-    age: U64Wrapper,
+    vec: Box<[U128Wrapper]>,
+    age: U128Wrapper,
 }
 
 impl TranspositionTable {
@@ -88,12 +90,12 @@ impl TranspositionTable {
 
     fn new() -> Self {
         Self {
-            vec: vec![U64Wrapper::default(); TABLE_CAPACITY].into_boxed_slice(),
-            age: U64Wrapper::default(),
+            vec: vec![U128Wrapper::default(); TABLE_CAPACITY].into_boxed_slice(),
+            age: U128Wrapper::default(),
         }
     }
 
-    fn age(&self) -> u64 {
+    fn age(&self) -> u128 {
         self.age.0.load(Ordering::Relaxed)
     }
 
@@ -105,12 +107,12 @@ impl TranspositionTable {
     #[allow(clippy::too_many_arguments)]
     pub fn store(&self, hash: u64, m: Move, depth: i32, flag: EntryFlag, mut eval: i32, ply: i32, is_pv: bool) {
         let idx = index(hash);
-        let key = hash as u16;
+        let key = hash;
 
         let old_entry: TableEntry = unsafe { transmute(self.vec[idx].0.load(Ordering::Relaxed)) };
 
         // Conditions from Alexandria
-        if old_entry.age() != self.age()
+        if old_entry.age() != self.age() as u64
             || old_entry.key != key
             || flag == EntryFlag::Exact
             || depth as usize + 5 + 2 * usize::from(is_pv) > old_entry.depth as usize
@@ -134,9 +136,10 @@ impl TranspositionTable {
                 other: (self.age() << 2) as u8 | flag as u8,
                 eval: eval as i16,
                 best_move: best_m,
+                dummy: [0; 2],
             };
 
-            let number: u64 = unsafe { transmute(entry) };
+            let number: u128 = unsafe { transmute(entry) };
 
             unsafe { self.vec.get_unchecked(idx).0.store(number, Ordering::Relaxed) }
         }
@@ -144,7 +147,7 @@ impl TranspositionTable {
 
     pub fn get(&self, hash: u64, ply: i32) -> Option<TableEntry> {
         let idx = index(hash);
-        let key = hash as u16;
+        let key = hash;
 
         let mut entry: TableEntry = unsafe { transmute(self.vec.get_unchecked(idx).0.load(Ordering::Relaxed)) };
 

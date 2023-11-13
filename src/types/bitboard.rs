@@ -71,7 +71,7 @@ impl Iterator for Bitboard {
 
 impl fmt::Debug for Bitboard {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "\n")?;
+        writeln!(f)?;
         for row in (0..8).rev() {
             for col in 0..8 {
                 let index = row * 8 + col;
