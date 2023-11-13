@@ -58,11 +58,11 @@ impl Default for Magics {
         unsafe {
             let mut rook_magics = [SMagic::init(); 64];
             let mut rook_table = Vec::with_capacity(ROOK_M_SIZE);
-            gen_magic_board(ROOK_M_SIZE, &R_DELTAS, rook_magics.as_mut_ptr(), rook_table.as_mut_ptr());
+            gen_magic_board(ROOK_M_SIZE, R_DELTAS, rook_magics.as_mut_ptr(), rook_table.as_mut_ptr());
 
             let mut bishop_magics = [SMagic::init(); 64];
             let mut bishop_table = Vec::with_capacity(BISHOP_M_SIZE);
-            gen_magic_board(BISHOP_M_SIZE, &B_DELTAS, bishop_magics.as_mut_ptr(), bishop_table.as_mut_ptr());
+            gen_magic_board(BISHOP_M_SIZE, B_DELTAS, bishop_magics.as_mut_ptr(), bishop_table.as_mut_ptr());
 
             Self {
                 rook_table,
@@ -153,7 +153,7 @@ impl PreSMagic {
 #[cold]
 unsafe fn gen_magic_board(
     table_size: usize,
-    deltas: &[Direction; 4],
+    deltas: [Direction; 4],
     static_magics: *mut SMagic,
     attacks: *mut Bitboard,
 ) {
@@ -290,18 +290,18 @@ unsafe fn gen_magic_board(
 /// Returns a bitboards of sliding attacks given an array of 4 deltas/
 /// Does not include the original position/
 /// Includes occupied bits if it runs into them, but stops before going further.
-fn sliding_attack(deltas: &[Direction; 4], sq: Square, occupied: Bitboard) -> Bitboard {
+fn sliding_attack(deltas: [Direction; 4], sq: Square, occupied: Bitboard) -> Bitboard {
     assert!(sq.0 < 64);
     let mut attack = Bitboard::EMPTY;
-    for delta in deltas.iter().take(4_usize) {
-        // let mut s: u8 = ((square as i16) + (*delta as i16)) as u8;
-        let mut s = sq.shift(*delta);
-        'inner: while s.is_valid() && s.dist(s.shift(delta.opp())) == 1 {
+    for dir in deltas {
+        let mut s = sq.shift(dir);
+        'inner: while s.is_valid() && s.dist(s.shift(dir.opp())) == 1 {
             attack |= Bitboard(1_u64.wrapping_shl(s.0));
-            if occupied & Bitboard(1_u64.wrapping_shl(s.0)) != Bitboard::EMPTY {
+            attack |= s.bitboard();
+            if occupied & s.bitboard() != Bitboard::EMPTY {
                 break 'inner;
             }
-            s = s.shift(*delta);
+            s = s.shift(dir);
         }
     }
     attack

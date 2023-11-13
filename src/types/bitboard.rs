@@ -37,7 +37,7 @@ impl Bitboard {
         self.0.count_ones().try_into().expect("Valid conversion")
     }
 
-    /// Executes a shift without checking to ensure no information is list. Only to be used when a
+    /// Executes a shift without checking to ensure no information is lost. Only to be used when a
     /// shift has already been proven to be safe
     pub fn shift(self, dir: Direction) -> Bitboard {
         match dir {
