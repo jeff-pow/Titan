@@ -1,6 +1,5 @@
 use std::sync::atomic::Ordering;
 use std::thread::{self};
-use std::time::Instant;
 use std::{io, time::Duration};
 
 use itertools::Itertools;
@@ -31,12 +30,10 @@ pub fn main_loop() -> ! {
     // Calling this code will allow the global static zobrist and movegenerator constants to be
     // initialized before the engine enters play, so it doesn't waste playing time initializing
     // constants. A large difference in STC
-    let start = Instant::now();
     let _ = ZOBRIST.turn_hash;
     let _ = MG.king_attacks(Square(0));
     let _ = get_reduction(0, 0);
     println!("Ready to go!");
-    dbg!(start.elapsed().as_secs_f32());
     let mut handle = None;
 
     loop {
