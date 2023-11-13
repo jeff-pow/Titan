@@ -62,7 +62,6 @@ struct Network {
 }
 
 impl Board {
-    #[allow(clippy::deref_addrof)]
     pub fn evaluate(&self) -> i32 {
         let (us, them) = (self.accumulator.0[self.to_move], self.accumulator.0[!self.to_move]);
         let weights = &NET.output_weights;
