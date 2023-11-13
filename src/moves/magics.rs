@@ -114,7 +114,13 @@ impl Default for Magics {
 
 fn find_magic(mask: Bitboard, sq: Square, deltas: [Direction; 4], rng: &mut Rng) -> (MagicEntry, Vec<Bitboard>) {
     loop {
-        let magic = rng.next_magic();
+        let mut magic;
+        loop {
+            magic = rng.next_magic();
+            if (magic.wrapping_mul(mask.0)).wrapping_shr(56).count_ones() >= 6 {
+                break;
+            }
+        }
         let shift = 64 - mask.count_bits();
         let magic_entry = MagicEntry {
             mask,
