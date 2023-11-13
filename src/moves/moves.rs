@@ -286,6 +286,7 @@ impl Direction {
         }
     }
 }
+
 #[cfg(test)]
 mod move_test {
     use super::*;
