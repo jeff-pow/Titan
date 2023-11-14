@@ -275,10 +275,9 @@ fn alpha_beta<const IS_PV: bool>(
         info.stack[ply as usize].played_move = m;
         let mut node_pvs = Vec::new();
 
-        let can_lmr = legal_moves_searched >= LMR_THRESHOLD && depth >= MIN_LMR_DEPTH;
-        // R is used in late move reductions
+        // Calculate the reduction used in LMR
         let r = {
-            if !can_lmr {
+            if legal_moves_searched < LMR_THRESHOLD || depth < MIN_LMR_DEPTH {
                 1
             } else {
                 let mut r = get_reduction(depth, legal_moves_searched);
