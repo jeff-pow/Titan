@@ -1,6 +1,7 @@
+use portable_atomic::AtomicU128;
 use std::{
     mem::{self, transmute},
-    sync::atomic::{AtomicU64, Ordering},
+    sync::atomic::Ordering,
 };
 
 use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKMATE};
@@ -12,15 +13,20 @@ use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKM
 /// truncated before being placed in transposition table, and extracted back into 32 bits before
 /// being returned to caller
 pub struct TableEntry {
+    key: u64,
     depth: u8,
     other: u8,
-    key: u16,
-    eval: i16,
+    score: i16,
     best_move: u16,
+    static_eval: i16,
 }
 
 impl TableEntry {
-    pub fn key(self) -> u16 {
+    pub fn static_eval(self) -> i32 {
+        self.static_eval as i32
+    }
+
+    pub fn key(self) -> u64 {
         self.key
     }
 
@@ -43,7 +49,7 @@ impl TableEntry {
     }
 
     pub fn eval(self) -> i32 {
-        self.eval as i32
+        self.score as i32
     }
 
     pub fn best_move(self, b: &Board) -> Move {
@@ -66,17 +72,17 @@ pub enum EntryFlag {
 }
 
 #[derive(Default)]
-struct U64Wrapper(AtomicU64);
-impl Clone for U64Wrapper {
+struct U128Wrapper(AtomicU128);
+impl Clone for U128Wrapper {
     fn clone(&self) -> Self {
-        Self(AtomicU64::new(self.0.load(std::sync::atomic::Ordering::Relaxed)))
+        Self(AtomicU128::new(self.0.load(std::sync::atomic::Ordering::Relaxed)))
     }
 }
 
 #[derive(Clone)]
 pub struct TranspositionTable {
-    vec: Box<[U64Wrapper]>,
-    age: U64Wrapper,
+    vec: Box<[U128Wrapper]>,
+    age: U128Wrapper,
 }
 
 impl TranspositionTable {
@@ -88,12 +94,12 @@ impl TranspositionTable {
 
     fn new() -> Self {
         Self {
-            vec: vec![U64Wrapper::default(); TABLE_CAPACITY].into_boxed_slice(),
-            age: U64Wrapper::default(),
+            vec: vec![U128Wrapper::default(); TABLE_CAPACITY].into_boxed_slice(),
+            age: U128Wrapper::default(),
         }
     }
 
-    fn age(&self) -> u64 {
+    fn age(&self) -> u128 {
         self.age.0.load(Ordering::Relaxed)
     }
 
@@ -103,14 +109,24 @@ impl TranspositionTable {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn store(&self, hash: u64, m: Move, depth: i32, flag: EntryFlag, mut eval: i32, ply: i32, is_pv: bool) {
+    pub fn store(
+        &self,
+        hash: u64,
+        m: Move,
+        depth: i32,
+        flag: EntryFlag,
+        mut score: i32,
+        ply: i32,
+        is_pv: bool,
+        static_eval: i32,
+    ) {
         let idx = index(hash);
-        let key = hash as u16;
+        let key = hash;
 
         let old_entry: TableEntry = unsafe { transmute(self.vec[idx].0.load(Ordering::Relaxed)) };
 
         // Conditions from Alexandria
-        if old_entry.age() != self.age()
+        if old_entry.age() != self.age() as u64
             || old_entry.key != key
             || flag == EntryFlag::Exact
             || depth as usize + 5 + 2 * usize::from(is_pv) > old_entry.depth as usize
@@ -122,21 +138,22 @@ impl TranspositionTable {
                 m.as_u16()
             };
 
-            if eval > NEAR_CHECKMATE {
-                eval += ply;
-            } else if eval < -NEAR_CHECKMATE {
-                eval -= ply;
+            if score > NEAR_CHECKMATE {
+                score += ply;
+            } else if score < -NEAR_CHECKMATE {
+                score -= ply;
             }
 
             let entry = TableEntry {
                 key,
                 depth: depth as u8,
                 other: (self.age() << 2) as u8 | flag as u8,
-                eval: eval as i16,
+                score: score as i16,
                 best_move: best_m,
+                static_eval: static_eval as i16,
             };
 
-            let number: u64 = unsafe { transmute(entry) };
+            let number: u128 = unsafe { transmute(entry) };
 
             unsafe { self.vec.get_unchecked(idx).0.store(number, Ordering::Relaxed) }
         }
@@ -144,7 +161,7 @@ impl TranspositionTable {
 
     pub fn get(&self, hash: u64, ply: i32) -> Option<TableEntry> {
         let idx = index(hash);
-        let key = hash as u16;
+        let key = hash;
 
         let mut entry: TableEntry = unsafe { transmute(self.vec.get_unchecked(idx).0.load(Ordering::Relaxed)) };
 
@@ -152,10 +169,10 @@ impl TranspositionTable {
             return None;
         }
 
-        if entry.eval > NEAR_CHECKMATE as i16 {
-            entry.eval -= ply as i16;
-        } else if entry.eval < -NEAR_CHECKMATE as i16 {
-            entry.eval += ply as i16;
+        if entry.score > NEAR_CHECKMATE as i16 {
+            entry.score -= ply as i16;
+        } else if entry.score < -NEAR_CHECKMATE as i16 {
+            entry.score += ply as i16;
         }
 
         Some(entry)

@@ -29,10 +29,8 @@ pub fn quiescence(
         return board.evaluate();
     }
 
-    let table_move = info
-        .transpos_table
-        .get(board.zobrist_hash, ply)
-        .map_or(Move::NULL, |e| e.best_move(board));
+    let entry = info.transpos_table.get(board.zobrist_hash, ply);
+    let table_move = entry.map_or(Move::NULL, |e| e.best_move(board));
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
 
@@ -100,7 +98,7 @@ pub fn quiescence(
     };
 
     info.transpos_table
-        .store(board.zobrist_hash, best_move, 0, entry_flag, best_score, ply, false);
+        .store(board.zobrist_hash, best_move, 0, entry_flag, best_score, ply, false, stand_pat);
 
     if in_check && moves_searched == 0 {
         return -CHECKMATE + ply;

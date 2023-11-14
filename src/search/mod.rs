@@ -75,7 +75,7 @@ impl Default for SearchInfo {
 struct PlyEntry {
     pub killers: [Move; 2],
     pub played_move: Move,
-    pub eval: i32,
+    pub static_eval: i32,
 }
 
 #[derive(Clone, Copy, Default, PartialEq)]
