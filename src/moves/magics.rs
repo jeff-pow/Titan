@@ -141,14 +141,15 @@ fn make_table(deltas: [Direction; 4], sq: Square, magic_entry: &MagicEntry) -> O
     let mut blockers = Bitboard::EMPTY;
     loop {
         let moves = sliding_attack(deltas, sq, blockers);
-        let index = index(magic_entry, blockers);
-        let table_entry = &mut table[index];
-        if *table_entry == Bitboard::EMPTY {
-            *table_entry = moves;
-        } else if *table_entry != moves {
+        let idx = index(magic_entry, blockers);
+
+        if table[idx] == Bitboard::EMPTY {
+            table[idx] = moves;
+        } else if table[idx] != moves {
             return None;
         }
 
+        // Carry-Rippler trick to iterate through all subsections of blockers
         blockers.0 = blockers.0.wrapping_sub(magic_entry.mask.0) & magic_entry.mask.0;
         if blockers == Bitboard::EMPTY {
             break;
@@ -161,12 +162,10 @@ fn make_table(deltas: [Direction; 4], sq: Square, magic_entry: &MagicEntry) -> O
 /// Does not include the original position/
 /// Includes occupied bits if it runs into them, but stops before going further.
 fn sliding_attack(deltas: [Direction; 4], sq: Square, occupied: Bitboard) -> Bitboard {
-    assert!(sq.0 < 64);
     let mut attack = Bitboard::EMPTY;
     for dir in deltas {
         let mut s = sq.shift(dir);
         'inner: while s.is_valid() && s.dist(s.shift(dir.opp())) == 1 {
-            attack |= Bitboard(1_u64.wrapping_shl(s.0));
             attack |= s.bitboard();
             if occupied & s.bitboard() != Bitboard::EMPTY {
                 break 'inner;
