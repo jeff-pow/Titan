@@ -6,7 +6,6 @@ use crate::moves::moves::Move;
 use crate::search::search::STALEMATE;
 
 use super::search::{CHECKMATE, INFINITY};
-use super::see::see;
 use super::store_pv;
 use super::{search::MAX_SEARCH_DEPTH, SearchInfo};
 
@@ -60,7 +59,7 @@ pub fn quiescence(
 
         // We want to find at least one evasion so we know we aren't in checkmate, so don't prune
         // moves before then
-        if (!in_check || moves_searched > 1) && !see(board, m, 1) {
+        if (!in_check || moves_searched > 1) && !board.see(m, 1) {
             continue;
         }
 

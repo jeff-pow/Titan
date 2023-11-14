@@ -1,6 +1,6 @@
 use crate::{
     board::board::Board,
-    search::{killers::NUM_KILLER_MOVES, see::see, SearchInfo},
+    search::{killers::NUM_KILLER_MOVES, SearchInfo},
     types::pieces::PieceName,
 };
 use std::{mem::MaybeUninit, ops::Index};
@@ -87,7 +87,7 @@ impl MoveList {
                     _ => BAD_PROMOTION,
                 }
             } else if let Some(c) = board.capture(entry.m) {
-                (if see(board, entry.m, -PieceName::Pawn.value()) {
+                (if board.see(entry.m, -PieceName::Pawn.value()) {
                     GOOD_CAPTURE
                 } else {
                     BAD_CAPTURE

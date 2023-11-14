@@ -12,7 +12,6 @@ use crate::search::INIT_ASP;
 use super::history_heuristics::MAX_HIST_VAL;
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
-use super::see::see;
 use super::{
     get_reduction, store_pv, SearchInfo, SearchType, LMP_CONST, LMR_THRESHOLD, MAX_LMP_DEPTH, MAX_RFP_DEPTH,
     MIN_IIR_DEPTH, MIN_LMR_DEPTH, MIN_NMP_DEPTH, RFP_MULTIPLIER,
@@ -262,7 +261,7 @@ fn alpha_beta<const IS_PV: bool>(
                 }
             }
             let margin = if m.is_capture(board) { -90 } else { -50 };
-            if depth < 7 && !see(board, m, margin * depth) {
+            if depth < 7 && !board.see(m, margin * depth) {
                 continue;
             }
         }
