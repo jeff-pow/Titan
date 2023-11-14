@@ -121,6 +121,7 @@ fn find_magic(mask: Bitboard, sq: Square, deltas: [Direction; 4], rng: &mut Rng)
                 break;
             }
         }
+
         let shift = 64 - mask.count_bits();
         let magic_entry = MagicEntry {
             mask,
