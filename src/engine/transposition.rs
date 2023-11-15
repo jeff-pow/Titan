@@ -85,6 +85,12 @@ pub struct TranspositionTable {
     age: U128Wrapper,
 }
 
+pub const TARGET_TABLE_SIZE_MB: usize = 64;
+const BYTES_PER_MB: usize = 1024 * 1024;
+const TARGET_BYTES: usize = TARGET_TABLE_SIZE_MB * BYTES_PER_MB;
+const ENTRY_SIZE: usize = mem::size_of::<TableEntry>();
+const TABLE_CAPACITY: usize = TARGET_BYTES / ENTRY_SIZE;
+
 impl TranspositionTable {
     pub fn clear(&self) {
         for x in self.vec.iter() {
@@ -92,9 +98,13 @@ impl TranspositionTable {
         }
     }
 
-    fn new() -> Self {
+    /// Size here is the desired size in MB
+    pub fn new(size: usize) -> Self {
+        let target_size = size * 1024 * 1024;
+        let table_capacity = target_size / ENTRY_SIZE;
+        println!("{} elements in hash table", table_capacity);
         Self {
-            vec: vec![U128Wrapper::default(); TABLE_CAPACITY].into_boxed_slice(),
+            vec: vec![U128Wrapper::default(); table_capacity].into_boxed_slice(),
             age: U128Wrapper::default(),
         }
     }
@@ -179,22 +189,9 @@ impl TranspositionTable {
     }
 }
 
-impl Default for TranspositionTable {
-    fn default() -> Self {
-        println!("{} elements in hash table", TABLE_CAPACITY);
-        Self::new()
-    }
-}
-
 fn index(hash: u64) -> usize {
     ((u128::from(hash) * (TABLE_CAPACITY as u128)) >> 64) as usize
 }
-
-const TARGET_TABLE_SIZE_MB: usize = 64;
-const BYTES_PER_MB: usize = 1024 * 1024;
-const TARGET_BYTES: usize = TARGET_TABLE_SIZE_MB * BYTES_PER_MB;
-const ENTRY_SIZE: usize = mem::size_of::<TableEntry>();
-const TABLE_CAPACITY: usize = TARGET_BYTES / ENTRY_SIZE;
 
 #[cfg(test)]
 mod transpos_tests {

@@ -7,6 +7,7 @@ use itertools::Itertools;
 use crate::bench::bench;
 use crate::board::fen::parse_fen_from_buffer;
 use crate::board::zobrist::ZOBRIST;
+use crate::engine::transposition::TranspositionTable;
 use crate::moves::movegenerator::MG;
 use crate::search::get_reduction;
 use crate::search::search::{search, MAX_SEARCH_DEPTH};
@@ -26,6 +27,7 @@ use super::perft::multi_threaded_perft;
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
     let mut search_info = SearchInfo::default();
+    search_info.transpos_table = TranspositionTable::new(64);
     let mut buffer = String::new();
     // Calling this code will allow the global static zobrist and movegenerator constants to be
     // initialized before the engine enters play, so it doesn't waste playing time initializing
