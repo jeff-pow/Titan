@@ -136,9 +136,10 @@ mod movegen_tests {
                 let (depth, nodes) = entry.split_once(' ').unwrap();
                 let depth = depth[1..].parse::<i32>().unwrap();
                 let nodes = nodes.parse::<usize>().unwrap();
+                eprintln!("test {test_num}: depth {depth} expected {nodes}");
                 assert_eq!(nodes, perft::<true>(board, depth));
             }
-            println!("{test_num} passed");
+            eprintln!("{test_num} passed");
         });
     }
 }
