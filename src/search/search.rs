@@ -136,16 +136,10 @@ fn alpha_beta<const IS_PV: bool>(
     let ply = info.iter_max_depth - depth;
     let is_root = ply == 0;
     let in_check = board.in_check;
-    // Is a zero width search if alpha and beta are one apart
     info.sel_depth = info.sel_depth.max(ply);
-    // Don't do pvs unless you have a pv - otherwise you're wasting time
     if info.search_stats.nodes_searched % 1024 == 0 && info.halt.load(Ordering::Relaxed) {
         return board.evaluate();
     }
-
-    // if in_check {
-    //     depth += 1;
-    // }
 
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
@@ -167,6 +161,11 @@ fn alpha_beta<const IS_PV: bool>(
         if alpha >= beta {
             return alpha;
         }
+        // depth += i32::from(in_check);
+    }
+
+    if depth <= 0 {
+        return quiescence(ply, alpha, beta, pv, info, board);
     }
 
     let mut table_move = Move::NULL;
@@ -188,16 +187,13 @@ fn alpha_beta<const IS_PV: bool>(
         {
             return table_eval;
         }
-    }
-    // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval and isn't a
-    // PV node
-    else if depth >= MIN_IIR_DEPTH && !IS_PV {
+    } else if depth >= MIN_IIR_DEPTH && !IS_PV {
+        // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT hit and isn't a
+        // PV node
         depth -= 1;
     }
 
-    if depth <= 0 {
-        return quiescence(ply, alpha, beta, pv, info, board);
-    }
+
 
     let mut best_score = -INFINITY;
     let mut best_move = Move::NULL;
