@@ -302,6 +302,7 @@ fn alpha_beta<const IS_PV: bool>(
         let eval = if legal_moves_searched == 0 {
             node_pvs.clear();
             // On the first move, just do a full depth search so we at least have a pv
+            // TODO: This might be supposed to be IS_PV...
             -alpha_beta::<true>(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
         } else {
             node_pvs.clear();
@@ -331,7 +332,6 @@ fn alpha_beta<const IS_PV: bool>(
 
         if eval > best_score {
             best_score = eval;
-            best_move = m;
             if eval > alpha {
                 alpha = eval;
                 best_move = m;
