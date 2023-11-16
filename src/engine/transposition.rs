@@ -1,7 +1,6 @@
-use portable_atomic::AtomicU128;
 use std::{
     mem::{self, transmute},
-    sync::atomic::Ordering,
+    sync::atomic::{AtomicU64, Ordering},
 };
 
 use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKMATE};
@@ -72,17 +71,48 @@ pub enum EntryFlag {
 }
 
 #[derive(Default)]
-struct U128Wrapper(AtomicU128);
-impl Clone for U128Wrapper {
+struct U64Wrapper(AtomicU64);
+impl Clone for U64Wrapper {
     fn clone(&self) -> Self {
-        Self(AtomicU128::new(self.0.load(std::sync::atomic::Ordering::Relaxed)))
+        Self(AtomicU64::new(self.0.load(Ordering::Relaxed)))
+    }
+}
+
+#[derive(Default)]
+struct InternalEntry {
+    zobrist_hash: AtomicU64,
+    remainder: AtomicU64,
+}
+
+impl Clone for InternalEntry {
+    fn clone(&self) -> Self {
+        Self {
+            zobrist_hash: AtomicU64::new(self.zobrist_hash.load(Ordering::Relaxed)),
+            remainder: AtomicU64::new(self.remainder.load(Ordering::Relaxed)),
+        }
+    }
+}
+
+impl From<TableEntry> for (u64, u64) {
+    fn from(value: TableEntry) -> Self {
+        let (mut zobrist, remainder): (u64, u64) = unsafe { transmute(value) };
+        zobrist ^= remainder;
+        (zobrist, remainder)
+    }
+}
+
+impl From<InternalEntry> for TableEntry {
+    fn from(value: InternalEntry) -> Self {
+        let (mut zobrist, remainder): (u64, u64) = unsafe { transmute(value) };
+        zobrist ^= remainder;
+        unsafe { transmute((zobrist, remainder)) }
     }
 }
 
 #[derive(Clone)]
 pub struct TranspositionTable {
-    vec: Box<[U128Wrapper]>,
-    age: U128Wrapper,
+    vec: Box<[InternalEntry]>,
+    age: U64Wrapper,
 }
 
 pub const TARGET_TABLE_SIZE_MB: usize = 64;
@@ -94,7 +124,8 @@ const TABLE_CAPACITY: usize = TARGET_BYTES / ENTRY_SIZE;
 impl TranspositionTable {
     pub fn clear(&self) {
         for x in self.vec.iter() {
-            x.0.store(0, Ordering::Relaxed);
+            x.zobrist_hash.store(0, Ordering::Relaxed);
+            x.remainder.store(0, Ordering::Relaxed);
         }
     }
 
@@ -104,12 +135,12 @@ impl TranspositionTable {
         let table_capacity = target_size / ENTRY_SIZE;
         println!("{} elements in hash table", table_capacity);
         Self {
-            vec: vec![U128Wrapper::default(); table_capacity].into_boxed_slice(),
-            age: U128Wrapper::default(),
+            vec: vec![InternalEntry::default(); table_capacity].into_boxed_slice(),
+            age: U64Wrapper::default(),
         }
     }
 
-    fn age(&self) -> u128 {
+    fn age(&self) -> u64 {
         self.age.0.load(Ordering::Relaxed)
     }
 
@@ -133,10 +164,10 @@ impl TranspositionTable {
         let idx = index(hash);
         let key = hash;
 
-        let old_entry: TableEntry = unsafe { transmute(self.vec[idx].0.load(Ordering::Relaxed)) };
+        let old_entry = unsafe { TableEntry::from(self.vec.get_unchecked(idx).clone()) };
 
         // Conditions from Alexandria
-        if old_entry.age() != self.age() as u64
+        if old_entry.age() != self.age()
             || old_entry.key != key
             || flag == EntryFlag::Exact
             || depth as usize + 5 + 2 * usize::from(is_pv) > old_entry.depth as usize
@@ -163,9 +194,17 @@ impl TranspositionTable {
                 static_eval: static_eval as i16,
             };
 
-            let number: u128 = unsafe { transmute(entry) };
-
-            unsafe { self.vec.get_unchecked(idx).0.store(number, Ordering::Relaxed) }
+            let (zobrist_hash, remainder) = entry.into();
+            unsafe {
+                self.vec
+                    .get_unchecked(idx)
+                    .zobrist_hash
+                    .store(zobrist_hash, Ordering::Relaxed);
+                self.vec
+                    .get_unchecked(idx)
+                    .remainder
+                    .store(remainder, Ordering::Relaxed);
+            }
         }
     }
 
@@ -173,7 +212,7 @@ impl TranspositionTable {
         let idx = index(hash);
         let key = hash;
 
-        let mut entry: TableEntry = unsafe { transmute(self.vec.get_unchecked(idx).0.load(Ordering::Relaxed)) };
+        let mut entry = unsafe { TableEntry::from(self.vec.get_unchecked(idx).clone()) };
 
         if entry.key != key {
             return None;
