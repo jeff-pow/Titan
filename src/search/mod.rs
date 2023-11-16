@@ -5,7 +5,7 @@ use lazy_static::lazy_static;
 
 use crate::board::board::Board;
 use crate::board::fen::{build_board, STARTING_FEN};
-use crate::engine::transposition::TranspositionTable;
+use crate::engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
 use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
 
@@ -55,7 +55,7 @@ impl Default for SearchInfo {
     fn default() -> Self {
         Self {
             board: build_board(STARTING_FEN),
-            transpos_table: TranspositionTable::default(),
+            transpos_table: TranspositionTable::new(TARGET_TABLE_SIZE_MB),
             search_stats: Default::default(),
             game_time: Default::default(),
             search_type: Default::default(),
