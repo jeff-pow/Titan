@@ -301,29 +301,28 @@ fn alpha_beta<const IS_PV: bool>(
 
         let eval = if legal_moves_searched == 0 {
             node_pvs.clear();
-            // On the first move, just do a full depth search so we at least have a pv
-            // TODO: This might be supposed to be IS_PV...
-            -alpha_beta::<true>(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
+            // On the first move, just do a full depth search
+            -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
         } else {
             node_pvs.clear();
             // Start with a zero window reduced search
-            let zero_window =
+            let zero_window_reduced_depth =
                 -alpha_beta::<false>(depth - r, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node);
 
             // If that search raises alpha and the reduction was more than one, do a research at a zero window with full depth
-            let verification_score = if zero_window > alpha && r > 1 {
+            let zero_window_full_depth = if zero_window_reduced_depth > alpha && r > 1 {
                 node_pvs.clear();
                 -alpha_beta::<false>(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node)
             } else {
-                zero_window
+                zero_window_reduced_depth
             };
 
             // If the verification score falls between alpha and beta, full window full depth search
-            if verification_score > alpha && verification_score < beta {
+            if zero_window_full_depth > alpha && zero_window_full_depth < beta {
                 node_pvs.clear();
                 -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
             } else {
-                verification_score
+                zero_window_full_depth
             }
         };
 

@@ -234,19 +234,24 @@ fn index(hash: u64) -> usize {
 
 #[cfg(test)]
 mod transpos_tests {
+    use crate::{
+        board::fen::{build_board, STARTING_FEN},
+        engine::transposition::{EntryFlag, TranspositionTable},
+        moves::moves::{Move, MoveType},
+        types::{pieces::PieceName, square::Square},
+    };
 
     #[test]
     fn transpos_table() {
-        // let b = build_board(STARTING_FEN);
-        // let table = TranspositionTable::default();
-        // let (eval, m) = table.tt_entry_get(0, 0, -500, 500, &b, false, false);
-        // assert!(eval.is_none());
-        // assert_eq!(m, Move::NULL);
-        //
-        // let m = Move::new(Square(12), Square(28), PieceName::Pawn);
-        // table.store(b.zobrist_hash, m, 4, EntryFlag::Exact, 25, 0, false);
-        // let entry = table.tt_entry_get(b.zobrist_hash, 2);
-        // assert_eq!(25, entry.;
-        // assert_eq!(m, m1);
+        let b = build_board(STARTING_FEN);
+        let table = TranspositionTable::new(64);
+        let entry = table.get(b.zobrist_hash, 4);
+        assert!(entry.is_none());
+
+        let m = Move::new(Square(12), Square(28), MoveType::Normal, PieceName::Pawn);
+        table.store(b.zobrist_hash, m, 0, EntryFlag::Exact, 25, 4, false, 25);
+        let entry = table.get(b.zobrist_hash, 2);
+        assert_eq!(25, entry.unwrap().static_eval());
+        assert_eq!(m, entry.unwrap().best_move(&b));
     }
 }
