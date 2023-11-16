@@ -135,7 +135,6 @@ impl TranspositionTable {
         let table_capacity = target_size / ENTRY_SIZE;
         println!("{} elements in hash table", table_capacity);
         Self {
-
             vec: vec![InternalEntry::default(); table_capacity].into_boxed_slice(),
             age: U64Wrapper::default(),
         }

@@ -13,4 +13,4 @@ nohup cutechess-cli \
 -each proto=uci tc=8+0.08 \
 -openings order=random file="book.pgn" format=pgn \
 -concurrency 6 \
--ratinginterval 10 \
+-ratinginterval 30 \
