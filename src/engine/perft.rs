@@ -64,6 +64,10 @@ pub fn count_moves<const BULK: bool>(depth: i32, board: &Board) -> usize {
 mod movegen_tests {
     use std::{fs::File, io::BufRead, io::BufReader};
 
+    use rayon::iter::IndexedParallelIterator;
+    use rayon::iter::ParallelIterator;
+    use rayon::prelude::IntoParallelRefIterator;
+
     // Positions and expected values from https://www.chessprogramming.org/Perft_Results
     use crate::{
         board::fen::{self, build_board},
@@ -122,8 +126,9 @@ mod movegen_tests {
     #[test]
     pub fn epd_perft() {
         let file = BufReader::new(File::open("./src/engine/ethereal_perft.epd").expect("File not found"));
-        for (test_num, line) in file.lines().enumerate() {
-            let l = line.unwrap().clone();
+        let vec = file.lines().collect::<Vec<_>>();
+        vec.par_iter().enumerate().for_each(|(test_num, line)| {
+            let l = line.as_ref().unwrap().clone();
             let vec = l.split(" ;").collect::<Vec<&str>>();
             let mut iter = vec.iter();
             let board = build_board(iter.next().unwrap());
@@ -131,9 +136,10 @@ mod movegen_tests {
                 let (depth, nodes) = entry.split_once(' ').unwrap();
                 let depth = depth[1..].parse::<i32>().unwrap();
                 let nodes = nodes.parse::<usize>().unwrap();
-                assert_eq!(nodes, multi_threaded_perft(board, depth));
+                eprintln!("test {test_num}: depth {depth} expected {nodes}");
+                assert_eq!(nodes, perft::<true>(board, depth));
             }
-            println!("{test_num} passed");
-        }
+            eprintln!("{test_num} passed");
+        });
     }
 }
