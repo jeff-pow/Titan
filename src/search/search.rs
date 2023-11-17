@@ -161,7 +161,7 @@ fn alpha_beta<const IS_PV: bool>(
         if alpha >= beta {
             return alpha;
         }
-        // depth += i32::from(in_check);
+        depth += i32::from(in_check);
     }
 
     if depth <= 0 {
@@ -192,8 +192,6 @@ fn alpha_beta<const IS_PV: bool>(
         // PV node
         depth -= 1;
     }
-
-
 
     let mut best_score = -INFINITY;
     let mut best_move = Move::NULL;
