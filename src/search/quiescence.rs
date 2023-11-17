@@ -6,7 +6,6 @@ use crate::moves::moves::Move;
 use crate::search::search::STALEMATE;
 
 use super::search::{CHECKMATE, INFINITY};
-use super::see::see;
 use super::store_pv;
 use super::{search::MAX_SEARCH_DEPTH, SearchInfo};
 
@@ -29,10 +28,8 @@ pub fn quiescence(
         return board.evaluate();
     }
 
-    let table_move = info
-        .transpos_table
-        .get(board.zobrist_hash, ply)
-        .map_or(Move::NULL, |e| e.best_move(board));
+    let entry = info.transpos_table.get(board.zobrist_hash, ply);
+    let table_move = entry.map_or(Move::NULL, |e| e.best_move(board));
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
 
@@ -62,7 +59,7 @@ pub fn quiescence(
 
         // We want to find at least one evasion so we know we aren't in checkmate, so don't prune
         // moves before then
-        if (!in_check || moves_searched > 1) && !see(board, m, 1) {
+        if (!in_check || moves_searched > 1) && !board.see(m, 1) {
             continue;
         }
 
@@ -100,7 +97,7 @@ pub fn quiescence(
     };
 
     info.transpos_table
-        .store(board.zobrist_hash, best_move, 0, entry_flag, best_score, ply, false);
+        .store(board.zobrist_hash, best_move, 0, entry_flag, best_score, ply, false, stand_pat);
 
     if in_check && moves_searched == 0 {
         return -CHECKMATE + ply;

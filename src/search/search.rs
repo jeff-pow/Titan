@@ -12,7 +12,6 @@ use crate::search::INIT_ASP;
 use super::history_heuristics::MAX_HIST_VAL;
 use super::killers::store_killer_move;
 use super::quiescence::quiescence;
-use super::see::see;
 use super::{
     get_reduction, store_pv, SearchInfo, SearchType, LMP_CONST, LMR_THRESHOLD, MAX_LMP_DEPTH, MAX_RFP_DEPTH,
     MIN_IIR_DEPTH, MIN_LMR_DEPTH, MIN_NMP_DEPTH, RFP_MULTIPLIER,
@@ -137,16 +136,10 @@ fn alpha_beta<const IS_PV: bool>(
     let ply = info.iter_max_depth - depth;
     let is_root = ply == 0;
     let in_check = board.in_check;
-    // Is a zero width search if alpha and beta are one apart
     info.sel_depth = info.sel_depth.max(ply);
-    // Don't do pvs unless you have a pv - otherwise you're wasting time
     if info.search_stats.nodes_searched % 1024 == 0 && info.halt.load(Ordering::Relaxed) {
         return board.evaluate();
     }
-
-    // if in_check {
-    //     depth += 1;
-    // }
 
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
@@ -168,6 +161,11 @@ fn alpha_beta<const IS_PV: bool>(
         if alpha >= beta {
             return alpha;
         }
+        depth += i32::from(in_check);
+    }
+
+    if depth <= 0 {
+        return quiescence(ply, alpha, beta, pv, info, board);
     }
 
     let mut table_move = Move::NULL;
@@ -189,15 +187,10 @@ fn alpha_beta<const IS_PV: bool>(
         {
             return table_eval;
         }
-    }
-    // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT eval and isn't a
-    // PV node
-    else if depth >= MIN_IIR_DEPTH && !IS_PV {
+    } else if depth >= MIN_IIR_DEPTH && !IS_PV {
+        // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT hit and isn't a
+        // PV node
         depth -= 1;
-    }
-
-    if depth <= 0 {
-        return quiescence(ply, alpha, beta, pv, info, board);
     }
 
     let mut best_score = -INFINITY;
@@ -205,9 +198,15 @@ fn alpha_beta<const IS_PV: bool>(
     let original_alpha = alpha;
     let hist_bonus = (155 * depth).min(2000);
 
-    let static_eval = board.evaluate();
-    info.stack[ply as usize].eval = static_eval;
-    let improving = ply > 1 && static_eval > info.stack[ply as usize - 2].eval;
+    let static_eval = if in_check {
+        -CHECKMATE
+    } else if let Some(entry) = entry {
+        entry.static_eval()
+    } else {
+        board.evaluate()
+    };
+    info.stack[ply as usize].static_eval = static_eval;
+    let improving = !in_check && ply > 1 && static_eval > info.stack[ply as usize - 2].static_eval;
 
     if !is_root && !IS_PV && !in_check {
         // Reverse futility pruning
@@ -256,7 +255,7 @@ fn alpha_beta<const IS_PV: bool>(
                 }
             }
             let margin = if m.is_capture(board) { -90 } else { -50 };
-            if depth < 7 && !see(board, m, margin * depth) {
+            if depth < 7 && !board.see(m, margin * depth) {
                 continue;
             }
         }
@@ -269,10 +268,9 @@ fn alpha_beta<const IS_PV: bool>(
         info.stack[ply as usize].played_move = m;
         let mut node_pvs = Vec::new();
 
-        let can_lmr = legal_moves_searched >= LMR_THRESHOLD && depth >= MIN_LMR_DEPTH;
-        // R is used in late move reductions
+        // Calculate the reduction used in LMR
         let r = {
-            if !can_lmr {
+            if legal_moves_searched < LMR_THRESHOLD || depth < MIN_LMR_DEPTH {
                 1
             } else {
                 let mut r = get_reduction(depth, legal_moves_searched);
@@ -298,28 +296,28 @@ fn alpha_beta<const IS_PV: bool>(
 
         let eval = if legal_moves_searched == 0 {
             node_pvs.clear();
-            // On the first move, just do a full depth search so we at least have a pv
-            -alpha_beta::<true>(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
+            // On the first move, just do a full depth search
+            -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
         } else {
             node_pvs.clear();
             // Start with a zero window reduced search
-            let zero_window =
+            let zero_window_reduced_depth =
                 -alpha_beta::<false>(depth - r, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node);
 
             // If that search raises alpha and the reduction was more than one, do a research at a zero window with full depth
-            let verification_score = if zero_window > alpha && r > 1 {
+            let zero_window_full_depth = if zero_window_reduced_depth > alpha && r > 1 {
                 node_pvs.clear();
                 -alpha_beta::<false>(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node)
             } else {
-                zero_window
+                zero_window_reduced_depth
             };
 
             // If the verification score falls between alpha and beta, full window full depth search
-            if verification_score > alpha && verification_score < beta {
+            if zero_window_full_depth > alpha && zero_window_full_depth < beta {
                 node_pvs.clear();
                 -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
             } else {
-                verification_score
+                zero_window_full_depth
             }
         };
 
@@ -328,7 +326,6 @@ fn alpha_beta<const IS_PV: bool>(
 
         if eval > best_score {
             best_score = eval;
-            best_move = m;
             if eval > alpha {
                 alpha = eval;
                 best_move = m;
@@ -370,7 +367,7 @@ fn alpha_beta<const IS_PV: bool>(
     };
 
     info.transpos_table
-        .store(board.zobrist_hash, best_move, depth, entry_flag, best_score, ply, IS_PV);
+        .store(board.zobrist_hash, best_move, depth, entry_flag, best_score, ply, IS_PV, static_eval);
 
     best_score
 }

@@ -18,19 +18,9 @@ pub const NUM_SQUARES: usize = 64;
 impl Square {
     /// Function checks whether a shift is valid before executing it
     pub fn checked_shift(self, dir: Direction) -> Option<Square> {
-        let current_file = self.file();
-        let current_rank = self.rank();
-        let (dir_x, dir_y) = dir.to_xy();
-        if !(0..8).contains(&(current_file as i32 + dir_x)) {
-            return None;
-        }
-        if !(0..8).contains(&(current_rank as i32 + dir_y)) {
-            return None;
-        }
-        let new_index = (self.0 as i32 + dir as i32) as u32;
-
-        if (0..64).contains(&new_index) {
-            Some(Square(new_index))
+        let s = self.bitboard().shift(dir);
+        if s != Bitboard::EMPTY {
+            Some(s.get_lsb())
         } else {
             None
         }
@@ -39,8 +29,7 @@ impl Square {
     /// Function does not check a shift's validity before returning it. Only to be used when the
     /// shifts validity has already been proven valid elsewhere
     pub fn shift(self, dir: Direction) -> Square {
-        let new_square = self.0 as i32 + dir as i32;
-        Square(new_square as u32)
+        self.bitboard().shift(dir).get_lsb()
     }
 
     /// Calculates the distance between two squares

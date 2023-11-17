@@ -206,11 +206,11 @@ impl Board {
     }
 
     fn material_val(&self, c: Color) -> i32 {
-        self.bitboard(c, PieceName::Queen).count_bits() * PieceName::Queen.value()
-            + self.bitboard(c, PieceName::Rook).count_bits() * PieceName::Rook.value()
-            + self.bitboard(c, PieceName::Bishop).count_bits() * PieceName::Bishop.value()
-            + self.bitboard(c, PieceName::Knight).count_bits() * PieceName::Knight.value()
-            + self.bitboard(c, PieceName::Pawn).count_bits() * PieceName::Pawn.value()
+        self.bitboard(c, PieceName::Queen).count_bits() as i32 * PieceName::Queen.value()
+            + self.bitboard(c, PieceName::Rook).count_bits() as i32 * PieceName::Rook.value()
+            + self.bitboard(c, PieceName::Bishop).count_bits() as i32 * PieceName::Bishop.value()
+            + self.bitboard(c, PieceName::Knight).count_bits() as i32 * PieceName::Knight.value()
+            + self.bitboard(c, PieceName::Pawn).count_bits() as i32 * PieceName::Pawn.value()
     }
 
     pub fn material_balance(&self) -> i32 {
@@ -319,6 +319,16 @@ impl Board {
         }
 
         // If the end index of a move is 16 squares from the start (and a pawn moved), an en passant is possible
+        // if m.flag() == MoveType::DoublePush {
+        //     match self.to_move {
+        //         Color::White => {
+        //             self.en_passant_square = Some(m.dest_square().shift(South));
+        //         }
+        //         Color::Black => {
+        //             self.en_passant_square = Some(m.origin_square().shift(South));
+        //         }
+        //     }
+        // }
         self.en_passant_square = None;
         if piece_moving == PieceName::Pawn {
             match self.to_move {

@@ -12,15 +12,20 @@ use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKM
 /// truncated before being placed in transposition table, and extracted back into 32 bits before
 /// being returned to caller
 pub struct TableEntry {
+    key: u64,
     depth: u8,
     other: u8,
-    key: u16,
-    eval: i16,
+    score: i16,
     best_move: u16,
+    static_eval: i16,
 }
 
 impl TableEntry {
-    pub fn key(self) -> u16 {
+    pub fn static_eval(self) -> i32 {
+        self.static_eval as i32
+    }
+
+    pub fn key(self) -> u64 {
         self.key
     }
 
@@ -43,7 +48,7 @@ impl TableEntry {
     }
 
     pub fn eval(self) -> i32 {
-        self.eval as i32
+        self.score as i32
     }
 
     pub fn best_move(self, b: &Board) -> Move {
@@ -69,26 +74,68 @@ pub enum EntryFlag {
 struct U64Wrapper(AtomicU64);
 impl Clone for U64Wrapper {
     fn clone(&self) -> Self {
-        Self(AtomicU64::new(self.0.load(std::sync::atomic::Ordering::Relaxed)))
+        Self(AtomicU64::new(self.0.load(Ordering::Relaxed)))
+    }
+}
+
+#[derive(Default)]
+struct InternalEntry {
+    zobrist_hash: AtomicU64,
+    remainder: AtomicU64,
+}
+
+impl Clone for InternalEntry {
+    fn clone(&self) -> Self {
+        Self {
+            zobrist_hash: AtomicU64::new(self.zobrist_hash.load(Ordering::Relaxed)),
+            remainder: AtomicU64::new(self.remainder.load(Ordering::Relaxed)),
+        }
+    }
+}
+
+impl From<TableEntry> for (u64, u64) {
+    fn from(value: TableEntry) -> Self {
+        let (mut zobrist, remainder): (u64, u64) = unsafe { transmute(value) };
+        zobrist ^= remainder;
+        (zobrist, remainder)
+    }
+}
+
+impl From<InternalEntry> for TableEntry {
+    fn from(value: InternalEntry) -> Self {
+        let (mut zobrist, remainder): (u64, u64) = unsafe { transmute(value) };
+        zobrist ^= remainder;
+        unsafe { transmute((zobrist, remainder)) }
     }
 }
 
 #[derive(Clone)]
 pub struct TranspositionTable {
-    vec: Box<[U64Wrapper]>,
+    vec: Box<[InternalEntry]>,
     age: U64Wrapper,
 }
+
+pub const TARGET_TABLE_SIZE_MB: usize = 64;
+const BYTES_PER_MB: usize = 1024 * 1024;
+const TARGET_BYTES: usize = TARGET_TABLE_SIZE_MB * BYTES_PER_MB;
+const ENTRY_SIZE: usize = mem::size_of::<TableEntry>();
+const TABLE_CAPACITY: usize = TARGET_BYTES / ENTRY_SIZE;
 
 impl TranspositionTable {
     pub fn clear(&self) {
         for x in self.vec.iter() {
-            x.0.store(0, Ordering::Relaxed);
+            x.zobrist_hash.store(0, Ordering::Relaxed);
+            x.remainder.store(0, Ordering::Relaxed);
         }
     }
 
-    fn new() -> Self {
+    /// Size here is the desired size in MB
+    pub fn new(size: usize) -> Self {
+        let target_size = size * 1024 * 1024;
+        let table_capacity = target_size / ENTRY_SIZE;
+        println!("{} elements in hash table", table_capacity);
         Self {
-            vec: vec![U64Wrapper::default(); TABLE_CAPACITY].into_boxed_slice(),
+            vec: vec![InternalEntry::default(); table_capacity].into_boxed_slice(),
             age: U64Wrapper::default(),
         }
     }
@@ -103,11 +150,21 @@ impl TranspositionTable {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn store(&self, hash: u64, m: Move, depth: i32, flag: EntryFlag, mut eval: i32, ply: i32, is_pv: bool) {
+    pub fn store(
+        &self,
+        hash: u64,
+        m: Move,
+        depth: i32,
+        flag: EntryFlag,
+        mut score: i32,
+        ply: i32,
+        is_pv: bool,
+        static_eval: i32,
+    ) {
         let idx = index(hash);
-        let key = hash as u16;
+        let key = hash;
 
-        let old_entry: TableEntry = unsafe { transmute(self.vec[idx].0.load(Ordering::Relaxed)) };
+        let old_entry = unsafe { TableEntry::from(self.vec.get_unchecked(idx).clone()) };
 
         // Conditions from Alexandria
         if old_entry.age() != self.age()
@@ -122,50 +179,52 @@ impl TranspositionTable {
                 m.as_u16()
             };
 
-            if eval > NEAR_CHECKMATE {
-                eval += ply;
-            } else if eval < -NEAR_CHECKMATE {
-                eval -= ply;
+            if score > NEAR_CHECKMATE {
+                score += ply;
+            } else if score < -NEAR_CHECKMATE {
+                score -= ply;
             }
 
             let entry = TableEntry {
                 key,
                 depth: depth as u8,
                 other: (self.age() << 2) as u8 | flag as u8,
-                eval: eval as i16,
+                score: score as i16,
                 best_move: best_m,
+                static_eval: static_eval as i16,
             };
 
-            let number: u64 = unsafe { transmute(entry) };
-
-            unsafe { self.vec.get_unchecked(idx).0.store(number, Ordering::Relaxed) }
+            let (zobrist_hash, remainder) = entry.into();
+            unsafe {
+                self.vec
+                    .get_unchecked(idx)
+                    .zobrist_hash
+                    .store(zobrist_hash, Ordering::Relaxed);
+                self.vec
+                    .get_unchecked(idx)
+                    .remainder
+                    .store(remainder, Ordering::Relaxed);
+            }
         }
     }
 
     pub fn get(&self, hash: u64, ply: i32) -> Option<TableEntry> {
         let idx = index(hash);
-        let key = hash as u16;
+        let key = hash;
 
-        let mut entry: TableEntry = unsafe { transmute(self.vec.get_unchecked(idx).0.load(Ordering::Relaxed)) };
+        let mut entry = unsafe { TableEntry::from(self.vec.get_unchecked(idx).clone()) };
 
         if entry.key != key {
             return None;
         }
 
-        if entry.eval > NEAR_CHECKMATE as i16 {
-            entry.eval -= ply as i16;
-        } else if entry.eval < -NEAR_CHECKMATE as i16 {
-            entry.eval += ply as i16;
+        if entry.score > NEAR_CHECKMATE as i16 {
+            entry.score -= ply as i16;
+        } else if entry.score < -NEAR_CHECKMATE as i16 {
+            entry.score += ply as i16;
         }
 
         Some(entry)
-    }
-}
-
-impl Default for TranspositionTable {
-    fn default() -> Self {
-        println!("{} elements in hash table", TABLE_CAPACITY);
-        Self::new()
     }
 }
 
@@ -173,27 +232,26 @@ fn index(hash: u64) -> usize {
     ((u128::from(hash) * (TABLE_CAPACITY as u128)) >> 64) as usize
 }
 
-const TARGET_TABLE_SIZE_MB: usize = 64;
-const BYTES_PER_MB: usize = 1024 * 1024;
-const TARGET_BYTES: usize = TARGET_TABLE_SIZE_MB * BYTES_PER_MB;
-const ENTRY_SIZE: usize = mem::size_of::<TableEntry>();
-const TABLE_CAPACITY: usize = TARGET_BYTES / ENTRY_SIZE;
-
 #[cfg(test)]
 mod transpos_tests {
+    use crate::{
+        board::fen::{build_board, STARTING_FEN},
+        engine::transposition::{EntryFlag, TranspositionTable},
+        moves::moves::{Move, MoveType},
+        types::{pieces::PieceName, square::Square},
+    };
 
     #[test]
     fn transpos_table() {
-        // let b = build_board(STARTING_FEN);
-        // let table = TranspositionTable::default();
-        // let (eval, m) = table.tt_entry_get(0, 0, -500, 500, &b, false, false);
-        // assert!(eval.is_none());
-        // assert_eq!(m, Move::NULL);
-        //
-        // let m = Move::new(Square(12), Square(28), PieceName::Pawn);
-        // table.store(b.zobrist_hash, m, 4, EntryFlag::Exact, 25, 0, false);
-        // let entry = table.tt_entry_get(b.zobrist_hash, 2);
-        // assert_eq!(25, entry.;
-        // assert_eq!(m, m1);
+        let b = build_board(STARTING_FEN);
+        let table = TranspositionTable::new(64);
+        let entry = table.get(b.zobrist_hash, 4);
+        assert!(entry.is_none());
+
+        let m = Move::new(Square(12), Square(28), MoveType::Normal, PieceName::Pawn);
+        table.store(b.zobrist_hash, m, 0, EntryFlag::Exact, 25, 4, false, 25);
+        let entry = table.get(b.zobrist_hash, 2);
+        assert_eq!(25, entry.unwrap().static_eval());
+        assert_eq!(m, entry.unwrap().best_move(&b));
     }
 }

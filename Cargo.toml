@@ -17,6 +17,7 @@ float-ord = "0.3.2"
 microbench = "0.5.0"
 bytemuck = "1.14.0"
 lazy_static = "1.4.0"
+portable-atomic = "1.5.1"
 
 [profile.release]
 strip = true
