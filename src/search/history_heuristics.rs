@@ -1,11 +1,26 @@
-use crate::{moves::moves::Move, types::pieces::Color};
+use crate::{
+    moves::moves::Move,
+    types::pieces::{Color, PieceName},
+};
 
 pub const MAX_HIST_VAL: i32 = i16::MAX as i32;
 
-#[derive(Default, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct HistoryEntry {
     score: i32,
     counter: Move,
+    // King can't be captured, so it doesn't need a square
+    capthist: [i32; 5],
+}
+
+impl Default for HistoryEntry {
+    fn default() -> Self {
+        Self {
+            score: Default::default(),
+            counter: Default::default(),
+            capthist: [0; 5],
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -14,20 +29,12 @@ pub struct MoveHistory {
 }
 
 impl MoveHistory {
-    fn update_search_history(&mut self, m: Move, bonus: i32, side: Color) {
+    pub fn update_quiet_history(&mut self, m: Move, bonus: i32, side: Color) {
         let i = &mut self.search_history[side][m.piece_moving()][m.dest_square()].score;
         *i += bonus - *i * bonus.abs() / MAX_HIST_VAL;
     }
 
-    pub fn update_history(&mut self, m: Move, bonus: i32, side: Color) {
-        self.update_search_history(m, bonus, side);
-    }
-
-    pub fn get_history(&self, m: Move, side: Color) -> i32 {
-        self.get_search_history(m, side)
-    }
-
-    fn get_search_history(&self, m: Move, side: Color) -> i32 {
+    pub fn quiet_history(&self, m: Move, side: Color) -> i32 {
         self.search_history[side][m.piece_moving()][m.dest_square()].score
     }
 
@@ -41,6 +48,15 @@ impl MoveHistory {
         } else {
             self.search_history[side][m.piece_moving()][m.dest_square()].counter
         }
+    }
+
+    pub fn update_capt_hist(&mut self, m: Move, bonus: i32, side: Color, capture: PieceName) {
+        let i = &mut self.search_history[side][m.piece_moving()][m.dest_square()].capthist[capture];
+        *i += bonus - *i * bonus.abs() / MAX_HIST_VAL;
+    }
+
+    pub fn capt_hist(&self, m: Move, side: Color, capture: PieceName) -> i32 {
+        self.search_history[side][m.piece_moving()][m.dest_square()].capthist[capture]
     }
 }
 
