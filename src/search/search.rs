@@ -326,18 +326,21 @@ fn alpha_beta<const IS_PV: bool>(
 
         if eval > best_score {
             best_score = eval;
+
             if eval > alpha {
                 alpha = eval;
                 best_move = m;
                 store_pv(pv, &mut node_pvs, m);
             }
+
             if alpha >= beta {
-                let capture = board.capture(m);
-                // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
-                // Also don't store killers that we have already stored
-                if capture.is_none() {
+                if let Some(cap) = board.capture(m) {
+                    info.history.update_capt_hist(m, hist_bonus, board.to_move, cap)
+                } else {
+                    // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
+                    // Also don't store killers that we have already stored
                     store_killer_move(ply, m, info);
-                    info.history.update_history(m, hist_bonus, board.to_move);
+                    info.history.update_quiet_history(m, hist_bonus, board.to_move);
                     info.history
                         .set_counter(board.to_move, *info.current_line.last().unwrap_or(&Move::NULL), m);
                 }
@@ -346,7 +349,12 @@ fn alpha_beta<const IS_PV: bool>(
         }
         // TODO: Try only doing this for quiet moves
         // If a move doesn't raise alpha, deduct from its history score for move ordering
-        info.history.update_history(m, -hist_bonus, board.to_move);
+        if board.is_quiet(m) {
+            info.history.update_quiet_history(m, -hist_bonus, board.to_move);
+        } else {
+            info.history
+                .update_capt_hist(m, -hist_bonus, board.to_move, board.capture(m).unwrap())
+        }
     }
 
     if legal_moves_searched == 0 {

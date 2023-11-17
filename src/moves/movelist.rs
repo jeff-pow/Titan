@@ -92,6 +92,7 @@ impl MoveList {
                 } else {
                     BAD_CAPTURE
                 }) + MVV_LVA[board.piece_at(entry.m.origin_square()).unwrap()][c]
+                    + info.history.capt_hist(entry.m, board.to_move, c)
             } else if killers[0] == entry.m {
                 KILLER_ONE
             } else if killers[1] == entry.m {
@@ -99,7 +100,7 @@ impl MoveList {
             } else if counter == entry.m {
                 COUNTER_MOVE
             } else {
-                info.history.get_history(entry.m, board.to_move)
+                info.history.quiet_history(entry.m, board.to_move)
             };
         }
     }
