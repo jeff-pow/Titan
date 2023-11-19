@@ -196,7 +196,6 @@ fn alpha_beta<const IS_PV: bool>(
     let mut best_score = -INFINITY;
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
-    let hist_bonus = (155 * depth).min(2000);
 
     let static_eval = if in_check {
         -CHECKMATE
@@ -335,12 +334,12 @@ fn alpha_beta<const IS_PV: bool>(
 
             if alpha >= beta {
                 if let Some(cap) = board.capture(m) {
-                    info.history.update_capt_hist(m, hist_bonus, board.to_move, cap)
+                    info.history.update_capt_hist(m, board.to_move, cap, depth, true);
                 } else {
                     // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
                     // Also don't store killers that we have already stored
                     store_killer_move(ply, m, info);
-                    info.history.update_quiet_history(m, hist_bonus, board.to_move);
+                    info.history.update_quiet_history(m, true, board.to_move, depth);
                     info.history
                         .set_counter(board.to_move, *info.current_line.last().unwrap_or(&Move::NULL), m);
                 }
@@ -349,11 +348,17 @@ fn alpha_beta<const IS_PV: bool>(
         }
         // TODO: Try only doing this for quiet moves
         // If a move doesn't raise alpha, deduct from its history score for move ordering
+        // if let Some(cap) = board.capture(m) {
+        //     info.history.update_capt_hist(m, board.to_move, cap, depth, false);
+        // } else {
+        //     info.history.update_quiet_history(m, false, board.to_move, depth);
+        // }
+
         if board.is_quiet(m) {
-            info.history.update_quiet_history(m, -hist_bonus, board.to_move);
+            info.history.update_quiet_history(m, false, board.to_move, depth);
         } else {
             info.history
-                .update_capt_hist(m, -hist_bonus, board.to_move, board.capture(m).unwrap())
+                .update_capt_hist(m, board.to_move, board.capture(m).unwrap(), depth, false);
         }
     }
 
