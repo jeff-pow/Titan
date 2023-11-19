@@ -121,105 +121,6 @@ fn create_table(sq: Square, deltas: [Direction; 4]) -> Vec<Bitboard> {
     table
 }
 
-#[allow(dead_code)]
-/// Function generates magic numbers when they are not known.
-pub fn gen_magics() {
-    let mut rng = Rng::default();
-    let mut rook_table = Vec::with_capacity(ROOK_M_SIZE);
-    let mut rook_magics = [MagicEntry::default(); 64];
-    let mut bishop_table = Vec::with_capacity(BISHOP_M_SIZE);
-    let mut bishop_magics = [MagicEntry::default(); 64];
-
-    for sq in Square::iter() {
-        let edges = ((RANK1 | RANK8) & !(sq.get_rank_bitboard())) | ((FILE_A | FILE_H) & !(sq.get_file_bitboard()));
-
-        let rook_bits = sliding_attack(R_DELTAS, sq, Bitboard::EMPTY);
-        let mask = rook_bits & !edges;
-        let (mut entry, mut table) = find_magic(mask, sq, R_DELTAS, &mut rng);
-        entry.offset = rook_table.len();
-        rook_magics[sq] = entry;
-        rook_table.append(&mut table);
-
-        let bishop_bits = sliding_attack(B_DELTAS, sq, Bitboard::EMPTY);
-        let mask = bishop_bits & !edges;
-        let (mut entry, mut table) = find_magic(mask, sq, B_DELTAS, &mut rng);
-        entry.offset = bishop_table.len();
-        bishop_magics[sq] = entry;
-        bishop_table.append(&mut table);
-    }
-
-    println!("#[rustfmt::skip]");
-    println!("pub const BISHOP_MAGICS: &[MagicEntry; 64] = &[",);
-    for entry in bishop_magics {
-        println!(
-            "    MagicEntry {{ mask: Bitboard(0x{:016X}), magic: 0x{:016X}, shift: {}, offset: {} }},",
-            entry.mask.0, entry.magic, entry.shift, entry.offset
-        );
-    }
-    println!("];");
-
-    println!("#[rustfmt::skip]");
-    println!("pub const ROOK_MAGICS: &[MagicEntry; 64] = &[",);
-    for entry in rook_magics {
-        println!(
-            "    MagicEntry {{ mask: Bitboard(0x{:016X}), magic: 0x{:016X}, shift: {}, offset: {} }},",
-            entry.mask.0, entry.magic, entry.shift, entry.offset
-        );
-    }
-    println!("];");
-
-    assert_eq!(ROOK_M_SIZE, rook_table.len());
-    assert_eq!(BISHOP_M_SIZE, bishop_table.len());
-}
-
-/// Function finds a magic valid for a given square
-fn find_magic(mask: Bitboard, sq: Square, deltas: [Direction; 4], rng: &mut Rng) -> (MagicEntry, Vec<Bitboard>) {
-    loop {
-        let mut magic;
-        loop {
-            magic = rng.next_magic();
-            if (magic.wrapping_mul(mask.0)).wrapping_shr(56).count_ones() >= 6 {
-                break;
-            }
-        }
-
-        let shift = 64 - mask.count_bits();
-        let magic_entry = MagicEntry {
-            mask,
-            magic,
-            shift,
-            offset: 0,
-        };
-        if let Some(table) = make_table(deltas, sq, &magic_entry) {
-            return (magic_entry, table);
-        }
-    }
-}
-
-/// Function tries to make a table with a given magic number
-fn make_table(deltas: [Direction; 4], sq: Square, magic_entry: &MagicEntry) -> Option<Vec<Bitboard>> {
-    let idx_bits = 64 - magic_entry.shift;
-    let mut table = vec![Bitboard::EMPTY; 1 << idx_bits];
-    let mut blockers = Bitboard::EMPTY;
-    loop {
-        let moves = sliding_attack(deltas, sq, blockers);
-        let idx = index(magic_entry, blockers);
-
-        if table[idx] == Bitboard::EMPTY {
-            table[idx] = moves;
-        } else if table[idx] != moves {
-            return None;
-        }
-
-        // Carry-Rippler trick to iterate through all subsections of blockers
-        blockers.0 = blockers.0.wrapping_sub(magic_entry.mask.0) & magic_entry.mask.0;
-        if blockers == Bitboard::EMPTY {
-            break;
-        }
-    }
-    Some(table)
-}
-
 /// Returns a bitboards of sliding attacks given an array of 4 deltas/
 /// Does not include the original position/
 /// Includes occupied bits if it runs into them, but stops before going further.
@@ -373,3 +274,102 @@ const ROOK_MAGICS: &[MagicEntry; 64] = &[
     MagicEntry { mask: Bitboard(0x3E40404040404000), magic: 0x0002000084080102, shift: 53, offset: 96256 },
     MagicEntry { mask: Bitboard(0x7E80808080808000), magic: 0x0018010290224402, shift: 52, offset: 98304 },
 ];
+
+#[allow(dead_code)]
+/// Function generates magic numbers when they are not known.
+pub fn gen_magics() {
+    let mut rng = Rng::default();
+    let mut rook_table = Vec::with_capacity(ROOK_M_SIZE);
+    let mut rook_magics = [MagicEntry::default(); 64];
+    let mut bishop_table = Vec::with_capacity(BISHOP_M_SIZE);
+    let mut bishop_magics = [MagicEntry::default(); 64];
+
+    for sq in Square::iter() {
+        let edges = ((RANK1 | RANK8) & !(sq.get_rank_bitboard())) | ((FILE_A | FILE_H) & !(sq.get_file_bitboard()));
+
+        let rook_bits = sliding_attack(R_DELTAS, sq, Bitboard::EMPTY);
+        let mask = rook_bits & !edges;
+        let (mut entry, mut table) = find_magic(mask, sq, R_DELTAS, &mut rng);
+        entry.offset = rook_table.len();
+        rook_magics[sq] = entry;
+        rook_table.append(&mut table);
+
+        let bishop_bits = sliding_attack(B_DELTAS, sq, Bitboard::EMPTY);
+        let mask = bishop_bits & !edges;
+        let (mut entry, mut table) = find_magic(mask, sq, B_DELTAS, &mut rng);
+        entry.offset = bishop_table.len();
+        bishop_magics[sq] = entry;
+        bishop_table.append(&mut table);
+    }
+
+    println!("#[rustfmt::skip]");
+    println!("pub const BISHOP_MAGICS: &[MagicEntry; 64] = &[",);
+    for entry in bishop_magics {
+        println!(
+            "    MagicEntry {{ mask: Bitboard(0x{:016X}), magic: 0x{:016X}, shift: {}, offset: {} }},",
+            entry.mask.0, entry.magic, entry.shift, entry.offset
+        );
+    }
+    println!("];");
+
+    println!("#[rustfmt::skip]");
+    println!("pub const ROOK_MAGICS: &[MagicEntry; 64] = &[",);
+    for entry in rook_magics {
+        println!(
+            "    MagicEntry {{ mask: Bitboard(0x{:016X}), magic: 0x{:016X}, shift: {}, offset: {} }},",
+            entry.mask.0, entry.magic, entry.shift, entry.offset
+        );
+    }
+    println!("];");
+
+    assert_eq!(ROOK_M_SIZE, rook_table.len());
+    assert_eq!(BISHOP_M_SIZE, bishop_table.len());
+}
+
+/// Function finds a magic valid for a given square
+fn find_magic(mask: Bitboard, sq: Square, deltas: [Direction; 4], rng: &mut Rng) -> (MagicEntry, Vec<Bitboard>) {
+    loop {
+        let mut magic;
+        loop {
+            magic = rng.next_magic();
+            if (magic.wrapping_mul(mask.0)).wrapping_shr(56).count_ones() >= 6 {
+                break;
+            }
+        }
+
+        let shift = 64 - mask.count_bits();
+        let magic_entry = MagicEntry {
+            mask,
+            magic,
+            shift,
+            offset: 0,
+        };
+        if let Some(table) = make_table(deltas, sq, &magic_entry) {
+            return (magic_entry, table);
+        }
+    }
+}
+
+/// Function tries to make a table with a given magic number
+fn make_table(deltas: [Direction; 4], sq: Square, magic_entry: &MagicEntry) -> Option<Vec<Bitboard>> {
+    let idx_bits = 64 - magic_entry.shift;
+    let mut table = vec![Bitboard::EMPTY; 1 << idx_bits];
+    let mut blockers = Bitboard::EMPTY;
+    loop {
+        let moves = sliding_attack(deltas, sq, blockers);
+        let idx = index(magic_entry, blockers);
+
+        if table[idx] == Bitboard::EMPTY {
+            table[idx] = moves;
+        } else if table[idx] != moves {
+            return None;
+        }
+
+        // Carry-Rippler trick to iterate through all subsections of blockers
+        blockers.0 = blockers.0.wrapping_sub(magic_entry.mask.0) & magic_entry.mask.0;
+        if blockers == Bitboard::EMPTY {
+            break;
+        }
+    }
+    Some(table)
+}
