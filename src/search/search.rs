@@ -48,12 +48,10 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
         }
         SearchType::Depth => {
             info.max_depth = max_depth;
-            info.game_time.unlimited_time();
         }
         SearchType::Infinite => {
             max_depth = MAX_SEARCH_DEPTH;
             info.max_depth = max_depth;
-            info.game_time.unlimited_time();
         }
     }
     info.search_stats.start = Instant::now();

@@ -11,7 +11,7 @@ const MAX_THINK_TIME: Duration = Duration::from_millis(15000);
 
 const GUI_DELAY: Duration = Duration::from_millis(50);
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug)]
 pub struct GameTime {
     /// Time increase for each side
     pub time_inc: [Duration; 2],
@@ -62,8 +62,15 @@ impl GameTime {
             self.time_recommendation[side] = recommended_time + increment;
         }
     }
+}
 
-    pub fn unlimited_time(&mut self) {
-        self.time_recommendation = [Duration::MAX; 2];
+impl Default for GameTime {
+    fn default() -> Self {
+        Self {
+            time_inc: Default::default(),
+            time_remaining: Default::default(),
+            movestogo: Default::default(),
+            time_recommendation: [Duration::MAX; 2],
+        }
     }
 }
