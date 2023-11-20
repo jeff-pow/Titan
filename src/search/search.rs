@@ -7,10 +7,9 @@ use crate::engine::transposition::EntryFlag;
 use crate::moves::movegenerator::{generate_moves, MGT};
 use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
-use crate::search::INIT_ASP;
+use crate::search::{ThreadData, INIT_ASP};
 
 use super::history_heuristics::MAX_HIST_VAL;
-use super::killers::store_killer_move;
 use super::quiescence::quiescence;
 use super::{
     get_reduction, store_pv, SearchInfo, SearchType, LMP_CONST, LMR_THRESHOLD, MAX_LMP_DEPTH, MAX_RFP_DEPTH,
@@ -23,12 +22,12 @@ pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 50000;
 pub const MAX_SEARCH_DEPTH: i32 = 100;
 
-pub fn print_search_stats(info: &SearchInfo, eval: i32, pv: &[Move], iter_depth: i32) {
+pub fn print_search_stats(info: &ThreadData, eval: i32, pv: &[Move]) {
     print!(
         "info time {} seldepth {} depth {} nodes {} nps {} score cp {} pv ",
         info.search_stats.start.elapsed().as_millis(),
         info.sel_depth,
-        iter_depth,
+        info.iter_max_depth,
         info.search_stats.nodes_searched,
         (info.search_stats.nodes_searched as f64 / info.search_stats.start.elapsed().as_secs_f64()) as i64,
         eval
@@ -56,22 +55,24 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
     }
     info.search_stats.start = Instant::now();
 
+    let mut td = ThreadData::new(&info.transpos_table, &info.halt, &info.game_time);
+
     let mut alpha;
     let mut beta;
     // The previous eval from this side (two moves ago) is a good place to estimate the next
     // aspiration window around. First depth will not have an estimate, and we will do a full
     // window search
     let mut score_history = vec![info.board.evaluate()];
-    info.iter_max_depth = 1;
+    td.iter_max_depth = 1;
 
-    while info.iter_max_depth <= max_depth {
-        info.sel_depth = 0;
+    while td.iter_max_depth <= max_depth {
+        td.sel_depth = 0;
         let board = &info.board.to_owned();
 
         // We assume the average eval for the board from two iterations ago is a good estimate for
         // the next iteration
-        let prev_avg = if info.iter_max_depth >= 2 {
-            *score_history.get(info.iter_max_depth as usize - 2).unwrap() as f64
+        let prev_avg = if td.iter_max_depth >= 2 {
+            *score_history.get(td.iter_max_depth as usize - 2).unwrap() as f64
         } else {
             -INFINITY as f64
         };
@@ -83,7 +84,7 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
 
         let mut score;
         loop {
-            score = alpha_beta::<true>(info.iter_max_depth, alpha, beta, &mut pv_moves, info, board, false);
+            score = alpha_beta::<true>(td.iter_max_depth, alpha, beta, &mut pv_moves, &mut td, board, false);
             if score <= alpha {
                 beta = (alpha + beta) / 2;
                 alpha = max(score - delta, -INFINITY);
@@ -101,7 +102,7 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
         }
         score_history.push(score);
 
-        print_search_stats(info, score, &pv_moves, info.iter_max_depth);
+        print_search_stats(&td, score, &pv_moves);
 
         if info.search_type == SearchType::Time
             && info
@@ -113,9 +114,10 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
         if info.halt.load(Ordering::SeqCst) {
             break;
         }
-        info.iter_max_depth += 1;
+        td.iter_max_depth += 1;
     }
 
+    info.search_stats.nodes_searched = td.search_stats.nodes_searched;
     assert_ne!(best_move, Move::NULL);
 
     best_move
@@ -129,22 +131,22 @@ fn alpha_beta<const IS_PV: bool>(
     mut alpha: i32,
     beta: i32,
     pv: &mut Vec<Move>,
-    info: &mut SearchInfo,
+    td: &mut ThreadData,
     board: &Board,
     cut_node: bool,
 ) -> i32 {
-    let ply = info.iter_max_depth - depth;
+    let ply = td.iter_max_depth - depth;
     let is_root = ply == 0;
     let in_check = board.in_check;
-    info.sel_depth = info.sel_depth.max(ply);
-    if info.search_stats.nodes_searched % 1024 == 0 && info.halt.load(Ordering::Relaxed) {
+    td.sel_depth = td.sel_depth.max(ply);
+    if td.search_stats.nodes_searched % 1024 == 0 && td.halt.load(Ordering::Relaxed) {
         return board.evaluate();
     }
 
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
         if board.in_check {
-            return quiescence(ply, alpha, beta, pv, info, board);
+            return quiescence(ply, alpha, beta, pv, td, board);
         }
 
         return board.evaluate();
@@ -165,11 +167,11 @@ fn alpha_beta<const IS_PV: bool>(
     }
 
     if depth <= 0 {
-        return quiescence(ply, alpha, beta, pv, info, board);
+        return quiescence(ply, alpha, beta, pv, td, board);
     }
 
     let mut table_move = Move::NULL;
-    let entry = info.transpos_table.get(board.zobrist_hash, ply);
+    let entry = td.transpos_table.get(board.zobrist_hash, ply);
     if let Some(entry) = entry {
         let flag = entry.flag();
         let table_eval = entry.eval();
@@ -204,8 +206,8 @@ fn alpha_beta<const IS_PV: bool>(
     } else {
         board.evaluate()
     };
-    info.stack[ply as usize].static_eval = static_eval;
-    let improving = !in_check && ply > 1 && static_eval > info.stack[ply as usize - 2].static_eval;
+    td.stack[ply as usize].static_eval = static_eval;
+    let improving = !in_check && ply > 1 && static_eval > td.stack[ply as usize - 2].static_eval;
 
     if !is_root && !IS_PV && !in_check {
         // Reverse futility pruning
@@ -222,8 +224,7 @@ fn alpha_beta<const IS_PV: bool>(
             let mut new_b = board.to_owned();
             new_b.make_null_move();
             let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
-            let mut null_eval =
-                -alpha_beta::<false>(depth - r, -beta, -beta + 1, &mut node_pvs, info, &new_b, !cut_node);
+            let mut null_eval = -alpha_beta::<false>(depth - r, -beta, -beta + 1, &mut node_pvs, td, &new_b, !cut_node);
             if null_eval >= beta {
                 if null_eval > NEAR_CHECKMATE {
                     null_eval = beta;
@@ -235,8 +236,8 @@ fn alpha_beta<const IS_PV: bool>(
 
     let mut moves = generate_moves(board, MGT::All);
     let mut legal_moves_searched = 0;
-    moves.score_moves(board, table_move, info.stack[ply as usize].killers, info);
-    info.search_stats.nodes_searched += 1;
+    moves.score_moves(board, table_move, td.stack[ply as usize].killers, td);
+    td.search_stats.nodes_searched += 1;
 
     // Start of search
     for MoveListEntry { m, score: hist_score } in moves {
@@ -264,8 +265,8 @@ fn alpha_beta<const IS_PV: bool>(
         if !new_b.make_move(m) {
             continue;
         }
-        info.current_line.push(m);
-        info.stack[ply as usize].played_move = m;
+        td.current_line.push(m);
+        td.stack[ply as usize].played_move = m;
         let mut node_pvs = Vec::new();
 
         // Calculate the reduction used in LMR
@@ -297,17 +298,17 @@ fn alpha_beta<const IS_PV: bool>(
         let eval = if legal_moves_searched == 0 {
             node_pvs.clear();
             // On the first move, just do a full depth search
-            -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
+            -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, td, &new_b, false)
         } else {
             node_pvs.clear();
             // Start with a zero window reduced search
             let zero_window_reduced_depth =
-                -alpha_beta::<false>(depth - r, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node);
+                -alpha_beta::<false>(depth - r, -alpha - 1, -alpha, &mut node_pvs, td, &new_b, !cut_node);
 
             // If that search raises alpha and the reduction was more than one, do a research at a zero window with full depth
             let zero_window_full_depth = if zero_window_reduced_depth > alpha && r > 1 {
                 node_pvs.clear();
-                -alpha_beta::<false>(depth - 1, -alpha - 1, -alpha, &mut node_pvs, info, &new_b, !cut_node)
+                -alpha_beta::<false>(depth - 1, -alpha - 1, -alpha, &mut node_pvs, td, &new_b, !cut_node)
             } else {
                 zero_window_reduced_depth
             };
@@ -315,14 +316,14 @@ fn alpha_beta<const IS_PV: bool>(
             // If the verification score falls between alpha and beta, full window full depth search
             if zero_window_full_depth > alpha && zero_window_full_depth < beta {
                 node_pvs.clear();
-                -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, info, &new_b, false)
+                -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, td, &new_b, false)
             } else {
                 zero_window_full_depth
             }
         };
 
         legal_moves_searched += 1;
-        info.current_line.pop();
+        td.current_line.pop();
 
         if eval > best_score {
             best_score = eval;
@@ -335,14 +336,19 @@ fn alpha_beta<const IS_PV: bool>(
 
             if alpha >= beta {
                 if let Some(cap) = board.capture(m) {
-                    info.history.update_capt_hist(m, board.to_move, cap, depth, true);
+                    td.history.update_capt_hist(m, board.to_move, cap, depth, true);
                 } else {
                     // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
                     // Also don't store killers that we have already stored
-                    store_killer_move(ply, m, info);
-                    info.history.update_quiet_history(m, true, board.to_move, depth);
-                    info.history
-                        .set_counter(board.to_move, *info.current_line.last().unwrap_or(&Move::NULL), m);
+                    let ply = ply as usize;
+                    // Store killer move
+                    if td.stack[ply].killers[0] != m {
+                        td.stack[ply].killers[1] = td.stack[ply].killers[0];
+                        td.stack[ply].killers[0] = m;
+                    }
+                    td.history.update_quiet_history(m, true, board.to_move, depth);
+                    td.history
+                        .set_counter(board.to_move, *td.current_line.last().unwrap_or(&Move::NULL), m);
                 }
                 break;
             }
@@ -350,9 +356,9 @@ fn alpha_beta<const IS_PV: bool>(
 
         // If a move doesn't raise alpha, deduct from its history score for move ordering
         if board.is_quiet(m) {
-            info.history.update_quiet_history(m, false, board.to_move, depth);
+            td.history.update_quiet_history(m, false, board.to_move, depth);
         } else {
-            info.history
+            td.history
                 .update_capt_hist(m, board.to_move, board.capture(m).unwrap(), depth, false);
         }
     }
@@ -374,7 +380,7 @@ fn alpha_beta<const IS_PV: bool>(
         EntryFlag::AlphaUnchanged
     };
 
-    info.transpos_table
+    td.transpos_table
         .store(board.zobrist_hash, best_move, depth, entry_flag, best_score, ply, IS_PV, static_eval);
 
     best_score

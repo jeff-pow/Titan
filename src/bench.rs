@@ -14,8 +14,10 @@ pub fn bench() {
     let start = Instant::now();
     let count = AtomicU64::from(0);
     BENCH_POSITIONS.into_par_iter().for_each(|fen| {
-        let mut info = SearchInfo::default();
-        info.board = build_board(fen);
+        let mut info = SearchInfo {
+            board: build_board(fen),
+            ..Default::default()
+        };
         info.search_type = SearchType::Depth;
         info.max_depth = 16;
         search(&mut info, 16);
@@ -23,12 +25,7 @@ pub fn bench() {
     });
     let nodes = count.load(Ordering::SeqCst);
     let time = start.elapsed().as_secs_f64();
-    println!(
-        "{} nodes searched in {} seconds --- {:.4} nodes / sec",
-        count.load(Ordering::SeqCst),
-        time,
-        nodes as f64 / time
-    );
+    println!("{} nodes searched in {} seconds --- {} nps", count.load(Ordering::SeqCst), time, nodes as f64 / time);
 }
 
 pub const BENCH_POSITIONS: [&str; 50] = [

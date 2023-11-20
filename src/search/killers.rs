@@ -1,6 +1,6 @@
 use crate::moves::moves::Move;
 
-use super::{search::MAX_SEARCH_DEPTH, SearchInfo};
+use super::{search::MAX_SEARCH_DEPTH, ThreadData};
 
 pub type KillerMoves = [[Move; NUM_KILLER_MOVES]; MAX_SEARCH_DEPTH as usize];
 
@@ -10,11 +10,11 @@ pub fn empty_killers() -> KillerMoves {
     [[Move::NULL; NUM_KILLER_MOVES]; MAX_SEARCH_DEPTH as usize]
 }
 
-pub fn store_killer_move(ply: i32, m: Move, info: &mut SearchInfo) {
+pub fn store_killer_move(ply: i32, m: Move, td: &mut ThreadData) {
     let ply = ply as usize;
-    if info.stack[ply].killers[0] != m {
-        info.stack[ply].killers[1] = info.stack[ply].killers[0];
-        info.stack[ply].killers[0] = m;
+    if td.stack[ply].killers[0] != m {
+        td.stack[ply].killers[1] = td.stack[ply].killers[0];
+        td.stack[ply].killers[0] = m;
     }
     // let first_killer = info.killer_moves[ply as usize][0];
     //

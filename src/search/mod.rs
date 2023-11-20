@@ -41,14 +41,8 @@ pub struct SearchInfo {
     pub search_stats: SearchStats,
     pub game_time: GameTime,
     pub search_type: SearchType,
-    pub iter_max_depth: i32,
     pub max_depth: i32,
-    pub nmp_plies: i32,
-    pub sel_depth: i32,
-    pub history: MoveHistory,
     pub halt: Arc<AtomicBool>,
-    pub current_line: Vec<Move>,
-    stack: [PlyEntry; MAX_SEARCH_DEPTH as usize],
 }
 
 impl Default for SearchInfo {
@@ -59,14 +53,36 @@ impl Default for SearchInfo {
             search_stats: Default::default(),
             game_time: Default::default(),
             search_type: Default::default(),
-            iter_max_depth: 0,
-            nmp_plies: 0,
             max_depth: MAX_SEARCH_DEPTH,
+            halt: Arc::new(AtomicBool::from(false)),
+        }
+    }
+}
+
+pub struct ThreadData<'a> {
+    pub iter_max_depth: i32,
+    pub transpos_table: &'a TranspositionTable,
+    pub search_stats: SearchStats,
+    pub game_time: &'a GameTime,
+    stack: [PlyEntry; MAX_SEARCH_DEPTH as usize],
+    pub halt: &'a AtomicBool,
+    pub current_line: Vec<Move>,
+    pub sel_depth: i32,
+    pub history: MoveHistory,
+}
+
+impl<'a> ThreadData<'a> {
+    fn new(transpos_table: &'a TranspositionTable, halt: &'a AtomicBool, game_time: &'a GameTime) -> Self {
+        Self {
+            iter_max_depth: 0,
+            transpos_table,
+            search_stats: SearchStats::default(),
+            game_time,
+            stack: [PlyEntry::default(); MAX_SEARCH_DEPTH as usize],
+            halt,
+            current_line: Vec::with_capacity(MAX_SEARCH_DEPTH as usize),
             sel_depth: 0,
             history: MoveHistory::default(),
-            halt: Arc::new(AtomicBool::from(false)),
-            current_line: Vec::new(),
-            stack: [PlyEntry::default(); MAX_SEARCH_DEPTH as usize],
         }
     }
 }
