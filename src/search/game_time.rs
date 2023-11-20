@@ -21,21 +21,18 @@ pub struct GameTime {
 }
 
 impl GameTime {
-    /// If the function returns true and the search has not yet started, it means the side to play
-    /// is out of time and any move should be played to avoid from dying.
-    /// Otherwise returns false if the program should have time to finish another level of iterative
-    /// deepening
+    /// Returns true if engine is unlikely to finish another depth of iterative deepening before
+    /// time runs out for this search
     pub fn soft_termination(&self, search_start: Instant) -> bool {
         search_start.elapsed() > self.rec_time
     }
 
+    /// Returns true if engine has used the max time allotted to this search
     pub fn hard_termination(&self, search_start: Instant) -> bool {
         search_start.elapsed() > self.max_time
     }
 
-    /// Returns a recommended amount of time to spend on a given search.
-    /// Returns None if player is out of time and should play absolutely anything to keep
-    /// themselves alive
+    /// Calculates a recommended amount of time to spend on a given search.
     pub fn recommended_time(&mut self, side: Color) {
             let clock = self.time_remaining[side] - GUI_DELAY;
             let time = clock / 20 + self.time_inc[side] * 1 / 2;
