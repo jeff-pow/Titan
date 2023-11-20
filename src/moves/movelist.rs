@@ -1,6 +1,6 @@
 use crate::{
     board::board::Board,
-    search::{killers::NUM_KILLER_MOVES, SearchInfo},
+    search::{killers::NUM_KILLER_MOVES, ThreadData},
     types::pieces::PieceName,
 };
 use std::{mem::MaybeUninit, ops::Index};
@@ -68,17 +68,11 @@ impl MoveList {
         self.swap(max_idx, idx);
     }
 
-    pub fn score_moves(
-        &mut self,
-        board: &Board,
-        table_move: Move,
-        killers: [Move; NUM_KILLER_MOVES],
-        info: &SearchInfo,
-    ) {
+    pub fn score_moves(&mut self, board: &Board, table_move: Move, killers: [Move; NUM_KILLER_MOVES], td: &ThreadData) {
         for i in 0..self.len {
             let entry = &mut self.arr[i];
-            let prev = info.current_line.last().unwrap_or(&Move::NULL);
-            let counter = info.history.get_counter(board.to_move, *prev);
+            let prev = td.current_line.last().unwrap_or(&Move::NULL);
+            let counter = td.history.get_counter(board.to_move, *prev);
             entry.score = if entry.m == table_move {
                 TTMOVE
             } else if let Some(promotion) = entry.m.promotion() {
@@ -92,7 +86,7 @@ impl MoveList {
                 } else {
                     BAD_CAPTURE
                 }) + MVV_LVA[board.piece_at(entry.m.origin_square()).unwrap()][c]
-                    + info.history.capt_hist(entry.m, board.to_move, c)
+                    + td.history.capt_hist(entry.m, board.to_move, c)
             } else if killers[0] == entry.m {
                 KILLER_ONE
             } else if killers[1] == entry.m {
@@ -100,7 +94,7 @@ impl MoveList {
             } else if counter == entry.m {
                 COUNTER_MOVE
             } else {
-                info.history.quiet_history(entry.m, board.to_move)
+                td.history.quiet_history(entry.m, board.to_move)
             };
         }
     }
