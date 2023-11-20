@@ -38,7 +38,6 @@ impl GameTime {
     /// themselves alive
     pub fn recommended_time(&mut self, side: Color) {
             let clock = self.time_remaining[side] - GUI_DELAY;
-            // If engine has less than GUI_DELAY ms to make a move, play anything to keep itself alive
             let time = clock / 20 + self.time_inc[side] * 1 / 2;
             self.rec_time = time.mul_f64(TIME_FRACTION);
             self.max_time = (time * 2).min(self.time_remaining[side]);
