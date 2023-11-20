@@ -44,7 +44,7 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
 
     match info.search_type {
         SearchType::Time => {
-            info.game_time.recommended_time();
+            info.game_time.recommended_time(info.board.to_move);
         }
         SearchType::Depth => {
             info.max_depth = max_depth;
@@ -105,11 +105,7 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
 
         print_search_stats(&td, score, &pv_moves);
 
-        if info.search_type == SearchType::Time
-            && info
-                .game_time
-                .soft_termination(info.search_stats.start, info.board.to_move)
-        {
+        if info.search_type == SearchType::Time && info.game_time.soft_termination(info.search_stats.start) {
             break;
         }
         if info.halt.load(Ordering::SeqCst) {
@@ -141,7 +137,7 @@ fn alpha_beta<const IS_PV: bool>(
     let in_check = board.in_check;
     td.sel_depth = td.sel_depth.max(ply);
     if td.search_stats.nodes_searched % 1024 == 0
-        && (td.halt.load(Ordering::Relaxed) || td.game_time.hard_termination(td.search_stats.start, td.root_color))
+        && (td.halt.load(Ordering::Relaxed) || td.game_time.hard_termination(td.search_stats.start))
     {
         return board.evaluate();
     }
