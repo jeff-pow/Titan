@@ -43,7 +43,6 @@ pub struct SearchInfo {
     pub search_type: SearchType,
     pub max_depth: i32,
     pub halt: Arc<AtomicBool>,
-    // pub nodes_searched: AtomicU64,
 }
 
 impl Default for SearchInfo {
@@ -56,7 +55,6 @@ impl Default for SearchInfo {
             search_type: Default::default(),
             max_depth: MAX_SEARCH_DEPTH,
             halt: Arc::new(AtomicBool::from(false)),
-            // nodes_searched: AtomicU64::from(0),
         }
     }
 }
@@ -67,14 +65,14 @@ pub struct ThreadData<'a> {
     pub search_stats: SearchStats,
     pub game_time: &'a GameTime,
     stack: [PlyEntry; MAX_SEARCH_DEPTH as usize],
-    pub halt: Arc<AtomicBool>,
+    pub halt: &'a AtomicBool,
     pub current_line: Vec<Move>,
     pub sel_depth: i32,
     pub history: MoveHistory,
 }
 
 impl<'a> ThreadData<'a> {
-    fn new(transpos_table: &'a TranspositionTable, halt: Arc<AtomicBool>, game_time: &'a GameTime) -> Self {
+    fn new(transpos_table: &'a TranspositionTable, halt: &'a AtomicBool, game_time: &'a GameTime) -> Self {
         Self {
             iter_max_depth: 0,
             transpos_table,

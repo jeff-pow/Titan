@@ -55,7 +55,7 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
     }
     info.search_stats.start = Instant::now();
 
-    let mut td = ThreadData::new(&info.transpos_table, info.halt.clone(), &info.game_time);
+    let mut td = ThreadData::new(&info.transpos_table, &info.halt, &info.game_time);
 
     let mut alpha;
     let mut beta;
@@ -114,10 +114,10 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
         if info.halt.load(Ordering::SeqCst) {
             break;
         }
-        info.search_stats.nodes_searched += td.search_stats.nodes_searched;
         td.iter_max_depth += 1;
     }
 
+    info.search_stats.nodes_searched = td.search_stats.nodes_searched;
     assert_ne!(best_move, Move::NULL);
 
     best_move
