@@ -253,13 +253,14 @@ fn alpha_beta<const IS_PV: bool>(
                     break;
                 }
             }
-            let margin = if m.is_capture(board) { -90 } else { -50 };
-            if depth < 7 && !board.see(m, margin * depth) {
+            // TODO: Try -15 * depth * depth for capture
+            let margin = if m.is_capture(board) { -90 } else { -50 } * depth;
+            if depth < 7 && !board.see(m, margin) {
                 continue;
             }
         }
 
-        // Make move filters out illegal moves
+        // Make move filters out illegal moves by returning false if a move was illegal
         if !new_b.make_move(m) {
             continue;
         }
