@@ -2,14 +2,11 @@ use std::time::{Duration, Instant};
 
 use crate::types::pieces::Color;
 
-const TIME_FRACTION: f64 = 0.15;
+const TIME_FRACTION: f64 = 0.60;
 
-/// Limit the maximum time the engine thinks for
-const MAX_THINK_TIME: Duration = Duration::from_millis(15000);
+const GUI_DELAY: Duration = Duration::from_millis(25);
 
-const GUI_DELAY: Duration = Duration::from_millis(00);
-
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug)]
 pub struct GameTime {
     /// Time increase for each side
     pub time_inc: [Duration; 2],
@@ -17,40 +14,41 @@ pub struct GameTime {
     pub time_remaining: [Duration; 2],
     /// Moves until the next time control
     pub movestogo: i32,
+    /// Recommended time
+    pub rec_time: Duration,
+    /// Max time the side may spend on the move
+    pub max_time: Duration,
 }
 
 impl GameTime {
-    /// If the function returns true and the search has not yet started, it means the side to play
-    /// is out of time and any move should be played to avoid from dying.
-    /// Otherwise returns false if the program should have time to finish another level of iterative
-    /// deepening
-    pub fn reached_termination(&self, search_start: Instant, recommended_time: Duration) -> bool {
-        if recommended_time.as_millis() > GUI_DELAY.as_millis() {
-            // If a previous iteration of iterative deepening hasn't finished in less than a small percentage of the time for the move, the
-            // chances of the next iteration finishing before we go over allotted time are
-            // basically none
-            let target_elapsed = recommended_time.mul_f64(TIME_FRACTION);
-            let actual_elapsed = search_start.elapsed();
-            if actual_elapsed < target_elapsed {
-                return false;
-            }
-        }
-        // Return true if the recommended_time is none, e.g. we have no time left whatsoever
-        true
+    /// Returns true if engine is unlikely to finish another depth of iterative deepening before
+    /// time runs out for this search
+    pub fn soft_termination(&self, search_start: Instant) -> bool {
+        search_start.elapsed() > self.rec_time
     }
 
-    /// Returns a recommended amount of time to spend on a given search.
-    /// Returns None if player is out of time and should play absolutely anything to keep
-    /// themselves alive
-    pub fn recommended_time(&mut self, side: Color) -> Duration {
-        let clock = self.time_remaining[side];
-        // If engine has less than 50 ms to make a move, play anything to keep itself alive
-        if clock < GUI_DELAY {
-            return Duration::ZERO;
+    /// Returns true if engine has used the max time allotted to this search
+    pub fn hard_termination(&self, search_start: Instant) -> bool {
+        search_start.elapsed() > self.max_time
+    }
+
+    /// Calculates a recommended amount of time to spend on a given search.
+    pub fn recommended_time(&mut self, side: Color) {
+            let clock = self.time_remaining[side] - GUI_DELAY;
+            let time = clock / 20 + self.time_inc[side] * 1 / 2;
+            self.rec_time = time.mul_f64(TIME_FRACTION);
+            self.max_time = (time * 2).min(self.time_remaining[side]);
+    }
+}
+
+impl Default for GameTime {
+    fn default() -> Self {
+        Self {
+            time_inc: Default::default(),
+            time_remaining: Default::default(),
+            movestogo: Default::default(),
+            rec_time: Duration::MAX,
+            max_time: Duration::MAX,
         }
-        let increment = self.time_inc[side];
-        let recommended_time = clock.div_f64(30.);
-        let recommended_time = recommended_time.min(MAX_THINK_TIME);
-        recommended_time + increment
     }
 }
