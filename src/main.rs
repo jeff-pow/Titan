@@ -8,7 +8,9 @@ pub mod search;
 pub mod types;
 
 use engine::uci::main_loop;
+use crate::bench::bench;
 
 fn main() {
-    main_loop();
+    // main_loop();
+    bench();
 }

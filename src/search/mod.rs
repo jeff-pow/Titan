@@ -8,6 +8,7 @@ use crate::board::fen::{build_board, STARTING_FEN};
 use crate::engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
 use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
+use crate::types::pieces::Color;
 
 use self::history_heuristics::MoveHistory;
 use self::search::MAX_SEARCH_DEPTH;
@@ -69,10 +70,16 @@ pub struct ThreadData<'a> {
     pub current_line: Vec<Move>,
     pub sel_depth: i32,
     pub history: MoveHistory,
+    pub root_color: Color,
 }
 
 impl<'a> ThreadData<'a> {
-    fn new(transpos_table: &'a TranspositionTable, halt: &'a AtomicBool, game_time: &'a GameTime) -> Self {
+    fn new(
+        transpos_table: &'a TranspositionTable,
+        halt: &'a AtomicBool,
+        game_time: &'a GameTime,
+        root_color: Color,
+    ) -> Self {
         Self {
             iter_max_depth: 0,
             transpos_table,
@@ -83,6 +90,7 @@ impl<'a> ThreadData<'a> {
             current_line: Vec::with_capacity(MAX_SEARCH_DEPTH as usize),
             sel_depth: 0,
             history: MoveHistory::default(),
+            root_color,
         }
     }
 }

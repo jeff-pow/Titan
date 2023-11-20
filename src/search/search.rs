@@ -1,6 +1,6 @@
 use std::cmp::{max, min};
 use std::sync::atomic::Ordering;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use crate::board::board::Board;
 use crate::engine::transposition::EntryFlag;
@@ -42,20 +42,23 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
     let mut best_move = Move::NULL;
     let mut pv_moves = Vec::new();
 
-    let mut recommended_time = Duration::ZERO;
     match info.search_type {
         SearchType::Time => {
-            recommended_time = info.game_time.recommended_time(info.board.to_move);
+            info.game_time.recommended_time();
         }
-        SearchType::Depth => (),
+        SearchType::Depth => {
+            info.max_depth = max_depth;
+            info.game_time.unlimited_time();
+        }
         SearchType::Infinite => {
             max_depth = MAX_SEARCH_DEPTH;
             info.max_depth = max_depth;
+            info.game_time.unlimited_time();
         }
     }
     info.search_stats.start = Instant::now();
 
-    let mut td = ThreadData::new(&info.transpos_table, &info.halt, &info.game_time);
+    let mut td = ThreadData::new(&info.transpos_table, &info.halt, &info.game_time, info.board.to_move);
 
     let mut alpha;
     let mut beta;
@@ -107,7 +110,7 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
         if info.search_type == SearchType::Time
             && info
                 .game_time
-                .reached_termination(info.search_stats.start, recommended_time)
+                .soft_termination(info.search_stats.start, info.board.to_move)
         {
             break;
         }
@@ -139,7 +142,9 @@ fn alpha_beta<const IS_PV: bool>(
     let is_root = ply == 0;
     let in_check = board.in_check;
     td.sel_depth = td.sel_depth.max(ply);
-    if td.search_stats.nodes_searched % 1024 == 0 && td.halt.load(Ordering::Relaxed) {
+    if td.search_stats.nodes_searched % 1024 == 0
+        && (td.halt.load(Ordering::Relaxed) || td.game_time.hard_termination(td.search_stats.start, td.root_color))
+    {
         return board.evaluate();
     }
 
