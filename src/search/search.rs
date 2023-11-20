@@ -346,14 +346,8 @@ fn alpha_beta<const IS_PV: bool>(
                 break;
             }
         }
-        // TODO: Try only doing this for quiet moves
-        // If a move doesn't raise alpha, deduct from its history score for move ordering
-        // if let Some(cap) = board.capture(m) {
-        //     info.history.update_capt_hist(m, board.to_move, cap, depth, false);
-        // } else {
-        //     info.history.update_quiet_history(m, false, board.to_move, depth);
-        // }
 
+        // If a move doesn't raise alpha, deduct from its history score for move ordering
         if board.is_quiet(m) {
             info.history.update_quiet_history(m, false, board.to_move, depth);
         } else {

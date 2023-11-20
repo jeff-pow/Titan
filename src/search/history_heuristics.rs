@@ -10,7 +10,7 @@ pub struct HistoryEntry {
     score: i32,
     counter: Move,
     // King can't be captured, so it doesn't need an entry
-    capthist: [i32; 5],
+    capt_hist: [i32; 5],
 }
 
 fn calc_bonus(depth: i32) -> i32 {
@@ -55,12 +55,12 @@ impl MoveHistory {
     }
 
     pub fn update_capt_hist(&mut self, m: Move, side: Color, capture: PieceName, depth: i32, is_good: bool) {
-        let i = &mut self.search_history[side][m.piece_moving()][m.dest_square()].capthist[capture];
+        let i = &mut self.search_history[side][m.piece_moving()][m.dest_square()].capt_hist[capture];
         update_history(i, depth, is_good);
     }
 
     pub fn capt_hist(&self, m: Move, side: Color, capture: PieceName) -> i32 {
-        self.search_history[side][m.piece_moving()][m.dest_square()].capthist[capture]
+        self.search_history[side][m.piece_moving()][m.dest_square()].capt_hist[capture]
     }
 }
 
