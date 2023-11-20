@@ -1,7 +1,5 @@
 use std::time::{Duration, Instant};
 
-use strum::IntoEnumIterator;
-
 use crate::types::pieces::Color;
 
 const TIME_FRACTION: f64 = 0.60;
