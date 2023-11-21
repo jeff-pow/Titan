@@ -3,14 +3,6 @@ use std::ops::{self, Index, IndexMut};
 
 use strum_macros::EnumIter;
 
-pub const KING_PTS: i32 = 0;
-pub const QUEEN_PTS: i32 = 1000;
-pub const ROOK_PTS: i32 = 525;
-pub const BISHOP_PTS: i32 = 350;
-pub const KNIGHT_PTS: i32 = 350;
-pub const PAWN_PTS: i32 = 100;
-pub const NUM_PIECES: usize = 6;
-
 impl_index!(Color);
 #[derive(EnumIter, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Color {
@@ -66,6 +58,10 @@ impl From<usize> for Color {
     }
 }
 
+const PIECE_VALUES: [i32; 6] = [100, 350, 350, 525, 1000, 0];
+const TEST_VALS: [i32; 6] = [100, 300, 300, 500, 900, 0];
+pub const NUM_PIECES: usize = 6;
+
 impl_index!(PieceName);
 #[derive(Debug, EnumIter, Copy, Clone, PartialEq, Eq)]
 pub enum PieceName {
@@ -79,14 +75,7 @@ pub enum PieceName {
 
 impl PieceName {
     pub fn value(self) -> i32 {
-        match self {
-            PieceName::King => KING_PTS,
-            PieceName::Queen => QUEEN_PTS,
-            PieceName::Rook => ROOK_PTS,
-            PieceName::Bishop => BISHOP_PTS,
-            PieceName::Knight => KNIGHT_PTS,
-            PieceName::Pawn => PAWN_PTS,
-        }
+        TEST_VALS[self]
     }
 
     pub fn idx(self) -> usize {

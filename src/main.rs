@@ -7,8 +7,10 @@ pub mod moves;
 pub mod search;
 pub mod types;
 
+use search::see::see_test;
+
 use crate::engine::uci::main_loop;
 
 fn main() {
-    main_loop();
+    see_test();
 }
