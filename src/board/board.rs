@@ -2,7 +2,7 @@ use core::fmt;
 use strum::IntoEnumIterator;
 
 use crate::board::zobrist::ZOBRIST;
-use crate::moves::moves::Castle;
+use crate::moves::moves::{Castle, MoveType};
 use crate::{
     eval::nnue::Accumulator,
     moves::{
@@ -321,43 +321,29 @@ impl Board {
             }
         }
 
-        // If the end index of a move is 16 squares from the start (and a pawn moved), an en passant is possible
-        // if m.flag() == MoveType::DoublePush {
-        //     match self.to_move {
-        //         Color::White => {
-        //             self.en_passant_square = Some(m.dest_square().shift(South));
-        //         }
-        //         Color::Black => {
-        //             self.en_passant_square = Some(m.origin_square().shift(South));
-        //         }
-        //     }
-        // }
-
         // Xor out the old en passant square hash
         if let Some(sq) = self.en_passant_square {
             self.zobrist_hash ^= ZOBRIST.en_passant[sq];
         }
+        // If the end index of a move is 16 squares from the start (and a pawn moved), an en passant is possible
         self.en_passant_square = None;
-        if piece_moving == PieceName::Pawn {
+        if m.flag() == MoveType::DoublePush {
             match self.to_move {
                 Color::White => {
-                    if m.origin_square() == m.dest_square().shift(South).shift(South) {
-                        self.en_passant_square = Some(m.dest_square().shift(South));
-                    }
+                    self.en_passant_square = Some(m.dest_square().shift(South));
                 }
                 Color::Black => {
-                    if m.dest_square().shift(North).shift(North) == m.origin_square() {
-                        self.en_passant_square = Some(m.origin_square().shift(South));
-                    }
+                    self.en_passant_square = Some(m.dest_square().shift(North));
                 }
             }
         }
-        // Xor in the new en passant saquare hash
+
+        // Xor in the new en passant square hash
         if let Some(sq) = self.en_passant_square {
             self.zobrist_hash ^= ZOBRIST.en_passant[sq];
         }
 
-        // If a piece isn't captured or a pawn isn't moved, increment the half move clock.
+        // If a piece isn't captured and a pawn isn't moved, increment the half move clock.
         // Otherwise set it to zero
         if capture.is_none() && piece_moving != PieceName::Pawn {
             self.half_moves += 1;
@@ -376,8 +362,6 @@ impl Board {
 
         self.history.push(self.zobrist_hash);
 
-        // assert_eq!(self.zobrist_hash, self.generate_hash());
-
         self.prev_move = m;
 
         self.in_check = self.in_check(self.to_move);
@@ -388,11 +372,14 @@ impl Board {
 
     pub fn make_null_move(&mut self) {
         self.to_move = !self.to_move;
+        self.zobrist_hash ^= ZOBRIST.turn_hash;
         self.num_moves += 1;
+        if let Some(sq) = self.en_passant_square {
+            self.zobrist_hash ^= ZOBRIST.en_passant[sq];
+        }
         self.en_passant_square = None;
         self.prev_move = Move::NULL;
         self.add_to_history();
-        self.zobrist_hash = self.generate_hash();
     }
 
     #[allow(dead_code)]

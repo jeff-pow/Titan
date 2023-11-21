@@ -3,7 +3,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     board::board::Board,
-    moves::{magics::Rng, moves::Castle},
+    moves::magics::Rng,
     types::pieces::{Color, PieceName},
 };
 
