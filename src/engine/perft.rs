@@ -2,7 +2,10 @@ use std::sync::RwLock;
 
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
-use crate::{board::board::Board, moves::movegenerator::generate_legal_moves};
+use crate::{
+    board::board::Board,
+    moves::movegenerator::{generate_legal_moves, generate_moves, MGT},
+};
 
 pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
     let total = RwLock::new(0);
@@ -20,6 +23,24 @@ pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
 
     let x = *total.read().unwrap();
     x
+}
+
+pub fn non_bulk_perft(board: Board, depth: i32) -> usize {
+    if depth == 0 {
+        return 1;
+    }
+    let mut total = 0;
+    let moves = generate_moves(&board, MGT::All);
+    for i in 0..moves.len() {
+        let m = moves[i];
+        let mut new_b = board.to_owned();
+        if !new_b.make_move(m) {
+            continue;
+        }
+        let count = non_bulk_perft(new_b, depth - 1);
+        total += count;
+    }
+    total
 }
 
 pub fn perft<const BULK: bool>(board: Board, depth: i32) -> usize {
@@ -68,6 +89,7 @@ mod movegen_tests {
     use rayon::iter::ParallelIterator;
     use rayon::prelude::IntoParallelRefIterator;
 
+    use crate::engine::perft::non_bulk_perft;
     use crate::{board::fen::build_board, engine::perft::perft};
 
     #[test]

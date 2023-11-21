@@ -116,19 +116,18 @@ pub(crate) fn gen_pawn_attack_boards() -> [[Bitboard; 64]; 2] {
 #[cfg(test)]
 mod test_attack_boards {
     use crate::{
-        moves::movegenerator::MoveGenerator,
+        moves::movegenerator::MG,
         types::{pieces::Color, square::Square},
     };
 
     #[test]
     fn test_pawn_attacks() {
-        let mg = MoveGenerator::default();
         let p_sq = Square(40);
-        assert_eq!(mg.pawn_attacks(p_sq, Color::Black), Square(33).bitboard());
-        assert_eq!(mg.pawn_attacks(p_sq, Color::White), Square(49).bitboard());
+        assert_eq!(MG.pawn_attacks(p_sq, Color::Black), Square(33).bitboard());
+        assert_eq!(MG.pawn_attacks(p_sq, Color::White), Square(49).bitboard());
 
         let p_sq = Square(19);
-        assert_eq!(mg.pawn_attacks(p_sq, Color::Black), (Square(10).bitboard() | Square(12).bitboard()));
-        assert_eq!(mg.pawn_attacks(p_sq, Color::White), (Square(26).bitboard() | Square(28).bitboard()));
+        assert_eq!(MG.pawn_attacks(p_sq, Color::Black), (Square(10).bitboard() | Square(12).bitboard()));
+        assert_eq!(MG.pawn_attacks(p_sq, Color::White), (Square(26).bitboard() | Square(28).bitboard()));
     }
 }
