@@ -75,7 +75,7 @@ pub enum PieceName {
 
 impl PieceName {
     pub fn value(self) -> i32 {
-        TEST_VALS[self]
+        PIECE_VALUES[self]
     }
 
     pub fn idx(self) -> usize {
