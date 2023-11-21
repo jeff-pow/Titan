@@ -14,9 +14,6 @@ use crate::{
 
 impl Board {
     fn gain(&self, m: Move) -> i32 {
-        if m.is_castle() {
-            return 0;
-        }
         if m.is_en_passant() {
             return PieceName::Pawn.value();
         }
@@ -26,8 +23,7 @@ impl Board {
             0
         };
         if let Some(p) = m.promotion() {
-            score += p.value();
-            score -= PieceName::Pawn.value()
+            score += p.value() - PieceName::Pawn.value();
         }
         score
     }
@@ -35,7 +31,7 @@ impl Board {
     fn next_attacker(&self, occupied: &mut Bitboard, attackers: Bitboard, side: Color) -> PieceName {
         for p in PieceName::iter() {
             let bb = attackers & self.bitboard(side, p);
-            if bb != Bitboard::EMPTY {
+            if (attackers & self.bitboard(side, p)) != Bitboard::EMPTY {
                 *occupied ^= bb.get_lsb().bitboard();
                 return p;
             }
@@ -47,24 +43,32 @@ impl Board {
     /// trading pieces, and false if they would come out behind in piece value
     // Based off implementation in Stormphrax, which got its implementation from Weiss
     pub fn see(&self, m: Move, threshold: i32) -> bool {
-        let dest = m.dest_square();
         let src = m.origin_square();
+        let dest = m.dest_square();
 
-        let mut val = self.gain(m) - threshold;
-        if val < 0 {
+        let mut score = self.gain(m) - threshold;
+        if score < 0 {
             return false;
         }
 
         let piece_moving = self.piece_at(src).expect("There is a piece here");
-        val -= piece_moving.value();
-        if val >= 0 {
+        let next = if let Some(promo) = m.promotion() {
+            promo
+        } else {
+            piece_moving
+        };
+
+        score -= next.value();
+
+        if score >= 0 {
             return true;
         }
 
-        let mut occupied = (self.occupancies() ^ src.bitboard()) | dest.bitboard();
-        // if m.is_en_passant() {
-        // occupied ^= Square(dest.0 ^ 8).bitboard();
-        // }
+        let mut occupied = self.occupancies() ^ src.bitboard() ^ dest.bitboard();
+        if m.is_en_passant() {
+            occupied ^= self.en_passant_square.unwrap().bitboard();
+        }
+
         let mut attackers = self.attackers(dest, occupied) & occupied;
 
         let queens = self.bitboard(Color::White, PieceName::Queen) | self.bitboard(Color::Black, PieceName::Queen);
@@ -92,10 +96,12 @@ impl Board {
             }
 
             attackers &= occupied;
-
+            score = -score - 1 - next_piece.value();
             to_move = !to_move;
-            val = -val - 1 - next_piece.value();
-            if val >= 0 {
+
+            if score >= 0 {
+                // This statement states if a king is the next piece to be captured and the enemy
+                // has more pieces attacking the square, the move is illegal so we can break early
                 if next_piece == PieceName::King && (attackers & self.color_occupancies(to_move) != Bitboard::EMPTY) {
                     to_move = !to_move;
                 }

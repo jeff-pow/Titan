@@ -12,5 +12,6 @@ use search::see::see_test;
 use crate::engine::uci::main_loop;
 
 fn main() {
-    see_test();
+    // see_test();
+    main_loop();
 }
