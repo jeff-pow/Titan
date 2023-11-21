@@ -7,8 +7,14 @@ pub mod moves;
 pub mod search;
 pub mod types;
 
-use engine::uci::main_loop;
+use std::time::Instant;
+
+use crate::board::fen::{build_board, STARTING_FEN};
+use engine::perft::non_bulk_perft;
 
 fn main() {
-    main_loop();
+    let s = Instant::now();
+    let a = non_bulk_perft(build_board(STARTING_FEN), 6);
+    println!("{} nps", a as f64 / s.elapsed().as_secs_f64());
+    // main_loop();
 }

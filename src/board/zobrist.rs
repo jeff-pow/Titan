@@ -10,7 +10,7 @@ use crate::{
 pub struct Zobrist {
     pub piece_square_hashes: [[[u64; 64]; 6]; 2],
     pub turn_hash: u64,
-    pub castling: [u64; 4],
+    pub castling: [u64; 16],
     // 64 squares plus an invalid square
     // Don't bother figuring out invalid enpassant squares, literally not worth the squeeze
     pub en_passant: [u64; 64],
@@ -30,7 +30,7 @@ impl Default for Zobrist {
             .flatten()
             .flatten()
             .for_each(|x| *x = rng.next_u64());
-        let mut castling = [0; 4];
+        let mut castling = [0; 16];
         castling.iter_mut().for_each(|x| *x = rng.next_u64());
         let mut en_passant = [0; 64];
         en_passant.iter_mut().for_each(|x| *x = rng.next_u64());
@@ -52,7 +52,7 @@ impl Board {
             for piece in PieceName::iter() {
                 let occupancies = self.bitboard(color, piece);
                 for sq in occupancies {
-                    hash ^= ZOBRIST.piece_square_hashes[color as usize][piece as usize][sq]
+                    hash ^= ZOBRIST.piece_square_hashes[color][piece][sq]
                 }
             }
         }
@@ -61,18 +61,7 @@ impl Board {
             hash ^= ZOBRIST.en_passant[x]
         }
 
-        if self.can_castle(Castle::WhiteKing) {
-            hash ^= ZOBRIST.castling[0];
-        }
-        if self.can_castle(Castle::WhiteQueen) {
-            hash ^= ZOBRIST.castling[1];
-        }
-        if self.can_castle(Castle::BlackKing) {
-            hash ^= ZOBRIST.castling[2];
-        }
-        if self.can_castle(Castle::BlackQueen) {
-            hash ^= ZOBRIST.castling[3];
-        }
+        hash ^= ZOBRIST.castling[self.castling_rights as usize];
 
         if self.to_move == Color::Black {
             hash ^= ZOBRIST.turn_hash;

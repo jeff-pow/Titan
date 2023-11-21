@@ -1,6 +1,7 @@
 use core::fmt;
 use strum::IntoEnumIterator;
 
+use crate::board::zobrist::ZOBRIST;
 use crate::moves::moves::Castle;
 use crate::{
     eval::nnue::Accumulator,
@@ -158,6 +159,7 @@ impl Board {
         self.bitboards[piece_type] ^= sq.bitboard();
         self.color_occupancies[color] ^= sq.bitboard();
         self.accumulator.add_feature(piece_type, color, sq);
+        self.zobrist_hash ^= ZOBRIST.piece_square_hashes[color][piece_type][sq];
     }
 
     fn remove_piece(&mut self, sq: Square) {
@@ -166,6 +168,7 @@ impl Board {
             self.bitboards[piece.name] ^= sq.bitboard();
             self.color_occupancies[piece.color] ^= sq.bitboard();
             self.accumulator.remove_feature(piece.name, piece.color, sq);
+            self.zobrist_hash ^= ZOBRIST.piece_square_hashes[piece.color][piece.name][sq];
         }
     }
 
@@ -329,6 +332,11 @@ impl Board {
         //         }
         //     }
         // }
+
+        // Xor out the old en passant square hash
+        if let Some(sq) = self.en_passant_square {
+            self.zobrist_hash ^= ZOBRIST.en_passant[sq];
+        }
         self.en_passant_square = None;
         if piece_moving == PieceName::Pawn {
             match self.to_move {
@@ -344,6 +352,10 @@ impl Board {
                 }
             }
         }
+        // Xor in the new en passant saquare hash
+        if let Some(sq) = self.en_passant_square {
+            self.zobrist_hash ^= ZOBRIST.en_passant[sq];
+        }
 
         // If a piece isn't captured or a pawn isn't moved, increment the half move clock.
         // Otherwise set it to zero
@@ -353,19 +365,22 @@ impl Board {
             self.half_moves = 0;
         }
 
+        self.zobrist_hash ^= ZOBRIST.castling[self.castling_rights as usize];
         self.castling_rights &= CASTLING_RIGHTS[m.origin_square()] & CASTLING_RIGHTS[m.dest_square()];
+        self.zobrist_hash ^= ZOBRIST.castling[self.castling_rights as usize];
 
         self.to_move = !self.to_move;
+        self.zobrist_hash ^= ZOBRIST.turn_hash;
 
         self.num_moves += 1;
 
-        self.add_to_history();
+        self.history.push(self.zobrist_hash);
+
+        // assert_eq!(self.zobrist_hash, self.generate_hash());
 
         self.prev_move = m;
 
         self.in_check = self.in_check(self.to_move);
-
-        self.zobrist_hash = self.generate_hash();
 
         // Return false if the move leaves the opposite side in check, denoting an invalid move
         !self.in_check(!self.to_move)
