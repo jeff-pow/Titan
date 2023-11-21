@@ -89,7 +89,6 @@ mod movegen_tests {
     use rayon::iter::ParallelIterator;
     use rayon::prelude::IntoParallelRefIterator;
 
-    use crate::engine::perft::non_bulk_perft;
     use crate::{board::fen::build_board, engine::perft::perft};
 
     #[test]
