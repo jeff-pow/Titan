@@ -105,7 +105,7 @@ mod movegen_tests {
                 let depth = depth[1..].parse::<i32>().unwrap();
                 let nodes = nodes.parse::<usize>().unwrap();
                 eprintln!("test {test_num}: depth {depth} expected {nodes}");
-                assert_eq!(nodes, perft::<true>(board, depth));
+                assert_eq!(nodes, perft::<true>(board, depth), "Test number {test_num} failed");
             }
             eprintln!("{test_num} passed");
         });
