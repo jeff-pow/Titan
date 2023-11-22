@@ -58,8 +58,8 @@ impl From<usize> for Color {
     }
 }
 
-// const PIECE_VALUES: [i32; 6] = [100, 350, 350, 525, 1000, 0];
-const PIECE_VALUES: [i32; 6] = [100, 300, 300, 500, 900, 0];
+const PIECE_VALUES: [i32; 6] = [100, 350, 350, 525, 1000, 0];
+// const PIECE_VALUES: [i32; 6] = [100, 300, 300, 500, 900, 0];
 pub const NUM_PIECES: usize = 6;
 
 impl_index!(PieceName);
