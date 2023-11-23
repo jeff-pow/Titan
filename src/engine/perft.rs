@@ -1,84 +1,37 @@
-use std::sync::RwLock;
-
-use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+use std::time::Instant;
 
 use crate::{
     board::board::Board,
-    moves::movegenerator::{generate_legal_moves, generate_moves, MGT},
+    moves::movegenerator::{generate_moves, MGT},
 };
 
-pub fn multi_threaded_perft(board: Board, depth: i32) -> usize {
-    let total = RwLock::new(0);
-    let moves = generate_legal_moves(&board);
-
-    (0..moves.len()).into_par_iter().for_each(|idx| {
-        let m = moves[idx];
-        let mut new_b = board.to_owned();
-        assert!(new_b.make_move(m));
-        let count = count_moves::<true>(depth - 1, &new_b);
-        *total.write().unwrap() += count;
-        println!("{}: {}", m.to_san(), count);
-    });
-    println!("\nNodes searched: {}", total.read().unwrap());
-
-    let x = *total.read().unwrap();
-    x
+pub fn perft(board: &Board, depth: i32) -> usize {
+    let start = Instant::now();
+    let count = non_bulk_perft::<true>(board, depth);
+    let elapsed = start.elapsed().as_secs_f64();
+    println!("{count} nodes in {elapsed} secs = {} nps", count as f64 / elapsed);
+    count
 }
 
-pub fn non_bulk_perft(board: Board, depth: i32) -> usize {
+pub fn non_bulk_perft<const ROOT: bool>(board: &Board, depth: i32) -> usize {
     if depth == 0 {
         return 1;
     }
     let mut total = 0;
-    let moves = generate_moves(&board, MGT::All);
+    let moves = generate_moves(board, MGT::All);
     for i in 0..moves.len() {
         let m = moves[i];
-        let mut new_b = board.to_owned();
+        let mut new_b = *board;
         if !new_b.make_move(m) {
             continue;
         }
-        let count = non_bulk_perft(new_b, depth - 1);
+        let count = non_bulk_perft::<false>(&new_b, depth - 1);
+        if ROOT {
+            println!("{}: {count}", m.to_san());
+        }
         total += count;
     }
     total
-}
-
-pub fn perft<const BULK: bool>(board: Board, depth: i32) -> usize {
-    let mut total = 0;
-    let moves = generate_legal_moves(&board);
-    // for MoveListEntry { m, .. } in moves {
-    for i in 0..moves.len() {
-        let m = moves[i];
-        let mut new_b = board.to_owned();
-        assert!(new_b.make_move(m));
-        let count = count_moves::<BULK>(depth - 1, &new_b);
-        total += count;
-        println!("{}: {}", m.to_san(), count);
-    }
-    println!("\nNodes searched: {}", total);
-    total
-}
-
-/// Recursively counts the number of moves down to a certain depth
-pub fn count_moves<const BULK: bool>(depth: i32, board: &Board) -> usize {
-    let mut count = 0;
-    let moves = generate_legal_moves(board);
-    assert!(depth >= 0);
-
-    if depth == 1 && BULK {
-        return moves.len();
-    }
-    if depth == 0 {
-        return 1;
-    }
-
-    for i in 0..moves.len() {
-        let m = moves[i];
-        let mut new_b = board.to_owned();
-        assert!(new_b.make_move(m));
-        count += count_moves::<BULK>(depth - 1, &new_b);
-    }
-    count
 }
 
 #[cfg(test)]
@@ -89,7 +42,8 @@ mod movegen_tests {
     use rayon::iter::ParallelIterator;
     use rayon::prelude::IntoParallelRefIterator;
 
-    use crate::{board::fen::build_board, engine::perft::perft};
+    use crate::board::fen::build_board;
+    use crate::engine::perft::perft;
 
     #[test]
     pub fn epd_perft() {
@@ -105,7 +59,7 @@ mod movegen_tests {
                 let depth = depth[1..].parse::<i32>().unwrap();
                 let nodes = nodes.parse::<usize>().unwrap();
                 eprintln!("test {test_num}: depth {depth} expected {nodes}");
-                assert_eq!(nodes, perft::<true>(board, depth), "Test number {test_num} failed");
+                assert_eq!(nodes, perft(&board, depth), "Test number {test_num} failed");
             }
             eprintln!("{test_num} passed");
         });

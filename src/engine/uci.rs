@@ -7,6 +7,7 @@ use itertools::Itertools;
 use crate::bench::bench;
 use crate::board::fen::parse_fen_from_buffer;
 use crate::board::zobrist::ZOBRIST;
+use crate::engine::perft::perft;
 use crate::moves::movegenerator::MG;
 use crate::search::get_reduction;
 use crate::search::search::{search, MAX_SEARCH_DEPTH};
@@ -20,8 +21,6 @@ use crate::{
     search::{game_time::GameTime, SearchInfo, SearchType},
     types::pieces::Color,
 };
-
-use super::perft::multi_threaded_perft;
 
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
@@ -85,26 +84,26 @@ pub fn main_loop() -> ! {
                 search_info.search_type = SearchType::Depth;
                 let mut s = search_info.clone();
                 handle = Some(thread::spawn(move || {
-                    println!("bestmove {}", search(&mut s, depth).to_san());
+                    println!("bestmove {}", search(&mut s, depth, true).to_san());
                     s.transpos_table.age_up();
                 }));
             } else if buffer.contains("perft") {
                 let mut iter = buffer.split_whitespace().skip(2);
                 let depth = iter.next().unwrap().parse::<i32>().unwrap();
-                multi_threaded_perft(search_info.board.to_owned(), depth);
+                perft(&search_info.board, depth);
             } else if buffer.contains("wtime") {
                 search_info.search_type = SearchType::Time;
                 search_info.game_time = parse_time(&buffer, &mut search_info);
                 let mut s = search_info.clone();
                 handle = Some(thread::spawn(move || {
-                    println!("bestmove {}", search(&mut s, MAX_SEARCH_DEPTH).to_san());
+                    println!("bestmove {}", search(&mut s, MAX_SEARCH_DEPTH, true).to_san());
                     s.transpos_table.age_up();
                 }));
             } else {
                 search_info.search_type = SearchType::Infinite;
                 let mut s = search_info.clone();
                 handle = Some(thread::spawn(move || {
-                    search(&mut s, MAX_SEARCH_DEPTH);
+                    search(&mut s, MAX_SEARCH_DEPTH, true);
                     s.transpos_table.age_up();
                 }));
             }

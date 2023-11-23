@@ -194,6 +194,7 @@ fn generate_pawn_moves(board: &Board, gen_type: MGT, moves: &mut MoveList) {
     }
 
     // Promotions - captures and straight pushes
+    // Always generate all promotions because they are so good
     if promotions != Bitboard::EMPTY {
         let no_capture_promotions = promotions.shift(up) & vacancies;
         let left_capture_promotions = promotions.shift(up_left) & enemies;
@@ -278,15 +279,4 @@ fn generate_bitboard_moves(board: &Board, piece_name: PieceName, gen_type: MGT, 
             moves.push(Move::new(sq, dest, MoveType::Normal, piece_name));
         }
     }
-}
-
-/// Returns all legal moves
-pub fn generate_legal_moves(board: &Board) -> MoveList {
-    generate_moves(board, MGT::All)
-        .into_iter()
-        .filter(|m| {
-            let mut new_b = board.to_owned();
-            new_b.make_move(m.m)
-        })
-        .collect()
 }

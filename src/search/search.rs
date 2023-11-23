@@ -38,10 +38,7 @@ pub fn print_search_stats(info: &ThreadData, eval: i32, pv: &[Move]) {
     println!();
 }
 
-pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
-    let mut best_move = Move::NULL;
-    let mut pv_moves = Vec::new();
-
+pub fn search(info: &mut SearchInfo, mut max_depth: i32, print_uci: bool) -> Move {
     match info.search_type {
         SearchType::Time => {
             info.game_time.recommended_time(info.board.to_move);
@@ -56,22 +53,23 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
     }
     info.search_stats.start = Instant::now();
 
-    let mut td = ThreadData::new(&info.transpos_table, &info.halt, &info.game_time, info.board.to_move);
+    let best_move = iterative_deepening(info, max_depth, print_uci);
 
-    let mut alpha;
-    let mut beta;
-    // The previous eval from this side (two moves ago) is a good place to estimate the next
-    // aspiration window around. First depth will not have an estimate, and we will do a full
-    // window search
+    assert_ne!(best_move, Move::NULL);
+
+    best_move
+}
+
+pub(crate) fn iterative_deepening(info: &mut SearchInfo, max_depth: i32, print_uci: bool) -> Move {
+    let mut td = ThreadData::new(&info.transpos_table, &info.halt, &info.game_time, info.board.to_move);
+    let mut pv = Vec::new();
     let mut score_history = vec![info.board.evaluate()];
     td.iter_max_depth = 1;
+    let mut best_move = Move::NULL;
 
     while td.iter_max_depth <= max_depth {
         td.sel_depth = 0;
-        let board = &info.board.to_owned();
 
-        // We assume the average eval for the board from two iterations ago is a good estimate for
-        // the next iteration
         let prev_avg = if td.iter_max_depth >= 2 {
             *score_history.get(td.iter_max_depth as usize - 2).unwrap() as f64
         } else {
@@ -79,31 +77,20 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
         };
 
         // Create a window we think the actual evaluation of the position will fall within
-        let mut delta = INIT_ASP + (prev_avg * prev_avg * 6.25e-5) as i32;
-        alpha = max(prev_avg as i32 - delta, -INFINITY);
-        beta = min(prev_avg as i32 + delta, INFINITY);
+        let delta = INIT_ASP + (prev_avg * prev_avg * 6.25e-5) as i32;
+        let alpha = max(prev_avg as i32 - delta, -INFINITY);
+        let beta = min(prev_avg as i32 + delta, INFINITY);
 
-        let mut score;
-        loop {
-            score = alpha_beta::<true>(td.iter_max_depth, alpha, beta, &mut pv_moves, &mut td, board, false);
-            if score <= alpha {
-                beta = (alpha + beta) / 2;
-                alpha = max(score - delta, -INFINITY);
-            } else if score >= beta {
-                beta = min(score + delta, INFINITY);
-            } else {
-                break;
-            }
-            delta += delta / 3;
-            debug_assert!(alpha >= -INFINITY && beta <= INFINITY);
-        }
+        let score = aspiration_windows(&mut td, &mut pv, alpha, beta, delta, &info.board);
 
-        if !pv_moves.is_empty() {
-            best_move = pv_moves[0];
+        if !pv.is_empty() {
+            best_move = pv[0];
         }
         score_history.push(score);
 
-        print_search_stats(&td, score, &pv_moves);
+        if print_uci {
+            print_search_stats(&td, score, &pv);
+        }
 
         if info.search_type == SearchType::Time && info.game_time.soft_termination(info.search_stats.start) {
             break;
@@ -115,9 +102,32 @@ pub fn search(info: &mut SearchInfo, mut max_depth: i32) -> Move {
     }
 
     info.search_stats.nodes_searched = td.search_stats.nodes_searched;
-    assert_ne!(best_move, Move::NULL);
 
+    assert_ne!(best_move, Move::NULL);
     best_move
+}
+
+fn aspiration_windows(
+    td: &mut ThreadData,
+    pv: &mut Vec<Move>,
+    mut alpha: i32,
+    mut beta: i32,
+    mut delta: i32,
+    board: &Board,
+) -> i32 {
+    loop {
+        let score = alpha_beta::<true>(td.iter_max_depth, alpha, beta, pv, td, board, false);
+        if score <= alpha {
+            beta = (alpha + beta) / 2;
+            alpha = max(score - delta, -INFINITY);
+        } else if score >= beta {
+            beta = min(score + delta, INFINITY);
+        } else {
+            return score;
+        }
+        delta += delta / 3;
+        debug_assert!(alpha >= -INFINITY && beta <= INFINITY);
+    }
 }
 
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
