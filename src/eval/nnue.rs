@@ -1,6 +1,10 @@
-use std::arch::x86_64::{
-    __m512i, _mm512_add_epi16, _mm512_add_epi32, _mm512_cmpgt_epi16_mask, _mm512_cmplt_epi16_mask, _mm512_loadu_epi16,
-    _mm512_mask_mov_epi16, _mm512_set1_epi16, _mm512_setzero_si512,
+use std::{
+    arch::x86_64::{
+        __m512i, _mm512_add_epi16, _mm512_add_epi32, _mm512_cmpgt_epi16_mask, _mm512_cmplt_epi16_mask,
+        _mm512_loadu_epi16, _mm512_mask_mov_epi16, _mm512_mullo_epi16, _mm512_set1_epi16, _mm512_setzero_si512,
+    },
+    mem::transmute,
+    process::abort,
 };
 
 use crate::{
@@ -66,7 +70,16 @@ struct Network {
     output_bias: i16,
 }
 
+unsafe fn print(vec: __m512i) {
+    let vec: [i16; 32] = transmute(vec);
+    for i in vec {
+        print!("{i:4} ")
+    }
+    println!();
+}
+
 impl Board {
+    #[allow(clippy::assertions_on_constants)]
     pub fn evaluate(&self) -> i32 {
         let (us, them) = (&self.accumulator.0[self.to_move], &self.accumulator.0[!self.to_move]);
         let weights = &NET.output_weights;
@@ -81,18 +94,18 @@ impl Board {
                 let mut acc_us = _mm512_setzero_si512();
                 for i in 0..required_iters {
                     let us_vector = _mm512_loadu_epi16(&us[i * 32]);
-                    let crelu_result = asdf(us_vector);
+                    let crelu_result = clipped_relu(us_vector);
                     let weights = _mm512_loadu_epi16(&weights[0][i * 32]);
-                    let sum = _mm512_add_epi16(crelu_result, weights);
+                    let sum = _mm512_mullo_epi16(crelu_result, weights);
                     acc_us = _mm512_add_epi16(sum, acc_us);
                 }
 
                 let mut acc_them = _mm512_setzero_si512();
                 for i in 0..required_iters {
                     let them_vector = _mm512_loadu_epi16(&them[i * 32]);
-                    let crelu_result = asdf(them_vector);
+                    let crelu_result = clipped_relu(them_vector);
                     let weights = _mm512_loadu_epi16(&weights[1][i * 32]);
-                    let sum = _mm512_add_epi16(crelu_result, weights);
+                    let sum = _mm512_mullo_epi16(crelu_result, weights);
                     acc_them = _mm512_add_epi16(sum, acc_them);
                 }
 
@@ -123,7 +136,7 @@ fn crelu(i: i16) -> i32 {
     i32::from(i.clamp(RELU_MIN, RELU_MAX))
 }
 
-unsafe fn asdf(i: __m512i) -> __m512i {
+unsafe fn clipped_relu(i: __m512i) -> __m512i {
     let min = _mm512_set1_epi16(RELU_MIN);
     let max = _mm512_set1_epi16(RELU_MAX);
     let cmp_lt = _mm512_cmplt_epi16_mask(i, min);

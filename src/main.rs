@@ -8,8 +8,10 @@ mod moves;
 mod search;
 mod types;
 
-use crate::engine::uci::main_loop;
+use board::fen::{build_board, STARTING_FEN};
+use engine::uci::main_loop;
 
 fn main() {
+    // dbg!(build_board(STARTING_FEN).evaluate());
     main_loop();
 }
