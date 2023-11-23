@@ -1,3 +1,8 @@
+use std::arch::x86_64::{
+    __m512i, _mm512_add_epi16, _mm512_add_epi32, _mm512_cmpgt_epi16_mask, _mm512_cmplt_epi16_mask, _mm512_loadu_epi16,
+    _mm512_mask_mov_epi16, _mm512_set1_epi16, _mm512_setzero_si512,
+};
+
 use crate::{
     board::board::Board,
     types::{
@@ -63,17 +68,48 @@ struct Network {
 
 impl Board {
     pub fn evaluate(&self) -> i32 {
-        let (us, them) = (self.accumulator.0[self.to_move], self.accumulator.0[!self.to_move]);
+        let (us, them) = (&self.accumulator.0[self.to_move], &self.accumulator.0[!self.to_move]);
         let weights = &NET.output_weights;
 
         let mut output = i32::from(NET.output_bias);
 
-        for (&i, &w) in us.iter().zip(&weights[0]) {
-            output += crelu(i) * i32::from(w);
-        }
+        if is_x86_feature_detected!("avx512f") {
+            assert!(HIDDEN_SIZE % 32 == 0);
+            unsafe {
+                // 512 bits / 16 bit integers = 32 required iters
+                let required_iters = HIDDEN_SIZE / 32;
+                let mut acc_us = _mm512_setzero_si512();
+                for i in 0..required_iters {
+                    let us_vector = _mm512_loadu_epi16(&us[i * 32]);
+                    let crelu_result = asdf(us_vector);
+                    let weights = _mm512_loadu_epi16(&weights[0][i * 32]);
+                    let sum = _mm512_add_epi16(crelu_result, weights);
+                    acc_us = _mm512_add_epi16(sum, acc_us);
+                }
 
-        for (&i, &w) in them.iter().zip(&weights[1]) {
-            output += crelu(i) * i32::from(w);
+                let mut acc_them = _mm512_setzero_si512();
+                for i in 0..required_iters {
+                    let them_vector = _mm512_loadu_epi16(&them[i * 32]);
+                    let crelu_result = asdf(them_vector);
+                    let weights = _mm512_loadu_epi16(&weights[1][i * 32]);
+                    let sum = _mm512_add_epi16(crelu_result, weights);
+                    acc_them = _mm512_add_epi16(sum, acc_them);
+                }
+
+                let result_vector = _mm512_add_epi32(acc_us, acc_them);
+
+                // Sum the elements of the result vector
+                let result_array: [i16; 32] = std::mem::transmute(result_vector);
+                output += i32::from(result_array.iter().sum::<i16>());
+            }
+        } else {
+            for (&i, &w) in us.iter().zip(&weights[0]) {
+                output += crelu(i) * i32::from(w);
+            }
+
+            for (&i, &w) in them.iter().zip(&weights[1]) {
+                output += crelu(i) * i32::from(w);
+            }
         }
         let a = (output) * SCALE / Q;
         assert!(i16::MIN as i32 <= a && a <= i16::MAX as i32);
@@ -85,6 +121,17 @@ const RELU_MIN: i16 = 0;
 const RELU_MAX: i16 = 255;
 fn crelu(i: i16) -> i32 {
     i32::from(i.clamp(RELU_MIN, RELU_MAX))
+}
+
+unsafe fn asdf(i: __m512i) -> __m512i {
+    let min = _mm512_set1_epi16(RELU_MIN);
+    let max = _mm512_set1_epi16(RELU_MAX);
+    let cmp_lt = _mm512_cmplt_epi16_mask(i, min);
+    let cmp_gt = _mm512_cmpgt_epi16_mask(i, max);
+
+    let result_lt = _mm512_mask_mov_epi16(i, cmp_lt, min);
+
+    _mm512_mask_mov_epi16(result_lt, cmp_gt, max)
 }
 
 const COLOR_OFFSET: usize = NUM_SQUARES * NUM_PIECES;
