@@ -1,10 +1,10 @@
 use std::{
     arch::x86_64::{
-        __m512i, _mm512_add_epi16, _mm512_add_epi32, _mm512_cmpgt_epi16_mask, _mm512_cmplt_epi16_mask,
-        _mm512_loadu_epi16, _mm512_mask_mov_epi16, _mm512_mullo_epi16, _mm512_set1_epi16, _mm512_setzero_si512,
+        __m512i, _mm256_loadu_epi16, _mm512_add_epi32, _mm512_cmpgt_epi32_mask, _mm512_cmplt_epi32_mask,
+        _mm512_cvtepi16_epi32, _mm512_mask_mov_epi32, _mm512_mullo_epi32, _mm512_reduce_add_epi32, _mm512_set1_epi32,
+        _mm512_setzero_si512,
     },
     mem::transmute,
-    process::abort,
 };
 
 use crate::{
@@ -87,33 +87,40 @@ impl Board {
         let mut output = i32::from(NET.output_bias);
 
         if is_x86_feature_detected!("avx512f") {
-            assert!(HIDDEN_SIZE % 32 == 0);
+            assert!(HIDDEN_SIZE % 16 == 0);
             unsafe {
-                // 512 bits / 16 bit integers = 32 required iters
-                let required_iters = HIDDEN_SIZE / 32;
+                // 512 bits / 32 bit integers = 16 ints per chunk
+                const REQUIRED_ITERS: usize = HIDDEN_SIZE / 16;
+                const CHUNK_SIZE: usize = 16;
+                assert!(REQUIRED_ITERS * CHUNK_SIZE == HIDDEN_SIZE);
                 let mut acc_us = _mm512_setzero_si512();
-                for i in 0..required_iters {
-                    let us_vector = _mm512_loadu_epi16(&us[i * 32]);
+                for i in 0..REQUIRED_ITERS {
+                    let v = _mm256_loadu_epi16(&us[i * CHUNK_SIZE]);
+                    let us_vector = _mm512_cvtepi16_epi32(v);
                     let crelu_result = clipped_relu(us_vector);
-                    let weights = _mm512_loadu_epi16(&weights[0][i * 32]);
-                    let sum = _mm512_mullo_epi16(crelu_result, weights);
-                    acc_us = _mm512_add_epi16(sum, acc_us);
+                    let v = _mm256_loadu_epi16(&weights[0][i * CHUNK_SIZE]);
+                    let weights = _mm512_cvtepi16_epi32(v);
+                    let sum = _mm512_mullo_epi32(crelu_result, weights);
+                    acc_us = _mm512_add_epi32(sum, acc_us);
                 }
 
                 let mut acc_them = _mm512_setzero_si512();
-                for i in 0..required_iters {
-                    let them_vector = _mm512_loadu_epi16(&them[i * 32]);
+                for i in 0..REQUIRED_ITERS {
+                    let v = _mm256_loadu_epi16(&them[i * CHUNK_SIZE]);
+                    let them_vector = _mm512_cvtepi16_epi32(v);
                     let crelu_result = clipped_relu(them_vector);
-                    let weights = _mm512_loadu_epi16(&weights[1][i * 32]);
-                    let sum = _mm512_mullo_epi16(crelu_result, weights);
-                    acc_them = _mm512_add_epi16(sum, acc_them);
+                    let v = _mm256_loadu_epi16(&weights[1][i * CHUNK_SIZE]);
+                    let weights = _mm512_cvtepi16_epi32(v);
+                    let sum = _mm512_mullo_epi32(crelu_result, weights);
+                    acc_them = _mm512_add_epi32(sum, acc_them);
                 }
 
                 let result_vector = _mm512_add_epi32(acc_us, acc_them);
 
                 // Sum the elements of the result vector
-                let result_array: [i16; 32] = std::mem::transmute(result_vector);
-                output += i32::from(result_array.iter().sum::<i16>());
+                // let result_array: [i32; 16] = std::mem::transmute(result_vector);
+                // output += result_array.iter().sum::<i32>();
+                output += _mm512_reduce_add_epi32(result_vector);
             }
         } else {
             for (&i, &w) in us.iter().zip(&weights[0]) {
@@ -137,14 +144,14 @@ fn crelu(i: i16) -> i32 {
 }
 
 unsafe fn clipped_relu(i: __m512i) -> __m512i {
-    let min = _mm512_set1_epi16(RELU_MIN);
-    let max = _mm512_set1_epi16(RELU_MAX);
-    let cmp_lt = _mm512_cmplt_epi16_mask(i, min);
-    let cmp_gt = _mm512_cmpgt_epi16_mask(i, max);
+    let min = _mm512_set1_epi32(RELU_MIN.into());
+    let max = _mm512_set1_epi32(RELU_MAX.into());
+    let cmp_lt = _mm512_cmplt_epi32_mask(i, min);
+    let cmp_gt = _mm512_cmpgt_epi32_mask(i, max);
 
-    let result_lt = _mm512_mask_mov_epi16(i, cmp_lt, min);
+    let result_lt = _mm512_mask_mov_epi32(i, cmp_lt, min);
 
-    _mm512_mask_mov_epi16(result_lt, cmp_gt, max)
+    _mm512_mask_mov_epi32(result_lt, cmp_gt, max)
 }
 
 const COLOR_OFFSET: usize = NUM_SQUARES * NUM_PIECES;
