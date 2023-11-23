@@ -122,13 +122,6 @@ const ENTRY_SIZE: usize = size_of::<TableEntry>();
 const TABLE_CAPACITY: usize = TARGET_BYTES / ENTRY_SIZE;
 
 impl TranspositionTable {
-    pub fn clear(&self) {
-        for x in self.vec.iter() {
-            x.zobrist_hash.store(0, Ordering::Relaxed);
-            x.remainder.store(0, Ordering::Relaxed);
-        }
-    }
-
     /// Size here is the desired size in MB
     pub fn new(size: usize) -> Self {
         let target_size = size * BYTES_PER_MB;
