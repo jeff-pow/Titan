@@ -101,7 +101,7 @@ pub fn main_loop() -> ! {
         } else if buffer.starts_with("go") {
             handle = handle_go(&buffer, &mut search_info);
         } else if buffer.contains("perft") {
-            let mut iter = buffer.split_whitespace().skip(2);
+            let mut iter = buffer.split_whitespace().skip(1);
             let depth = iter.next().unwrap().parse::<i32>().unwrap();
             perft(&search_info.board, depth);
         } else if buffer.starts_with("stop") {
