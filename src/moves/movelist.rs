@@ -82,6 +82,7 @@ impl MoveList {
                 } else {
                     BAD_CAPTURE
                     // TODO: Could possibly just use MVV instead of MVVLVA here
+                    // }) + c.value()
                 }) + MVV_LVA[board.piece_at(entry.m.origin_square()).unwrap()][c]
                     + td.history.capt_hist(entry.m, board.to_move, c)
             } else if killers[0] == entry.m {
