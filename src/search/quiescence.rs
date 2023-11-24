@@ -1,6 +1,6 @@
 use crate::board::board::Board;
 use crate::engine::transposition::EntryFlag;
-use crate::moves::movegenerator::{generate_moves, MGT};
+use crate::moves::movegenerator::MGT;
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::moves::Move;
 use crate::search::search::STALEMATE;
@@ -21,6 +21,7 @@ pub fn quiescence(ply: i32, mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: 
         return board.evaluate();
     }
 
+    // TODO: Return tt score
     let entry = td.transpos_table.get(board.zobrist_hash, ply);
     let table_move = entry.map_or(Move::NULL, |e| e.best_move(board));
 
@@ -35,9 +36,9 @@ pub fn quiescence(ply: i32, mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: 
 
     let in_check = board.in_check;
     let mut moves = if in_check {
-        generate_moves(board, MGT::All)
+        board.generate_moves(MGT::All)
     } else {
-        generate_moves(board, MGT::CapturesOnly)
+        board.generate_moves(MGT::CapturesOnly)
     };
     moves.score_moves(board, table_move, td.stack[ply as usize].killers, td);
 
@@ -52,6 +53,7 @@ pub fn quiescence(ply: i32, mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: 
 
         // We want to find at least one evasion so we know we aren't in checkmate, so don't prune
         // moves before then
+        // TODO: See pruning after move is legal
         if (!in_check || moves_searched > 1) && !board.see(m, 1) {
             continue;
         }
@@ -70,6 +72,7 @@ pub fn quiescence(ply: i32, mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: 
 
         if eval > best_score {
             best_score = eval;
+            // TODO: Only when best_move raises alpha
             best_move = m;
             if eval > alpha {
                 alpha = eval;
@@ -81,6 +84,7 @@ pub fn quiescence(ply: i32, mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: 
         }
     }
 
+    // TODO: Only fail low or fail high flags
     let entry_flag = if best_score >= beta {
         EntryFlag::BetaCutOff
     } else if best_score > original_alpha {

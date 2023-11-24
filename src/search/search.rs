@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use crate::board::board::Board;
 use crate::engine::transposition::EntryFlag;
-use crate::moves::movegenerator::{generate_moves, MGT};
+use crate::moves::movegenerator::MGT;
 use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
 use crate::search::{ThreadData, INIT_ASP};
@@ -243,7 +243,7 @@ fn alpha_beta<const IS_PV: bool>(
         }
     }
 
-    let mut moves = generate_moves(board, MGT::All);
+    let mut moves = board.generate_moves(MGT::All);
     let mut legal_moves_searched = 0;
     moves.score_moves(board, table_move, td.stack[ply as usize].killers, td);
     td.search_stats.nodes_searched += 1;
