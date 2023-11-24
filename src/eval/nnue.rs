@@ -1,10 +1,7 @@
-use std::{
-    arch::x86_64::{
-        __m512i, _mm256_loadu_epi16, _mm512_add_epi32, _mm512_cmpgt_epi32_mask, _mm512_cmplt_epi32_mask,
-        _mm512_cvtepi16_epi32, _mm512_mask_mov_epi32, _mm512_mullo_epi32, _mm512_reduce_add_epi32, _mm512_set1_epi32,
-        _mm512_setzero_si512,
-    },
-    mem::transmute,
+use std::arch::x86_64::{
+    __m512i, _mm256_loadu_epi16, _mm512_add_epi16, _mm512_add_epi32, _mm512_cmpgt_epi32_mask, _mm512_cmplt_epi32_mask,
+    _mm512_cvtepi16_epi32, _mm512_loadu_epi16, _mm512_mask_mov_epi32, _mm512_mullo_epi32, _mm512_reduce_add_epi32,
+    _mm512_set1_epi32, _mm512_setzero_si512, _mm512_storeu_epi16, _mm512_sub_epi16,
 };
 
 use crate::{
@@ -37,15 +34,51 @@ impl Accumulator {
     pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
         let white_idx = feature_idx(color, piece, sq);
         let black_idx = feature_idx(!color, piece, sq.flip_vertical());
-        self.activate(&NET.feature_weights[white_idx], Color::White);
-        self.activate(&NET.feature_weights[black_idx], Color::Black);
+        unsafe {
+            self.simd_activate(&NET.feature_weights[white_idx], Color::White);
+            self.simd_activate(&NET.feature_weights[black_idx], Color::Black);
+        }
+
+        // self.activate(&NET.feature_weights[white_idx], Color::White);
+        // self.activate(&NET.feature_weights[black_idx], Color::Black);
     }
 
     pub fn remove_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
         let white_idx = feature_idx(color, piece, sq);
         let black_idx = feature_idx(!color, piece, sq.flip_vertical());
-        self.deactivate(&NET.feature_weights[white_idx], Color::White);
-        self.deactivate(&NET.feature_weights[black_idx], Color::Black);
+        unsafe {
+            self.simd_deactivate(&NET.feature_weights[white_idx], Color::White);
+            self.simd_deactivate(&NET.feature_weights[black_idx], Color::Black);
+        }
+
+        // self.deactivate(&NET.feature_weights[white_idx], Color::White);
+        // self.deactivate(&NET.feature_weights[black_idx], Color::Black);
+    }
+
+    unsafe fn simd_activate(&mut self, weights: &Block, color: Color) {
+        const REQUIRED_ITERS: usize = HIDDEN_SIZE / 32;
+        const CHUNK_SIZE: usize = 32;
+        if is_x86_feature_detected!("avx512f") {
+            for i in 0..REQUIRED_ITERS {
+                let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
+                let acc = _mm512_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
+                let updated_acc = _mm512_add_epi16(acc, weights);
+                _mm512_storeu_epi16(&mut self.0[color][i * CHUNK_SIZE], updated_acc);
+            }
+        }
+    }
+
+    unsafe fn simd_deactivate(&mut self, weights: &Block, color: Color) {
+        const REQUIRED_ITERS: usize = HIDDEN_SIZE / 32;
+        const CHUNK_SIZE: usize = 32;
+        if is_x86_feature_detected!("avx512f") {
+            for i in 0..REQUIRED_ITERS {
+                let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
+                let acc = _mm512_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
+                let updated_acc = _mm512_sub_epi16(acc, weights);
+                _mm512_storeu_epi16(&mut self.0[color][i * CHUNK_SIZE], updated_acc);
+            }
+        }
     }
 
     fn deactivate(&mut self, weights: &Block, color: Color) {
@@ -70,14 +103,6 @@ struct Network {
     output_bias: i16,
 }
 
-unsafe fn print(vec: __m512i) {
-    let vec: [i16; 32] = transmute(vec);
-    for i in vec {
-        print!("{i:4} ")
-    }
-    println!();
-}
-
 impl Board {
     #[allow(clippy::assertions_on_constants)]
     pub fn evaluate(&self) -> i32 {
@@ -88,10 +113,10 @@ impl Board {
 
         if is_x86_feature_detected!("avx512f") {
             assert!(HIDDEN_SIZE % 16 == 0);
+            const REQUIRED_ITERS: usize = HIDDEN_SIZE / 16;
+            const CHUNK_SIZE: usize = 16;
             unsafe {
                 // 512 bits / 32 bit integers = 16 ints per chunk
-                const REQUIRED_ITERS: usize = HIDDEN_SIZE / 16;
-                const CHUNK_SIZE: usize = 16;
                 assert!(REQUIRED_ITERS * CHUNK_SIZE == HIDDEN_SIZE);
                 let mut acc_us = _mm512_setzero_si512();
                 for i in 0..REQUIRED_ITERS {
