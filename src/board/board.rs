@@ -158,7 +158,7 @@ impl Board {
         self.array_board[sq] = Some(Piece::new(piece_type, color));
         self.bitboards[piece_type] ^= sq.bitboard();
         self.color_occupancies[color] ^= sq.bitboard();
-        // self.accumulator.add_feature(piece_type, color, sq);
+        self.accumulator.add_feature(piece_type, color, sq);
         self.zobrist_hash ^= ZOBRIST.piece_square_hashes[color][piece_type][sq];
     }
 
@@ -167,7 +167,7 @@ impl Board {
             self.array_board[sq] = None;
             self.bitboards[piece.name] ^= sq.bitboard();
             self.color_occupancies[piece.color] ^= sq.bitboard();
-            // self.accumulator.remove_feature(piece.name, piece.color, sq);
+            self.accumulator.remove_feature(piece.name, piece.color, sq);
             self.zobrist_hash ^= ZOBRIST.piece_square_hashes[piece.color][piece.name][sq];
         }
     }
