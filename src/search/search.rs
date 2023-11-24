@@ -38,22 +38,17 @@ pub fn print_search_stats(info: &ThreadData, eval: i32, pv: &[Move]) {
     println!();
 }
 
-pub fn search(info: &mut SearchInfo, mut max_depth: i32, print_uci: bool) -> Move {
+pub fn search(info: &mut SearchInfo, print_uci: bool) -> Move {
     match info.search_type {
         SearchType::Time => {
             info.game_time.recommended_time(info.board.to_move);
         }
-        SearchType::Depth => {
-            info.max_depth = max_depth;
-        }
-        SearchType::Infinite => {
-            max_depth = MAX_SEARCH_DEPTH;
-            info.max_depth = max_depth;
-        }
+        SearchType::Depth => (),
+        SearchType::Infinite => (),
     }
     info.search_stats.start = Instant::now();
 
-    let best_move = iterative_deepening(info, max_depth, print_uci);
+    let best_move = iterative_deepening(info, info.max_depth, print_uci);
 
     assert_ne!(best_move, Move::NULL);
 

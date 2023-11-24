@@ -18,7 +18,7 @@ pub fn bench() {
         };
         info.search_type = SearchType::Depth;
         info.max_depth = 16;
-        search(&mut info, 16, false);
+        search(&mut info, false);
         count.fetch_add(info.search_stats.nodes_searched, Ordering::SeqCst);
     });
     let nodes = count.load(Ordering::SeqCst);

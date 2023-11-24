@@ -1,5 +1,5 @@
 use std::sync::atomic::Ordering;
-use std::thread::{self};
+use std::thread::{self, JoinHandle};
 use std::{io, time::Duration};
 
 use itertools::Itertools;
@@ -10,7 +10,7 @@ use crate::board::zobrist::ZOBRIST;
 use crate::engine::perft::perft;
 use crate::moves::movegenerator::MG;
 use crate::search::get_reduction;
-use crate::search::search::{search, MAX_SEARCH_DEPTH};
+use crate::search::search::search;
 use crate::types::square::Square;
 use crate::{
     board::{
@@ -21,6 +21,29 @@ use crate::{
     search::{game_time::GameTime, SearchInfo, SearchType},
     types::pieces::Color,
 };
+
+fn handle_go(buffer: &str, search_info: &mut SearchInfo) -> Option<JoinHandle<()>> {
+    search_info.halt.store(false, Ordering::SeqCst);
+    search_info.transpos_table.age_up();
+
+    if buffer.contains("depth") {
+        let mut iter = buffer.split_whitespace().skip(2);
+        let depth = iter.next().unwrap().parse::<i32>().unwrap();
+        search_info.max_depth = depth;
+        search_info.search_type = SearchType::Depth;
+    } else if buffer.contains("wtime") {
+        search_info.search_type = SearchType::Time;
+        search_info.game_time = parse_time(buffer, search_info);
+    } else {
+        search_info.search_type = SearchType::Infinite;
+    }
+
+    let mut s = search_info.clone();
+    Some(thread::spawn(move || {
+        println!("bestmove {}", search(&mut s, true).to_san());
+        s.transpos_table.age_up();
+    }))
+}
 
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
@@ -76,37 +99,11 @@ pub fn main_loop() -> ! {
             search_info = SearchInfo::default();
             println!("Transposition table cleared");
         } else if buffer.starts_with("go") {
-            search_info.halt.store(false, Ordering::SeqCst);
-            if buffer.contains("depth") {
-                let mut iter = buffer.split_whitespace().skip(2);
-                let depth = iter.next().unwrap().parse::<i32>().unwrap();
-                search_info.max_depth = depth;
-                search_info.search_type = SearchType::Depth;
-                let mut s = search_info.clone();
-                handle = Some(thread::spawn(move || {
-                    println!("bestmove {}", search(&mut s, depth, true).to_san());
-                    s.transpos_table.age_up();
-                }));
-            } else if buffer.contains("perft") {
-                let mut iter = buffer.split_whitespace().skip(2);
-                let depth = iter.next().unwrap().parse::<i32>().unwrap();
-                perft(&search_info.board, depth);
-            } else if buffer.contains("wtime") {
-                search_info.search_type = SearchType::Time;
-                search_info.game_time = parse_time(&buffer, &mut search_info);
-                let mut s = search_info.clone();
-                handle = Some(thread::spawn(move || {
-                    println!("bestmove {}", search(&mut s, MAX_SEARCH_DEPTH, true).to_san());
-                    s.transpos_table.age_up();
-                }));
-            } else {
-                search_info.search_type = SearchType::Infinite;
-                let mut s = search_info.clone();
-                handle = Some(thread::spawn(move || {
-                    search(&mut s, MAX_SEARCH_DEPTH, true);
-                    s.transpos_table.age_up();
-                }));
-            }
+            handle = handle_go(&buffer, &mut search_info);
+        } else if buffer.contains("perft") {
+            let mut iter = buffer.split_whitespace().skip(2);
+            let depth = iter.next().unwrap().parse::<i32>().unwrap();
+            perft(&search_info.board, depth);
         } else if buffer.starts_with("stop") {
             search_info.halt.store(true, Ordering::SeqCst);
             if let Some(h) = handle.take() {
