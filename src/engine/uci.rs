@@ -32,7 +32,8 @@ pub fn main_loop() -> ! {
     let _ = ZOBRIST.turn_hash;
     let _ = MG.king_attacks(Square(0));
     let _ = get_reduction(0, 0);
-    println!("Ready to go!");
+    println!("option name Threads type spin default 1 min 1 max 1");
+    println!("option name Hash type spin default 16 min 16 max 16");
     let mut handle = None;
 
     loop {
