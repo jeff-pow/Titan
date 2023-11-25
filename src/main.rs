@@ -1,14 +1,21 @@
 #![allow(clippy::module_inception)]
 mod bench;
-pub mod board;
-pub mod engine;
-pub mod eval;
-pub mod moves;
-pub mod search;
-pub mod types;
+mod board;
+mod engine;
+mod eval;
+mod moves;
+mod search;
+mod types;
 
+use crate::bench::bench;
 use crate::engine::uci::main_loop;
+use std::env;
 
 fn main() {
-    main_loop();
+    let args = env::args().collect::<Vec<_>>();
+    if args[1] == "bench" {
+        bench();
+    } else {
+        main_loop();
+    }
 }

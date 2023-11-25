@@ -181,15 +181,15 @@ impl Board {
     }
 
     pub fn attackers_for_side(&self, attacker: Color, sq: Square, occupancy: Bitboard) -> Bitboard {
-        let bishops = self.bitboard(attacker, PieceName::Queen) | self.bitboard(attacker, PieceName::Bishop);
-        let rooks = self.bitboard(attacker, PieceName::Queen) | self.bitboard(attacker, PieceName::Rook);
-
-        let pawn_attacks = MG.pawn_attacks(sq, !attacker) & self.bitboard(attacker, PieceName::Pawn);
-        let knight_attacks = MG.knight_attacks(sq) & self.bitboard(attacker, PieceName::Knight);
+        let bishops = self.bitboards[PieceName::Queen] | self.bitboards[PieceName::Bishop];
+        let rooks = self.bitboards[PieceName::Queen] | self.bitboards[PieceName::Rook];
+        let pawn_attacks = MG.pawn_attacks(sq, !attacker) & self.bitboards[PieceName::Pawn];
+        let knight_attacks = MG.knight_attacks(sq) & self.bitboards[PieceName::Knight];
         let bishop_attacks = MG.bishop_attacks(sq, occupancy) & bishops;
         let rook_attacks = MG.rook_attacks(sq, occupancy) & rooks;
-        let king_attacks = MG.king_attacks(sq) & self.bitboard(attacker, PieceName::King);
-        pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks
+        let king_attacks = MG.king_attacks(sq) & self.bitboards[PieceName::King];
+        (pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks)
+            & self.color_occupancies(attacker)
     }
 
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {

@@ -3,8 +3,6 @@ use std::{
     time::Instant,
 };
 
-use rayon::prelude::{IntoParallelIterator, ParallelIterator};
-
 use crate::{
     board::fen::build_board,
     search::{search::search, SearchInfo, SearchType},
@@ -13,19 +11,24 @@ use crate::{
 pub fn bench() {
     let start = Instant::now();
     let count = AtomicU64::from(0);
-    BENCH_POSITIONS.into_par_iter().for_each(|fen| {
+    BENCH_POSITIONS.iter().for_each(|fen| {
         let mut info = SearchInfo {
             board: build_board(fen),
             ..Default::default()
         };
         info.search_type = SearchType::Depth;
         info.max_depth = 16;
-        search(&mut info, 16);
+        search(&mut info, 16, false);
         count.fetch_add(info.search_stats.nodes_searched, Ordering::SeqCst);
     });
     let nodes = count.load(Ordering::SeqCst);
     let time = start.elapsed().as_secs_f64();
-    println!("{} nodes searched in {} seconds --- {} nps", count.load(Ordering::SeqCst), time, nodes as f64 / time);
+    println!(
+        "{} nodes searched in {} seconds --- {} nps",
+        count.load(Ordering::SeqCst),
+        time,
+        (nodes as f64 / time) as u64
+    );
 }
 
 const BENCH_POSITIONS: [&str; 50] = [

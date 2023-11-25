@@ -19,11 +19,13 @@ bytemuck = "1.14.0"
 lazy_static = "1.4.0"
 
 [profile.release]
-strip = true
 codegen-units = 1
 opt-level = 3
 lto = true
 panic = "abort"
+incremental = true
 
-[profile.dev]
-opt-level = 0
+[profile.profile]
+inherits = "release"
+debug = true
+strip = false

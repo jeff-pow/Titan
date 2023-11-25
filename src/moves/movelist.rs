@@ -1,6 +1,6 @@
 use crate::{
     board::board::Board,
-    search::{killers::NUM_KILLER_MOVES, ThreadData},
+    search::{ThreadData, NUM_KILLER_MOVES},
     types::pieces::PieceName,
 };
 use std::{mem::MaybeUninit, ops::Index};
@@ -38,10 +38,6 @@ impl MoveList {
 
     pub fn len(&self) -> usize {
         self.len
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
     }
 
     fn swap(&mut self, a: usize, b: usize) {
@@ -85,6 +81,8 @@ impl MoveList {
                     GOOD_CAPTURE
                 } else {
                     BAD_CAPTURE
+                    // TODO: Could possibly just use MVV instead of MVVLVA here
+                    // }) + c.value()
                 }) + MVV_LVA[board.piece_at(entry.m.origin_square()).unwrap()][c]
                     + td.history.capt_hist(entry.m, board.to_move, c)
             } else if killers[0] == entry.m {

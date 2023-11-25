@@ -1,5 +1,5 @@
 use std::{
-    mem::{self, transmute},
+    mem::{size_of, transmute},
     sync::atomic::{AtomicU64, Ordering},
 };
 
@@ -115,25 +115,17 @@ pub struct TranspositionTable {
     age: U64Wrapper,
 }
 
-pub const TARGET_TABLE_SIZE_MB: usize = 64;
+pub const TARGET_TABLE_SIZE_MB: usize = 16;
 const BYTES_PER_MB: usize = 1024 * 1024;
 const TARGET_BYTES: usize = TARGET_TABLE_SIZE_MB * BYTES_PER_MB;
-const ENTRY_SIZE: usize = mem::size_of::<TableEntry>();
+const ENTRY_SIZE: usize = size_of::<TableEntry>();
 const TABLE_CAPACITY: usize = TARGET_BYTES / ENTRY_SIZE;
 
 impl TranspositionTable {
-    pub fn clear(&self) {
-        for x in self.vec.iter() {
-            x.zobrist_hash.store(0, Ordering::Relaxed);
-            x.remainder.store(0, Ordering::Relaxed);
-        }
-    }
-
     /// Size here is the desired size in MB
     pub fn new(size: usize) -> Self {
-        let target_size = size * 1024 * 1024;
+        let target_size = size * BYTES_PER_MB;
         let table_capacity = target_size / ENTRY_SIZE;
-        println!("{} elements in hash table", table_capacity);
         Self {
             vec: vec![InternalEntry::default(); table_capacity].into_boxed_slice(),
             age: U64Wrapper::default(),

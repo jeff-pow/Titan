@@ -14,17 +14,17 @@ use self::history_heuristics::MoveHistory;
 use self::search::MAX_SEARCH_DEPTH;
 use self::{game_time::GameTime, search_stats::SearchStats};
 
-pub(crate) mod game_time;
+pub mod game_time;
 pub mod history_heuristics;
-pub mod killers;
-pub(crate) mod quiescence;
+pub mod quiescence;
 pub mod search;
-pub(crate) mod search_stats;
+pub mod search_stats;
 pub mod see;
 
 // Tunable Constants
 /// Initial aspiration window value
 pub const INIT_ASP: i32 = 10;
+pub const NUM_KILLER_MOVES: usize = 2;
 /// Begin LMR if more than this many moves have been searched
 pub const LMR_THRESHOLD: i32 = 2;
 pub const MIN_LMR_DEPTH: i32 = 2;
