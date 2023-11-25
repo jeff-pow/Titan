@@ -115,7 +115,7 @@ pub struct TranspositionTable {
     age: U64Wrapper,
 }
 
-pub const TARGET_TABLE_SIZE_MB: usize = 64;
+pub const TARGET_TABLE_SIZE_MB: usize = 16;
 const BYTES_PER_MB: usize = 1024 * 1024;
 const TARGET_BYTES: usize = TARGET_TABLE_SIZE_MB * BYTES_PER_MB;
 const ENTRY_SIZE: usize = size_of::<TableEntry>();

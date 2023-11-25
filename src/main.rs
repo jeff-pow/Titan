@@ -8,11 +8,16 @@ mod moves;
 mod search;
 mod types;
 
-use engine::uci::main_loop;
-
-use crate::board::fen::{build_board, STARTING_FEN};
+use crate::bench::bench;
+use crate::engine::uci::main_loop;
+use std::env;
 
 fn main() {
-    // dbg!(build_board(STARTING_FEN).evaluate());
-    main_loop();
+    let args = env::args().collect::<Vec<_>>();
+    if args[1] == "bench" {
+        bench();
+    } else {
+        main_loop();
+    }
+
 }
