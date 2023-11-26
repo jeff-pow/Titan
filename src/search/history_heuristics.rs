@@ -1,4 +1,5 @@
 use crate::{
+    board::board::Board,
     moves::moves::Move,
     types::pieces::{Color, PieceName},
 };
@@ -33,7 +34,33 @@ pub struct MoveHistory {
 }
 
 impl MoveHistory {
-    pub fn update_quiet_history(&mut self, m: Move, is_good: bool, side: Color, depth: i32) {
+    pub fn update_histories(
+        &mut self,
+        best_move: Move,
+        quiets_tried: &[Move],
+        tacticals_tried: &[Move],
+        prev: Move,
+        board: &Board,
+        depth: i32,
+    ) {
+        if let Some(cap) = board.capture(best_move) {
+            self.update_capt_hist(best_move, board.to_move, cap, depth, true);
+        } else {
+            self.set_counter(board.to_move, prev, best_move);
+            self.update_quiet_history(best_move, true, board.to_move, depth);
+            // Only penalize quiets if best_move was quiet
+            for m in quiets_tried {
+                self.update_quiet_history(*m, false, board.to_move, depth);
+            }
+        }
+
+        // ALways penalize tacticals since they should always be good no matter what the position
+        for m in tacticals_tried {
+            self.update_capt_hist(*m, board.to_move, board.capture(*m).unwrap(), depth, false);
+        }
+    }
+
+    fn update_quiet_history(&mut self, m: Move, is_good: bool, side: Color, depth: i32) {
         let i = &mut self.search_history[side][m.piece_moving()][m.dest_square()].score;
         update_history(i, depth, is_good);
     }
@@ -54,7 +81,7 @@ impl MoveHistory {
         }
     }
 
-    pub fn update_capt_hist(&mut self, m: Move, side: Color, capture: PieceName, depth: i32, is_good: bool) {
+    fn update_capt_hist(&mut self, m: Move, side: Color, capture: PieceName, depth: i32, is_good: bool) {
         let i = &mut self.search_history[side][m.piece_moving()][m.dest_square()].capt_hist[capture];
         update_history(i, depth, is_good);
     }

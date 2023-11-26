@@ -247,11 +247,15 @@ fn alpha_beta<const IS_PV: bool>(
     let mut legal_moves_searched = 0;
     moves.score_moves(board, table_move, td.stack[ply as usize].killers, td);
     td.search_stats.nodes_searched += 1;
+    let mut quiets_tried = Vec::new();
+    let mut tacticals_tried = Vec::new();
 
     // Start of search
     for MoveListEntry { m, score: hist_score } in moves {
         let mut new_b = board.to_owned();
         let is_quiet = board.is_quiet(m);
+        // TODO: below
+        // let is_quiet = !m.is_tactical(board);
 
         if !is_root && best_score >= -NEAR_CHECKMATE {
             if is_quiet {
@@ -274,6 +278,12 @@ fn alpha_beta<const IS_PV: bool>(
         if !new_b.make_move(m) {
             continue;
         }
+        if is_quiet {
+            quiets_tried.push(m)
+        } else {
+            tacticals_tried.push(m)
+        };
+
         td.current_line.push(m);
         td.stack[ply as usize].played_move = m;
         let mut node_pvs = Vec::new();
@@ -344,9 +354,7 @@ fn alpha_beta<const IS_PV: bool>(
             }
 
             if alpha >= beta {
-                if let Some(cap) = board.capture(m) {
-                    td.history.update_capt_hist(m, board.to_move, cap, depth, true);
-                } else {
+                if board.capture(m).is_none() {
                     // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
                     // Also don't store killers that we have already stored
                     let ply = ply as usize;
@@ -355,20 +363,17 @@ fn alpha_beta<const IS_PV: bool>(
                         td.stack[ply].killers[1] = td.stack[ply].killers[0];
                         td.stack[ply].killers[0] = m;
                     }
-                    td.history.update_quiet_history(m, true, board.to_move, depth);
-                    td.history
-                        .set_counter(board.to_move, *td.current_line.last().unwrap_or(&Move::NULL), m);
                 }
+                td.history.update_histories(
+                    m,
+                    &quiets_tried,
+                    &tacticals_tried,
+                    *td.current_line.last().unwrap_or(&Move::NULL),
+                    board,
+                    depth,
+                );
                 break;
             }
-        }
-
-        // If a move doesn't raise alpha, deduct from its history score for move ordering
-        if board.is_quiet(m) {
-            td.history.update_quiet_history(m, false, board.to_move, depth);
-        } else {
-            td.history
-                .update_capt_hist(m, board.to_move, board.capture(m).unwrap(), depth, false);
         }
     }
 
