@@ -5,7 +5,7 @@ rm pgnout.txt
 rm nohup.out
 
 nohup cutechess-cli \
--engine name=dev cmd=./target/release/chess-engine \
+-engine name=dev cmd=./target/release/quintessence \
 -engine name=main cmd=./main \
 -games 2 -rounds 50000 \
 -pgnout "pgnout.txt" \
