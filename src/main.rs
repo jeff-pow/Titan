@@ -19,5 +19,4 @@ fn main() {
     } else {
         main_loop();
     }
-
 }
