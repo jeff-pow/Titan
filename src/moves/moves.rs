@@ -107,7 +107,7 @@ impl Move {
     }
 
     pub fn is_tactical(self, board: &Board) -> bool {
-        self.promotion().is_some() || self.is_en_passant() && board.occupancies().occupied(self.dest_square())
+        self.promotion().is_some() || self.is_en_passant() || board.occupancies().occupied(self.dest_square())
     }
 
     pub fn as_u16(self) -> u16 {

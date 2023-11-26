@@ -253,9 +253,8 @@ fn alpha_beta<const IS_PV: bool>(
     // Start of search
     for MoveListEntry { m, score: hist_score } in moves {
         let mut new_b = board.to_owned();
-        let is_quiet = board.is_quiet(m);
-        // TODO: below
-        // let is_quiet = !m.is_tactical(board);
+        // let is_quiet = board.is_quiet(m);
+        let is_quiet = !m.is_tactical(board);
 
         if !is_root && best_score >= -NEAR_CHECKMATE {
             if is_quiet {

@@ -33,6 +33,17 @@ pub struct MoveHistory {
     search_history: Box<[[[HistoryEntry; 64]; 6]; 2]>,
 }
 
+fn capthist_capture(board: &Board, m: Move) -> PieceName {
+    if m.is_en_passant() || m.promotion().is_some() {
+        // Use Pawn for promotions here because pawns can't be in the back ranks anyways, so these
+        // spaces can't be occupied anyway
+        // Credit to viridithas
+        PieceName::Pawn
+    } else {
+        board.piece_at(m.dest_square()).unwrap()
+    }
+}
+
 impl MoveHistory {
     pub fn update_histories(
         &mut self,
@@ -43,7 +54,8 @@ impl MoveHistory {
         board: &Board,
         depth: i32,
     ) {
-        if let Some(cap) = board.capture(best_move) {
+        if best_move.is_tactical(board) {
+            let cap = capthist_capture(board, best_move);
             self.update_capt_hist(best_move, board.to_move, cap, depth, true);
         } else {
             self.set_counter(board.to_move, prev, best_move);
@@ -54,9 +66,10 @@ impl MoveHistory {
             }
         }
 
-        // ALways penalize tacticals since they should always be good no matter what the position
+        // Always penalize tacticals since they should always be good no matter what the position
         for m in tacticals_tried {
-            self.update_capt_hist(*m, board.to_move, board.capture(*m).unwrap(), depth, false);
+            let cap = capthist_capture(board, *m);
+            self.update_capt_hist(*m, board.to_move, cap, depth, false);
         }
     }
 
