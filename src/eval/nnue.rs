@@ -38,9 +38,11 @@ impl Accumulator {
             self.simd_activate(&NET.feature_weights[white_idx], Color::White);
             self.simd_activate(&NET.feature_weights[black_idx], Color::Black);
         }
-
-        // self.activate(&NET.feature_weights[white_idx], Color::White);
-        // self.activate(&NET.feature_weights[black_idx], Color::Black);
+        // if is_x86_feature_detected!("avx512f") {
+        // } else {
+        //     // self.activate(&NET.feature_weights[white_idx], Color::White);
+        //     // self.activate(&NET.feature_weights[black_idx], Color::Black);
+        // }
     }
 
     pub fn remove_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
@@ -50,9 +52,11 @@ impl Accumulator {
             self.simd_deactivate(&NET.feature_weights[white_idx], Color::White);
             self.simd_deactivate(&NET.feature_weights[black_idx], Color::Black);
         }
-
-        // self.deactivate(&NET.feature_weights[white_idx], Color::White);
-        // self.deactivate(&NET.feature_weights[black_idx], Color::Black);
+        // if is_x86_feature_detected!("avx512f") {
+        // } else {
+        //     self.deactivate(&NET.feature_weights[white_idx], Color::White);
+        //     self.deactivate(&NET.feature_weights[black_idx], Color::Black);
+        // }
     }
 
     unsafe fn simd_activate(&mut self, weights: &Block, color: Color) {
@@ -154,6 +158,7 @@ impl Board {
 
 const RELU_MIN: i16 = 0;
 const RELU_MAX: i16 = 255;
+
 fn crelu(i: i16) -> i32 {
     i32::from(i.clamp(RELU_MIN, RELU_MAX))
 }
@@ -171,13 +176,13 @@ unsafe fn clipped_relu(i: __m512i) -> __m512i {
 
 const COLOR_OFFSET: usize = NUM_SQUARES * NUM_PIECES;
 const PIECE_OFFSET: usize = NUM_SQUARES;
+
 fn feature_idx(color: Color, piece: PieceName, sq: Square) -> usize {
     color.idx() * COLOR_OFFSET + piece.idx() * PIECE_OFFSET + sq.idx()
 }
 
 #[cfg(test)]
 mod nnue_tests {
-
     use std::{hint::black_box, time::Instant};
 
     use crate::board::fen::{build_board, STARTING_FEN};
