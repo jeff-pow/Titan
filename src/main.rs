@@ -13,7 +13,7 @@ use std::env;
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
-    if args[1] == "bench" {
+    if args.len() > 1 && args[1] == "bench" {
         bench();
     } else {
         main_loop();
