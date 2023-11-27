@@ -107,6 +107,17 @@ struct Network {
     output_bias: i16,
 }
 
+unsafe fn flatten(required_iters: usize, chunk_size: usize, acc: &Block, weights: &Block) -> __m512i {
+    let mut sum = _mm512_setzero_si512();
+    for i in 0..required_iters {
+        let us_vector = _mm512_loadu_epi16(&acc[i * chunk_size]);
+        let crelu_result = clipped_relu(us_vector);
+        let weights = _mm512_loadu_epi16(&weights[i * chunk_size]);
+        sum = _mm512_dpwssds_epi32(sum, crelu_result, weights);
+    }
+    sum
+}
+
 impl Board {
     #[allow(clippy::assertions_on_constants)]
     pub fn evaluate(&self) -> i32 {
@@ -122,21 +133,9 @@ impl Board {
             unsafe {
                 // 512 bits / 32 bit integers = 16 ints per chunk
                 assert_eq!(REQUIRED_ITERS * CHUNK_SIZE, HIDDEN_SIZE);
-                let mut acc_us = _mm512_setzero_si512();
-                for i in 0..REQUIRED_ITERS {
-                    let us_vector = _mm512_loadu_epi16(&us[i * CHUNK_SIZE]);
-                    let crelu_result = clipped_relu(us_vector);
-                    let weights = _mm512_loadu_epi16(&weights[0][i * CHUNK_SIZE]);
-                    acc_us = _mm512_dpwssds_epi32(acc_us, crelu_result, weights);
-                }
 
-                let mut acc_them = _mm512_setzero_si512();
-                for i in 0..REQUIRED_ITERS {
-                    let them_vector = _mm512_loadu_epi16(&them[i * CHUNK_SIZE]);
-                    let crelu_result = clipped_relu(them_vector);
-                    let weights = _mm512_loadu_epi16(&weights[1][i * CHUNK_SIZE]);
-                    acc_them = _mm512_dpwssds_epi32(acc_them, crelu_result, weights);
-                }
+                let acc_us = flatten(REQUIRED_ITERS, CHUNK_SIZE, us, &weights[0]);
+                let acc_them = flatten(REQUIRED_ITERS, CHUNK_SIZE, them, &weights[1]);
 
                 let result_vector = _mm512_add_epi32(acc_us, acc_them);
                 output += _mm512_reduce_add_epi32(result_vector);
