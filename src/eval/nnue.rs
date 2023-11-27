@@ -163,8 +163,8 @@ fn crelu(i: i16) -> i32 {
 }
 
 unsafe fn clipped_relu(i: __m512i) -> __m512i {
-    let min = _mm512_set1_epi16(RELU_MIN.into());
-    let max = _mm512_set1_epi16(RELU_MAX.into());
+    let min = _mm512_set1_epi16(RELU_MIN);
+    let max = _mm512_set1_epi16(RELU_MAX);
     let cmp_lt = _mm512_cmplt_epi16_mask(i, min);
     let cmp_gt = _mm512_cmpgt_epi16_mask(i, max);
 
