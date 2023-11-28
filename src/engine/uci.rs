@@ -126,7 +126,7 @@ pub fn main_loop() -> ! {
 fn parse_moves(moves: &[&str], board: &mut Board, skip: usize) {
     for str in moves.iter().skip(skip) {
         let m = from_san(str, board);
-        let _ = board.make_move(m);
+        let _ = board.make_move::<true>(m);
     }
 }
 

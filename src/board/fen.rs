@@ -34,40 +34,40 @@ pub fn build_board(fen_string: &str) -> Board {
             let square = Square(square as u32);
             match c {
                 'K' => {
-                    board.place_piece(PieceName::King, Color::White, square);
+                    board.place_piece::<true>(PieceName::King, Color::White, square);
                 }
                 'Q' => {
-                    board.place_piece(PieceName::Queen, Color::White, square);
+                    board.place_piece::<true>(PieceName::Queen, Color::White, square);
                 }
                 'R' => {
-                    board.place_piece(PieceName::Rook, Color::White, square);
+                    board.place_piece::<true>(PieceName::Rook, Color::White, square);
                 }
                 'N' => {
-                    board.place_piece(PieceName::Knight, Color::White, square);
+                    board.place_piece::<true>(PieceName::Knight, Color::White, square);
                 }
                 'B' => {
-                    board.place_piece(PieceName::Bishop, Color::White, square);
+                    board.place_piece::<true>(PieceName::Bishop, Color::White, square);
                 }
                 'P' => {
-                    board.place_piece(PieceName::Pawn, Color::White, square);
+                    board.place_piece::<true>(PieceName::Pawn, Color::White, square);
                 }
                 'k' => {
-                    board.place_piece(PieceName::King, Color::Black, square);
+                    board.place_piece::<true>(PieceName::King, Color::Black, square);
                 }
                 'q' => {
-                    board.place_piece(PieceName::Queen, Color::Black, square);
+                    board.place_piece::<true>(PieceName::Queen, Color::Black, square);
                 }
                 'r' => {
-                    board.place_piece(PieceName::Rook, Color::Black, square);
+                    board.place_piece::<true>(PieceName::Rook, Color::Black, square);
                 }
                 'b' => {
-                    board.place_piece(PieceName::Bishop, Color::Black, square);
+                    board.place_piece::<true>(PieceName::Bishop, Color::Black, square);
                 }
                 'n' => {
-                    board.place_piece(PieceName::Knight, Color::Black, square);
+                    board.place_piece::<true>(PieceName::Knight, Color::Black, square);
                 }
                 'p' => {
-                    board.place_piece(PieceName::Pawn, Color::Black, square);
+                    board.place_piece::<true>(PieceName::Pawn, Color::Black, square);
                 }
                 _ => panic!("Unrecognized char {}, board could not be made", c),
             }
