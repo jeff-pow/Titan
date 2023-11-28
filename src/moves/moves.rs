@@ -201,6 +201,7 @@ pub fn from_san(str: &str, board: &Board) -> Move {
     };
     let castle = castle != Castle::None;
     let en_passant = { piece_moving == PieceName::Pawn && captured.is_none() && start_column != end_column };
+    let double_push = { piece_moving == PieceName::Pawn && origin_sq.dist(dest_sq) == 2 };
     let move_type = {
         if castle {
             CastleMove
@@ -217,6 +218,8 @@ pub fn from_san(str: &str, board: &Board) -> Move {
                 },
                 None => Normal,
             }
+        } else if double_push {
+            DoublePush
         } else {
             Normal
         }
