@@ -240,7 +240,7 @@ fn alpha_beta<const IS_PV: bool>(
 
     let mut moves = board.generate_moves(MGT::All);
     let mut legal_moves_searched = 0;
-    moves.score_moves(board, table_move, td.stack[ply as usize].killers, td);
+    moves.score_moves(board, table_move, td.stack[ply as usize].killers, td, ply);
     td.search_stats.nodes_searched += 1;
     let mut quiets_tried = Vec::new();
     let mut tacticals_tried = Vec::new();
@@ -366,6 +366,8 @@ fn alpha_beta<const IS_PV: bool>(
                     *td.current_line.last().unwrap_or(&Move::NULL),
                     board,
                     depth,
+                    &td.stack,
+                    ply,
                 );
                 break;
             }

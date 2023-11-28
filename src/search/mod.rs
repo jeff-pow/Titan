@@ -60,12 +60,14 @@ impl Default for SearchInfo {
     }
 }
 
+pub(crate) type SearchStack = [PlyEntry; MAX_SEARCH_DEPTH as usize];
+
 pub struct ThreadData<'a> {
     pub iter_max_depth: i32,
     pub transpos_table: &'a TranspositionTable,
     pub search_stats: SearchStats,
     pub game_time: &'a GameTime,
-    stack: [PlyEntry; MAX_SEARCH_DEPTH as usize],
+    pub(crate) stack: SearchStack,
     pub halt: &'a AtomicBool,
     pub current_line: Vec<Move>,
     pub sel_depth: i32,
@@ -96,7 +98,7 @@ impl<'a> ThreadData<'a> {
 }
 
 #[derive(Clone, Copy, Default)]
-struct PlyEntry {
+pub(crate) struct PlyEntry {
     pub killers: [Move; 2],
     pub played_move: Move,
     pub static_eval: i32,
