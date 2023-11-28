@@ -1,4 +1,5 @@
 #![allow(clippy::module_inception)]
+#![feature(stdsimd)]
 mod bench;
 mod board;
 mod engine;
