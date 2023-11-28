@@ -135,18 +135,10 @@ impl Board {
 
     pub fn color_at(&self, sq: Square) -> Option<Color> {
         self.array_board[sq].map(|piece| piece.color)
-        // self.color_occupancies
-        //     .iter()
-        //     .position(|x| *x & sq.bitboard() != Bitboard::EMPTY)
-        //     .map(Color::from)
     }
 
     pub fn piece_at(&self, sq: Square) -> Option<PieceName> {
         self.array_board[sq].map(|piece| piece.name)
-        // self.bitboards
-        //     .iter()
-        //     .position(|x| *x & sq.bitboard() != Bitboard::EMPTY)
-        //     .map(PieceName::from)
     }
 
     pub fn has_non_pawns(&self, side: Color) -> bool {
