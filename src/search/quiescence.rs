@@ -58,7 +58,7 @@ pub fn quiescence(ply: i32, mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: 
             continue;
         }
 
-        if !new_b.make_move(m) {
+        if !new_b.make_move::<true>(m) {
             continue;
         }
         td.current_line.push(m);

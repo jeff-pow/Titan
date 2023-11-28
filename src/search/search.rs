@@ -269,7 +269,7 @@ fn alpha_beta<const IS_PV: bool>(
         }
 
         // Make move filters out illegal moves by returning false if a move was illegal
-        if !new_b.make_move(m) {
+        if !new_b.make_move::<true>(m) {
             continue;
         }
         if is_quiet {
