@@ -210,8 +210,8 @@ fn alpha_beta<const IS_PV: bool>(
     } else {
         board.evaluate()
     };
-    td.stack[ply as usize].static_eval = static_eval;
-    let improving = !in_check && ply > 1 && static_eval > td.stack[ply as usize - 2].static_eval;
+    td.stack[ply].static_eval = static_eval;
+    let improving = !in_check && ply > 1 && static_eval > td.stack[ply - 2].static_eval;
 
     if !is_root && !IS_PV && !in_check {
         // Reverse futility pruning
@@ -240,7 +240,7 @@ fn alpha_beta<const IS_PV: bool>(
 
     let mut moves = board.generate_moves(MGT::All);
     let mut legal_moves_searched = 0;
-    moves.score_moves(board, table_move, td.stack[ply as usize].killers, td, ply);
+    moves.score_moves(board, table_move, td.stack[ply].killers, td, ply);
     td.search_stats.nodes_searched += 1;
     let mut quiets_tried = Vec::new();
     let mut tacticals_tried = Vec::new();
@@ -279,7 +279,7 @@ fn alpha_beta<const IS_PV: bool>(
         };
 
         td.current_line.push(m);
-        td.stack[ply as usize].played_move = m;
+        td.stack[ply].played_move = m;
         let mut node_pvs = Vec::new();
 
         // Calculate the reduction used in LMR
@@ -352,7 +352,6 @@ fn alpha_beta<const IS_PV: bool>(
                     // We don't want to store tactical killers, because they are obviously already
                     // good.
                     // Also don't store killers that we have already stored
-                    let ply = ply as usize;
                     // Store killer move
                     if td.stack[ply].killers[0] != m {
                         td.stack[ply].killers[1] = td.stack[ply].killers[0];

@@ -1,3 +1,4 @@
+use std::ops::{Index, IndexMut};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
@@ -60,8 +61,6 @@ impl Default for SearchInfo {
     }
 }
 
-pub(crate) type SearchStack = [PlyEntry; MAX_SEARCH_DEPTH as usize];
-
 pub struct ThreadData<'a> {
     pub iter_max_depth: i32,
     pub transpos_table: &'a TranspositionTable,
@@ -87,7 +86,7 @@ impl<'a> ThreadData<'a> {
             transpos_table,
             search_stats: SearchStats::default(),
             game_time,
-            stack: [PlyEntry::default(); MAX_SEARCH_DEPTH as usize],
+            stack: SearchStack::default(),
             halt,
             current_line: Vec::with_capacity(MAX_SEARCH_DEPTH as usize),
             sel_depth: 0,
@@ -102,6 +101,47 @@ pub(crate) struct PlyEntry {
     pub killers: [Move; 2],
     pub played_move: Move,
     pub static_eval: i32,
+}
+
+pub(crate) struct SearchStack {
+    stack: [PlyEntry; MAX_SEARCH_DEPTH as usize],
+}
+
+impl SearchStack {
+    pub fn prev_move(&self, ply: i32) -> Move {
+        let index = ply;
+        if index >= 0 {
+            self[index].played_move
+        } else {
+            Move::NULL
+        }
+    }
+
+    pub fn prevs(&self, ply: i32) -> [Move; 2] {
+        [self.prev_move(ply - 1), self.prev_move(ply - 2)]
+    }
+}
+
+impl Default for SearchStack {
+    fn default() -> Self {
+        Self {
+            stack: [PlyEntry::default(); MAX_SEARCH_DEPTH as usize],
+        }
+    }
+}
+
+impl Index<i32> for SearchStack {
+    type Output = PlyEntry;
+
+    fn index(&self, index: i32) -> &Self::Output {
+        &self.stack[index as usize]
+    }
+}
+
+impl IndexMut<i32> for SearchStack {
+    fn index_mut(&mut self, index: i32) -> &mut Self::Output {
+        &mut self.stack[index as usize]
+    }
 }
 
 #[derive(Clone, Copy, Default, PartialEq)]

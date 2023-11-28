@@ -124,53 +124,23 @@ impl MoveHistory {
     }
 
     fn update_cont_hist(&mut self, m: Move, stack: &SearchStack, ply: i32, is_good: bool, side: Color, depth: i32) {
-        let ply = ply as usize;
-        if ply > 0 {
-            let prev = stack[ply - 1].played_move;
+        let prevs = stack.prevs(ply);
+        for prev in prevs {
             if prev != Move::NULL {
                 let i = &mut self.search_history[side][prev.piece_moving()][prev.dest_square()].cont_hist
                     [m.piece_moving()][m.dest_square()];
                 update_history(i, depth, is_good);
             }
-
-            if ply > 1 {
-                let prev = stack[ply - 2].played_move;
-                if prev != Move::NULL {
-                    let i = &mut self.search_history[side][prev.piece_moving()][prev.dest_square()].cont_hist
-                        [m.piece_moving()][m.dest_square()];
-                    update_history(i, depth, is_good);
-                }
-
-                if ply > 3 {
-                    let prev = stack[ply - 4].played_move;
-                    if prev != Move::NULL {
-                        let i = &mut self.search_history[side][prev.piece_moving()][prev.dest_square()].cont_hist
-                            [m.piece_moving()][m.dest_square()];
-                        update_history(i, depth, is_good);
-                    }
-                }
-            }
         }
     }
 
     pub(crate) fn cont_hist(&self, m: Move, stack: &SearchStack, ply: i32, side: Color) -> i32 {
-        let ply = ply as usize;
         let mut score = 0;
-        if ply > 0 {
-            let prev = stack[ply - 1].played_move;
-            score += self.search_history[side][prev.piece_moving()][prev.dest_square()].cont_hist[m.piece_moving()]
-                [m.dest_square()];
-
-            if ply > 1 {
-                let prev = stack[ply - 2].played_move;
+        let prevs = stack.prevs(ply);
+        for prev in prevs {
+            if prev != Move::NULL {
                 score += self.search_history[side][prev.piece_moving()][prev.dest_square()].cont_hist[m.piece_moving()]
                     [m.dest_square()];
-
-                if ply > 3 {
-                    let prev = stack[ply - 4].played_move;
-                    score += self.search_history[side][prev.piece_moving()][prev.dest_square()].cont_hist
-                        [m.piece_moving()][m.dest_square()];
-                }
             }
         }
         score
