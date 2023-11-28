@@ -5,11 +5,11 @@ rm pgnout.txt
 rm nohup.out
 
 nohup cutechess-cli \
--engine name=dev cmd=./target/release/chess-engine \
+-engine name=dev cmd=./target/release/quintessence \
 -engine name=main cmd=./main \
 -games 2 -rounds 50000 \
 -pgnout "pgnout.txt" \
--sprt elo0=0 elo1=3.0 alpha=0.05 beta=0.05 \
+-sprt elo0=0.0 elo1=3.0 alpha=0.05 beta=0.05 \
 -each proto=uci tc=8+0.08 stderr=stderr.txt \
 -openings order=random file="book.pgn" format=pgn \
 -concurrency 6 \

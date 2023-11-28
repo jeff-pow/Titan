@@ -1,4 +1,4 @@
-use std::ops::{Index, IndexMut};
+use core::ops::{Index, IndexMut};
 
 use crate::moves::{
     attack_boards::{
@@ -17,18 +17,19 @@ pub const NUM_SQUARES: usize = 64;
 
 impl Square {
     /// Function checks whether a shift is valid before executing it
-    pub fn checked_shift(self, dir: Direction) -> Option<Square> {
+    pub fn checked_shift(self, dir: Direction) -> Option<Self> {
         let s = self.bitboard().shift(dir);
         if s != Bitboard::EMPTY {
             Some(s.get_lsb())
         } else {
             None
         }
+        // (s != Bitboard::EMPTY).then_some(s.get_lsb())
     }
 
     /// Function does not check a shift's validity before returning it. Only to be used when the
     /// shifts validity has already been proven valid elsewhere
-    pub fn shift(self, dir: Direction) -> Square {
+    pub fn shift(self, dir: Direction) -> Self {
         self.bitboard().shift(dir).get_lsb()
     }
 
@@ -44,8 +45,8 @@ impl Square {
         self.0 >> 3
     }
 
-    pub fn flip_vertical(self) -> Square {
-        Square(self.0 ^ 56)
+    pub fn flip_vertical(self) -> Self {
+        Self(self.0 ^ 56)
     }
 
     /// File is the vertical column of the piece (x-coord)

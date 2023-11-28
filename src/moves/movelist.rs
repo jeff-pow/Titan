@@ -73,7 +73,7 @@ impl MoveList {
                 TTMOVE
             } else if let Some(promotion) = entry.m.promotion() {
                 match promotion {
-                    PieceName::Queen => QUEEN_PROMOTION,
+                    PieceName::Queen => QUEEN_PROMOTION + td.history.capt_hist(entry.m, board.to_move, board),
                     _ => BAD_PROMOTION,
                 }
             } else if let Some(c) = board.capture(entry.m) {
@@ -81,8 +81,10 @@ impl MoveList {
                     GOOD_CAPTURE
                 } else {
                     BAD_CAPTURE
+                    // TODO: Could possibly just use MVV instead of MVVLVA here
+                    // }) + c.value()
                 }) + MVV_LVA[board.piece_at(entry.m.origin_square()).unwrap()][c]
-                    + td.history.capt_hist(entry.m, board.to_move, c)
+                    + td.history.capt_hist(entry.m, board.to_move, board)
             } else if killers[0] == entry.m {
                 KILLER_ONE
             } else if killers[1] == entry.m {
