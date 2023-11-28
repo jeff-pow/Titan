@@ -156,22 +156,18 @@ impl MoveHistory {
     pub(crate) fn cont_hist(&self, m: Move, stack: &SearchStack, ply: i32, side: Color) -> i32 {
         let ply = ply as usize;
         let mut score = 0;
-        // let entry = &self.search_history[side][m.piece_moving()][m.dest_square()];
         if ply > 0 {
             let prev = stack[ply - 1].played_move;
-            // score += entry.cont_hist[prev.piece_moving()][prev.dest_square()];
             score += self.search_history[side][prev.piece_moving()][prev.dest_square()].cont_hist[m.piece_moving()]
                 [m.dest_square()];
 
             if ply > 1 {
                 let prev = stack[ply - 2].played_move;
-                // score += entry.cont_hist[prev.piece_moving()][prev.dest_square()];
                 score += self.search_history[side][prev.piece_moving()][prev.dest_square()].cont_hist[m.piece_moving()]
                     [m.dest_square()];
 
                 if ply > 3 {
                     let prev = stack[ply - 4].played_move;
-                    // score += entry.cont_hist[prev.piece_moving()][prev.dest_square()];
                     score += self.search_history[side][prev.piece_moving()][prev.dest_square()].cont_hist
                         [m.piece_moving()][m.dest_square()];
                 }
