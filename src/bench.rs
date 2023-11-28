@@ -1,24 +1,26 @@
 use std::{
-    sync::atomic::{AtomicU64, Ordering},
+    sync::atomic::{AtomicBool, AtomicU64, Ordering},
     time::Instant,
 };
 
 use crate::{
     board::fen::build_board,
-    search::{search::search, SearchInfo, SearchType},
+    search::{search::search, SearchInfo, SearchType, ThreadData},
+    types::pieces::Color,
 };
 
 pub fn bench() {
     let start = Instant::now();
     let count = AtomicU64::from(0);
     BENCH_POSITIONS.iter().for_each(|fen| {
-        let mut info = SearchInfo {
-            board: build_board(fen),
-            ..Default::default()
-        };
+        let halt = AtomicBool::new(false);
+        let stopped = AtomicBool::new(true);
+        let mut info = SearchInfo::new(&halt, &stopped);
+        info.board = build_board(fen);
         info.search_type = SearchType::Depth;
         info.max_depth = 16;
-        search(&mut info, false);
+        let mut thread = ThreadData::new(&info.transpos_table, &info.halt, Color::White);
+        // search(&mut thread, &mut info, false);
         count.fetch_add(info.search_stats.nodes_searched, Ordering::SeqCst);
     });
     let nodes = count.load(Ordering::SeqCst);

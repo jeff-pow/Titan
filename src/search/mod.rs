@@ -1,4 +1,5 @@
-use std::sync::atomic::AtomicBool;
+use std::default;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::Arc;
 
 use lazy_static::lazy_static;
@@ -36,18 +37,19 @@ pub const MIN_NMP_DEPTH: i32 = 3;
 pub const MIN_IIR_DEPTH: i32 = 4;
 
 #[derive(Clone)]
-pub struct SearchInfo {
+pub struct SearchInfo<'a> {
     pub board: Board,
     pub transpos_table: TranspositionTable,
     pub search_stats: SearchStats,
     pub game_time: GameTime,
     pub search_type: SearchType,
     pub max_depth: i32,
-    pub halt: Arc<AtomicBool>,
+    pub halt: &'a AtomicBool,
+    pub stopped: &'a AtomicBool,
 }
 
-impl Default for SearchInfo {
-    fn default() -> Self {
+impl<'a> SearchInfo<'a> {
+    pub(crate) fn new(halt: &'a AtomicBool, stopped: &'a AtomicBool) -> Self {
         Self {
             board: build_board(STARTING_FEN),
             transpos_table: TranspositionTable::new(TARGET_TABLE_SIZE_MB),
@@ -55,7 +57,8 @@ impl Default for SearchInfo {
             game_time: Default::default(),
             search_type: Default::default(),
             max_depth: MAX_SEARCH_DEPTH,
-            halt: Arc::new(AtomicBool::from(false)),
+            halt,
+            stopped,
         }
     }
 }
@@ -64,7 +67,7 @@ pub struct ThreadData<'a> {
     pub iter_max_depth: i32,
     pub transpos_table: &'a TranspositionTable,
     pub search_stats: SearchStats,
-    pub game_time: &'a GameTime,
+    pub game_time: GameTime,
     stack: [PlyEntry; MAX_SEARCH_DEPTH as usize],
     pub halt: &'a AtomicBool,
     pub current_line: Vec<Move>,
@@ -74,18 +77,13 @@ pub struct ThreadData<'a> {
 }
 
 impl<'a> ThreadData<'a> {
-    fn new(
-        transpos_table: &'a TranspositionTable,
-        halt: &'a AtomicBool,
-        game_time: &'a GameTime,
-        root_color: Color,
-    ) -> Self {
+    pub(crate) fn new(transpos_table: &'a TranspositionTable, halt: &'a AtomicBool, root_color: Color) -> Self {
         Self {
             iter_max_depth: 0,
             transpos_table,
             search_stats: SearchStats::default(),
-            game_time,
             stack: [PlyEntry::default(); MAX_SEARCH_DEPTH as usize],
+            game_time: GameTime::default(),
             halt,
             current_line: Vec::with_capacity(MAX_SEARCH_DEPTH as usize),
             sel_depth: 0,

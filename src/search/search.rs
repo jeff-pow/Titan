@@ -38,25 +38,18 @@ pub fn print_search_stats(info: &ThreadData, eval: i32, pv: &[Move]) {
     println!();
 }
 
-pub fn search(info: &mut SearchInfo, print_uci: bool) -> Move {
-    match info.search_type {
-        SearchType::Time => {
-            info.game_time.recommended_time(info.board.to_move);
-        }
-        SearchType::Depth => (),
-        SearchType::Infinite => (),
-    }
-    info.search_stats.start = Instant::now();
+pub fn search(td: &mut ThreadData, print_uci: bool) -> Move {
+    td.search_stats.start = Instant::now();
+    td.root_color = info.board.to_move;
 
-    let best_move = iterative_deepening(info, info.max_depth, print_uci);
+    let best_move = iterative_deepening(td, info, info.max_depth, print_uci);
 
     assert_ne!(best_move, Move::NULL);
 
     best_move
 }
 
-pub(crate) fn iterative_deepening(info: &mut SearchInfo, max_depth: i32, print_uci: bool) -> Move {
-    let mut td = ThreadData::new(&info.transpos_table, &info.halt, &info.game_time, info.board.to_move);
+pub(crate) fn iterative_deepening(td: &mut ThreadData, info: &mut SearchInfo, max_depth: i32, print_uci: bool) -> Move {
     let mut pv = Vec::new();
     let mut score_history = vec![info.board.evaluate()];
     td.iter_max_depth = 1;
@@ -76,7 +69,7 @@ pub(crate) fn iterative_deepening(info: &mut SearchInfo, max_depth: i32, print_u
         let alpha = max(prev_avg as i32 - delta, -INFINITY);
         let beta = min(prev_avg as i32 + delta, INFINITY);
 
-        let score = aspiration_windows(&mut td, &mut pv, alpha, beta, delta, &info.board);
+        let score = aspiration_windows(td, &mut pv, alpha, beta, delta, &info.board);
 
         if !pv.is_empty() {
             best_move = pv[0];

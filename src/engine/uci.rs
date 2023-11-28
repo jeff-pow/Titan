@@ -1,4 +1,4 @@
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, JoinHandle};
 use std::{io, time::Duration};
 
@@ -9,8 +9,8 @@ use crate::board::fen::parse_fen_from_buffer;
 use crate::board::zobrist::ZOBRIST;
 use crate::engine::perft::perft;
 use crate::moves::movegenerator::MG;
-use crate::search::get_reduction;
 use crate::search::search::search;
+use crate::search::{get_reduction, ThreadData};
 use crate::types::square::Square;
 use crate::{
     board::{
@@ -22,7 +22,7 @@ use crate::{
     types::pieces::Color,
 };
 
-fn handle_go(buffer: &str, search_info: &mut SearchInfo) -> Option<JoinHandle<()>> {
+fn handle_go(buffer: &str, search_info: &mut SearchInfo, thread: &mut ThreadData) -> Option<JoinHandle<()>> {
     search_info.halt.store(false, Ordering::SeqCst);
     search_info.transpos_table.age_up();
 
@@ -34,21 +34,28 @@ fn handle_go(buffer: &str, search_info: &mut SearchInfo) -> Option<JoinHandle<()
     } else if buffer.contains("wtime") {
         search_info.search_type = SearchType::Time;
         search_info.game_time = parse_time(buffer, search_info);
+        search_info.game_time.recommended_time(search_info.board.to_move);
+        thread.game_time = search_info.game_time;
     } else {
         search_info.search_type = SearchType::Infinite;
     }
 
-    let mut s = search_info.clone();
-    Some(thread::spawn(move || {
-        println!("bestmove {}", search(&mut s, true).to_san());
-        s.transpos_table.age_up();
-    }))
+    thread::scope(|s| {
+        let mut i = search_info.clone();
+        s.spawn(|| {
+            search(thread, &mut i, true);
+        });
+    });
+    None
 }
 
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
-    let mut search_info = SearchInfo::default();
+    let halt = AtomicBool::new(false);
+    let stopped = AtomicBool::new(true);
+    let mut search_info = SearchInfo::new(&halt, &stopped);
     let mut buffer = String::new();
+    let mut thread = ThreadData::new(&search_info.transpos_table, &search_info.halt, Color::White);
     // Calling this code will allow the global static zobrist and movegenerator constants to be
     // initialized before the engine enters play, so it doesn't waste playing time initializing
     // constants. A large difference in STC
@@ -57,7 +64,6 @@ pub fn main_loop() -> ! {
     let _ = get_reduction(0, 0);
     println!("option name Threads type spin default 1 min 1 max 1");
     println!("option name Hash type spin default 16 min 16 max 16");
-    let mut handle = None;
 
     loop {
         buffer.clear();
@@ -69,7 +75,7 @@ pub fn main_loop() -> ! {
         } else if buffer.starts_with("debug on") {
             println!("info string debug on");
         } else if buffer.starts_with("ucinewgame") {
-            search_info = SearchInfo::default();
+            search_info = SearchInfo::new(&halt, &stopped);
         } else if buffer.starts_with("eval") {
             println!("{} cp", search_info.board.evaluate());
         } else if buffer.starts_with("position") {
@@ -97,19 +103,18 @@ pub fn main_loop() -> ! {
         } else if buffer.starts_with("bench") {
             bench();
         } else if buffer.starts_with("clear") {
-            search_info = SearchInfo::default();
+            search_info = SearchInfo::new(&halt, &stopped);
+            thread = ThreadData::new(&search_info.transpos_table, &search_info.halt, Color::White);
             println!("Transposition table cleared");
         } else if buffer.starts_with("go") {
-            handle = handle_go(&buffer, &mut search_info);
+            handle_go(&buffer, &mut search_info, &mut thread);
         } else if buffer.contains("perft") {
             let mut iter = buffer.split_whitespace().skip(1);
             let depth = iter.next().unwrap().parse::<i32>().unwrap();
             perft(&search_info.board, depth);
         } else if buffer.starts_with("stop") {
             search_info.halt.store(true, Ordering::SeqCst);
-            if let Some(h) = handle.take() {
-                let _ = h.join();
-            }
+            while !search_info.stopped.load(Ordering::SeqCst) {}
             search_info.halt.store(false, Ordering::SeqCst);
         } else if buffer.starts_with("quit") {
             std::process::exit(0);
