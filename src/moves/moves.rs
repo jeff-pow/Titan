@@ -106,6 +106,10 @@ impl Move {
         Square(self.0 >> 6 & 0b111111)
     }
 
+    pub fn is_tactical(self, board: &Board) -> bool {
+        self.promotion().is_some() || self.is_en_passant() || board.occupancies().occupied(self.dest_square())
+    }
+
     pub fn as_u16(self) -> u16 {
         self.0 as u16
     }

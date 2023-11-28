@@ -131,7 +131,6 @@ dependencies = [
  "strum",
  "strum_macros",
  "wide",
-]
 
 [[package]]
 name = "quote"
