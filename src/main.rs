@@ -1,4 +1,6 @@
 #![allow(clippy::module_inception)]
+#![cfg_attr(feature = "simd", feature(stdsimd))]
+
 mod bench;
 mod board;
 mod engine;
