@@ -353,8 +353,9 @@ fn alpha_beta<const IS_PV: bool>(
             }
 
             if alpha >= beta {
-                if board.capture(m).is_none() {
-                    // Store a killer move if it is not a capture, but good enough to cause a beta cutoff
+                if is_quiet {
+                    // We don't want to store tactical killers, because they are obviously already
+                    // good.
                     // Also don't store killers that we have already stored
                     let ply = ply as usize;
                     // Store killer move

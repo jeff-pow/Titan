@@ -99,8 +99,9 @@ impl MoveHistory {
         update_history(i, depth, is_good);
     }
 
-    pub fn capt_hist(&self, m: Move, side: Color, capture: PieceName) -> i32 {
-        self.search_history[side][m.piece_moving()][m.dest_square()].capt_hist[capture]
+    pub fn capt_hist(&self, m: Move, side: Color, board: &Board) -> i32 {
+        let cap = capthist_capture(board, m);
+        self.search_history[side][m.piece_moving()][m.dest_square()].capt_hist[cap]
     }
 }
 
