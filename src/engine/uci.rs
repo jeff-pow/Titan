@@ -26,7 +26,7 @@ use crate::{
 pub fn main_loop() -> ! {
     let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
     let mut board = build_board(STARTING_FEN);
-    let mut buffer = String::new();
+    let mut msg: Option<String> = None;
     let halt = AtomicBool::new(false);
     let mut thread_pool = ThreadPool::new(&board, &transpos_table, &halt);
     // Calling this code will allow the global static zobrist and movegenerator constants to be
@@ -39,60 +39,65 @@ pub fn main_loop() -> ! {
     println!("option name Hash type spin default 16 min 16 max 16");
 
     loop {
-        buffer.clear();
-        io::stdin().read_line(&mut buffer).unwrap();
+        let input = if let Some(msg) = msg {
+            msg.clone()
+        } else {
+            let mut buffer = String::new();
+            io::stdin().read_line(&mut buffer).unwrap();
+            buffer
+        };
         thread_pool.total_nodes.store(0, Ordering::Relaxed);
 
-        if buffer.starts_with("isready") {
+        if input.starts_with("isready") {
             println!("readyok");
-        } else if buffer.starts_with("debug on") {
+        } else if input.starts_with("debug on") {
             println!("info string debug on");
-        } else if buffer.starts_with("ucinewgame") {
+        } else if input.starts_with("ucinewgame") {
             transpos_table.clear();
             halt.store(false, Ordering::Relaxed);
             thread_pool = ThreadPool::new(&board, &transpos_table, &halt);
-        } else if buffer.starts_with("eval") {
+        } else if input.starts_with("eval") {
             println!("{} cp", board.evaluate());
-        } else if buffer.starts_with("position") {
-            let vec: Vec<&str> = buffer.split_whitespace().collect();
+        } else if input.starts_with("position") {
+            let vec: Vec<&str> = input.split_whitespace().collect();
 
-            if buffer.contains("fen") {
+            if input.contains("fen") {
                 board = build_board(&parse_fen_from_buffer(&vec));
 
                 if vec.len() > 9 {
                     parse_moves(&vec, &mut board, 9);
                 }
-            } else if buffer.contains("startpos") {
+            } else if input.contains("startpos") {
                 board = build_board(fen::STARTING_FEN);
 
                 if vec.len() > 3 {
                     parse_moves(&vec, &mut board, 3);
                 }
             }
-        } else if buffer.eq("d\n") {
+        } else if input.eq("d\n") {
             dbg!(&board);
-        } else if buffer.eq("dbg\n") {
+        } else if input.eq("dbg\n") {
             dbg!(&board);
             board.debug_bitboards();
-        } else if buffer.starts_with("bench") {
+        } else if input.starts_with("bench") {
             bench();
-        } else if buffer.starts_with("clear") {
+        } else if input.starts_with("clear") {
             thread_pool.reset();
             println!("Transposition table cleared");
-        } else if buffer.starts_with("go") {
-            thread_pool.handle_go(&buffer, &board, &halt);
-        } else if buffer.contains("perft") {
-            let mut iter = buffer.split_whitespace().skip(1);
+        } else if input.starts_with("go") {
+            thread_pool.handle_go(&input, &board, &halt, &mut msg);
+        } else if input.contains("perft") {
+            let mut iter = input.split_whitespace().skip(1);
             let depth = iter.next().unwrap().parse::<i32>().unwrap();
             perft(&board, depth);
-        } else if buffer.starts_with("quit") {
+        } else if input.starts_with("quit") {
             std::process::exit(0);
-        } else if buffer.starts_with("uci") {
+        } else if input.starts_with("uci") {
             println!("id name Quintessence");
             println!("id author Jeff Powell");
             println!("uciok");
         } else {
-            println!("Command not handled: {}", buffer);
+            println!("Command not handled: {}", input);
         }
     }
 }

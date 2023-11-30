@@ -81,7 +81,7 @@ impl<'a> ThreadPool<'a> {
         self.searching.store(false, Ordering::Relaxed);
     }
 
-    pub fn handle_go(&mut self, buffer: &str, board: &Board, halt: &AtomicBool) {
+    pub fn handle_go(&mut self, buffer: &str, board: &Board, halt: &AtomicBool, msg: &mut Option<String>) {
         self.halt.store(false, Ordering::SeqCst);
 
         if buffer.contains("depth") {
