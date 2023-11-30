@@ -132,6 +132,14 @@ impl TranspositionTable {
         }
     }
 
+    pub fn clear(&self) {
+        self.vec.iter().for_each(|x| {
+            x.zobrist_hash.store(0, Ordering::Relaxed);
+            x.remainder.store(0, Ordering::Relaxed);
+        });
+        self.age.0.store(0, Ordering::Relaxed);
+    }
+
     fn age(&self) -> u64 {
         self.age.0.load(Ordering::Relaxed)
     }

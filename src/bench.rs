@@ -5,7 +5,8 @@ use std::{
 
 use crate::{
     board::fen::build_board,
-    search::{search::search, SearchInfo, SearchType, ThreadData},
+    engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB},
+    search::{search::search, thread::ThreadData, SearchType},
     types::pieces::Color,
 };
 
@@ -13,15 +14,14 @@ pub fn bench() {
     let start = Instant::now();
     let count = AtomicU64::from(0);
     BENCH_POSITIONS.iter().for_each(|fen| {
+        let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
+        let board = build_board(fen);
         let halt = AtomicBool::new(false);
-        let stopped = AtomicBool::new(true);
-        let mut info = SearchInfo::new(&halt, &stopped);
-        info.board = build_board(fen);
-        info.search_type = SearchType::Depth;
-        info.max_depth = 16;
-        let mut thread = ThreadData::new(&info.transpos_table, &info.halt, Color::White);
-        // search(&mut thread, &mut info, false);
-        count.fetch_add(info.search_stats.nodes_searched, Ordering::SeqCst);
+        let mut thread = ThreadData::new(&transpos_table, Color::White, &halt);
+        thread.max_depth = 16;
+        thread.search_type = SearchType::Depth;
+        search(&mut thread, false, board);
+        count.fetch_add(thread.nodes_searched, Ordering::SeqCst);
     });
     let nodes = count.load(Ordering::SeqCst);
     let time = start.elapsed().as_secs_f64();

@@ -1,6 +1,6 @@
 use crate::{
     board::board::Board,
-    search::{ThreadData, NUM_KILLER_MOVES},
+    search::{thread::ThreadData, NUM_KILLER_MOVES},
     types::pieces::PieceName,
 };
 use std::{mem::MaybeUninit, ops::Index};
