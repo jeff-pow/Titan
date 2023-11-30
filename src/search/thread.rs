@@ -40,7 +40,7 @@ pub struct ThreadData<'a> {
 impl<'a> ThreadData<'a> {
     pub(crate) fn new(transpos_table: &'a TranspositionTable, root_color: Color, halt: &'a AtomicBool) -> Self {
         Self {
-            max_depth: 0,
+            max_depth: MAX_SEARCH_DEPTH,
             iter_max_depth: 0,
             transpos_table,
             nodes_searched: 0,
@@ -99,7 +99,7 @@ impl<'a> ThreadPool<'a> {
 
         thread::scope(|s| {
             s.spawn(move || {
-                println!("{}", search(&mut self.main_thread, true, *board).to_san());
+                println!("bestmove {}", search(&mut self.main_thread, true, *board).to_san());
                 self.main_thread.transpos_table.age_up();
             });
             let mut s = String::new();

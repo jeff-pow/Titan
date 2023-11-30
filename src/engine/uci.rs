@@ -4,7 +4,7 @@ use std::{io, time::Duration};
 use itertools::Itertools;
 
 use crate::bench::bench;
-use crate::board::fen::parse_fen_from_buffer;
+use crate::board::fen::{parse_fen_from_buffer, STARTING_FEN};
 use crate::board::zobrist::ZOBRIST;
 use crate::engine::perft::perft;
 use crate::engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
@@ -25,7 +25,7 @@ use crate::{
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
     let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
-    let mut board = Board::default();
+    let mut board = build_board(STARTING_FEN);
     let mut buffer = String::new();
     let halt = AtomicBool::new(false);
     let mut thread_pool = ThreadPool::new(&board, &transpos_table, &halt);
