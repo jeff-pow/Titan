@@ -15,7 +15,6 @@ pub fn quiescence(ply: i32, mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: 
     }
 
     td.sel_depth = td.sel_depth.max(ply);
-    td.nodes_searched += 1;
 
     if ply >= MAX_SEARCH_DEPTH {
         return board.evaluate();
@@ -62,6 +61,7 @@ pub fn quiescence(ply: i32, mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: 
             continue;
         }
         td.current_line.push(m);
+        td.nodes_searched += 1;
         moves_searched += 1;
 
         // TODO: Implement delta pruning
