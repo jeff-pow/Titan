@@ -67,6 +67,7 @@ pub(crate) fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci:
         };
 
         // Create a window we think the actual evaluation of the position will fall within
+        // TODO: / 16000 instead of * 6.25e-5
         let delta = INIT_ASP + (prev_avg * prev_avg * 6.25e-5) as i32;
         let alpha = max(prev_avg as i32 - delta, -INFINITY);
         let beta = min(prev_avg as i32 + delta, INFINITY);
