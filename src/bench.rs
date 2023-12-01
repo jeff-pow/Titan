@@ -1,7 +1,4 @@
-use std::{
-    sync::atomic::{AtomicBool, AtomicU64, Ordering},
-    time::Instant,
-};
+use std::{sync::atomic::AtomicBool, time::Instant};
 
 use crate::{
     board::fen::build_board,
@@ -12,25 +9,23 @@ use crate::{
 
 pub fn bench() {
     let start = Instant::now();
-    let count = AtomicU64::from(0);
+
+    let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
+    let halt = AtomicBool::new(false);
+    let mut thread = ThreadData::new(&transpos_table, Color::White, &halt);
+    thread.max_depth = 16;
+    thread.search_type = SearchType::Depth;
+
+    let mut nodes = 0;
+
     BENCH_POSITIONS.iter().for_each(|fen| {
-        let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
         let board = build_board(fen);
-        let halt = AtomicBool::new(false);
-        let mut thread = ThreadData::new(&transpos_table, Color::White, &halt);
-        thread.max_depth = 16;
-        thread.search_type = SearchType::Depth;
         search(&mut thread, false, board);
-        count.fetch_add(thread.nodes_searched, Ordering::SeqCst);
+        nodes += thread.nodes_searched;
     });
-    let nodes = count.load(Ordering::SeqCst);
+
     let time = start.elapsed().as_secs_f64();
-    println!(
-        "{} nodes searched in {} seconds --- {} nps",
-        count.load(Ordering::SeqCst),
-        time,
-        (nodes as f64 / time) as u64
-    );
+    println!("{} nodes searched in {} seconds --- {} nps", nodes, time, (nodes as f64 / time) as u64);
 }
 
 const BENCH_POSITIONS: [&str; 50] = [

@@ -42,6 +42,7 @@ pub fn print_search_stats(info: &ThreadData, eval: i32, pv: &[Move]) {
 pub fn search(td: &mut ThreadData, print_uci: bool, board: Board) -> Move {
     td.game_time.search_start = Instant::now();
     td.root_color = board.to_move;
+    td.nodes_searched = 0;
 
     let best_move = iterative_deepening(td, &board, print_uci);
 
