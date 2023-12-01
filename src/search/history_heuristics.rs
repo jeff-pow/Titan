@@ -82,7 +82,7 @@ impl MoveHistory {
         self.search_history[side][m.piece_moving()][m.dest_square()].score
     }
 
-    pub fn set_counter(&mut self, side: Color, prev: Move, m: Move) {
+    fn set_counter(&mut self, side: Color, prev: Move, m: Move) {
         self.search_history[side][prev.piece_moving()][prev.dest_square()].counter = m;
     }
 
