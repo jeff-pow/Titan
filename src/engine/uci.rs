@@ -39,13 +39,14 @@ pub fn main_loop() -> ! {
     println!("option name Hash type spin default 16 min 16 max 16");
 
     loop {
-        let input = if let Some(msg) = msg {
-            msg.clone()
+        let input = if let Some(ref m) = msg {
+            m.clone()
         } else {
             let mut buffer = String::new();
             io::stdin().read_line(&mut buffer).unwrap();
             buffer
         };
+        msg = None;
         thread_pool.total_nodes.store(0, Ordering::Relaxed);
 
         if input.starts_with("isready") {
