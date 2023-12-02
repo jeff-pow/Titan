@@ -16,7 +16,7 @@ use crate::{
 
 use super::{
     game_time::GameTime,
-    history_heuristics::MoveHistory,
+    history_heuristics::HistoryTable,
     search::{search, MAX_SEARCH_DEPTH},
     PlyEntry, SearchType,
 };
@@ -31,7 +31,7 @@ pub struct ThreadData<'a> {
     pub halt: &'a AtomicBool,
     pub current_line: Vec<Move>,
     pub sel_depth: i32,
-    pub history: MoveHistory,
+    pub history: HistoryTable,
     pub root_color: Color,
     pub game_time: GameTime,
     pub search_type: SearchType,
@@ -47,7 +47,7 @@ impl<'a> ThreadData<'a> {
             stack: [PlyEntry::default(); MAX_SEARCH_DEPTH as usize],
             current_line: Vec::with_capacity(MAX_SEARCH_DEPTH as usize),
             sel_depth: 0,
-            history: MoveHistory::default(),
+            history: HistoryTable::default(),
             root_color,
             game_time: GameTime::default(),
             halt,
@@ -75,7 +75,7 @@ impl<'a> ThreadPool<'a> {
 
     pub fn reset(&mut self) {
         self.main_thread.transpos_table.clear();
-        self.main_thread.history = MoveHistory::default();
+        self.main_thread.history = HistoryTable::default();
         self.main_thread.nodes_searched = 0;
         self.halt.store(false, Ordering::Relaxed);
         self.searching.store(false, Ordering::Relaxed);

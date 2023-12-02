@@ -15,7 +15,7 @@ pub struct HistoryEntry {
 }
 
 #[derive(Clone)]
-pub struct MoveHistory {
+pub struct HistoryTable {
     search_history: Box<[[[HistoryEntry; 64]; 6]; 2]>,
 }
 
@@ -30,7 +30,7 @@ fn calc_bonus(depth: i32) -> i32 {
 
 fn update_history(score: &mut i32, depth: i32, is_good: bool) {
     let bonus = if is_good { 1 } else { -1 } * calc_bonus(depth);
-    *score += bonus - (*score * bonus.abs() / MAX_HIST_VAL);
+    *score += bonus - *score * bonus.abs() / MAX_HIST_VAL;
 }
 
 fn capthist_capture(board: &Board, m: Move) -> PieceName {
@@ -44,7 +44,7 @@ fn capthist_capture(board: &Board, m: Move) -> PieceName {
     }
 }
 
-impl MoveHistory {
+impl HistoryTable {
     pub fn update_histories(
         &mut self,
         best_move: Move,
@@ -105,7 +105,7 @@ impl MoveHistory {
     }
 }
 
-impl Default for MoveHistory {
+impl Default for HistoryTable {
     fn default() -> Self {
         Self {
             search_history: Box::new([[[HistoryEntry::default(); 64]; 6]; 2]),

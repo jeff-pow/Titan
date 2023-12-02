@@ -7,7 +7,7 @@ use crate::engine::transposition::EntryFlag;
 use crate::moves::movegenerator::MGT;
 use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
-use crate::search::INIT_ASP;
+use crate::search::{PlyEntry, INIT_ASP};
 
 use super::history_heuristics::MAX_HIST_VAL;
 use super::quiescence::quiescence;
@@ -43,6 +43,7 @@ pub fn search(td: &mut ThreadData, print_uci: bool, board: Board) -> Move {
     td.game_time.search_start = Instant::now();
     td.root_color = board.to_move;
     td.nodes_searched = 0;
+    td.stack = [PlyEntry::default(); MAX_SEARCH_DEPTH as usize];
 
     let best_move = iterative_deepening(td, &board, print_uci);
 
