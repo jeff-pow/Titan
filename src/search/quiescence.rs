@@ -39,7 +39,7 @@ pub fn quiescence(ply: i32, mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: 
     } else {
         board.generate_moves(MGT::CapturesOnly)
     };
-    moves.score_moves(board, table_move, td.stack[ply as usize].killers, td);
+    moves.score_moves(board, table_move, td.stack[ply].killers, td, ply);
 
     let mut best_score = if in_check { -INFINITY } else { board.evaluate() };
 
