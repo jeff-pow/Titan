@@ -72,7 +72,7 @@ impl HistoryTable {
         ply: i32,
     ) {
         if ply >= 1 {
-            assert_eq!(prev, stack[ply - 1].played_move);
+            assert_eq!(prev, stack[ply].played_move);
         }
         if best_move.is_tactical(board) {
             let cap = capthist_capture(board, best_move);
