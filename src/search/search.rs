@@ -209,6 +209,10 @@ fn alpha_beta<const IS_PV: bool>(
     td.stack[ply].static_eval = static_eval;
     let improving = !in_check && ply > 1 && static_eval > td.stack[ply - 2].static_eval;
 
+    // TODO: Killers should probably be reset here
+    // td.stack[ply + 1].killers[0] = Move::NULL;
+    // td.stack[ply + 1].killers[1] = Move::NULL;
+
     if !is_root && !IS_PV && !in_check {
         // Reverse futility pruning
         if static_eval - RFP_MULTIPLIER * depth / if improving { 2 } else { 1 } >= beta
@@ -223,6 +227,7 @@ fn alpha_beta<const IS_PV: bool>(
             let mut node_pvs = Vec::new();
             let mut new_b = board.to_owned();
             new_b.make_null_move();
+            td.stack[ply].played_move = Move::NULL;
             let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
             let mut null_eval = -alpha_beta::<false>(depth - r, -beta, -beta + 1, &mut node_pvs, td, &new_b, !cut_node);
             if null_eval >= beta {

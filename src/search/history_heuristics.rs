@@ -65,20 +65,19 @@ impl HistoryTable {
         best_move: Move,
         quiets_tried: &[Move],
         tacticals_tried: &[Move],
-        prev: Move,
+        _prev: Move,
         board: &Board,
         depth: i32,
         stack: &SearchStack,
         ply: i32,
     ) {
-        if ply >= 1 {
-            assert_eq!(prev, stack[ply].played_move);
-        }
         if best_move.is_tactical(board) {
             let cap = capthist_capture(board, best_move);
             self.update_capt_hist(best_move, board.to_move, cap, depth, true);
         } else {
-            self.set_counter(board.to_move, prev, best_move);
+            if ply > 0 && stack[ply - 1].played_move != Move::NULL {
+                self.set_counter(board.to_move, stack[ply - 1].played_move, best_move);
+            }
             self.update_quiet_history(best_move, true, board.to_move, depth);
             self.update_cont_hist(best_move, stack, ply, true, board.to_move, depth);
             // Only penalize quiets if best_move was quiet
@@ -134,10 +133,10 @@ impl HistoryTable {
 
     fn update_cont_hist(&mut self, m: Move, stack: &SearchStack, ply: i32, is_good: bool, side: Color, depth: i32) {
         let prevs = stack.prevs(ply);
+        let entry = &mut self.search_history[side][m.piece_moving()][m.dest_square()].cont_hist;
         for prev in prevs {
             if prev != Move::NULL {
-                let i = &mut self.search_history[side][prev.piece_moving()][prev.dest_square()].cont_hist
-                    [m.piece_moving()][m.dest_square()];
+                let i = &mut entry[prev.piece_moving()][prev.dest_square()];
                 update_history(i, depth, is_good);
             }
         }
@@ -148,8 +147,8 @@ impl HistoryTable {
         let prevs = stack.prevs(ply);
         for prev in prevs {
             if prev != Move::NULL {
-                score += self.search_history[side][prev.piece_moving()][prev.dest_square()].cont_hist[m.piece_moving()]
-                    [m.dest_square()];
+                score += self.search_history[side][m.piece_moving()][m.dest_square()].cont_hist[prev.piece_moving()]
+                    [prev.dest_square()];
             }
         }
         score

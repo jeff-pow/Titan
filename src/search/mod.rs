@@ -43,9 +43,8 @@ pub(crate) struct SearchStack {
 
 impl SearchStack {
     pub fn prev_move(&self, ply: i32) -> Move {
-        let index = ply;
-        if index >= 0 {
-            self[index].played_move
+        if ply >= 0 {
+            self[ply].played_move
         } else {
             Move::NULL
         }

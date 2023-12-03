@@ -61,6 +61,7 @@ pub fn quiescence(ply: i32, mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: 
             continue;
         }
         td.current_line.push(m);
+        td.stack[ply].played_move = m;
         td.nodes_searched += 1;
         moves_searched += 1;
 
