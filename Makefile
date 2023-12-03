@@ -11,3 +11,7 @@ openbench:
 
 simd:
 	cargo rustc --release --features simd -- -C target-cpu=native --emit link=$(NAME)
+
+bench:
+	cargo rustc --release --features simd -- -C target-cpu=native --emit link=$(NAME)
+	./$(NAME) bench

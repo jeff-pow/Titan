@@ -14,6 +14,11 @@ pub struct HistoryEntry {
     capt_hist: [i32; 5],
 }
 
+#[derive(Clone)]
+pub struct HistoryTable {
+    search_history: Box<[[[HistoryEntry; 64]; 6]; 2]>,
+}
+
 fn calc_bonus(depth: i32) -> i32 {
     // if depth > 13 {
     //     32
@@ -24,13 +29,8 @@ fn calc_bonus(depth: i32) -> i32 {
 }
 
 fn update_history(score: &mut i32, depth: i32, is_good: bool) {
-    let bonus = if is_good { calc_bonus(depth) } else { -calc_bonus(depth) };
-    *score += bonus - (*score * bonus.abs() / MAX_HIST_VAL);
-}
-
-#[derive(Clone)]
-pub struct MoveHistory {
-    search_history: Box<[[[HistoryEntry; 64]; 6]; 2]>,
+    let bonus = if is_good { 1 } else { -1 } * calc_bonus(depth);
+    *score += bonus - *score * bonus.abs() / MAX_HIST_VAL;
 }
 
 fn capthist_capture(board: &Board, m: Move) -> PieceName {
@@ -44,7 +44,7 @@ fn capthist_capture(board: &Board, m: Move) -> PieceName {
     }
 }
 
-impl MoveHistory {
+impl HistoryTable {
     pub fn update_histories(
         &mut self,
         best_move: Move,
@@ -62,12 +62,18 @@ impl MoveHistory {
             self.update_quiet_history(best_move, true, board.to_move, depth);
             // Only penalize quiets if best_move was quiet
             for m in quiets_tried {
+                if *m == best_move {
+                    continue;
+                }
                 self.update_quiet_history(*m, false, board.to_move, depth);
             }
         }
 
         // Always penalize tacticals since they should always be good no matter what the position
         for m in tacticals_tried {
+            if *m == best_move {
+                continue;
+            }
             let cap = capthist_capture(board, *m);
             self.update_capt_hist(*m, board.to_move, cap, depth, false);
         }
@@ -82,7 +88,7 @@ impl MoveHistory {
         self.search_history[side][m.piece_moving()][m.dest_square()].score
     }
 
-    pub fn set_counter(&mut self, side: Color, prev: Move, m: Move) {
+    fn set_counter(&mut self, side: Color, prev: Move, m: Move) {
         self.search_history[side][prev.piece_moving()][prev.dest_square()].counter = m;
     }
 
@@ -105,7 +111,7 @@ impl MoveHistory {
     }
 }
 
-impl Default for MoveHistory {
+impl Default for HistoryTable {
     fn default() -> Self {
         Self {
             search_history: Box::new([[[HistoryEntry::default(); 64]; 6]; 2]),

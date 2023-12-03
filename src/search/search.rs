@@ -7,13 +7,14 @@ use crate::engine::transposition::EntryFlag;
 use crate::moves::movegenerator::MGT;
 use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
-use crate::search::{ThreadData, INIT_ASP};
+use crate::search::{PlyEntry, INIT_ASP};
 
 use super::history_heuristics::MAX_HIST_VAL;
 use super::quiescence::quiescence;
+use super::thread::ThreadData;
 use super::{
-    get_reduction, store_pv, SearchInfo, SearchType, LMP_CONST, LMR_THRESHOLD, MAX_LMP_DEPTH, MAX_RFP_DEPTH,
-    MIN_IIR_DEPTH, MIN_LMR_DEPTH, MIN_NMP_DEPTH, RFP_MULTIPLIER,
+    get_reduction, store_pv, SearchType, LMP_CONST, LMR_THRESHOLD, MAX_LMP_DEPTH, MAX_RFP_DEPTH, MIN_IIR_DEPTH,
+    MIN_LMR_DEPTH, MIN_NMP_DEPTH, RFP_MULTIPLIER,
 };
 
 pub const CHECKMATE: i32 = 30000;
@@ -25,11 +26,11 @@ pub const MAX_SEARCH_DEPTH: i32 = 100;
 pub fn print_search_stats(info: &ThreadData, eval: i32, pv: &[Move]) {
     print!(
         "info time {} seldepth {} depth {} nodes {} nps {} score cp {} pv ",
-        info.search_stats.start.elapsed().as_millis(),
+        info.game_time.search_start.elapsed().as_millis(),
         info.sel_depth,
         info.iter_max_depth,
-        info.search_stats.nodes_searched,
-        (info.search_stats.nodes_searched as f64 / info.search_stats.start.elapsed().as_secs_f64()) as i64,
+        info.nodes_searched,
+        (info.nodes_searched as f64 / info.game_time.search_start.elapsed().as_secs_f64()) as i64,
         eval
     );
     for m in pv {
@@ -38,31 +39,26 @@ pub fn print_search_stats(info: &ThreadData, eval: i32, pv: &[Move]) {
     println!();
 }
 
-pub fn search(info: &mut SearchInfo, print_uci: bool) -> Move {
-    match info.search_type {
-        SearchType::Time => {
-            info.game_time.recommended_time(info.board.to_move);
-        }
-        SearchType::Depth => (),
-        SearchType::Infinite => (),
-    }
-    info.search_stats.start = Instant::now();
+pub fn search(td: &mut ThreadData, print_uci: bool, board: Board) -> Move {
+    td.game_time.search_start = Instant::now();
+    td.root_color = board.to_move;
+    td.nodes_searched = 0;
+    td.stack = [PlyEntry::default(); MAX_SEARCH_DEPTH as usize];
 
-    let best_move = iterative_deepening(info, info.max_depth, print_uci);
+    let best_move = iterative_deepening(td, &board, print_uci);
 
     assert_ne!(best_move, Move::NULL);
 
     best_move
 }
 
-pub(crate) fn iterative_deepening(info: &mut SearchInfo, max_depth: i32, print_uci: bool) -> Move {
-    let mut td = ThreadData::new(&info.transpos_table, &info.halt, &info.game_time, info.board.to_move);
+pub(crate) fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool) -> Move {
     let mut pv = Vec::new();
-    let mut score_history = vec![info.board.evaluate()];
+    let mut score_history = vec![board.evaluate()];
     td.iter_max_depth = 1;
     let mut best_move = Move::NULL;
 
-    while td.iter_max_depth <= max_depth {
+    while td.iter_max_depth <= td.max_depth {
         td.sel_depth = 0;
 
         let prev_avg = if td.iter_max_depth >= 2 {
@@ -72,11 +68,12 @@ pub(crate) fn iterative_deepening(info: &mut SearchInfo, max_depth: i32, print_u
         };
 
         // Create a window we think the actual evaluation of the position will fall within
+        // TODO: / 16000 instead of * 6.25e-5
         let delta = INIT_ASP + (prev_avg * prev_avg * 6.25e-5) as i32;
         let alpha = max(prev_avg as i32 - delta, -INFINITY);
         let beta = min(prev_avg as i32 + delta, INFINITY);
 
-        let score = aspiration_windows(&mut td, &mut pv, alpha, beta, delta, &info.board);
+        let score = aspiration_windows(td, &mut pv, alpha, beta, delta, board);
 
         if !pv.is_empty() {
             best_move = pv[0];
@@ -84,19 +81,17 @@ pub(crate) fn iterative_deepening(info: &mut SearchInfo, max_depth: i32, print_u
         score_history.push(score);
 
         if print_uci {
-            print_search_stats(&td, score, &pv);
+            print_search_stats(td, score, &pv);
         }
 
-        if info.search_type == SearchType::Time && info.game_time.soft_termination(info.search_stats.start) {
+        if td.search_type == SearchType::Time && td.game_time.soft_termination() {
             break;
         }
-        if info.halt.load(Ordering::SeqCst) {
+        if td.halt.load(Ordering::SeqCst) {
             break;
         }
         td.iter_max_depth += 1;
     }
-
-    info.search_stats.nodes_searched = td.search_stats.nodes_searched;
 
     assert_ne!(best_move, Move::NULL);
     best_move
@@ -141,10 +136,11 @@ fn alpha_beta<const IS_PV: bool>(
     let is_root = ply == 0;
     let in_check = board.in_check;
     td.sel_depth = td.sel_depth.max(ply);
-    if td.search_stats.nodes_searched % 1024 == 0
-        && (td.halt.load(Ordering::Relaxed) || td.game_time.hard_termination(td.search_stats.start))
-    {
-        return board.evaluate();
+
+    if td.halt.load(Ordering::Relaxed) || td.game_time.hard_termination() {
+        td.halt.store(true, Ordering::SeqCst);
+        // return board.evaluate();
+        return 0;
     }
 
     // Needed since the function can calculate extensions in cases where it finds itself in check
@@ -241,7 +237,6 @@ fn alpha_beta<const IS_PV: bool>(
     let mut moves = board.generate_moves(MGT::All);
     let mut legal_moves_searched = 0;
     moves.score_moves(board, table_move, td.stack[ply as usize].killers, td);
-    td.search_stats.nodes_searched += 1;
     let mut quiets_tried = Vec::new();
     let mut tacticals_tried = Vec::new();
 
@@ -272,6 +267,7 @@ fn alpha_beta<const IS_PV: bool>(
         if !new_b.make_move::<true>(m) {
             continue;
         }
+        td.nodes_searched += 1;
         if is_quiet {
             quiets_tried.push(m)
         } else {

@@ -1,16 +1,11 @@
 use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
 
 use lazy_static::lazy_static;
 
 use crate::board::board::Board;
-use crate::board::fen::{build_board, STARTING_FEN};
-use crate::engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
 use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
-use crate::types::pieces::Color;
 
-use self::history_heuristics::MoveHistory;
 use self::search::MAX_SEARCH_DEPTH;
 use self::{game_time::GameTime, search_stats::SearchStats};
 
@@ -20,6 +15,7 @@ pub mod quiescence;
 pub mod search;
 pub mod search_stats;
 pub mod see;
+pub mod thread;
 
 // Tunable Constants
 /// Initial aspiration window value
@@ -36,67 +32,18 @@ pub const MIN_NMP_DEPTH: i32 = 3;
 pub const MIN_IIR_DEPTH: i32 = 4;
 
 #[derive(Clone)]
-pub struct SearchInfo {
+pub struct SearchInfo<'a> {
     pub board: Board,
-    pub transpos_table: TranspositionTable,
     pub search_stats: SearchStats,
     pub game_time: GameTime,
     pub search_type: SearchType,
     pub max_depth: i32,
-    pub halt: Arc<AtomicBool>,
-}
-
-impl Default for SearchInfo {
-    fn default() -> Self {
-        Self {
-            board: build_board(STARTING_FEN),
-            transpos_table: TranspositionTable::new(TARGET_TABLE_SIZE_MB),
-            search_stats: Default::default(),
-            game_time: Default::default(),
-            search_type: Default::default(),
-            max_depth: MAX_SEARCH_DEPTH,
-            halt: Arc::new(AtomicBool::from(false)),
-        }
-    }
-}
-
-pub struct ThreadData<'a> {
-    pub iter_max_depth: i32,
-    pub transpos_table: &'a TranspositionTable,
-    pub search_stats: SearchStats,
-    pub game_time: &'a GameTime,
-    stack: [PlyEntry; MAX_SEARCH_DEPTH as usize],
     pub halt: &'a AtomicBool,
-    pub current_line: Vec<Move>,
-    pub sel_depth: i32,
-    pub history: MoveHistory,
-    pub root_color: Color,
-}
-
-impl<'a> ThreadData<'a> {
-    fn new(
-        transpos_table: &'a TranspositionTable,
-        halt: &'a AtomicBool,
-        game_time: &'a GameTime,
-        root_color: Color,
-    ) -> Self {
-        Self {
-            iter_max_depth: 0,
-            transpos_table,
-            search_stats: SearchStats::default(),
-            game_time,
-            stack: [PlyEntry::default(); MAX_SEARCH_DEPTH as usize],
-            halt,
-            current_line: Vec::with_capacity(MAX_SEARCH_DEPTH as usize),
-            sel_depth: 0,
-            history: MoveHistory::default(),
-            root_color,
-        }
-    }
+    pub searching: &'a AtomicBool,
 }
 
 #[derive(Clone, Copy, Default)]
-struct PlyEntry {
+pub struct PlyEntry {
     pub killers: [Move; 2],
     pub played_move: Move,
     pub static_eval: i32,
