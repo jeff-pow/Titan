@@ -5,7 +5,7 @@ rm pgnout.txt
 rm nohup.out
 
 nohup cutechess-cli \
--engine name=dev cmd=./target/release/quintessence \
+-engine name=dev cmd=./Quintessence \
 -engine name=main cmd=./main \
 -games 2 -rounds 50000 \
 -pgnout "pgnout.txt" \
@@ -14,3 +14,4 @@ nohup cutechess-cli \
 -openings order=random file="book.pgn" format=pgn \
 -concurrency 6 \
 -ratinginterval 10 \
+# -debug \

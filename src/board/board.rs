@@ -146,21 +146,25 @@ impl Board {
             != Bitboard::EMPTY
     }
 
-    pub fn place_piece(&mut self, piece_type: PieceName, color: Color, sq: Square) {
+    pub fn place_piece<const NNUE: bool>(&mut self, piece_type: PieceName, color: Color, sq: Square) {
         self.array_board[sq] = Some(Piece::new(piece_type, color));
         self.bitboards[piece_type] ^= sq.bitboard();
         self.color_occupancies[color] ^= sq.bitboard();
-        self.accumulator.add_feature(piece_type, color, sq);
         self.zobrist_hash ^= ZOBRIST.piece_square_hashes[color][piece_type][sq];
+        if NNUE {
+            self.accumulator.add_feature(piece_type, color, sq);
+        }
     }
 
-    fn remove_piece(&mut self, sq: Square) {
+    fn remove_piece<const NNUE: bool>(&mut self, sq: Square) {
         if let Some(piece) = self.array_board[sq] {
             self.array_board[sq] = None;
             self.bitboards[piece.name] ^= sq.bitboard();
             self.color_occupancies[piece.color] ^= sq.bitboard();
-            self.accumulator.remove_feature(piece.name, piece.color, sq);
             self.zobrist_hash ^= ZOBRIST.piece_square_hashes[piece.color][piece.name][sq];
+            if NNUE {
+                self.accumulator.remove_feature(piece.name, piece.color, sq);
+            }
         }
     }
 
@@ -270,45 +274,45 @@ impl Board {
     /// Function makes a move and modifies board state to reflect the move that just happened.
     /// Returns true if a move was legal, and false if it was illegal.
     #[must_use]
-    pub fn make_move(&mut self, m: Move) -> bool {
+    pub fn make_move<const NNUE: bool>(&mut self, m: Move) -> bool {
         let piece_moving = m.piece_moving();
         assert_eq!(piece_moving, m.piece_moving());
         let capture = self.capture(m);
-        self.remove_piece(m.dest_square());
-        self.place_piece(piece_moving, self.to_move, m.dest_square());
-        self.remove_piece(m.origin_square());
+        self.remove_piece::<NNUE>(m.dest_square());
+        self.place_piece::<NNUE>(piece_moving, self.to_move, m.dest_square());
+        self.remove_piece::<NNUE>(m.origin_square());
 
         // Move rooks if a castle move is applied
         if m.is_castle() {
             match m.castle_type() {
                 Castle::WhiteKing => {
-                    self.place_piece(PieceName::Rook, self.to_move, Square(5));
-                    self.remove_piece(Square(7));
+                    self.place_piece::<NNUE>(PieceName::Rook, self.to_move, Square(5));
+                    self.remove_piece::<NNUE>(Square(7));
                 }
                 Castle::WhiteQueen => {
-                    self.place_piece(PieceName::Rook, self.to_move, Square(3));
-                    self.remove_piece(Square(0));
+                    self.place_piece::<NNUE>(PieceName::Rook, self.to_move, Square(3));
+                    self.remove_piece::<NNUE>(Square(0));
                 }
                 Castle::BlackKing => {
-                    self.place_piece(PieceName::Rook, self.to_move, Square(61));
-                    self.remove_piece(Square(63));
+                    self.place_piece::<NNUE>(PieceName::Rook, self.to_move, Square(61));
+                    self.remove_piece::<NNUE>(Square(63));
                 }
                 Castle::BlackQueen => {
-                    self.place_piece(PieceName::Rook, self.to_move, Square(59));
-                    self.remove_piece(Square(56));
+                    self.place_piece::<NNUE>(PieceName::Rook, self.to_move, Square(59));
+                    self.remove_piece::<NNUE>(Square(56));
                 }
                 Castle::None => (),
             }
         } else if let Some(p) = m.promotion() {
-            self.remove_piece(m.dest_square());
-            self.place_piece(p, self.to_move, m.dest_square());
+            self.remove_piece::<NNUE>(m.dest_square());
+            self.place_piece::<NNUE>(p, self.to_move, m.dest_square());
         } else if m.is_en_passant() {
             match self.to_move {
                 Color::White => {
-                    self.remove_piece(m.dest_square().shift(South));
+                    self.remove_piece::<NNUE>(m.dest_square().shift(South));
                 }
                 Color::Black => {
-                    self.remove_piece(m.dest_square().shift(North));
+                    self.remove_piece::<NNUE>(m.dest_square().shift(North));
                 }
             }
         }
@@ -491,14 +495,14 @@ mod board_tests {
     #[test]
     fn test_place_piece() {
         let mut board = Board::default();
-        board.place_piece(Rook, Color::White, Square(0));
+        board.place_piece::<false>(Rook, Color::White, Square(0));
         assert!(board.bitboard(Color::White, PieceName::Rook).occupied(Square(0)));
     }
 
     #[test]
     fn test_remove_piece() {
         let mut board = fen::build_board(fen::STARTING_FEN);
-        board.remove_piece(Square(0));
+        board.remove_piece::<false>(Square(0));
         assert!(board.bitboard(Color::White, PieceName::Rook).empty(Square(0)));
         assert!(board.occupancies().empty(Square(0)));
     }

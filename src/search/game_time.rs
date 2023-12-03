@@ -18,18 +18,19 @@ pub struct GameTime {
     pub rec_time: Duration,
     /// Max time the side may spend on the move
     pub max_time: Duration,
+    pub search_start: Instant,
 }
 
 impl GameTime {
     /// Returns true if engine is unlikely to finish another depth of iterative deepening before
     /// time runs out for this search
-    pub fn soft_termination(&self, search_start: Instant) -> bool {
-        search_start.elapsed() > self.rec_time
+    pub fn soft_termination(&self) -> bool {
+        self.search_start.elapsed() > self.rec_time
     }
 
     /// Returns true if engine has used the max time allotted to this search
-    pub fn hard_termination(&self, search_start: Instant) -> bool {
-        search_start.elapsed() > self.max_time
+    pub fn hard_termination(&self) -> bool {
+        self.search_start.elapsed() > self.max_time
     }
 
     /// Calculates a recommended amount of time to spend on a given search.
@@ -50,6 +51,7 @@ impl Default for GameTime {
             movestogo: Default::default(),
             rec_time: Duration::MAX,
             max_time: Duration::MAX,
+            search_start: Instant::now(),
         }
     }
 }
