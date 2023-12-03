@@ -64,7 +64,7 @@ impl MoveList {
         self.swap(max_idx, idx);
     }
 
-    pub fn score_moves(
+    pub(crate) fn score_moves(
         &mut self,
         board: &Board,
         table_move: Move,

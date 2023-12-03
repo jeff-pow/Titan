@@ -7,7 +7,7 @@ use crate::engine::transposition::EntryFlag;
 use crate::moves::movegenerator::MGT;
 use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
-use crate::search::{PlyEntry, INIT_ASP};
+use crate::search::{SearchStack, INIT_ASP};
 
 use super::history_heuristics::MAX_HIST_VAL;
 use super::quiescence::quiescence;
@@ -43,7 +43,7 @@ pub fn search(td: &mut ThreadData, print_uci: bool, board: Board) -> Move {
     td.game_time.search_start = Instant::now();
     td.root_color = board.to_move;
     td.nodes_searched = 0;
-    td.stack = [PlyEntry::default(); MAX_SEARCH_DEPTH as usize];
+    td.stack = SearchStack::default();
 
     let best_move = iterative_deepening(td, &board, print_uci);
 
@@ -236,7 +236,7 @@ fn alpha_beta<const IS_PV: bool>(
 
     let mut moves = board.generate_moves(MGT::All);
     let mut legal_moves_searched = 0;
-    moves.score_moves(board, table_move, td.stack[ply as usize].killers, td);
+    moves.score_moves(board, table_move, td.stack[ply].killers, td, ply);
 
     let mut quiets_tried = Vec::new();
     let mut tacticals_tried = Vec::new();
@@ -268,13 +268,13 @@ fn alpha_beta<const IS_PV: bool>(
         if !new_b.make_move::<true>(m) {
             continue;
         }
-        td.nodes_searched += 1;
         if is_quiet {
             quiets_tried.push(m)
         } else {
             tacticals_tried.push(m)
         };
 
+        td.nodes_searched += 1;
         td.current_line.push(m);
         td.stack[ply].played_move = m;
         let mut node_pvs = Vec::new();

@@ -58,8 +58,7 @@ fn capthist_capture(board: &Board, m: Move) -> PieceName {
     }
 }
 
-
-impl MoveHistory {
+impl HistoryTable {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn update_histories(
         &mut self,
