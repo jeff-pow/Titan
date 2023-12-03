@@ -74,8 +74,8 @@ impl MoveList {
     ) {
         for i in 0..self.len {
             let entry = &mut self.arr[i];
-            let prev = td.current_line.last().unwrap_or(&Move::NULL);
-            let counter = td.history.get_counter(board.to_move, *prev);
+            let prev = td.stack.prev_move(ply - 1);
+            let counter = td.history.get_counter(board.to_move, prev);
             entry.score = if entry.m == table_move {
                 TTMOVE
             } else if let Some(promotion) = entry.m.promotion() {

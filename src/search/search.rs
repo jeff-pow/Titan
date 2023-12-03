@@ -280,7 +280,6 @@ fn alpha_beta<const IS_PV: bool>(
         };
 
         td.nodes_searched += 1;
-        td.current_line.push(m);
         td.stack[ply].played_move = m;
         let mut node_pvs = Vec::new();
 
@@ -338,7 +337,6 @@ fn alpha_beta<const IS_PV: bool>(
         };
 
         legal_moves_searched += 1;
-        td.current_line.pop();
 
         if eval > best_score {
             best_score = eval;
@@ -351,25 +349,16 @@ fn alpha_beta<const IS_PV: bool>(
 
             if alpha >= beta {
                 if is_quiet {
-                    // We don't want to store tactical killers, because they are obviously already
+                    // We don't want to store tactical moves, because they are obviously already
                     // good.
                     // Also don't store killers that we have already stored
-                    // Store killer move
                     if td.stack[ply].killers[0] != m {
                         td.stack[ply].killers[1] = td.stack[ply].killers[0];
                         td.stack[ply].killers[0] = m;
                     }
                 }
-                td.history.update_histories(
-                    m,
-                    &quiets_tried,
-                    &tacticals_tried,
-                    *td.current_line.last().unwrap_or(&Move::NULL),
-                    board,
-                    depth,
-                    &td.stack,
-                    ply,
-                );
+                td.history
+                    .update_histories(m, &quiets_tried, &tacticals_tried, board, depth, &td.stack, ply);
                 break;
             }
         }

@@ -65,7 +65,6 @@ impl HistoryTable {
         best_move: Move,
         quiets_tried: &[Move],
         tacticals_tried: &[Move],
-        _prev: Move,
         board: &Board,
         depth: i32,
         stack: &SearchStack,
@@ -75,8 +74,8 @@ impl HistoryTable {
             let cap = capthist_capture(board, best_move);
             self.update_capt_hist(best_move, board.to_move, cap, depth, true);
         } else {
-            if ply > 0 && stack[ply - 1].played_move != Move::NULL {
-                self.set_counter(board.to_move, stack[ply - 1].played_move, best_move);
+            if stack.prev_move(ply - 1) != Move::NULL {
+                self.set_counter(board.to_move, stack.prev_move(ply - 1), best_move);
             }
             self.update_quiet_history(best_move, true, board.to_move, depth);
             self.update_cont_hist(best_move, stack, ply, true, board.to_move, depth);
@@ -132,7 +131,7 @@ impl HistoryTable {
     }
 
     fn update_cont_hist(&mut self, m: Move, stack: &SearchStack, ply: i32, is_good: bool, side: Color, depth: i32) {
-        let prevs = stack.prevs(ply);
+        let prevs = stack.cont_hist_prevs(ply);
         let entry = &mut self.search_history[side][m.piece_moving()][m.dest_square()].cont_hist;
         for prev in prevs {
             if prev != Move::NULL {
@@ -144,7 +143,7 @@ impl HistoryTable {
 
     pub(crate) fn cont_hist(&self, m: Move, stack: &SearchStack, ply: i32, side: Color) -> i32 {
         let mut score = 0;
-        let prevs = stack.prevs(ply);
+        let prevs = stack.cont_hist_prevs(ply);
         for prev in prevs {
             if prev != Move::NULL {
                 score += self.search_history[side][m.piece_moving()][m.dest_square()].cont_hist[prev.piece_moving()]

@@ -60,7 +60,6 @@ pub fn quiescence(ply: i32, mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: 
         if !new_b.make_move::<true>(m) {
             continue;
         }
-        td.current_line.push(m);
         td.stack[ply].played_move = m;
         td.nodes_searched += 1;
         moves_searched += 1;
@@ -68,8 +67,6 @@ pub fn quiescence(ply: i32, mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: 
         // TODO: Implement delta pruning
 
         let eval = -quiescence(ply + 1, -beta, -alpha, &mut node_pvs, td, &new_b);
-
-        td.current_line.pop();
 
         if eval > best_score {
             best_score = eval;

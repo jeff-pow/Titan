@@ -50,8 +50,12 @@ impl SearchStack {
         }
     }
 
-    pub fn prevs(&self, ply: i32) -> [Move; 2] {
-        [self.prev_move(ply - 1), self.prev_move(ply - 2)]
+    pub fn cont_hist_prevs(&self, ply: i32) -> [Move; 3] {
+        [
+            self.prev_move(ply - 1),
+            self.prev_move(ply - 2),
+            self.prev_move(ply - 4),
+        ]
     }
 }
 

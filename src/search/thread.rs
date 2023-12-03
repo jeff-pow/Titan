@@ -10,7 +10,6 @@ use std::{
 use crate::{
     board::board::Board,
     engine::{transposition::TranspositionTable, uci::parse_time},
-    moves::moves::Move,
     types::pieces::Color,
 };
 
@@ -29,7 +28,6 @@ pub(crate) struct ThreadData<'a> {
     pub nodes_searched: u64,
     pub stack: SearchStack,
     pub halt: &'a AtomicBool,
-    pub current_line: Vec<Move>,
     pub sel_depth: i32,
     pub history: HistoryTable,
     pub root_color: Color,
@@ -45,7 +43,6 @@ impl<'a> ThreadData<'a> {
             transpos_table,
             nodes_searched: 0,
             stack: SearchStack::default(),
-            current_line: Vec::with_capacity(MAX_SEARCH_DEPTH as usize),
             sel_depth: 0,
             history: HistoryTable::default(),
             root_color,
