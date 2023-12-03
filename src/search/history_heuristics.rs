@@ -62,12 +62,18 @@ impl HistoryTable {
             self.update_quiet_history(best_move, true, board.to_move, depth);
             // Only penalize quiets if best_move was quiet
             for m in quiets_tried {
+                if *m == best_move {
+                    continue;
+                }
                 self.update_quiet_history(*m, false, board.to_move, depth);
             }
         }
 
         // Always penalize tacticals since they should always be good no matter what the position
         for m in tacticals_tried {
+            if *m == best_move {
+                continue;
+            }
             let cap = capthist_capture(board, *m);
             self.update_capt_hist(*m, board.to_move, cap, depth, false);
         }
