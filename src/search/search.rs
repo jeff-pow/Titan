@@ -136,8 +136,12 @@ fn alpha_beta<const IS_PV: bool>(
     let is_root = ply == 0;
     let in_check = board.in_check;
     td.sel_depth = td.sel_depth.max(ply);
-    if td.nodes_searched % 1024 == 0 && (td.halt.load(Ordering::Relaxed) || td.game_time.hard_termination()) {
-        return board.evaluate();
+    if
+    /*td.nodes_searched % 1024 == 0 &&*/
+    (td.halt.load(Ordering::Relaxed) || td.game_time.hard_termination()) {
+        td.halt.store(true, Ordering::SeqCst);
+        // return board.evaluate();
+        return 0;
     }
 
     // Needed since the function can calculate extensions in cases where it finds itself in check

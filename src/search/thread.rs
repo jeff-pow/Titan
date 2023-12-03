@@ -105,11 +105,10 @@ impl<'a> ThreadPool<'a> {
             let mut s = String::new();
             io::stdin().read_line(&mut s).unwrap();
             match s.as_str().trim() {
-                // "isready" => println!("readyok"),
+                "isready" => println!("readyok"),
                 "quit" => std::process::exit(0),
                 "stop" => halt.store(true, Ordering::Relaxed),
                 _ => {
-                    println!("huh thats weird: {}", s);
                     *msg = Some(s);
                 }
             }
