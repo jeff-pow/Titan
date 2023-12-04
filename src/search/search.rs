@@ -7,7 +7,7 @@ use crate::engine::transposition::EntryFlag;
 use crate::moves::movegenerator::MGT;
 use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
-use crate::search::{PlyEntry, INIT_ASP};
+use crate::search::{SearchStack, INIT_ASP};
 
 use super::history_heuristics::MAX_HIST_VAL;
 use super::quiescence::quiescence;
@@ -43,7 +43,7 @@ pub fn search(td: &mut ThreadData, print_uci: bool, board: Board) -> Move {
     td.game_time.search_start = Instant::now();
     td.root_color = board.to_move;
     td.nodes_searched = 0;
-    td.stack = [PlyEntry::default(); MAX_SEARCH_DEPTH as usize];
+    td.stack = SearchStack::default();
 
     let best_move = iterative_deepening(td, &board, print_uci);
 
@@ -206,8 +206,12 @@ fn alpha_beta<const IS_PV: bool>(
     } else {
         board.evaluate()
     };
-    td.stack[ply as usize].static_eval = static_eval;
-    let improving = !in_check && ply > 1 && static_eval > td.stack[ply as usize - 2].static_eval;
+    td.stack[ply].static_eval = static_eval;
+    let improving = !in_check && ply > 1 && static_eval > td.stack[ply - 2].static_eval;
+
+    // TODO: Killers should probably be reset here
+    // td.stack[ply + 1].killers[0] = Move::NULL;
+    // td.stack[ply + 1].killers[1] = Move::NULL;
 
     if !is_root && !IS_PV && !in_check {
         // Reverse futility pruning
@@ -223,6 +227,7 @@ fn alpha_beta<const IS_PV: bool>(
             let mut node_pvs = Vec::new();
             let mut new_b = board.to_owned();
             new_b.make_null_move();
+            td.stack[ply].played_move = Move::NULL;
             let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
             let mut null_eval = -alpha_beta::<false>(depth - r, -beta, -beta + 1, &mut node_pvs, td, &new_b, !cut_node);
             if null_eval >= beta {
@@ -236,7 +241,8 @@ fn alpha_beta<const IS_PV: bool>(
 
     let mut moves = board.generate_moves(MGT::All);
     let mut legal_moves_searched = 0;
-    moves.score_moves(board, table_move, td.stack[ply as usize].killers, td);
+    moves.score_moves(board, table_move, td.stack[ply].killers, td, ply);
+
     let mut quiets_tried = Vec::new();
     let mut tacticals_tried = Vec::new();
 
@@ -267,15 +273,14 @@ fn alpha_beta<const IS_PV: bool>(
         if !new_b.make_move::<true>(m) {
             continue;
         }
-        td.nodes_searched += 1;
         if is_quiet {
             quiets_tried.push(m)
         } else {
             tacticals_tried.push(m)
         };
 
-        td.current_line.push(m);
-        td.stack[ply as usize].played_move = m;
+        td.nodes_searched += 1;
+        td.stack[ply].played_move = m;
         let mut node_pvs = Vec::new();
 
         // Calculate the reduction used in LMR
@@ -332,7 +337,6 @@ fn alpha_beta<const IS_PV: bool>(
         };
 
         legal_moves_searched += 1;
-        td.current_line.pop();
 
         if eval > best_score {
             best_score = eval;
@@ -345,24 +349,16 @@ fn alpha_beta<const IS_PV: bool>(
 
             if alpha >= beta {
                 if is_quiet {
-                    // We don't want to store tactical killers, because they are obviously already
+                    // We don't want to store tactical moves, because they are obviously already
                     // good.
                     // Also don't store killers that we have already stored
-                    let ply = ply as usize;
-                    // Store killer move
                     if td.stack[ply].killers[0] != m {
                         td.stack[ply].killers[1] = td.stack[ply].killers[0];
                         td.stack[ply].killers[0] = m;
                     }
                 }
-                td.history.update_histories(
-                    m,
-                    &quiets_tried,
-                    &tacticals_tried,
-                    *td.current_line.last().unwrap_or(&Move::NULL),
-                    board,
-                    depth,
-                );
+                td.history
+                    .update_histories(m, &quiets_tried, &tacticals_tried, board, depth, &td.stack, ply);
                 break;
             }
         }

@@ -10,7 +10,6 @@ use std::{
 use crate::{
     board::board::Board,
     engine::{transposition::TranspositionTable, uci::parse_time},
-    moves::moves::Move,
     types::pieces::Color,
 };
 
@@ -18,18 +17,17 @@ use super::{
     game_time::GameTime,
     history_heuristics::HistoryTable,
     search::{search, MAX_SEARCH_DEPTH},
-    PlyEntry, SearchType,
+    SearchStack, SearchType,
 };
 
 #[derive(Clone)]
-pub struct ThreadData<'a> {
+pub(crate) struct ThreadData<'a> {
     pub max_depth: i32,
     pub iter_max_depth: i32,
     pub transpos_table: &'a TranspositionTable,
     pub nodes_searched: u64,
-    pub stack: [PlyEntry; MAX_SEARCH_DEPTH as usize],
+    pub stack: SearchStack,
     pub halt: &'a AtomicBool,
-    pub current_line: Vec<Move>,
     pub sel_depth: i32,
     pub history: HistoryTable,
     pub root_color: Color,
@@ -44,8 +42,7 @@ impl<'a> ThreadData<'a> {
             iter_max_depth: 0,
             transpos_table,
             nodes_searched: 0,
-            stack: [PlyEntry::default(); MAX_SEARCH_DEPTH as usize],
-            current_line: Vec::with_capacity(MAX_SEARCH_DEPTH as usize),
+            stack: SearchStack::default(),
             sel_depth: 0,
             history: HistoryTable::default(),
             root_color,

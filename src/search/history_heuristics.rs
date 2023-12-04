@@ -4,14 +4,28 @@ use crate::{
     types::pieces::{Color, PieceName},
 };
 
+use super::SearchStack;
+
 pub const MAX_HIST_VAL: i32 = i16::MAX as i32;
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 pub struct HistoryEntry {
     score: i32,
     counter: Move,
     // King can't be captured, so it doesn't need an entry
     capt_hist: [i32; 5],
+    cont_hist: [[i32; 64]; 6],
+}
+
+impl Default for HistoryEntry {
+    fn default() -> Self {
+        Self {
+            score: Default::default(),
+            counter: Default::default(),
+            capt_hist: Default::default(),
+            cont_hist: [[0; 64]; 6],
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -45,27 +59,33 @@ fn capthist_capture(board: &Board, m: Move) -> PieceName {
 }
 
 impl HistoryTable {
-    pub fn update_histories(
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn update_histories(
         &mut self,
         best_move: Move,
         quiets_tried: &[Move],
         tacticals_tried: &[Move],
-        prev: Move,
         board: &Board,
         depth: i32,
+        stack: &SearchStack,
+        ply: i32,
     ) {
         if best_move.is_tactical(board) {
             let cap = capthist_capture(board, best_move);
             self.update_capt_hist(best_move, board.to_move, cap, depth, true);
         } else {
-            self.set_counter(board.to_move, prev, best_move);
+            if stack.prev_move(ply - 1) != Move::NULL {
+                self.set_counter(board.to_move, stack.prev_move(ply - 1), best_move);
+            }
             self.update_quiet_history(best_move, true, board.to_move, depth);
+            self.update_cont_hist(best_move, stack, ply, true, board.to_move, depth);
             // Only penalize quiets if best_move was quiet
             for m in quiets_tried {
                 if *m == best_move {
                     continue;
                 }
                 self.update_quiet_history(*m, false, board.to_move, depth);
+                self.update_cont_hist(*m, stack, ply, false, board.to_move, depth)
             }
         }
 
@@ -84,8 +104,8 @@ impl HistoryTable {
         update_history(i, depth, is_good);
     }
 
-    pub fn quiet_history(&self, m: Move, side: Color) -> i32 {
-        self.search_history[side][m.piece_moving()][m.dest_square()].score
+    pub(crate) fn quiet_history(&self, m: Move, side: Color, stack: &SearchStack, ply: i32) -> i32 {
+        self.search_history[side][m.piece_moving()][m.dest_square()].score + self.cont_hist(m, stack, ply, side)
     }
 
     fn set_counter(&mut self, side: Color, prev: Move, m: Move) {
@@ -108,6 +128,29 @@ impl HistoryTable {
     pub fn capt_hist(&self, m: Move, side: Color, board: &Board) -> i32 {
         let cap = capthist_capture(board, m);
         self.search_history[side][m.piece_moving()][m.dest_square()].capt_hist[cap]
+    }
+
+    fn update_cont_hist(&mut self, m: Move, stack: &SearchStack, ply: i32, is_good: bool, side: Color, depth: i32) {
+        let prevs = stack.cont_hist_prevs(ply);
+        let entry = &mut self.search_history[side][m.piece_moving()][m.dest_square()].cont_hist;
+        for prev in prevs {
+            if prev != Move::NULL {
+                let i = &mut entry[prev.piece_moving()][prev.dest_square()];
+                update_history(i, depth, is_good);
+            }
+        }
+    }
+
+    pub(crate) fn cont_hist(&self, m: Move, stack: &SearchStack, ply: i32, side: Color) -> i32 {
+        let mut score = 0;
+        let prevs = stack.cont_hist_prevs(ply);
+        for prev in prevs {
+            if prev != Move::NULL {
+                score += self.search_history[side][m.piece_moving()][m.dest_square()].cont_hist[prev.piece_moving()]
+                    [prev.dest_square()];
+            }
+        }
+        score
     }
 }
 

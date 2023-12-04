@@ -1,13 +1,11 @@
-use std::sync::atomic::AtomicBool;
+use std::ops::{Index, IndexMut};
 
 use lazy_static::lazy_static;
 
-use crate::board::board::Board;
 use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
 
 use self::search::MAX_SEARCH_DEPTH;
-use self::{game_time::GameTime, search_stats::SearchStats};
 
 pub mod game_time;
 pub mod history_heuristics;
@@ -31,22 +29,56 @@ pub const MAX_RFP_DEPTH: i32 = 9;
 pub const MIN_NMP_DEPTH: i32 = 3;
 pub const MIN_IIR_DEPTH: i32 = 4;
 
-#[derive(Clone)]
-pub struct SearchInfo<'a> {
-    pub board: Board,
-    pub search_stats: SearchStats,
-    pub game_time: GameTime,
-    pub search_type: SearchType,
-    pub max_depth: i32,
-    pub halt: &'a AtomicBool,
-    pub searching: &'a AtomicBool,
-}
-
 #[derive(Clone, Copy, Default)]
 pub struct PlyEntry {
     pub killers: [Move; 2],
     pub played_move: Move,
     pub static_eval: i32,
+}
+
+#[derive(Clone)]
+pub(crate) struct SearchStack {
+    stack: [PlyEntry; MAX_SEARCH_DEPTH as usize],
+}
+
+impl SearchStack {
+    pub fn prev_move(&self, ply: i32) -> Move {
+        if ply >= 0 {
+            self[ply].played_move
+        } else {
+            Move::NULL
+        }
+    }
+
+    pub fn cont_hist_prevs(&self, ply: i32) -> [Move; 3] {
+        [
+            self.prev_move(ply - 1),
+            self.prev_move(ply - 2),
+            self.prev_move(ply - 4),
+        ]
+    }
+}
+
+impl Default for SearchStack {
+    fn default() -> Self {
+        Self {
+            stack: [PlyEntry::default(); MAX_SEARCH_DEPTH as usize],
+        }
+    }
+}
+
+impl Index<i32> for SearchStack {
+    type Output = PlyEntry;
+
+    fn index(&self, index: i32) -> &Self::Output {
+        &self.stack[index as usize]
+    }
+}
+
+impl IndexMut<i32> for SearchStack {
+    fn index_mut(&mut self, index: i32) -> &mut Self::Output {
+        &mut self.stack[index as usize]
+    }
 }
 
 #[derive(Clone, Copy, Default, PartialEq)]
