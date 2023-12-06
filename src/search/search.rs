@@ -71,7 +71,8 @@ pub(crate) fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci:
 fn aspiration_windows(td: &mut ThreadData, pv: &mut Vec<Move>, prev_score: i32, board: &Board) -> i32 {
     let mut alpha = -INFINITY;
     let mut beta = INFINITY;
-    let mut delta = INIT_ASP;
+    let mut delta = INIT_ASP + prev_score * prev_score / 10000;
+
     if td.iter_max_depth >= 4 {
         alpha = alpha.max(prev_score - delta);
         beta = beta.min(prev_score + delta);
