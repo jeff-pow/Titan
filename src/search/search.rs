@@ -42,7 +42,8 @@ pub(crate) fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci:
     td.iter_max_depth = 1;
     let mut best_move = Move::NULL;
 
-    while td.iter_max_depth <= td.max_depth {
+    for depth in 0..=td.max_depth {
+        td.iter_max_depth = depth;
         td.sel_depth = 0;
 
         // TODO: Depth - 1 instead of depth - 2
@@ -75,7 +76,6 @@ pub(crate) fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci:
         if td.halt.load(Ordering::SeqCst) {
             break;
         }
-        td.iter_max_depth += 1;
     }
 
     assert_ne!(best_move, Move::NULL);
