@@ -10,6 +10,7 @@ use std::{
 use crate::{
     board::board::Board,
     engine::{transposition::TranspositionTable, uci::parse_time},
+    moves::moves::Move,
     types::pieces::Color,
 };
 
@@ -50,6 +51,22 @@ impl<'a> ThreadData<'a> {
             halt,
             search_type: SearchType::default(),
         }
+    }
+
+    pub fn print_search_stats(&self, eval: i32, pv: &[Move]) {
+        print!(
+            "info time {} seldepth {} depth {} nodes {} nps {} score cp {} pv ",
+            self.game_time.search_start.elapsed().as_millis(),
+            self.sel_depth,
+            self.iter_max_depth,
+            self.nodes_searched,
+            (self.nodes_searched as f64 / self.game_time.search_start.elapsed().as_secs_f64()) as i64,
+            eval
+        );
+        for m in pv {
+            print!("{} ", m.to_san());
+        }
+        println!();
     }
 }
 

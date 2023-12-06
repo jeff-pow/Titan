@@ -52,7 +52,6 @@ pub fn quiescence(ply: i32, mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: 
 
         // We want to find at least one evasion so we know we aren't in checkmate, so don't prune
         // moves before then
-        // TODO: See pruning after move is legal
         if (!in_check || moves_searched > 1) && !board.see(m, 1) {
             continue;
         }

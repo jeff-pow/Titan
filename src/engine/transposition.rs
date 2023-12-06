@@ -15,12 +15,14 @@ pub struct TableEntry {
     key: u64,
     depth: u8,
     other: u8,
-    score: i16,
+    search_score: i16,
     best_move: u16,
     static_eval: i16,
 }
 
 impl TableEntry {
+    /// There's not a *huge* point to storing eval since neural network is currently
+    /// fairly small, but there's not much else to store in the extra space here.
     pub fn static_eval(self) -> i32 {
         self.static_eval as i32
     }
@@ -47,8 +49,8 @@ impl TableEntry {
         self.other as u64 >> 2
     }
 
-    pub fn eval(self) -> i32 {
-        self.score as i32
+    pub fn search_score(self) -> i32 {
+        self.search_score as i32
     }
 
     pub fn best_move(self, b: &Board) -> Move {
@@ -123,8 +125,8 @@ const TABLE_CAPACITY: usize = TARGET_BYTES / ENTRY_SIZE;
 
 impl TranspositionTable {
     /// Size here is the desired size in MB
-    pub fn new(size: usize) -> Self {
-        let target_size = size * BYTES_PER_MB;
+    pub fn new(mb: usize) -> Self {
+        let target_size = mb * BYTES_PER_MB;
         let table_capacity = target_size / ENTRY_SIZE;
         Self {
             vec: vec![InternalEntry::default(); table_capacity].into_boxed_slice(),
@@ -189,7 +191,7 @@ impl TranspositionTable {
                 key,
                 depth: depth as u8,
                 other: (self.age() << 2) as u8 | flag as u8,
-                score: score as i16,
+                search_score: score as i16,
                 best_move: best_m,
                 static_eval: static_eval as i16,
             };
@@ -218,10 +220,10 @@ impl TranspositionTable {
             return None;
         }
 
-        if entry.score > NEAR_CHECKMATE as i16 {
-            entry.score -= ply as i16;
-        } else if entry.score < -NEAR_CHECKMATE as i16 {
-            entry.score += ply as i16;
+        if entry.search_score > NEAR_CHECKMATE as i16 {
+            entry.search_score -= ply as i16;
+        } else if entry.search_score < -NEAR_CHECKMATE as i16 {
+            entry.search_score += ply as i16;
         }
 
         Some(entry)

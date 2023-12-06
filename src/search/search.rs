@@ -23,22 +23,6 @@ pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 50000;
 pub const MAX_SEARCH_DEPTH: i32 = 100;
 
-pub fn print_search_stats(info: &ThreadData, eval: i32, pv: &[Move]) {
-    print!(
-        "info time {} seldepth {} depth {} nodes {} nps {} score cp {} pv ",
-        info.game_time.search_start.elapsed().as_millis(),
-        info.sel_depth,
-        info.iter_max_depth,
-        info.nodes_searched,
-        (info.nodes_searched as f64 / info.game_time.search_start.elapsed().as_secs_f64()) as i64,
-        eval
-    );
-    for m in pv {
-        print!("{} ", m.to_san());
-    }
-    println!();
-}
-
 pub fn search(td: &mut ThreadData, print_uci: bool, board: Board) -> Move {
     td.game_time.search_start = Instant::now();
     td.root_color = board.to_move;
@@ -61,6 +45,7 @@ pub(crate) fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci:
     while td.iter_max_depth <= td.max_depth {
         td.sel_depth = 0;
 
+        // TODO: Depth - 1 instead of depth - 2
         let prev_avg = if td.iter_max_depth >= 2 {
             *score_history.get(td.iter_max_depth as usize - 2).unwrap() as f64
         } else {
@@ -81,7 +66,7 @@ pub(crate) fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci:
         score_history.push(score);
 
         if print_uci {
-            print_search_stats(td, score, &pv);
+            td.print_search_stats(score, &pv);
         }
 
         if td.search_type == SearchType::Time && td.game_time.soft_termination() {
@@ -174,7 +159,7 @@ fn alpha_beta<const IS_PV: bool>(
     let entry = td.transpos_table.get(board.zobrist_hash, ply);
     if let Some(entry) = entry {
         let flag = entry.flag();
-        let table_eval = entry.eval();
+        let table_eval = entry.search_score();
         table_move = entry.best_move(board);
 
         if !IS_PV
@@ -210,8 +195,7 @@ fn alpha_beta<const IS_PV: bool>(
     let improving = !in_check && ply > 1 && static_eval > td.stack[ply - 2].static_eval;
 
     // TODO: Killers should probably be reset here
-    // td.stack[ply + 1].killers[0] = Move::NULL;
-    // td.stack[ply + 1].killers[1] = Move::NULL;
+    // td.stack[ply].killers = [Move::NULL; 2];
 
     if !is_root && !IS_PV && !in_check {
         // Reverse futility pruning

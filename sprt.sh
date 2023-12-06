@@ -11,7 +11,7 @@ nohup cutechess-cli \
 -pgnout "pgnout.txt" \
 -sprt elo0=0.0 elo1=3.0 alpha=0.05 beta=0.05 \
 -each proto=uci tc=8+0.08 stderr=stderr.txt \
--openings order=random file="book.pgn" format=pgn \
+-openings order=random file="Pohl.pgn" format=pgn \
 -concurrency 6 \
 -ratinginterval 10 \
 # -debug \
