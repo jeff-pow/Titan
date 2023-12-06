@@ -38,33 +38,19 @@ pub fn search(td: &mut ThreadData, print_uci: bool, board: Board) -> Move {
 
 pub(crate) fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool) -> Move {
     let mut pv = Vec::new();
-    let mut score_history = vec![board.evaluate()];
-    td.iter_max_depth = 1;
     let mut best_move = Move::NULL;
+    let mut prev_score = -INFINITY;
 
-    for depth in 0..=td.max_depth {
+    for depth in 1..=td.max_depth {
         td.iter_max_depth = depth;
         td.sel_depth = 0;
 
-        // TODO: Depth - 1 instead of depth - 2
-        let prev_avg = if td.iter_max_depth >= 2 {
-            *score_history.get(td.iter_max_depth as usize - 2).unwrap() as f64
-        } else {
-            -INFINITY as f64
-        };
-
-        // Create a window we think the actual evaluation of the position will fall within
-        // TODO: / 16000 instead of * 6.25e-5
-        let delta = INIT_ASP + (prev_avg * prev_avg * 6.25e-5) as i32;
-        let alpha = max(prev_avg as i32 - delta, -INFINITY);
-        let beta = min(prev_avg as i32 + delta, INFINITY);
-
-        let score = aspiration_windows(td, &mut pv, alpha, beta, delta, board);
+        let score = aspiration_windows(td, &mut pv, prev_score, board);
+        prev_score = score;
 
         if !pv.is_empty() {
             best_move = pv[0];
         }
-        score_history.push(score);
 
         if print_uci {
             td.print_search_stats(score, &pv);
@@ -82,14 +68,15 @@ pub(crate) fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci:
     best_move
 }
 
-fn aspiration_windows(
-    td: &mut ThreadData,
-    pv: &mut Vec<Move>,
-    mut alpha: i32,
-    mut beta: i32,
-    mut delta: i32,
-    board: &Board,
-) -> i32 {
+fn aspiration_windows(td: &mut ThreadData, pv: &mut Vec<Move>, prev_score: i32, board: &Board) -> i32 {
+    let mut alpha = -INFINITY;
+    let mut beta = INFINITY;
+    let mut delta = INIT_ASP;
+    if td.iter_max_depth >= 4 {
+        alpha = alpha.max(prev_score - delta);
+        beta = beta.min(prev_score + delta);
+    }
+
     loop {
         let score = alpha_beta::<true>(td.iter_max_depth, alpha, beta, pv, td, board, false);
         if score <= alpha {
@@ -101,7 +88,6 @@ fn aspiration_windows(
             return score;
         }
         delta += delta / 3;
-        debug_assert!(alpha >= -INFINITY && beta <= INFINITY);
     }
 }
 
