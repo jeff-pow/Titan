@@ -1,4 +1,4 @@
-EXE=Quintessence
+EXE=Titan
 
 ifeq ($(OS),Windows_NT)
 	NAME := $(EXE).exe

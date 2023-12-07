@@ -94,7 +94,7 @@ pub fn main_loop() -> ! {
         } else if input.starts_with("quit") {
             std::process::exit(0);
         } else if input.starts_with("uci") {
-            println!("id name Quintessence");
+            println!("id name Titan");
             println!("id author Jeff Powell");
             println!("uciok");
         } else {

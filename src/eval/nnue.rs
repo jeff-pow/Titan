@@ -22,12 +22,10 @@ static NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net.nn
 type Block = [i16; HIDDEN_SIZE];
 
 #[cfg(feature = "simd")]
-const REQUIRED_ITERS: usize = HIDDEN_SIZE / 32;
-#[cfg(feature = "simd")]
 const CHUNK_SIZE: usize = 32;
-// #[cfg(feature = "simd")]
-// 512 bits / 32 bit integers = 16 ints per chunk
-// assert!(REQUIRED_ITERS * CHUNK_SIZE == HIDDEN_SIZE);
+#[cfg(feature = "simd")]
+/// Number of SIMD vectors contained within one hidden layer
+const REQUIRED_ITERS: usize = HIDDEN_SIZE / CHUNK_SIZE;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C, align(64))]
