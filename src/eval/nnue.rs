@@ -21,6 +21,14 @@ static NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net.nn
 
 type Block = [i16; HIDDEN_SIZE];
 
+#[cfg(feature = "simd")]
+const REQUIRED_ITERS: usize = HIDDEN_SIZE / 32;
+#[cfg(feature = "simd")]
+const CHUNK_SIZE: usize = 32;
+// #[cfg(feature = "simd")]
+// 512 bits / 32 bit integers = 16 ints per chunk
+// assert!(REQUIRED_ITERS * CHUNK_SIZE == HIDDEN_SIZE);
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C, align(64))]
 pub struct Accumulator([Block; 2]);
@@ -66,8 +74,6 @@ impl Accumulator {
 
     #[cfg(feature = "simd")]
     unsafe fn simd_activate(&mut self, weights: &Block, color: Color) {
-        const REQUIRED_ITERS: usize = HIDDEN_SIZE / 32;
-        const CHUNK_SIZE: usize = 32;
         for i in 0..REQUIRED_ITERS {
             let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
             let acc = _mm512_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
@@ -78,8 +84,6 @@ impl Accumulator {
 
     #[cfg(feature = "simd")]
     unsafe fn simd_deactivate(&mut self, weights: &Block, color: Color) {
-        const REQUIRED_ITERS: usize = HIDDEN_SIZE / 32;
-        const CHUNK_SIZE: usize = 32;
         for i in 0..REQUIRED_ITERS {
             let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
             let acc = _mm512_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
@@ -88,14 +92,14 @@ impl Accumulator {
         }
     }
 
-    #[allow(dead_code)]
+    #[cfg(not(feature = "simd"))]
     fn deactivate(&mut self, weights: &Block, color: Color) {
         self.0[color].iter_mut().zip(weights).for_each(|(i, &d)| {
             *i -= d;
         });
     }
 
-    #[allow(dead_code)]
+    #[cfg(not(feature = "simd"))]
     fn activate(&mut self, weights: &Block, color: Color) {
         self.0[color].iter_mut().zip(weights).for_each(|(i, &d)| {
             *i += d;
@@ -123,14 +127,9 @@ impl Board {
         #[cfg(feature = "simd")]
         {
             assert!(HIDDEN_SIZE % 16 == 0);
-            const REQUIRED_ITERS: usize = HIDDEN_SIZE / 32;
-            const CHUNK_SIZE: usize = 32;
             unsafe {
-                // 512 bits / 32 bit integers = 16 ints per chunk
-                assert_eq!(REQUIRED_ITERS * CHUNK_SIZE, HIDDEN_SIZE);
-
-                let acc_us = flatten(REQUIRED_ITERS, CHUNK_SIZE, us, &weights[0]);
-                let acc_them = flatten(REQUIRED_ITERS, CHUNK_SIZE, them, &weights[1]);
+                let acc_us = flatten(us, &weights[0]);
+                let acc_them = flatten(them, &weights[1]);
 
                 let result_vector = _mm512_add_epi32(acc_us, acc_them);
                 output += _mm512_reduce_add_epi32(result_vector);
@@ -155,7 +154,7 @@ impl Board {
 const RELU_MIN: i16 = 0;
 const RELU_MAX: i16 = 255;
 
-#[allow(dead_code)]
+#[cfg(not(feature = "simd"))]
 fn crelu(i: i16) -> i32 {
     i32::from(i.clamp(RELU_MIN, RELU_MAX))
 }
@@ -173,12 +172,12 @@ unsafe fn clipped_relu(i: __m512i) -> __m512i {
 }
 
 #[cfg(feature = "simd")]
-unsafe fn flatten(required_iters: usize, chunk_size: usize, acc: &Block, weights: &Block) -> __m512i {
+unsafe fn flatten(acc: &Block, weights: &Block) -> __m512i {
     let mut sum = _mm512_setzero_si512();
-    for i in 0..required_iters {
-        let us_vector = _mm512_loadu_epi16(&acc[i * chunk_size]);
+    for i in 0..REQUIRED_ITERS {
+        let us_vector = _mm512_loadu_epi16(&acc[i * CHUNK_SIZE]);
         let crelu_result = clipped_relu(us_vector);
-        let weights = _mm512_loadu_epi16(&weights[i * chunk_size]);
+        let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
         sum = _mm512_dpwssds_epi32(sum, crelu_result, weights);
     }
     sum
