@@ -131,7 +131,11 @@ impl HistoryTable {
     }
 
     fn update_cont_hist(&mut self, m: Move, stack: &SearchStack, ply: i32, is_good: bool, side: Color, depth: i32) {
-        let prevs = stack.cont_hist_prevs(ply);
+        let prevs = [
+            stack.prev_move(ply - 1),
+            stack.prev_move(ply - 2),
+            stack.prev_move(ply - 4),
+        ];
         let entry = &mut self.search_history[side][m.piece_moving()][m.dest_square()].cont_hist;
         for prev in prevs {
             if prev != Move::NULL {
@@ -143,11 +147,15 @@ impl HistoryTable {
 
     pub(crate) fn cont_hist(&self, m: Move, stack: &SearchStack, ply: i32, side: Color) -> i32 {
         let mut score = 0;
-        let prevs = stack.cont_hist_prevs(ply);
+        let prevs = [
+            stack.prev_move(ply - 1),
+            stack.prev_move(ply - 2),
+            stack.prev_move(ply - 4),
+        ];
+        let entry = &self.search_history[side][m.piece_moving()][m.dest_square()];
         for prev in prevs {
             if prev != Move::NULL {
-                score += self.search_history[side][m.piece_moving()][m.dest_square()].cont_hist[prev.piece_moving()]
-                    [prev.dest_square()];
+                score += entry.cont_hist[prev.piece_moving()][prev.dest_square()];
             }
         }
         score
