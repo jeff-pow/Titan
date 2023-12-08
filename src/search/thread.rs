@@ -23,6 +23,7 @@ use super::{
 
 #[derive(Clone)]
 pub(crate) struct ThreadData<'a> {
+    pub ply: i32,
     pub max_depth: i32,
     pub iter_max_depth: i32,
     pub transpos_table: &'a TranspositionTable,
@@ -38,8 +39,14 @@ pub(crate) struct ThreadData<'a> {
 }
 
 impl<'a> ThreadData<'a> {
-    pub(crate) fn new(transpos_table: &'a TranspositionTable, root_color: Color, halt: &'a AtomicBool) -> Self {
+    pub(crate) fn new(
+        transpos_table: &'a TranspositionTable,
+        root_color: Color,
+        halt: &'a AtomicBool,
+        hash_history: Vec<u64>,
+    ) -> Self {
         Self {
+            ply: 0,
             max_depth: MAX_SEARCH_DEPTH,
             iter_max_depth: 0,
             transpos_table,
@@ -51,7 +58,7 @@ impl<'a> ThreadData<'a> {
             game_time: GameTime::default(),
             halt,
             search_type: SearchType::default(),
-            hash_history: Vec::with_capacity(MAX_SEARCH_DEPTH as usize),
+            hash_history,
         }
     }
 
@@ -102,9 +109,9 @@ pub struct ThreadPool<'a> {
 }
 
 impl<'a> ThreadPool<'a> {
-    pub fn new(board: &Board, table: &'a TranspositionTable, halt: &'a AtomicBool) -> Self {
+    pub fn new(board: &Board, table: &'a TranspositionTable, halt: &'a AtomicBool, hash_history: Vec<u64>) -> Self {
         Self {
-            main_thread: ThreadData::new(table, board.to_move, halt),
+            main_thread: ThreadData::new(table, board.to_move, halt, hash_history),
             halt,
             searching: AtomicBool::new(false),
             total_nodes: Arc::new(AtomicU64::new(0)),
@@ -119,8 +126,16 @@ impl<'a> ThreadPool<'a> {
         self.searching.store(false, Ordering::Relaxed);
     }
 
-    pub fn handle_go(&mut self, buffer: &str, board: &Board, halt: &AtomicBool, msg: &mut Option<String>) {
+    pub fn handle_go(
+        &mut self,
+        buffer: &str,
+        board: &Board,
+        halt: &AtomicBool,
+        msg: &mut Option<String>,
+        hash_history: Vec<u64>,
+    ) {
         self.halt.store(false, Ordering::SeqCst);
+        self.main_thread.hash_history = hash_history;
 
         if buffer.contains("depth") {
             let mut iter = buffer.split_whitespace().skip(2);

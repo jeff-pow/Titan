@@ -70,11 +70,10 @@ impl MoveList {
         table_move: Move,
         killers: [Move; NUM_KILLER_MOVES],
         td: &ThreadData,
-        ply: i32,
     ) {
         for i in 0..self.len {
             let entry = &mut self.arr[i];
-            let prev = td.stack.prev_move(ply - 1);
+            let prev = td.stack.prev_move(td.ply - 1);
             let counter = td.history.get_counter(board.to_move, prev);
             entry.score = if entry.m == table_move {
                 TTMOVE
@@ -99,7 +98,7 @@ impl MoveList {
             } else if counter == entry.m {
                 COUNTER_MOVE
             } else {
-                td.history.quiet_history(entry.m, board.to_move, &td.stack, ply)
+                td.history.quiet_history(entry.m, board.to_move, &td.stack, td.ply)
             };
         }
     }

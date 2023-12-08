@@ -25,7 +25,6 @@ pub struct Board {
     pub to_move: Color,
     pub castling_rights: u32,
     pub en_passant_square: Option<Square>,
-    pub prev_move: Move,
     pub num_moves: usize,
     pub half_moves: usize,
     pub zobrist_hash: u64,
@@ -45,7 +44,6 @@ impl Default for Board {
             num_moves: 0,
             half_moves: 0,
             zobrist_hash: 0,
-            prev_move: Move::NULL,
             accumulator: Accumulator::default(),
             in_check: false,
         }
@@ -55,10 +53,6 @@ impl Default for Board {
 impl Board {
     pub fn can_en_passant(&self) -> bool {
         self.en_passant_square.is_some()
-    }
-
-    pub fn can_nmp(&self) -> bool {
-        self.prev_move != Move::NULL
     }
 
     pub fn can_castle(&self, c: Castle) -> bool {
@@ -348,8 +342,6 @@ impl Board {
 
         self.num_moves += 1;
 
-        self.prev_move = m;
-
         self.in_check = self.in_check(self.to_move);
 
         // Return false if the move leaves the opposite side in check, denoting an invalid move
@@ -364,7 +356,6 @@ impl Board {
             self.zobrist_hash ^= ZOBRIST.en_passant[sq];
         }
         self.en_passant_square = None;
-        self.prev_move = Move::NULL;
     }
 
     #[allow(dead_code)]
@@ -468,9 +459,6 @@ impl fmt::Debug for Board {
         str += "\n";
         str += "Num moves made: ";
         str += &self.num_moves.to_string();
-        str += "\n";
-        str += "Prev move: ";
-        str += &self.prev_move.to_san();
         str += "\n";
 
         write!(f, "{}", str)

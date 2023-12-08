@@ -43,6 +43,7 @@ pub(crate) fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci:
 
     for depth in 1..=td.max_depth {
         td.iter_max_depth = depth;
+        td.ply = 0;
         td.sel_depth = 0;
 
         let score = aspiration_windows(td, &mut pv, prev_score, board);
@@ -79,6 +80,7 @@ fn aspiration_windows(td: &mut ThreadData, pv: &mut Vec<Move>, prev_score: i32, 
     }
 
     loop {
+        assert_eq!(0, td.ply);
         let score = alpha_beta::<true>(td.iter_max_depth, alpha, beta, pv, td, board, false);
         if score <= alpha {
             beta = (alpha + beta) / 2;
@@ -104,10 +106,9 @@ fn alpha_beta<const IS_PV: bool>(
     board: &Board,
     cut_node: bool,
 ) -> i32 {
-    let ply = td.iter_max_depth - depth;
-    let is_root = ply == 0;
+    let is_root = td.ply == 0;
     let in_check = board.in_check;
-    td.sel_depth = td.sel_depth.max(ply);
+    td.sel_depth = td.sel_depth.max(td.ply);
 
     if td.halt.load(Ordering::Relaxed) || td.game_time.hard_termination() {
         td.halt.store(true, Ordering::SeqCst);
@@ -115,27 +116,23 @@ fn alpha_beta<const IS_PV: bool>(
         return 0;
     }
 
-    if !is_root {
-        assert_eq!(board.prev_move, td.stack[ply - 1].played_move);
-    }
-
     // Needed since the function can calculate extensions in cases where it finds itself in check
-    if ply >= MAX_SEARCH_DEPTH {
+    if td.ply >= MAX_SEARCH_DEPTH {
         if board.in_check {
-            return quiescence(ply, alpha, beta, pv, td, board);
+            return quiescence(alpha, beta, pv, td, board);
         }
 
         return board.evaluate();
     }
 
-    if ply > 0 {
+    if td.ply > 0 {
         if board.is_draw() || td.is_repetition(board) {
             return STALEMATE;
         }
         // Determines if there is a faster path to checkmate than evaluating the current node, and
         // if there is, it returns early
-        let alpha = alpha.max(-CHECKMATE + ply);
-        let beta = beta.min(CHECKMATE - ply - 1);
+        let alpha = alpha.max(-CHECKMATE + td.ply);
+        let beta = beta.min(CHECKMATE - td.ply - 1);
         if alpha >= beta {
             return alpha;
         }
@@ -143,11 +140,11 @@ fn alpha_beta<const IS_PV: bool>(
     }
 
     if depth <= 0 {
-        return quiescence(ply, alpha, beta, pv, td, board);
+        return quiescence(alpha, beta, pv, td, board);
     }
 
     let mut table_move = Move::NULL;
-    let entry = td.transpos_table.get(board.zobrist_hash, ply);
+    let entry = td.transpos_table.get(board.zobrist_hash, td.ply);
     if let Some(entry) = entry {
         let flag = entry.flag();
         let table_eval = entry.search_score();
@@ -182,8 +179,8 @@ fn alpha_beta<const IS_PV: bool>(
     } else {
         board.evaluate()
     };
-    td.stack[ply].static_eval = static_eval;
-    let improving = !in_check && ply > 1 && static_eval > td.stack[ply - 2].static_eval;
+    td.stack[td.ply].static_eval = static_eval;
+    let improving = !in_check && td.ply > 1 && static_eval > td.stack[td.ply - 2].static_eval;
 
     // TODO: Killers should probably be reset here
     // td.stack[ply].killers = [Move::NULL; 2];
@@ -198,13 +195,25 @@ fn alpha_beta<const IS_PV: bool>(
         }
 
         // Null move pruning (NMP)
-        if board.has_non_pawns(board.to_move) && depth >= MIN_NMP_DEPTH && static_eval >= beta && board.can_nmp() {
+        if board.has_non_pawns(board.to_move)
+            && depth >= MIN_NMP_DEPTH
+            && static_eval >= beta
+            && td.stack[td.ply - 1].played_move != Move::NULL
+        {
             let mut node_pvs = Vec::new();
             let mut new_b = board.to_owned();
+
             new_b.make_null_move();
-            td.stack[ply].played_move = Move::NULL;
+            td.stack[td.ply].played_move = Move::NULL;
+            td.hash_history.push(new_b.zobrist_hash);
+            td.ply += 1;
+
             let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
             let mut null_eval = -alpha_beta::<false>(depth - r, -beta, -beta + 1, &mut node_pvs, td, &new_b, !cut_node);
+
+            td.hash_history.pop();
+            td.ply -= 1;
+
             if null_eval >= beta {
                 if null_eval > NEAR_CHECKMATE {
                     null_eval = beta;
@@ -216,7 +225,7 @@ fn alpha_beta<const IS_PV: bool>(
 
     let mut moves = board.generate_moves(MGT::All);
     let mut legal_moves_searched = 0;
-    moves.score_moves(board, table_move, td.stack[ply].killers, td, ply);
+    moves.score_moves(board, table_move, td.stack[td.ply].killers, td);
 
     let mut quiets_tried = Vec::new();
     let mut tacticals_tried = Vec::new();
@@ -230,7 +239,7 @@ fn alpha_beta<const IS_PV: bool>(
         if !is_root && best_score >= -NEAR_CHECKMATE {
             if is_quiet {
                 // Late move pruning (LMP)
-                // By now all quiets have been searched.
+                // By now all tactical moves have been searched.
                 if depth < MAX_LMP_DEPTH
                     && legal_moves_searched > (LMP_CONST + depth * depth) / if improving { 1 } else { 2 }
                 {
@@ -255,7 +264,9 @@ fn alpha_beta<const IS_PV: bool>(
         };
 
         td.nodes_searched += 1;
-        td.stack[ply].played_move = m;
+        td.stack[td.ply].played_move = m;
+        td.hash_history.push(new_b.zobrist_hash);
+        td.ply += 1;
         let mut node_pvs = Vec::new();
 
         // Calculate the reduction used in LMR
@@ -312,6 +323,8 @@ fn alpha_beta<const IS_PV: bool>(
         };
 
         legal_moves_searched += 1;
+        td.hash_history.pop();
+        td.ply -= 1;
 
         if eval > best_score {
             best_score = eval;
@@ -327,13 +340,13 @@ fn alpha_beta<const IS_PV: bool>(
                     // We don't want to store tactical moves, because they are obviously already
                     // good.
                     // Also don't store killers that we have already stored
-                    if td.stack[ply].killers[0] != m {
-                        td.stack[ply].killers[1] = td.stack[ply].killers[0];
-                        td.stack[ply].killers[0] = m;
+                    if td.stack[td.ply].killers[0] != m {
+                        td.stack[td.ply].killers[1] = td.stack[td.ply].killers[0];
+                        td.stack[td.ply].killers[0] = m;
                     }
                 }
                 td.history
-                    .update_histories(m, &quiets_tried, &tacticals_tried, board, depth, &td.stack, ply);
+                    .update_histories(m, &quiets_tried, &tacticals_tried, board, depth, &td.stack, td.ply);
                 break;
             }
         }
@@ -343,7 +356,7 @@ fn alpha_beta<const IS_PV: bool>(
         if board.in_check {
             // Distance from root is returned in order for other recursive calls to determine
             // shortest viable checkmate path
-            return -CHECKMATE + ply;
+            return -CHECKMATE + td.ply;
         }
         return STALEMATE;
     }
@@ -357,7 +370,7 @@ fn alpha_beta<const IS_PV: bool>(
     };
 
     td.transpos_table
-        .store(board.zobrist_hash, best_move, depth, entry_flag, best_score, ply, IS_PV, static_eval);
+        .store(board.zobrist_hash, best_move, depth, entry_flag, best_score, td.ply, IS_PV, static_eval);
 
     best_score
 }
