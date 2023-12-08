@@ -117,23 +117,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "quintessence"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
- "float-ord",
- "itertools",
- "lazy_static",
- "log",
- "microbench",
- "rayon",
- "rustc-hash",
- "strum",
- "strum_macros",
- "wide",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -220,6 +203,23 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "titan"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "float-ord",
+ "itertools",
+ "lazy_static",
+ "log",
+ "microbench",
+ "rayon",
+ "rustc-hash",
+ "strum",
+ "strum_macros",
+ "wide",
 ]
 
 [[package]]

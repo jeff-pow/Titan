@@ -23,6 +23,7 @@ use super::{
 
 #[derive(Clone)]
 pub(crate) struct ThreadData<'a> {
+    pub ply: i32,
     pub max_depth: i32,
     pub iter_max_depth: i32,
     pub transpos_table: &'a TranspositionTable,
@@ -34,11 +35,18 @@ pub(crate) struct ThreadData<'a> {
     pub root_color: Color,
     pub game_time: GameTime,
     pub search_type: SearchType,
+    pub hash_history: Vec<u64>,
 }
 
 impl<'a> ThreadData<'a> {
-    pub(crate) fn new(transpos_table: &'a TranspositionTable, root_color: Color, halt: &'a AtomicBool) -> Self {
+    pub(crate) fn new(
+        transpos_table: &'a TranspositionTable,
+        root_color: Color,
+        halt: &'a AtomicBool,
+        hash_history: Vec<u64>,
+    ) -> Self {
         Self {
+            ply: 0,
             max_depth: MAX_SEARCH_DEPTH,
             iter_max_depth: 0,
             transpos_table,
@@ -50,6 +58,7 @@ impl<'a> ThreadData<'a> {
             game_time: GameTime::default(),
             halt,
             search_type: SearchType::default(),
+            hash_history,
         }
     }
 
@@ -68,6 +77,21 @@ impl<'a> ThreadData<'a> {
         }
         println!();
     }
+
+    pub(crate) fn is_repetition(&self, board: &Board) -> bool {
+        if self.hash_history.len() < 6 {
+            return false;
+        }
+
+        let mut reps = 2;
+        for &hash in self.hash_history.iter().rev().take(board.half_moves + 1) {
+            reps -= u32::from(hash == board.zobrist_hash);
+            if reps == 0 {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 pub struct ThreadPool<'a> {
@@ -78,9 +102,9 @@ pub struct ThreadPool<'a> {
 }
 
 impl<'a> ThreadPool<'a> {
-    pub fn new(board: &Board, table: &'a TranspositionTable, halt: &'a AtomicBool) -> Self {
+    pub fn new(board: &Board, table: &'a TranspositionTable, halt: &'a AtomicBool, hash_history: Vec<u64>) -> Self {
         Self {
-            main_thread: ThreadData::new(table, board.to_move, halt),
+            main_thread: ThreadData::new(table, board.to_move, halt, hash_history),
             halt,
             searching: AtomicBool::new(false),
             total_nodes: Arc::new(AtomicU64::new(0)),
@@ -95,8 +119,16 @@ impl<'a> ThreadPool<'a> {
         self.searching.store(false, Ordering::Relaxed);
     }
 
-    pub fn handle_go(&mut self, buffer: &str, board: &Board, halt: &AtomicBool, msg: &mut Option<String>) {
+    pub fn handle_go(
+        &mut self,
+        buffer: &str,
+        board: &Board,
+        halt: &AtomicBool,
+        msg: &mut Option<String>,
+        hash_history: Vec<u64>,
+    ) {
         self.halt.store(false, Ordering::SeqCst);
+        self.main_thread.hash_history = hash_history;
 
         if buffer.contains("depth") {
             let mut iter = buffer.split_whitespace().skip(2);
