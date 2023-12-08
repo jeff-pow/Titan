@@ -17,8 +17,6 @@ use crate::{
     },
 };
 
-use super::move_history::BoardHistory;
-
 #[derive(Copy, Clone, PartialEq)]
 pub struct Board {
     bitboards: [Bitboard; NUM_PIECES],
@@ -27,11 +25,10 @@ pub struct Board {
     pub to_move: Color,
     pub castling_rights: u32,
     pub en_passant_square: Option<Square>,
-    prev_move: Move,
+    pub prev_move: Move,
     pub num_moves: usize,
     pub half_moves: usize,
     pub zobrist_hash: u64,
-    pub history: BoardHistory,
     pub accumulator: Accumulator,
     pub in_check: bool,
 }
@@ -48,7 +45,6 @@ impl Default for Board {
             num_moves: 0,
             half_moves: 0,
             zobrist_hash: 0,
-            history: BoardHistory::default(),
             prev_move: Move::NULL,
             accumulator: Accumulator::default(),
             in_check: false,
@@ -122,7 +118,7 @@ impl Board {
     }
 
     pub fn is_draw(&self) -> bool {
-        self.history.check_for_3x_repetition(self.zobrist_hash) || self.half_moves >= 100 || self.is_material_draw()
+        self.half_moves >= 100 || self.is_material_draw()
     }
 
     pub fn color_occupancies(&self, color: Color) -> Bitboard {
@@ -198,10 +194,6 @@ impl Board {
             return true;
         }
         self.square_under_attack(!side, king_square)
-    }
-
-    pub fn add_to_history(&mut self) {
-        self.history.push(self.zobrist_hash);
     }
 
     fn material_val(&self, c: Color) -> i32 {
@@ -356,8 +348,6 @@ impl Board {
 
         self.num_moves += 1;
 
-        self.history.push(self.zobrist_hash);
-
         self.prev_move = m;
 
         self.in_check = self.in_check(self.to_move);
@@ -375,7 +365,6 @@ impl Board {
         }
         self.en_passant_square = None;
         self.prev_move = Move::NULL;
-        self.add_to_history();
     }
 
     #[allow(dead_code)]

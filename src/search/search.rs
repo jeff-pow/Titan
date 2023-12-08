@@ -17,10 +17,10 @@ use super::{
     MIN_LMR_DEPTH, MIN_NMP_DEPTH, RFP_MULTIPLIER,
 };
 
-pub const CHECKMATE: i32 = 30000;
+pub const CHECKMATE: i32 = 25000;
 pub const STALEMATE: i32 = 0;
 pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
-pub const INFINITY: i32 = 50000;
+pub const INFINITY: i32 = 30000;
 pub const MAX_SEARCH_DEPTH: i32 = 100;
 
 pub fn search(td: &mut ThreadData, print_uci: bool, board: Board) -> Move {
@@ -115,6 +115,10 @@ fn alpha_beta<const IS_PV: bool>(
         return 0;
     }
 
+    if !is_root {
+        assert_eq!(board.prev_move, td.stack[ply - 1].played_move);
+    }
+
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if ply >= MAX_SEARCH_DEPTH {
         if board.in_check {
@@ -125,7 +129,7 @@ fn alpha_beta<const IS_PV: bool>(
     }
 
     if ply > 0 {
-        if board.is_draw() {
+        if board.is_draw() || td.is_repetition(board) {
             return STALEMATE;
         }
         // Determines if there is a faster path to checkmate than evaluating the current node, and

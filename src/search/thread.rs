@@ -34,6 +34,7 @@ pub(crate) struct ThreadData<'a> {
     pub root_color: Color,
     pub game_time: GameTime,
     pub search_type: SearchType,
+    pub hash_history: Vec<u64>,
 }
 
 impl<'a> ThreadData<'a> {
@@ -50,6 +51,7 @@ impl<'a> ThreadData<'a> {
             game_time: GameTime::default(),
             halt,
             search_type: SearchType::default(),
+            hash_history: Vec::with_capacity(MAX_SEARCH_DEPTH as usize),
         }
     }
 
@@ -67,6 +69,28 @@ impl<'a> ThreadData<'a> {
             print!("{} ", m.to_san());
         }
         println!();
+    }
+
+    pub(crate) fn is_repetition(&self, board: &Board) -> bool {
+        if self.hash_history.len() < 6 {
+            return false;
+        }
+
+        let mut reps = 1;
+        for &hash in self
+            .hash_history
+            .iter()
+            .rev()
+            .take(board.half_moves + 1)
+            .skip(1)
+            .step_by(2)
+        {
+            reps -= u32::from(hash == board.zobrist_hash);
+            if reps == 0 {
+                return true;
+            }
+        }
+        false
     }
 }
 
