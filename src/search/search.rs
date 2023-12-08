@@ -17,10 +17,10 @@ use super::{
     MIN_LMR_DEPTH, MIN_NMP_DEPTH, RFP_MULTIPLIER,
 };
 
-pub const CHECKMATE: i32 = 30000;
+pub const CHECKMATE: i32 = 25000;
 pub const STALEMATE: i32 = 0;
 pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
-pub const INFINITY: i32 = 50000;
+pub const INFINITY: i32 = 30000;
 pub const MAX_SEARCH_DEPTH: i32 = 100;
 
 pub fn search(td: &mut ThreadData, print_uci: bool, board: Board) -> Move {
