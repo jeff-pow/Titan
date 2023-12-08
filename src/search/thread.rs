@@ -83,15 +83,8 @@ impl<'a> ThreadData<'a> {
             return false;
         }
 
-        let mut reps = 1;
-        for &hash in self
-            .hash_history
-            .iter()
-            .rev()
-            .take(board.half_moves + 1)
-            .skip(1)
-            .step_by(2)
-        {
+        let mut reps = 2;
+        for &hash in self.hash_history.iter().rev().take(board.half_moves + 1) {
             reps -= u32::from(hash == board.zobrist_hash);
             if reps == 0 {
                 return true;
