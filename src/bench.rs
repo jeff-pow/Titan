@@ -13,7 +13,7 @@ pub fn bench() {
     let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
     let halt = AtomicBool::new(false);
     let mut thread = ThreadData::new(&transpos_table, Color::White, &halt, Vec::new());
-    thread.max_depth = 16;
+    thread.max_depth = 14;
     thread.search_type = SearchType::Depth;
 
     let mut nodes = 0;
@@ -25,7 +25,8 @@ pub fn bench() {
     });
 
     let time = start.elapsed().as_secs_f64();
-    println!("{} nodes searched in {} seconds --- {} nps", nodes, time, (nodes as f64 / time) as u64);
+    println!("{:.2} seconds", time);
+    println!("{} nodes {} nps", nodes, (nodes as f64 / time) as u64);
 }
 
 const BENCH_POSITIONS: [&str; 50] = [
