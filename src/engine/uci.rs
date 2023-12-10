@@ -22,6 +22,8 @@ use crate::{
     types::pieces::Color,
 };
 
+pub const ENGINE_NAME: &str = "Titan";
+
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
     let mut transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
@@ -36,8 +38,7 @@ pub fn main_loop() -> ! {
     let _ = ZOBRIST.turn_hash;
     let _ = MG.king_attacks(Square(0));
     let _ = get_reduction(0, 0);
-    println!("option name Threads type spin default 1 min 1 max 1");
-    println!("option name Hash type spin default 16 min 16 max 16");
+    println!("{ENGINE_NAME} by {}", env!("CARGO_PKG_AUTHORS"));
 
     loop {
         let input = if let Some(ref m) = msg {
@@ -96,8 +97,10 @@ pub fn main_loop() -> ! {
         } else if input.starts_with("quit") {
             std::process::exit(0);
         } else if input.starts_with("uci") {
-            println!("id name Titan");
-            println!("id author Jeff Powell");
+            println!("id name {ENGINE_NAME}");
+            println!("id author {}", env!("CARGO_PKG_AUTHORS"));
+            println!("option name Threads type spin default 1 min 1 max 1");
+            println!("option name Hash type spin default 16 min 1 max 8388608");
             println!("uciok");
         } else if input.starts_with("setoption") {
             match input.split_whitespace().collect::<Vec<_>>()[..] {
