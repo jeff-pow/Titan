@@ -1,5 +1,5 @@
 use crate::board::board::Board;
-use crate::engine::transposition::EntryFlag;
+use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movegenerator::MGT;
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::moves::Move;
@@ -9,7 +9,14 @@ use super::search::MAX_SEARCH_DEPTH;
 use super::search::{CHECKMATE, INFINITY};
 use super::{store_pv, thread::ThreadData};
 
-pub fn quiescence(mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: &mut ThreadData, board: &Board) -> i32 {
+pub fn quiescence(
+    mut alpha: i32,
+    beta: i32,
+    pvs: &mut Vec<Move>,
+    td: &mut ThreadData,
+    tt: &TranspositionTable,
+    board: &Board,
+) -> i32 {
     if board.is_draw() {
         return STALEMATE;
     }
@@ -21,7 +28,7 @@ pub fn quiescence(mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: &mut Threa
     }
 
     // TODO: Return tt score
-    let entry = td.transpos_table.get(board.zobrist_hash, td.ply);
+    let entry = tt.get(board.zobrist_hash, td.ply);
     let table_move = entry.map_or(Move::NULL, |e| e.best_move(board));
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
@@ -67,7 +74,7 @@ pub fn quiescence(mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: &mut Threa
 
         // TODO: Implement delta pruning
 
-        let eval = -quiescence(-beta, -alpha, &mut node_pvs, td, &new_b);
+        let eval = -quiescence(-beta, -alpha, &mut node_pvs, td, tt, &new_b);
 
         td.ply -= 1;
         td.hash_history.pop();
@@ -95,8 +102,7 @@ pub fn quiescence(mut alpha: i32, beta: i32, pvs: &mut Vec<Move>, td: &mut Threa
         EntryFlag::AlphaUnchanged
     };
 
-    td.transpos_table
-        .store(board.zobrist_hash, best_move, 0, entry_flag, best_score, td.ply, false, stand_pat);
+    tt.store(board.zobrist_hash, best_move, 0, entry_flag, best_score, td.ply, false, stand_pat);
 
     if in_check && moves_searched == 0 {
         return -CHECKMATE + td.ply;

@@ -24,12 +24,12 @@ use crate::{
 
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
-    let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
+    let mut transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
     let mut board = build_board(STARTING_FEN);
     let mut msg: Option<String> = None;
     let mut hash_history = Vec::new();
     let halt = AtomicBool::new(false);
-    let mut thread_pool = ThreadPool::new(&board, &transpos_table, &halt, Vec::new());
+    let mut thread_pool = ThreadPool::new(&board, &halt, Vec::new());
     // Calling this code will allow the global static zobrist and movegenerator constants to be
     // initialized before the engine enters play, so it doesn't waste playing time initializing
     // constants. A large difference in STC
@@ -48,7 +48,6 @@ pub fn main_loop() -> ! {
             buffer
         };
         msg = None;
-        thread_pool.total_nodes.store(0, Ordering::Relaxed);
 
         if input.starts_with("isready") {
             println!("readyok");
@@ -57,7 +56,7 @@ pub fn main_loop() -> ! {
         } else if input.starts_with("ucinewgame") {
             transpos_table.clear();
             halt.store(false, Ordering::Relaxed);
-            thread_pool = ThreadPool::new(&board, &transpos_table, &halt, Vec::new());
+            thread_pool = ThreadPool::new(&board, &halt, Vec::new());
         } else if input.starts_with("eval") {
             println!("{} cp", board.evaluate());
         } else if input.starts_with("position") {
@@ -88,7 +87,8 @@ pub fn main_loop() -> ! {
             thread_pool.reset();
             println!("Transposition table cleared");
         } else if input.starts_with("go") {
-            thread_pool.handle_go(&input, &board, &halt, &mut msg, hash_history.clone());
+            thread_pool.handle_go(&input, &board, &halt, &mut msg, hash_history.clone(), &transpos_table);
+            transpos_table.age_up();
         } else if input.contains("perft") {
             let mut iter = input.split_whitespace().skip(1);
             let depth = iter.next().unwrap().parse::<i32>().unwrap();
@@ -99,6 +99,14 @@ pub fn main_loop() -> ! {
             println!("id name Titan");
             println!("id author Jeff Powell");
             println!("uciok");
+        } else if input.starts_with("setoption") {
+            match input.split_whitespace().collect::<Vec<_>>()[..] {
+                ["setoption", "name", "Hash", "value", x] => {
+                    transpos_table = TranspositionTable::new(x.parse().unwrap())
+                }
+                ["setoption", "name", "Clear", "Hash"] => transpos_table.clear(),
+                _ => {}
+            }
         } else {
             println!("Command not handled: {}", input);
         }

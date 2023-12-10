@@ -3,7 +3,7 @@ use std::sync::atomic::Ordering;
 use std::time::Instant;
 
 use crate::board::board::Board;
-use crate::engine::transposition::EntryFlag;
+use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movegenerator::MGT;
 use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
@@ -23,20 +23,25 @@ pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 30000;
 pub const MAX_SEARCH_DEPTH: i32 = 100;
 
-pub fn search(td: &mut ThreadData, print_uci: bool, board: Board) -> Move {
+pub fn search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &TranspositionTable) -> Move {
     td.game_time.search_start = Instant::now();
     td.root_color = board.to_move;
     td.nodes_searched = 0;
     td.stack = SearchStack::default();
 
-    let best_move = iterative_deepening(td, &board, print_uci);
+    let best_move = iterative_deepening(td, &board, print_uci, tt);
 
     assert_ne!(best_move, Move::NULL);
 
     best_move
 }
 
-pub(crate) fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool) -> Move {
+pub(crate) fn iterative_deepening(
+    td: &mut ThreadData,
+    board: &Board,
+    print_uci: bool,
+    tt: &TranspositionTable,
+) -> Move {
     let mut pv = Vec::new();
     let mut best_move = Move::NULL;
     let mut prev_score = -INFINITY;
@@ -46,7 +51,7 @@ pub(crate) fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci:
         td.ply = 0;
         td.sel_depth = 0;
 
-        let score = aspiration_windows(td, &mut pv, prev_score, board);
+        let score = aspiration_windows(td, &mut pv, prev_score, board, tt);
         prev_score = score;
 
         if !pv.is_empty() {
@@ -69,7 +74,13 @@ pub(crate) fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci:
     best_move
 }
 
-fn aspiration_windows(td: &mut ThreadData, pv: &mut Vec<Move>, prev_score: i32, board: &Board) -> i32 {
+fn aspiration_windows(
+    td: &mut ThreadData,
+    pv: &mut Vec<Move>,
+    prev_score: i32,
+    board: &Board,
+    tt: &TranspositionTable,
+) -> i32 {
     let mut alpha = -INFINITY;
     let mut beta = INFINITY;
     let mut delta = INIT_ASP + prev_score * prev_score / 10000;
@@ -81,7 +92,7 @@ fn aspiration_windows(td: &mut ThreadData, pv: &mut Vec<Move>, prev_score: i32, 
 
     loop {
         assert_eq!(0, td.ply);
-        let score = alpha_beta::<true>(td.iter_max_depth, alpha, beta, pv, td, board, false);
+        let score = alpha_beta::<true>(td.iter_max_depth, alpha, beta, pv, td, tt, board, false);
         if score <= alpha {
             beta = (alpha + beta) / 2;
             alpha = max(score - delta, -INFINITY);
@@ -103,6 +114,7 @@ fn alpha_beta<const IS_PV: bool>(
     beta: i32,
     pv: &mut Vec<Move>,
     td: &mut ThreadData,
+    tt: &TranspositionTable,
     board: &Board,
     cut_node: bool,
 ) -> i32 {
@@ -119,7 +131,7 @@ fn alpha_beta<const IS_PV: bool>(
     // Needed since the function can calculate extensions in cases where it finds itself in check
     if td.ply >= MAX_SEARCH_DEPTH {
         if board.in_check {
-            return quiescence(alpha, beta, pv, td, board);
+            return quiescence(alpha, beta, pv, td, tt, board);
         }
 
         return board.evaluate();
@@ -140,11 +152,11 @@ fn alpha_beta<const IS_PV: bool>(
     }
 
     if depth <= 0 {
-        return quiescence(alpha, beta, pv, td, board);
+        return quiescence(alpha, beta, pv, td, tt, board);
     }
 
     let mut table_move = Move::NULL;
-    let entry = td.transpos_table.get(board.zobrist_hash, td.ply);
+    let entry = tt.get(board.zobrist_hash, td.ply);
     if let Some(entry) = entry {
         let flag = entry.flag();
         let table_eval = entry.search_score();
@@ -209,7 +221,8 @@ fn alpha_beta<const IS_PV: bool>(
             td.ply += 1;
 
             let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
-            let mut null_eval = -alpha_beta::<false>(depth - r, -beta, -beta + 1, &mut node_pvs, td, &new_b, !cut_node);
+            let mut null_eval =
+                -alpha_beta::<false>(depth - r, -beta, -beta + 1, &mut node_pvs, td, tt, &new_b, !cut_node);
 
             td.hash_history.pop();
             td.ply -= 1;
@@ -298,17 +311,17 @@ fn alpha_beta<const IS_PV: bool>(
         let eval = if legal_moves_searched == 0 {
             node_pvs.clear();
             // On the first move, just do a full depth search
-            -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, td, &new_b, false)
+            -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, td, tt, &new_b, false)
         } else {
             node_pvs.clear();
             // Start with a zero window reduced search
             let zero_window_reduced_depth =
-                -alpha_beta::<false>(depth - r, -alpha - 1, -alpha, &mut node_pvs, td, &new_b, !cut_node);
+                -alpha_beta::<false>(depth - r, -alpha - 1, -alpha, &mut node_pvs, td, tt, &new_b, !cut_node);
 
             // If that search raises alpha and the reduction was more than one, do a research at a zero window with full depth
             let zero_window_full_depth = if zero_window_reduced_depth > alpha && r > 1 {
                 node_pvs.clear();
-                -alpha_beta::<false>(depth - 1, -alpha - 1, -alpha, &mut node_pvs, td, &new_b, !cut_node)
+                -alpha_beta::<false>(depth - 1, -alpha - 1, -alpha, &mut node_pvs, td, tt, &new_b, !cut_node)
             } else {
                 zero_window_reduced_depth
             };
@@ -316,7 +329,7 @@ fn alpha_beta<const IS_PV: bool>(
             // If the verification score falls between alpha and beta, full window full depth search
             if zero_window_full_depth > alpha && zero_window_full_depth < beta {
                 node_pvs.clear();
-                -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, td, &new_b, false)
+                -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, td, tt, &new_b, false)
             } else {
                 zero_window_full_depth
             }
@@ -369,8 +382,7 @@ fn alpha_beta<const IS_PV: bool>(
         EntryFlag::AlphaUnchanged
     };
 
-    td.transpos_table
-        .store(board.zobrist_hash, best_move, depth, entry_flag, best_score, td.ply, IS_PV, static_eval);
+    tt.store(board.zobrist_hash, best_move, depth, entry_flag, best_score, td.ply, IS_PV, static_eval);
 
     best_score
 }

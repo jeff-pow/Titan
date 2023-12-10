@@ -5,8 +5,6 @@ use crate::{
 
 use super::moves::{Direction, Direction::*};
 
-/// https://analog-hors.github.io/site/magic-bitboards/
-
 /// Simple Pcg64Mcg implementation
 // No repetitions as 100B iterations
 pub struct Rng(u64);
@@ -63,8 +61,10 @@ fn index(entry: &MagicEntry, occupied: Bitboard) -> usize {
     let hash = blockers.wrapping_mul(entry.magic);
     let index = (hash >> entry.shift) as usize;
     entry.offset + index
+    // unsafe { entry.offset + _pext_u64(occupied.0, entry.mask.0) as usize }
 }
 
+/// https://analog-hors.github.io/site/magic-bitboards/
 impl Magics {
     pub fn bishop_attacks(&self, occupied: Bitboard, sq: Square) -> Bitboard {
         let magic = &BISHOP_MAGICS[sq];

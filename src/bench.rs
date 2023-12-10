@@ -12,7 +12,7 @@ pub fn bench() {
 
     let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
     let halt = AtomicBool::new(false);
-    let mut thread = ThreadData::new(&transpos_table, Color::White, &halt, Vec::new());
+    let mut thread = ThreadData::new(Color::White, &halt, Vec::new());
     thread.max_depth = 14;
     thread.search_type = SearchType::Depth;
 
@@ -20,7 +20,7 @@ pub fn bench() {
 
     BENCH_POSITIONS.iter().for_each(|fen| {
         let board = build_board(fen);
-        search(&mut thread, false, board);
+        search(&mut thread, false, board, &transpos_table);
         nodes += thread.nodes_searched;
     });
 

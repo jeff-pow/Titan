@@ -26,7 +26,6 @@ pub(crate) struct ThreadData<'a> {
     pub ply: i32,
     pub max_depth: i32,
     pub iter_max_depth: i32,
-    pub transpos_table: &'a TranspositionTable,
     pub nodes_searched: u64,
     pub stack: SearchStack,
     pub halt: &'a AtomicBool,
@@ -39,17 +38,11 @@ pub(crate) struct ThreadData<'a> {
 }
 
 impl<'a> ThreadData<'a> {
-    pub(crate) fn new(
-        transpos_table: &'a TranspositionTable,
-        root_color: Color,
-        halt: &'a AtomicBool,
-        hash_history: Vec<u64>,
-    ) -> Self {
+    pub(crate) fn new(root_color: Color, halt: &'a AtomicBool, hash_history: Vec<u64>) -> Self {
         Self {
             ply: 0,
             max_depth: MAX_SEARCH_DEPTH,
             iter_max_depth: 0,
-            transpos_table,
             nodes_searched: 0,
             stack: SearchStack::default(),
             sel_depth: 0,
@@ -102,9 +95,9 @@ pub struct ThreadPool<'a> {
 }
 
 impl<'a> ThreadPool<'a> {
-    pub fn new(board: &Board, table: &'a TranspositionTable, halt: &'a AtomicBool, hash_history: Vec<u64>) -> Self {
+    pub fn new(board: &Board, halt: &'a AtomicBool, hash_history: Vec<u64>) -> Self {
         Self {
-            main_thread: ThreadData::new(table, board.to_move, halt, hash_history),
+            main_thread: ThreadData::new(board.to_move, halt, hash_history),
             halt,
             searching: AtomicBool::new(false),
             total_nodes: Arc::new(AtomicU64::new(0)),
@@ -112,7 +105,6 @@ impl<'a> ThreadPool<'a> {
     }
 
     pub fn reset(&mut self) {
-        self.main_thread.transpos_table.clear();
         self.main_thread.history = HistoryTable::default();
         self.main_thread.nodes_searched = 0;
         self.halt.store(false, Ordering::Relaxed);
@@ -126,6 +118,7 @@ impl<'a> ThreadPool<'a> {
         halt: &AtomicBool,
         msg: &mut Option<String>,
         hash_history: Vec<u64>,
+        tt: &TranspositionTable,
     ) {
         self.halt.store(false, Ordering::SeqCst);
         self.main_thread.hash_history = hash_history;
@@ -145,8 +138,7 @@ impl<'a> ThreadPool<'a> {
 
         thread::scope(|s| {
             s.spawn(move || {
-                println!("bestmove {}", search(&mut self.main_thread, true, *board).to_san());
-                self.main_thread.transpos_table.age_up();
+                println!("bestmove {}", search(&mut self.main_thread, true, *board, tt).to_san());
             });
             let mut s = String::new();
             io::stdin().read_line(&mut s).unwrap();
