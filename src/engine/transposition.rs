@@ -119,9 +119,7 @@ pub struct TranspositionTable {
 
 pub const TARGET_TABLE_SIZE_MB: usize = 16;
 const BYTES_PER_MB: usize = 1024 * 1024;
-const TARGET_BYTES: usize = TARGET_TABLE_SIZE_MB * BYTES_PER_MB;
 const ENTRY_SIZE: usize = size_of::<TableEntry>();
-const TABLE_CAPACITY: usize = TARGET_BYTES / ENTRY_SIZE;
 
 impl TranspositionTable {
     /// Size here is the desired size in MB
@@ -163,7 +161,7 @@ impl TranspositionTable {
         is_pv: bool,
         static_eval: i32,
     ) {
-        let idx = index(hash);
+        let idx = index(hash, self.vec.len());
         let key = hash;
 
         let old_entry = unsafe { TableEntry::from(self.vec.get_unchecked(idx).clone()) };
@@ -211,7 +209,7 @@ impl TranspositionTable {
     }
 
     pub fn get(&self, hash: u64, ply: i32) -> Option<TableEntry> {
-        let idx = index(hash);
+        let idx = index(hash, self.vec.len());
         let key = hash;
 
         let mut entry = unsafe { TableEntry::from(self.vec.get_unchecked(idx).clone()) };
@@ -230,8 +228,8 @@ impl TranspositionTable {
     }
 }
 
-fn index(hash: u64) -> usize {
-    ((u128::from(hash) * (TABLE_CAPACITY as u128)) >> 64) as usize
+fn index(hash: u64, table_capacity: usize) -> usize {
+    ((u128::from(hash) * (table_capacity as u128)) >> 64) as usize
 }
 
 #[cfg(test)]
