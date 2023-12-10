@@ -4,5 +4,4 @@ pub const MAX_LEN: usize = 500;
 /// for efficient search pruning
 pub struct BoardHistory {
     pub arr: [u64; MAX_LEN],
-    pub len: usize,
 }
