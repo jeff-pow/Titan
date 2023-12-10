@@ -1,3 +1,4 @@
+use std::process::exit;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{io, time::Duration};
 
@@ -48,70 +49,74 @@ pub fn main_loop() -> ! {
             io::stdin().read_line(&mut buffer).unwrap();
             buffer
         };
+
         msg = None;
+        let input = input.split_whitespace().collect::<Vec<_>>();
 
-        if input.starts_with("isready") {
-            println!("readyok");
-        } else if input.starts_with("debug on") {
-            println!("info string debug on");
-        } else if input.starts_with("ucinewgame") {
-            transpos_table.clear();
-            halt.store(false, Ordering::Relaxed);
-            thread_pool = ThreadPool::new(&board, &halt, Vec::new());
-        } else if input.starts_with("eval") {
-            println!("{} cp", board.evaluate());
-        } else if input.starts_with("position") {
-            let vec: Vec<&str> = input.split_whitespace().collect();
-            hash_history.clear();
-
-            if input.contains("fen") {
-                board = build_board(&parse_fen_from_buffer(&vec));
-
-                if vec.len() > 9 {
-                    parse_moves(&vec, &mut board, 9, &mut hash_history);
-                }
-            } else if input.contains("startpos") {
-                board = build_board(fen::STARTING_FEN);
-
-                if vec.len() > 3 {
-                    parse_moves(&vec, &mut board, 3, &mut hash_history);
-                }
+        match *input.first().unwrap_or(&"Invalid command") {
+            "isready" => println!("readyok"),
+            "ucinewgame" => {
+                transpos_table.clear();
+                halt.store(false, Ordering::Relaxed);
+                thread_pool = ThreadPool::new(&board, &halt, Vec::new());
             }
-        } else if input.eq("d\n") {
-            dbg!(&board);
-        } else if input.eq("dbg\n") {
-            dbg!(&board);
-            board.debug_bitboards();
-        } else if input.starts_with("bench") {
-            bench();
-        } else if input.starts_with("clear") {
-            thread_pool.reset();
-            println!("Transposition table cleared");
-        } else if input.starts_with("go") {
-            thread_pool.handle_go(&input, &board, &halt, &mut msg, hash_history.clone(), &transpos_table);
-            transpos_table.age_up();
-        } else if input.contains("perft") {
-            let mut iter = input.split_whitespace().skip(1);
-            let depth = iter.next().unwrap().parse::<i32>().unwrap();
-            perft(&board, depth);
-        } else if input.starts_with("quit") {
-            std::process::exit(0);
-        } else if input.starts_with("uci") {
-            println!("id name {ENGINE_NAME}");
-            println!("id author {}", env!("CARGO_PKG_AUTHORS"));
-            println!("option name Threads type spin default 1 min 1 max 1");
-            println!("option name Hash type spin default 16 min 1 max 8388608");
-            println!("uciok");
-        } else if input.starts_with("setoption") {
-            match input.split_whitespace().collect::<Vec<_>>()[..] {
+            "eval" => println!("{} cp", board.evaluate()),
+            "position" => position_command(&input, &mut board, &mut hash_history),
+            "d" => {
+                dbg!(&board);
+            }
+            "dbg" => {
+                dbg!(&board);
+                board.debug_bitboards();
+            }
+            "bench" => bench(),
+            "clear" => {
+                thread_pool.reset();
+                transpos_table.clear();
+            }
+            "go" => {
+                thread_pool.handle_go(&input, &board, &halt, &mut msg, hash_history.clone(), &transpos_table);
+                transpos_table.age_up();
+            }
+            "perft" => {
+                perft(&board, input[1].parse().unwrap());
+            }
+            "quit" => {
+                exit(0);
+            }
+            "uci" => {
+                println!("id name {ENGINE_NAME}");
+                println!("id author {}", env!("CARGO_PKG_AUTHORS"));
+                println!("option name Threads type spin default 1 min 1 max 1");
+                println!("option name Hash type spin default 16 min 1 max 8388608");
+                println!("uciok");
+            }
+            "setoption" => match input[..] {
                 ["setoption", "name", "Hash", "value", x] => {
                     transpos_table = TranspositionTable::new(x.parse().unwrap())
                 }
                 ["setoption", "name", "Clear", "Hash"] => transpos_table.clear(),
                 _ => {}
-            }
-        } else {
-            println!("Command not handled: {}", input);
+            },
+            _ => (),
+        };
+    }
+}
+
+fn position_command(input: &[&str], board: &mut Board, hash_history: &mut Vec<u64>) {
+    hash_history.clear();
+
+    if input.contains(&"fen") {
+        *board = build_board(&parse_fen_from_buffer(input));
+
+        if input.len() > 9 {
+            parse_moves(input, board, 9, hash_history);
+        }
+    } else if input.contains(&"startpos") {
+        *board = build_board(fen::STARTING_FEN);
+
+        if input.len() > 3 {
+            parse_moves(input, board, 3, hash_history);
         }
     }
 }
@@ -124,24 +129,24 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, hash_history: &mu
     }
 }
 
-pub(crate) fn parse_time(buff: &str) -> GameTime {
+pub(crate) fn parse_time(buff: &[&str]) -> GameTime {
     let mut game_time = GameTime::default();
-    let vec = buff.split_whitespace().skip(1).tuples::<(_, _)>();
+    let vec = buff.iter().skip(1).tuples::<(_, _)>();
     for entry in vec {
         match entry {
-            ("wtime", wtime) => {
+            (&"wtime", wtime) => {
                 game_time.time_remaining[Color::White] = Duration::from_millis(wtime.parse::<u64>().expect("Valid u64"))
             }
-            ("btime", btime) => {
+            (&"btime", btime) => {
                 game_time.time_remaining[Color::Black] = Duration::from_millis(btime.parse::<u64>().expect("Valid u64"))
             }
-            ("winc", winc) => {
+            (&"winc", winc) => {
                 game_time.time_inc[Color::White] = Duration::from_millis(winc.parse::<u64>().expect("Valid u64"))
             }
-            ("binc", binc) => {
+            (&"binc", binc) => {
                 game_time.time_inc[Color::Black] = Duration::from_millis(binc.parse::<u64>().expect("Valid u64"))
             }
-            ("movestogo", moves) => game_time.movestogo = moves.parse::<i32>().expect("Valid i32"),
+            (&"movestogo", moves) => game_time.movestogo = moves.parse::<i32>().expect("Valid i32"),
             _ => return game_time,
         }
     }

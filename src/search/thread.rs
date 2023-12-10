@@ -113,7 +113,7 @@ impl<'a> ThreadPool<'a> {
 
     pub fn handle_go(
         &mut self,
-        buffer: &str,
+        buffer: &[&str],
         board: &Board,
         halt: &AtomicBool,
         msg: &mut Option<String>,
@@ -123,12 +123,12 @@ impl<'a> ThreadPool<'a> {
         self.halt.store(false, Ordering::SeqCst);
         self.main_thread.hash_history = hash_history;
 
-        if buffer.contains("depth") {
-            let mut iter = buffer.split_whitespace().skip(2);
+        if buffer.contains(&"depth") {
+            let mut iter = buffer.iter().skip(2);
             let depth = iter.next().unwrap().parse::<i32>().unwrap();
             self.main_thread.max_depth = depth;
             self.main_thread.search_type = SearchType::Depth;
-        } else if buffer.contains("wtime") {
+        } else if buffer.contains(&"wtime") {
             self.main_thread.search_type = SearchType::Time;
             self.main_thread.game_time = parse_time(buffer);
             self.main_thread.game_time.recommended_time(board.to_move);
