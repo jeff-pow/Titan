@@ -9,12 +9,12 @@ use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
 use crate::search::{SearchStack, INIT_ASP};
 
-use super::history_heuristics::MAX_HIST_VAL;
+use super::history_table::MAX_HIST_VAL;
 use super::quiescence::quiescence;
 use super::thread::ThreadData;
 use super::{
-    get_reduction, store_pv, SearchType, LMP_CONST, LMR_THRESHOLD, MAX_LMP_DEPTH, MAX_RFP_DEPTH, MIN_IIR_DEPTH,
-    MIN_LMR_DEPTH, MIN_NMP_DEPTH, RFP_MULTIPLIER,
+    get_reduction, store_pv, SearchType, LMP_CONST, LMR_THRESHOLD, MAX_LMP_DEPTH, MAX_RFP_DEPTH, MIN_ASP_DEPTH,
+    MIN_IIR_DEPTH, MIN_LMR_DEPTH, MIN_NMP_DEPTH, RFP_MULTIPLIER,
 };
 
 pub const CHECKMATE: i32 = 25000;
@@ -51,20 +51,20 @@ pub(crate) fn iterative_deepening(
         td.ply = 0;
         td.sel_depth = 0;
 
-        let score = aspiration_windows(td, &mut pv, prev_score, board, tt);
-        prev_score = score;
+        prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt);
 
         if !pv.is_empty() {
             best_move = pv[0];
         }
 
         if print_uci {
-            td.print_search_stats(score, &pv);
+            td.print_search_stats(prev_score, &pv);
         }
 
         if td.search_type == SearchType::Time && td.game_time.soft_termination() {
             break;
         }
+
         if td.halt.load(Ordering::SeqCst) {
             break;
         }
@@ -83,9 +83,11 @@ fn aspiration_windows(
 ) -> i32 {
     let mut alpha = -INFINITY;
     let mut beta = INFINITY;
+    // Asp window should start wider if score is more extreme
     let mut delta = INIT_ASP + prev_score * prev_score / 10000;
 
-    if td.iter_max_depth >= 4 {
+    // Only apply
+    if td.iter_max_depth >= MIN_ASP_DEPTH {
         alpha = alpha.max(prev_score - delta);
         beta = beta.min(prev_score + delta);
     }
@@ -120,27 +122,33 @@ fn alpha_beta<const IS_PV: bool>(
 ) -> i32 {
     let is_root = td.ply == 0;
     let in_check = board.in_check;
-    td.sel_depth = td.sel_depth.max(td.ply);
+    if IS_PV {
+        td.sel_depth = td.sel_depth.max(td.ply);
+    }
 
+    // Stop if we have reached hard time limit or decided else where it is time to stop
     if td.halt.load(Ordering::Relaxed) || td.game_time.hard_termination() {
         td.halt.store(true, Ordering::SeqCst);
         // return board.evaluate();
         return 0;
     }
 
-    // Needed since the function can calculate extensions in cases where it finds itself in check
-    if td.ply >= MAX_SEARCH_DEPTH {
-        if board.in_check {
-            return quiescence(alpha, beta, pv, td, tt, board);
-        }
-
-        return board.evaluate();
+    if depth <= 0 {
+        return quiescence::<IS_PV>(alpha, beta, pv, td, tt, board);
     }
 
-    if td.ply > 0 {
+    // Don't prune at root to ensure we have a best move
+    if !is_root {
         if board.is_draw() || td.is_repetition(board) {
+            // TODO: Try returning 2 - nodes & 3 to avoid 3x rep blindness
             return STALEMATE;
         }
+
+        // Prevent overflows of the search stack
+        if td.ply >= MAX_SEARCH_DEPTH {
+            return if in_check { 0 } else { board.evaluate() };
+        }
+
         // Determines if there is a faster path to checkmate than evaluating the current node, and
         // if there is, it returns early
         let alpha = alpha.max(-CHECKMATE + td.ply);
@@ -148,11 +156,9 @@ fn alpha_beta<const IS_PV: bool>(
         if alpha >= beta {
             return alpha;
         }
-        depth += i32::from(in_check);
-    }
 
-    if depth <= 0 {
-        return quiescence(alpha, beta, pv, td, tt, board);
+        // Extend depth by one if we are in check
+        depth += i32::from(in_check);
     }
 
     let mut table_move = Move::NULL;
@@ -187,6 +193,7 @@ fn alpha_beta<const IS_PV: bool>(
     let static_eval = if in_check {
         -CHECKMATE
     } else if let Some(entry) = entry {
+        // Get static eval from transposition table if possible
         entry.static_eval()
     } else {
         board.evaluate()
@@ -195,10 +202,12 @@ fn alpha_beta<const IS_PV: bool>(
     let improving = !in_check && td.ply > 1 && static_eval > td.stack[td.ply - 2].static_eval;
 
     // TODO: Killers should probably be reset here
-    // td.stack[ply].killers = [Move::NULL; 2];
+    // td.stack[td.ply + 1].killers = [Move::NULL; 2];
 
+    // Pre-move loop pruning
     if !is_root && !IS_PV && !in_check {
-        // Reverse futility pruning
+        // Reverse futility pruning - If we are below beta by a certain amount, we are unlikely to
+        // raise it, so we can prune the nodes that would have followed
         if static_eval - RFP_MULTIPLIER * depth / if improving { 2 } else { 1 } >= beta
             && depth < MAX_RFP_DEPTH
             && static_eval.abs() < NEAR_CHECKMATE
@@ -206,7 +215,9 @@ fn alpha_beta<const IS_PV: bool>(
             return static_eval;
         }
 
-        // Null move pruning (NMP)
+        // Null move pruning (NMP) - If we can give the opponent a free move and they still can't
+        // raise beta, they likely won't be able to, so we can prune the nodes that would have
+        // followed
         if board.has_non_pawns(board.to_move)
             && depth >= MIN_NMP_DEPTH
             && static_eval >= beta
@@ -220,6 +231,7 @@ fn alpha_beta<const IS_PV: bool>(
             td.hash_history.push(new_b.zobrist_hash);
             td.ply += 1;
 
+            // Reduction
             let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
             let mut null_eval =
                 -alpha_beta::<false>(depth - r, -beta, -beta + 1, &mut node_pvs, td, tt, &new_b, !cut_node);
@@ -228,6 +240,7 @@ fn alpha_beta<const IS_PV: bool>(
             td.ply -= 1;
 
             if null_eval >= beta {
+                // Ensure we don't return a checkmate score
                 if null_eval > NEAR_CHECKMATE {
                     null_eval = beta;
                 }
@@ -252,14 +265,16 @@ fn alpha_beta<const IS_PV: bool>(
         if !is_root && best_score >= -NEAR_CHECKMATE {
             if is_quiet {
                 // Late move pruning (LMP)
-                // By now all tactical moves have been searched.
+                // By now all good tactical moves have been searched, so we can prune
                 if depth < MAX_LMP_DEPTH
                     && legal_moves_searched > (LMP_CONST + depth * depth) / if improving { 1 } else { 2 }
                 {
                     break;
                 }
             }
-            // TODO: Try -15 * depth * depth for capture
+            // Static exchange pruning - If we fail to immediately recapture a depth dependent
+            // threshold, don't bother searching the move
+            // TODO: Try a depth * depth dependent capture threshold
             let margin = if m.is_capture(board) { -90 } else { -50 } * depth;
             if depth < 7 && !board.see(m, margin) {
                 continue;
@@ -270,6 +285,7 @@ fn alpha_beta<const IS_PV: bool>(
         if !new_b.make_move::<true>(m) {
             continue;
         }
+
         if is_quiet {
             quiets_tried.push(m)
         } else {
@@ -282,43 +298,46 @@ fn alpha_beta<const IS_PV: bool>(
         td.ply += 1;
         let mut node_pvs = Vec::new();
 
-        // Calculate the reduction used in LMR
-        let r = {
-            if legal_moves_searched < LMR_THRESHOLD || depth < MIN_LMR_DEPTH {
-                1
-            } else {
-                let mut r = get_reduction(depth, legal_moves_searched);
-                r += i32::from(!IS_PV);
-                r += i32::from(!improving);
-                if is_quiet && cut_node {
-                    r += 2;
-                }
-                if is_quiet {
-                    if hist_score > MAX_HIST_VAL / 2 {
-                        r -= 1;
-                    } else if hist_score < -MAX_HIST_VAL / 2 {
-                        r += 1;
-                    }
-                }
-                if m.is_capture(board) && hist_score < BAD_CAPTURE + 100 {
-                    r += 1;
-                }
-                // Don't let LMR send us into qsearch
-                r.clamp(1, depth - 1)
-            }
-        };
-
         let eval = if legal_moves_searched == 0 {
             node_pvs.clear();
             // On the first move, just do a full depth search
             -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, td, tt, &new_b, false)
         } else {
             node_pvs.clear();
+
+            // Late Move Reductions - Search moves after the first with reduced depth and window as
+            // they are much less likely to be the best move than the first move selected by the
+            // move picker.
+            let r = {
+                if legal_moves_searched < LMR_THRESHOLD || depth < MIN_LMR_DEPTH {
+                    1
+                } else {
+                    let mut r = get_reduction(depth, legal_moves_searched);
+                    r += i32::from(!IS_PV);
+                    r += i32::from(!improving);
+                    if is_quiet && cut_node {
+                        r += 2;
+                    }
+                    if is_quiet {
+                        if hist_score > MAX_HIST_VAL / 2 {
+                            r -= 1;
+                        } else if hist_score < -MAX_HIST_VAL / 2 {
+                            r += 1;
+                        }
+                    }
+                    if m.is_capture(board) && hist_score < BAD_CAPTURE + 100 {
+                        r += 1;
+                    }
+                    // Don't let LMR send us into qsearch
+                    r.clamp(1, depth - 1)
+                }
+            };
+
             // Start with a zero window reduced search
             let zero_window_reduced_depth =
                 -alpha_beta::<false>(depth - r, -alpha - 1, -alpha, &mut node_pvs, td, tt, &new_b, !cut_node);
 
-            // If that search raises alpha and the reduction was more than one, do a research at a zero window with full depth
+            // If that search raises alpha and a reduction was applied, re-search at a zero window with full depth
             let zero_window_full_depth = if zero_window_reduced_depth > alpha && r > 1 {
                 node_pvs.clear();
                 -alpha_beta::<false>(depth - 1, -alpha - 1, -alpha, &mut node_pvs, td, tt, &new_b, !cut_node)
@@ -350,7 +369,7 @@ fn alpha_beta<const IS_PV: bool>(
 
             if alpha >= beta {
                 if is_quiet {
-                    // We don't want to store tactical moves, because they are obviously already
+                    // We don't want to store tactical moves in our killer moves, because they are obviously already
                     // good.
                     // Also don't store killers that we have already stored
                     if td.stack[td.ply].killers[0] != m {
@@ -358,6 +377,7 @@ fn alpha_beta<const IS_PV: bool>(
                         td.stack[td.ply].killers[0] = m;
                     }
                 }
+                // Update history tables on a beta cutoff
                 td.history
                     .update_histories(m, &quiets_tried, &tacticals_tried, board, depth, &td.stack, td.ply);
                 break;

@@ -8,16 +8,16 @@ use crate::moves::moves::Move;
 use self::search::MAX_SEARCH_DEPTH;
 
 pub mod game_time;
-pub mod history_heuristics;
+pub mod history_table;
 pub mod quiescence;
 pub mod search;
-pub mod search_stats;
 pub mod see;
 pub mod thread;
 
 // Tunable Constants
 /// Initial aspiration window value
 pub const INIT_ASP: i32 = 10;
+const MIN_ASP_DEPTH: i32 = 4;
 pub const NUM_KILLER_MOVES: usize = 2;
 /// Begin LMR if more than this many moves have been searched
 pub const LMR_THRESHOLD: i32 = 2;

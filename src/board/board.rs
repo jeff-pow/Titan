@@ -98,7 +98,7 @@ impl Board {
         false
     }
 
-    // Returns the type of piece captured by a move, if any
+    /// Returns the type of piece captured by a move, if any
     pub fn capture(&self, m: Move) -> Option<PieceName> {
         if m.is_en_passant() {
             Some(PieceName::Pawn)
@@ -319,7 +319,6 @@ impl Board {
                 }
             }
         }
-
         // Xor in the new en passant square hash
         if let Some(sq) = self.en_passant_square {
             self.zobrist_hash ^= ZOBRIST.en_passant[sq];
@@ -358,7 +357,6 @@ impl Board {
         self.en_passant_square = None;
     }
 
-    #[allow(dead_code)]
     pub fn debug_bitboards(&self) {
         for color in &[Color::White, Color::Black] {
             for piece in PieceName::iter() {

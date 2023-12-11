@@ -9,7 +9,7 @@ use super::search::MAX_SEARCH_DEPTH;
 use super::search::{CHECKMATE, INFINITY};
 use super::{store_pv, thread::ThreadData};
 
-pub fn quiescence(
+pub fn quiescence<const IS_PV: bool>(
     mut alpha: i32,
     beta: i32,
     pvs: &mut Vec<Move>,
@@ -21,19 +21,44 @@ pub fn quiescence(
         return STALEMATE;
     }
 
-    td.sel_depth = td.sel_depth.max(td.ply);
+    if IS_PV {
+        td.sel_depth = td.sel_depth.max(td.ply);
+    }
 
+    // Halt search if we are going to overflow the search stack
     if td.ply >= MAX_SEARCH_DEPTH {
         return board.evaluate();
     }
 
-    // TODO: Return tt score
+    // Probe transposition table for best move and eval
+    let mut table_move = Move::NULL;
     let entry = tt.get(board.zobrist_hash, td.ply);
-    let table_move = entry.map_or(Move::NULL, |e| e.best_move(board));
+    if let Some(e) = entry {
+        if !IS_PV
+            && e.flag() != EntryFlag::None
+            && match e.flag() {
+                EntryFlag::None => false,
+                EntryFlag::AlphaUnchanged => e.search_score() <= alpha,
+                EntryFlag::BetaCutOff => e.search_score() >= beta,
+                EntryFlag::Exact => true,
+            }
+        {
+            return e.search_score();
+        }
+        table_move = e.best_move(board);
+    }
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
-
-    let stand_pat = board.evaluate();
+    let stand_pat = if let Some(entry) = entry {
+        entry.static_eval()
+    } else {
+        board.evaluate()
+    };
+    td.stack[td.ply].static_eval = stand_pat;
+    // Store eval in tt if it wasn't previously found in tt
+    if entry.is_none() && !board.in_check {
+        tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, INFINITY, td.ply, IS_PV, stand_pat);
+    }
     if stand_pat >= beta {
         return stand_pat;
     }
@@ -41,6 +66,7 @@ pub fn quiescence(
     alpha = alpha.max(stand_pat);
 
     let in_check = board.in_check;
+    // Try to find an evasion if we are in check, otherwise just generate captures
     let mut moves = if in_check {
         board.generate_moves(MGT::All)
     } else {
@@ -48,7 +74,7 @@ pub fn quiescence(
     };
     moves.score_moves(board, table_move, td.stack[td.ply].killers, td);
 
-    let mut best_score = if in_check { -INFINITY } else { board.evaluate() };
+    let mut best_score = if in_check { -INFINITY } else { stand_pat };
 
     let mut best_move = Move::NULL;
     let mut moves_searched = 0;
@@ -57,8 +83,9 @@ pub fn quiescence(
         let mut node_pvs = Vec::new();
         let mut new_b = *board;
 
-        // We want to find at least one evasion so we know we aren't in checkmate, so don't prune
-        // moves before then
+        // Static exchange pruning - If we fail to immediately recapture a depth dependent
+        // threshold, don't bother searching the move. Ensure we either have a legal evasion or
+        // aren't in check before pruning
         if (!in_check || moves_searched > 1) && !board.see(m, 1) {
             continue;
         }
@@ -74,26 +101,27 @@ pub fn quiescence(
 
         // TODO: Implement delta pruning
 
-        let eval = -quiescence(-beta, -alpha, &mut node_pvs, td, tt, &new_b);
+        let eval = -quiescence::<IS_PV>(-beta, -alpha, &mut node_pvs, td, tt, &new_b);
 
         td.ply -= 1;
         td.hash_history.pop();
 
         if eval > best_score {
             best_score = eval;
-            // TODO: Only when best_move raises alpha
-            best_move = m;
+
             if eval > alpha {
+                best_move = m;
                 alpha = eval;
                 store_pv(pvs, &mut node_pvs, m);
             }
+
             if alpha >= beta {
                 break;
             }
         }
     }
 
-    // TODO: Only fail low or fail high flags
+    // TODO: Try only fail low or fail high flags
     let entry_flag = if best_score >= beta {
         EntryFlag::BetaCutOff
     } else if best_score > original_alpha {
@@ -102,7 +130,7 @@ pub fn quiescence(
         EntryFlag::AlphaUnchanged
     };
 
-    tt.store(board.zobrist_hash, best_move, 0, entry_flag, best_score, td.ply, false, stand_pat);
+    tt.store(board.zobrist_hash, best_move, 0, entry_flag, best_score, td.ply, IS_PV, stand_pat);
 
     if in_check && moves_searched == 0 {
         return -CHECKMATE + td.ply;

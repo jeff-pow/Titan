@@ -14,9 +14,9 @@ pub struct GameTime {
     pub time_remaining: [Duration; 2],
     /// Moves until the next time control
     pub movestogo: i32,
-    /// Recommended time
+    /// Recommended time for search
     pub rec_time: Duration,
-    /// Max time the side may spend on the move
+    /// Max time allowable for this search
     pub max_time: Duration,
     pub search_start: Instant,
 }
