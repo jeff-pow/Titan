@@ -21,42 +21,44 @@ pub fn quiescence<const IS_PV: bool>(
         return STALEMATE;
     }
 
-    td.sel_depth = td.sel_depth.max(td.ply);
+    if IS_PV {
+        td.sel_depth = td.sel_depth.max(td.ply);
+    }
 
+    // Halt search if we are going to overflow the search stack
     if td.ply >= MAX_SEARCH_DEPTH {
         return board.evaluate();
     }
 
-    // TODO: Return tt score
+    // Probe transposition table for best move and eval
+    let mut table_move = Move::NULL;
     let entry = tt.get(board.zobrist_hash, td.ply);
     if let Some(e) = entry {
         if !IS_PV
             && e.flag() != EntryFlag::None
-            // && (tt_bound & (if tt_score >= beta { BOUND_LOWER } else { BOUND_UPPER })) != 0
-             && match e.flag() {
-                 EntryFlag::None => false,
-                 EntryFlag::AlphaUnchanged => e.search_score() <= alpha,
-                 EntryFlag::BetaCutOff => e.search_score() >= beta,
-                 EntryFlag::Exact => true,
-             }
+            && match e.flag() {
+                EntryFlag::None => false,
+                EntryFlag::AlphaUnchanged => e.search_score() <= alpha,
+                EntryFlag::BetaCutOff => e.search_score() >= beta,
+                EntryFlag::Exact => true,
+            }
         {
             return e.search_score();
         }
+        table_move = e.best_move(board);
     }
-    let table_move = entry.map_or(Move::NULL, |e| e.best_move(board));
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
-
     let stand_pat = if let Some(entry) = entry {
         entry.static_eval()
     } else {
         board.evaluate()
     };
     td.stack[td.ply].static_eval = stand_pat;
+    // Store eval in tt if it wasn't previously found in tt
     if entry.is_none() && !board.in_check {
         tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, INFINITY, td.ply, IS_PV, stand_pat);
     }
-
     if stand_pat >= beta {
         return stand_pat;
     }
@@ -64,6 +66,7 @@ pub fn quiescence<const IS_PV: bool>(
     alpha = alpha.max(stand_pat);
 
     let in_check = board.in_check;
+    // Try to find an evasion if we are in check, otherwise just generate captures
     let mut moves = if in_check {
         board.generate_moves(MGT::All)
     } else {
@@ -80,8 +83,9 @@ pub fn quiescence<const IS_PV: bool>(
         let mut node_pvs = Vec::new();
         let mut new_b = *board;
 
-        // We want to find at least one evasion so we know we aren't in checkmate, so don't prune
-        // moves before then
+        // Static exchange pruning - If we fail to immediately recapture a depth dependent
+        // threshold, don't bother searching the move. Ensure we either have a legal evasion or
+        // aren't in check before pruning
         if (!in_check || moves_searched > 1) && !board.see(m, 1) {
             continue;
         }
@@ -117,7 +121,7 @@ pub fn quiescence<const IS_PV: bool>(
         }
     }
 
-    // TODO: Only fail low or fail high flags
+    // TODO: Try only fail low or fail high flags
     let entry_flag = if best_score >= beta {
         EntryFlag::BetaCutOff
     } else if best_score > original_alpha {

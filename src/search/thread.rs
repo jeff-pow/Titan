@@ -16,7 +16,7 @@ use crate::{
 
 use super::{
     game_time::GameTime,
-    history_heuristics::HistoryTable,
+    history_table::HistoryTable,
     search::{search, MAX_SEARCH_DEPTH},
     SearchStack, SearchType,
 };
@@ -26,15 +26,18 @@ pub(crate) struct ThreadData<'a> {
     pub ply: i32,
     pub max_depth: i32,
     pub iter_max_depth: i32,
+    /// Max depth reached by a pv node
+    pub sel_depth: i32,
+
     pub nodes_searched: u64,
     pub stack: SearchStack,
-    pub halt: &'a AtomicBool,
-    pub sel_depth: i32,
     pub history: HistoryTable,
+    pub hash_history: Vec<u64>,
+
     pub root_color: Color,
     pub game_time: GameTime,
     pub search_type: SearchType,
-    pub hash_history: Vec<u64>,
+    pub halt: &'a AtomicBool,
 }
 
 impl<'a> ThreadData<'a> {

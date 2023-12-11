@@ -34,11 +34,6 @@ pub struct HistoryTable {
 }
 
 fn calc_bonus(depth: i32) -> i32 {
-    // if depth > 13 {
-    //     32
-    // } else {
-    //     16 * depth * depth + 128 * (depth - 1).max(0)
-    // }
     (155 * depth).min(2000)
 }
 
