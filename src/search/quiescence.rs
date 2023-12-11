@@ -9,7 +9,7 @@ use super::search::MAX_SEARCH_DEPTH;
 use super::search::{CHECKMATE, INFINITY};
 use super::{store_pv, thread::ThreadData};
 
-pub fn quiescence(
+pub fn quiescence<const IS_PV: bool>(
     mut alpha: i32,
     beta: i32,
     pvs: &mut Vec<Move>,
@@ -29,11 +29,34 @@ pub fn quiescence(
 
     // TODO: Return tt score
     let entry = tt.get(board.zobrist_hash, td.ply);
+    if let Some(e) = entry {
+        if !IS_PV
+            && e.flag() != EntryFlag::None
+            // && (tt_bound & (if tt_score >= beta { BOUND_LOWER } else { BOUND_UPPER })) != 0
+             && match e.flag() {
+                 EntryFlag::None => false,
+                 EntryFlag::AlphaUnchanged => e.search_score() <= alpha,
+                 EntryFlag::BetaCutOff => e.search_score() >= beta,
+                 EntryFlag::Exact => true,
+             }
+        {
+            return e.search_score();
+        }
+    }
     let table_move = entry.map_or(Move::NULL, |e| e.best_move(board));
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
 
-    let stand_pat = board.evaluate();
+    let stand_pat = if let Some(entry) = entry {
+        entry.static_eval()
+    } else {
+        board.evaluate()
+    };
+    td.stack[td.ply].static_eval = stand_pat;
+    if entry.is_none() && !board.in_check {
+        tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, INFINITY, td.ply, IS_PV, stand_pat);
+    }
+
     if stand_pat >= beta {
         return stand_pat;
     }
@@ -48,7 +71,7 @@ pub fn quiescence(
     };
     moves.score_moves(board, table_move, td.stack[td.ply].killers, td);
 
-    let mut best_score = if in_check { -INFINITY } else { board.evaluate() };
+    let mut best_score = if in_check { -INFINITY } else { stand_pat };
 
     let mut best_move = Move::NULL;
     let mut moves_searched = 0;
@@ -74,19 +97,20 @@ pub fn quiescence(
 
         // TODO: Implement delta pruning
 
-        let eval = -quiescence(-beta, -alpha, &mut node_pvs, td, tt, &new_b);
+        let eval = -quiescence::<IS_PV>(-beta, -alpha, &mut node_pvs, td, tt, &new_b);
 
         td.ply -= 1;
         td.hash_history.pop();
 
         if eval > best_score {
             best_score = eval;
-            // TODO: Only when best_move raises alpha
-            best_move = m;
+
             if eval > alpha {
+                best_move = m;
                 alpha = eval;
                 store_pv(pvs, &mut node_pvs, m);
             }
+
             if alpha >= beta {
                 break;
             }
@@ -102,7 +126,7 @@ pub fn quiescence(
         EntryFlag::AlphaUnchanged
     };
 
-    tt.store(board.zobrist_hash, best_move, 0, entry_flag, best_score, td.ply, false, stand_pat);
+    tt.store(board.zobrist_hash, best_move, 0, entry_flag, best_score, td.ply, IS_PV, stand_pat);
 
     if in_check && moves_searched == 0 {
         return -CHECKMATE + td.ply;

@@ -128,19 +128,21 @@ fn alpha_beta<const IS_PV: bool>(
         return 0;
     }
 
-    // Needed since the function can calculate extensions in cases where it finds itself in check
-    if td.ply >= MAX_SEARCH_DEPTH {
-        if board.in_check {
-            return quiescence(alpha, beta, pv, td, tt, board);
-        }
-
-        return board.evaluate();
+    if depth <= 0 {
+        return quiescence::<IS_PV>(alpha, beta, pv, td, tt, board);
     }
 
     if td.ply > 0 {
         if board.is_draw() || td.is_repetition(board) {
+            // TODO: Try returning 2 - nodes & 3 to avoid 3x rep blindness
             return STALEMATE;
         }
+
+        // Prevent overflows of the search stack
+        if td.ply >= MAX_SEARCH_DEPTH {
+            return if in_check { 0 } else { board.evaluate() };
+        }
+
         // Determines if there is a faster path to checkmate than evaluating the current node, and
         // if there is, it returns early
         let alpha = alpha.max(-CHECKMATE + td.ply);
@@ -148,11 +150,9 @@ fn alpha_beta<const IS_PV: bool>(
         if alpha >= beta {
             return alpha;
         }
-        depth += i32::from(in_check);
-    }
 
-    if depth <= 0 {
-        return quiescence(alpha, beta, pv, td, tt, board);
+        // Extend depth by one if we are in check
+        depth += i32::from(in_check);
     }
 
     let mut table_move = Move::NULL;
