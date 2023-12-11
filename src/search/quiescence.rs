@@ -17,7 +17,7 @@ pub fn quiescence(
     tt: &TranspositionTable,
     board: &Board,
 ) -> i32 {
-    if board.is_draw() {
+    if board.is_draw() || td.is_repetition(board) {
         return STALEMATE;
     }
 
