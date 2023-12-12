@@ -5,8 +5,7 @@ use crate::{
 
 use super::moves::{Direction, Direction::*};
 
-/// Simple Pcg64Mcg implementation
-// No repetitions as 100B iterations
+/// Xorshift64 https://en.wikipedia.org/wiki/Xorshift
 pub struct Rng(u64);
 
 impl Default for Rng {
