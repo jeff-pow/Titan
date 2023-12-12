@@ -20,11 +20,6 @@ impl Rng {
         self.0 ^= self.0 << 13;
         self.0 ^= self.0 >> 7;
         self.0 ^= self.0 << 17;
-
-        // self.0 ^= self.0 << 12;
-        // self.0 ^= self.0 >> 25;
-        // self.0 ^= self.0 << 27;
-        // self.0 *= 0x2545F4914F6CDD1D;
         self.0
     }
 
