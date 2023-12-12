@@ -89,9 +89,7 @@ impl MoveList {
                     GOOD_CAPTURE
                 } else {
                     BAD_CAPTURE
-                    // TODO: Could possibly just use MVV instead of MVVLVA here
-                    // }) + c.value()
-                }) + MVV_LVA[board.piece_at(entry.m.origin_square()).unwrap()][c]
+                }) + c.value()
                     + td.history.capt_hist(entry.m, board.to_move, board)
             } else if killers[0] == entry.m {
                 KILLER_ONE
@@ -114,18 +112,6 @@ const KILLER_TWO: i32 = 1000000;
 const COUNTER_MOVE: i32 = 900000;
 const QUEEN_PROMOTION: i32 = 20000001;
 const BAD_PROMOTION: i32 = -20000001;
-/// [Attacker][Victim]
-#[rustfmt::skip]
-const MVV_LVA: [[i32; 6]; 6] = [
-// Victims
-//   K   Q   R   B   N   P       Attacker
-    [60, 50, 40, 30, 20, 10], // K
-    [61, 51, 41, 31, 21, 11], // Q
-    [62, 52, 42, 32, 22, 12], // R
-    [63, 53, 43, 33, 23, 13], // B
-    [64, 54, 44, 34, 24, 14], // N
-    [65, 55, 45, 35, 25, 15], // P
-];
 
 impl Index<usize> for MoveList {
     type Output = Move;
