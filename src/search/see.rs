@@ -71,16 +71,13 @@ impl Board {
 
         let mut attackers = self.attackers(dest, occupied) & occupied;
 
-        let queens = self.bitboard(Color::White, PieceName::Queen) | self.bitboard(Color::Black, PieceName::Queen);
-        let bishops =
-            self.bitboard(Color::White, PieceName::Bishop) | self.bitboard(Color::Black, PieceName::Bishop) | queens;
-        let rooks =
-            self.bitboard(Color::White, PieceName::Rook) | self.bitboard(Color::Black, PieceName::Rook) | queens;
+        let bishops = self.piece(PieceName::Bishop) | self.piece(PieceName::Queen);
+        let rooks = self.piece(PieceName::Rook) | self.piece(PieceName::Queen);
 
         let mut to_move = !self.to_move;
 
         loop {
-            let my_attackers = attackers & self.color_occupancies(to_move);
+            let my_attackers = attackers & self.color(to_move);
 
             if my_attackers == Bitboard::EMPTY {
                 break;
@@ -102,7 +99,7 @@ impl Board {
             if score >= 0 {
                 // This statement states if a king is the next piece to be captured and the enemy
                 // has more pieces attacking the square, the move is illegal so we can break early
-                if next_piece == PieceName::King && (attackers & self.color_occupancies(to_move) != Bitboard::EMPTY) {
+                if next_piece == PieceName::King && (attackers & self.color(to_move) != Bitboard::EMPTY) {
                     to_move = !to_move;
                 }
                 break;

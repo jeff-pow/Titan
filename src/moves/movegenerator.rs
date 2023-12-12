@@ -143,7 +143,7 @@ impl Board {
     fn generate_pawn_moves(&self, gen_type: MGT, moves: &mut MoveList) {
         let pawns = self.bitboard(self.to_move, PieceName::Pawn);
         let vacancies = !self.occupancies();
-        let enemies = self.color_occupancies(!self.to_move);
+        let enemies = self.color(!self.to_move);
         let non_promotions = match self.to_move {
             Color::White => pawns & !RANK7,
             Color::Black => pawns & !RANK2,
@@ -268,9 +268,9 @@ impl Board {
                 PieceName::Pawn => panic!(),
             };
             let attacks = match gen_type {
-                MoveGenerationType::CapturesOnly => attack_bitself & self.color_occupancies(!self.to_move),
+                MoveGenerationType::CapturesOnly => attack_bitself & self.color(!self.to_move),
                 MoveGenerationType::QuietsOnly => attack_bitself & !self.occupancies(),
-                MoveGenerationType::All => attack_bitself & (!self.color_occupancies(self.to_move)),
+                MoveGenerationType::All => attack_bitself & (!self.color(self.to_move)),
             };
             for dest in attacks {
                 moves.push(Move::new(sq, dest, MoveType::Normal, piece_name));

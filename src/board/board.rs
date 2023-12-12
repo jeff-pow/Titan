@@ -51,46 +51,50 @@ impl Default for Board {
 }
 
 impl Board {
-    pub fn can_en_passant(&self) -> bool {
-        self.en_passant_square.is_some()
-    }
-
-    pub fn can_castle(&self, c: Castle) -> bool {
-        match c {
-            Castle::WhiteKing => self.castling_rights & Castle::WhiteKing as u32 != 0,
-            Castle::WhiteQueen => self.castling_rights & Castle::WhiteQueen as u32 != 0,
-            Castle::BlackKing => self.castling_rights & Castle::BlackKing as u32 != 0,
-            Castle::BlackQueen => self.castling_rights & Castle::BlackQueen as u32 != 0,
-            _ => panic!(),
-        }
-    }
-
     pub fn bitboard(&self, side: Color, piece: PieceName) -> Bitboard {
-        self.bitboards[piece] & self.color_occupancies(side)
+        self.piece(piece) & self.color(side)
+    }
+
+    pub fn piece(&self, piece: PieceName) -> Bitboard {
+        self.bitboards[piece]
+    }
+
+    pub fn color(&self, color: Color) -> Bitboard {
+        self.color_occupancies[color]
+    }
+
+    pub fn occupancies(&self) -> Bitboard {
+        self.color(Color::White) | self.color(Color::Black)
+    }
+
+    pub fn color_at(&self, sq: Square) -> Option<Color> {
+        self.array_board[sq].map(|piece| piece.color)
+    }
+
+    pub fn piece_at(&self, sq: Square) -> Option<PieceName> {
+        self.array_board[sq].map(|piece| piece.name)
     }
 
     fn is_material_draw(&self) -> bool {
         // If we have any pawns, checkmate is still possible
-        if self.piece_bitboard(PieceName::Pawn) != Bitboard::EMPTY {
+        if self.piece(PieceName::Pawn) != Bitboard::EMPTY {
             return false;
         }
         let piece_count = self.occupancies().count_bits();
         // King vs King can't checkmate
         if piece_count == 2
                // If there's three pieces and a singular knight or bishop, stalemate is impossible
-            || (piece_count == 3 && ((self.piece_bitboard(PieceName::Knight).count_bits() == 1)
-            || (self.piece_bitboard(PieceName::Bishop).count_bits() == 1)))
+            || (piece_count == 3 && ((self.piece(PieceName::Knight).count_bits() == 1)
+            || (self.piece(PieceName::Bishop).count_bits() == 1)))
         {
             return true;
         } else if piece_count == 4 {
             // No combination of two knights and a king can checkmate
-            if self.piece_bitboard(PieceName::Knight).count_bits() == 2 {
+            if self.piece(PieceName::Knight).count_bits() == 2 {
                 return true;
             }
             // If there is one bishop per side, checkmate is impossible
-            if self.color_occupancies(Color::White).count_bits() == 2
-                && self.piece_bitboard(PieceName::Bishop).count_bits() == 2
-            {
+            if self.color(Color::White).count_bits() == 2 && self.piece(PieceName::Bishop).count_bits() == 2 {
                 return true;
             }
         }
@@ -107,33 +111,27 @@ impl Board {
         }
     }
 
-    pub fn piece_bitboard(&self, p: PieceName) -> Bitboard {
-        self.bitboards[p]
-    }
-
     pub fn is_draw(&self) -> bool {
         self.half_moves >= 100 || self.is_material_draw()
-    }
-
-    pub fn color_occupancies(&self, color: Color) -> Bitboard {
-        self.color_occupancies[color]
-    }
-
-    pub fn occupancies(&self) -> Bitboard {
-        self.color_occupancies(Color::White) | self.color_occupancies(Color::Black)
-    }
-
-    pub fn color_at(&self, sq: Square) -> Option<Color> {
-        self.array_board[sq].map(|piece| piece.color)
-    }
-
-    pub fn piece_at(&self, sq: Square) -> Option<PieceName> {
-        self.array_board[sq].map(|piece| piece.name)
     }
 
     pub fn has_non_pawns(&self, side: Color) -> bool {
         self.occupancies() ^ self.bitboard(side, PieceName::King) ^ self.bitboard(side, PieceName::Pawn)
             != Bitboard::EMPTY
+    }
+
+    pub fn can_en_passant(&self) -> bool {
+        self.en_passant_square.is_some()
+    }
+
+    pub fn can_castle(&self, c: Castle) -> bool {
+        match c {
+            Castle::WhiteKing => self.castling_rights & Castle::WhiteKing as u32 != 0,
+            Castle::WhiteQueen => self.castling_rights & Castle::WhiteQueen as u32 != 0,
+            Castle::BlackKing => self.castling_rights & Castle::BlackKing as u32 != 0,
+            Castle::BlackQueen => self.castling_rights & Castle::BlackQueen as u32 != 0,
+            _ => panic!(),
+        }
     }
 
     pub fn place_piece<const NNUE: bool>(&mut self, piece_type: PieceName, color: Color, sq: Square) {
@@ -167,15 +165,14 @@ impl Board {
     }
 
     pub fn attackers_for_side(&self, attacker: Color, sq: Square, occupancy: Bitboard) -> Bitboard {
-        let bishops = self.bitboards[PieceName::Queen] | self.bitboards[PieceName::Bishop];
-        let rooks = self.bitboards[PieceName::Queen] | self.bitboards[PieceName::Rook];
-        let pawn_attacks = MG.pawn_attacks(sq, !attacker) & self.bitboards[PieceName::Pawn];
-        let knight_attacks = MG.knight_attacks(sq) & self.bitboards[PieceName::Knight];
+        let bishops = self.piece(PieceName::Queen) | self.piece(PieceName::Bishop);
+        let rooks = self.piece(PieceName::Queen) | self.piece(PieceName::Rook);
+        let pawn_attacks = MG.pawn_attacks(sq, !attacker) & self.piece(PieceName::Pawn);
+        let knight_attacks = MG.knight_attacks(sq) & self.piece(PieceName::Knight);
         let bishop_attacks = MG.bishop_attacks(sq, occupancy) & bishops;
         let rook_attacks = MG.rook_attacks(sq, occupancy) & rooks;
-        let king_attacks = MG.king_attacks(sq) & self.bitboards[PieceName::King];
-        (pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks)
-            & self.color_occupancies(attacker)
+        let king_attacks = MG.king_attacks(sq) & self.piece(PieceName::King);
+        (pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks) & self.color(attacker)
     }
 
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
@@ -236,7 +233,7 @@ impl Board {
                 } else {
                     let attacks = MG.pawn_attacks(origin, origin_color);
                     let enemy_color = self.color_at(origin).unwrap();
-                    attacks & m.dest_square().bitboard() & self.color_occupancies(!enemy_color) != Bitboard::EMPTY
+                    attacks & m.dest_square().bitboard() & self.color(!enemy_color) != Bitboard::EMPTY
                 }
             }
             PieceName::King => MG.king_attacks(origin),
@@ -246,7 +243,7 @@ impl Board {
             PieceName::Knight => MG.knight_attacks(origin),
         };
 
-        let enemy_occupancies = !self.color_occupancies(self.to_move);
+        let enemy_occupancies = !self.color(self.to_move);
         let attacks = attack_bitboard & enemy_occupancies;
 
         attacks & dest.bitboard() != Bitboard::EMPTY

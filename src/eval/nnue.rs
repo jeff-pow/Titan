@@ -1,8 +1,8 @@
 #[cfg(feature = "simd")]
 use std::arch::x86_64::{
-    __m512i, _mm512_add_epi16, _mm512_add_epi32, _mm512_cmpgt_epi16_mask, _mm512_cmplt_epi16_mask,
-    _mm512_dpwssds_epi32, _mm512_loadu_epi16, _mm512_mask_mov_epi16, _mm512_reduce_add_epi32, _mm512_set1_epi16,
-    _mm512_setzero_si512, _mm512_storeu_epi16, _mm512_sub_epi16,
+    __m512i, _mm512_add_epi16, _mm512_cmpgt_epi16_mask, _mm512_cmplt_epi16_mask, _mm512_dpwssds_epi32,
+    _mm512_loadu_epi16, _mm512_mask_mov_epi16, _mm512_reduce_add_epi32, _mm512_set1_epi16, _mm512_setzero_si512,
+    _mm512_storeu_epi16, _mm512_sub_epi16,
 };
 
 use crate::{
@@ -126,11 +126,10 @@ impl Board {
         {
             assert!(HIDDEN_SIZE % 16 == 0);
             unsafe {
-                let acc_us = flatten(us, &weights[0]);
-                let acc_them = flatten(them, &weights[1]);
+                let us = flatten(us, &weights[0]);
+                let them = flatten(them, &weights[1]);
 
-                let result_vector = _mm512_add_epi32(acc_us, acc_them);
-                output += _mm512_reduce_add_epi32(result_vector);
+                output += us + them;
             }
         }
         #[cfg(not(feature = "simd"))]
@@ -170,7 +169,7 @@ unsafe fn clipped_relu(i: __m512i) -> __m512i {
 }
 
 #[cfg(feature = "simd")]
-unsafe fn flatten(acc: &Block, weights: &Block) -> __m512i {
+unsafe fn flatten(acc: &Block, weights: &Block) -> i32 {
     let mut sum = _mm512_setzero_si512();
     for i in 0..REQUIRED_ITERS {
         let us_vector = _mm512_loadu_epi16(&acc[i * CHUNK_SIZE]);
@@ -178,7 +177,7 @@ unsafe fn flatten(acc: &Block, weights: &Block) -> __m512i {
         let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
         sum = _mm512_dpwssds_epi32(sum, crelu_result, weights);
     }
-    sum
+    _mm512_reduce_add_epi32(sum)
 }
 
 const COLOR_OFFSET: usize = NUM_SQUARES * NUM_PIECES;
