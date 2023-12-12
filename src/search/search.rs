@@ -13,8 +13,8 @@ use super::history_table::MAX_HIST_VAL;
 use super::quiescence::quiescence;
 use super::thread::ThreadData;
 use super::{
-    get_reduction, store_pv, SearchType, LMP_CONST, LMR_THRESHOLD, MAX_LMP_DEPTH, MAX_RFP_DEPTH, MIN_ASP_DEPTH,
-    MIN_IIR_DEPTH, MIN_LMR_DEPTH, MIN_NMP_DEPTH, RFP_MULTIPLIER,
+    get_reduction, store_pv, SearchType, LMP_CONST, LMR_THRESHOLD, MAX_LMP_DEPTH, MAX_RFP_DEPTH,
+    MIN_ASP_DEPTH, MIN_IIR_DEPTH, MIN_LMR_DEPTH, MIN_NMP_DEPTH, RFP_MULTIPLIER,
 };
 
 pub const CHECKMATE: i32 = 25000;
@@ -233,8 +233,16 @@ fn alpha_beta<const IS_PV: bool>(
 
             // Reduction
             let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
-            let mut null_eval =
-                -alpha_beta::<false>(depth - r, -beta, -beta + 1, &mut node_pvs, td, tt, &new_b, !cut_node);
+            let mut null_eval = -alpha_beta::<false>(
+                depth - r,
+                -beta,
+                -beta + 1,
+                &mut node_pvs,
+                td,
+                tt,
+                &new_b,
+                !cut_node,
+            );
 
             td.hash_history.pop();
             td.ply -= 1;
@@ -267,7 +275,8 @@ fn alpha_beta<const IS_PV: bool>(
                 // Late move pruning (LMP)
                 // By now all good tactical moves have been searched, so we can prune
                 if depth < MAX_LMP_DEPTH
-                    && legal_moves_searched > (LMP_CONST + depth * depth) / if improving { 1 } else { 2 }
+                    && legal_moves_searched
+                        > (LMP_CONST + depth * depth) / if improving { 1 } else { 2 }
                 {
                     break;
                 }
@@ -334,13 +343,30 @@ fn alpha_beta<const IS_PV: bool>(
             };
 
             // Start with a zero window reduced search
-            let zero_window_reduced_depth =
-                -alpha_beta::<false>(depth - r, -alpha - 1, -alpha, &mut node_pvs, td, tt, &new_b, !cut_node);
+            let zero_window_reduced_depth = -alpha_beta::<false>(
+                depth - r,
+                -alpha - 1,
+                -alpha,
+                &mut node_pvs,
+                td,
+                tt,
+                &new_b,
+                !cut_node,
+            );
 
             // If that search raises alpha and a reduction was applied, re-search at a zero window with full depth
             let zero_window_full_depth = if zero_window_reduced_depth > alpha && r > 1 {
                 node_pvs.clear();
-                -alpha_beta::<false>(depth - 1, -alpha - 1, -alpha, &mut node_pvs, td, tt, &new_b, !cut_node)
+                -alpha_beta::<false>(
+                    depth - 1,
+                    -alpha - 1,
+                    -alpha,
+                    &mut node_pvs,
+                    td,
+                    tt,
+                    &new_b,
+                    !cut_node,
+                )
             } else {
                 zero_window_reduced_depth
             };
@@ -378,8 +404,15 @@ fn alpha_beta<const IS_PV: bool>(
                     }
                 }
                 // Update history tables on a beta cutoff
-                td.history
-                    .update_histories(m, &quiets_tried, &tacticals_tried, board, depth, &td.stack, td.ply);
+                td.history.update_histories(
+                    m,
+                    &quiets_tried,
+                    &tacticals_tried,
+                    board,
+                    depth,
+                    &td.stack,
+                    td.ply,
+                );
                 break;
             }
         }
@@ -402,7 +435,16 @@ fn alpha_beta<const IS_PV: bool>(
         EntryFlag::AlphaUnchanged
     };
 
-    tt.store(board.zobrist_hash, best_move, depth, entry_flag, best_score, td.ply, IS_PV, static_eval);
+    tt.store(
+        board.zobrist_hash,
+        best_move,
+        depth,
+        entry_flag,
+        best_score,
+        td.ply,
+        IS_PV,
+        static_eval,
+    );
 
     best_score
 }

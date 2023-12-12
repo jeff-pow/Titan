@@ -94,20 +94,13 @@ impl Default for Magics {
         assert_eq!(ROOK_M_SIZE, rook_table.len());
         assert_eq!(BISHOP_M_SIZE, bishop_table.len());
 
-        Self {
-            rook_table,
-            bishop_table,
-        }
+        Self { rook_table, bishop_table }
     }
 }
 
 /// Extracts move bitboards using known constants
 fn create_table(sq: Square, deltas: [Direction; 4]) -> Vec<Bitboard> {
-    let magic_entry = if deltas.contains(&North) {
-        ROOK_MAGICS[sq]
-    } else {
-        BISHOP_MAGICS[sq]
-    };
+    let magic_entry = if deltas.contains(&North) { ROOK_MAGICS[sq] } else { BISHOP_MAGICS[sq] };
     let idx_bits = 64 - magic_entry.shift;
     let mut table = vec![Bitboard::EMPTY; 1 << idx_bits];
     let mut blockers = Bitboard::EMPTY;
@@ -290,7 +283,8 @@ pub fn gen_magics() {
     let mut bishop_magics = [MagicEntry::default(); 64];
 
     for sq in Square::iter() {
-        let edges = ((RANK1 | RANK8) & !(sq.get_rank_bitboard())) | ((FILE_A | FILE_H) & !(sq.get_file_bitboard()));
+        let edges = ((RANK1 | RANK8) & !(sq.get_rank_bitboard()))
+            | ((FILE_A | FILE_H) & !(sq.get_file_bitboard()));
 
         let rook_bits = sliding_attack(R_DELTAS, sq, Bitboard::EMPTY);
         let mask = rook_bits & !edges;
@@ -332,7 +326,12 @@ pub fn gen_magics() {
 }
 
 /// Function finds a magic valid for a given square
-fn find_magic(mask: Bitboard, sq: Square, deltas: [Direction; 4], rng: &mut Rng) -> (MagicEntry, Vec<Bitboard>) {
+fn find_magic(
+    mask: Bitboard,
+    sq: Square,
+    deltas: [Direction; 4],
+    rng: &mut Rng,
+) -> (MagicEntry, Vec<Bitboard>) {
     loop {
         let mut magic;
         loop {
@@ -343,12 +342,7 @@ fn find_magic(mask: Bitboard, sq: Square, deltas: [Direction; 4], rng: &mut Rng)
         }
 
         let shift = 64 - mask.count_bits();
-        let magic_entry = MagicEntry {
-            mask,
-            magic,
-            shift,
-            offset: 0,
-        };
+        let magic_entry = MagicEntry { mask, magic, shift, offset: 0 };
         if let Some(table) = make_table(deltas, sq, &magic_entry) {
             return (magic_entry, table);
         }
@@ -356,7 +350,11 @@ fn find_magic(mask: Bitboard, sq: Square, deltas: [Direction; 4], rng: &mut Rng)
 }
 
 /// Function tries to make a table with a given magic number
-fn make_table(deltas: [Direction; 4], sq: Square, magic_entry: &MagicEntry) -> Option<Vec<Bitboard>> {
+fn make_table(
+    deltas: [Direction; 4],
+    sq: Square,
+    magic_entry: &MagicEntry,
+) -> Option<Vec<Bitboard>> {
     let idx_bits = 64 - magic_entry.shift;
     let mut table = vec![Bitboard::EMPTY; 1 << idx_bits];
     let mut blockers = Bitboard::EMPTY;

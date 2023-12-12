@@ -1,8 +1,8 @@
 #[cfg(feature = "simd")]
 use std::arch::x86_64::{
-    __m512i, _mm512_add_epi16, _mm512_cmpgt_epi16_mask, _mm512_cmplt_epi16_mask, _mm512_dpwssds_epi32,
-    _mm512_loadu_epi16, _mm512_mask_mov_epi16, _mm512_reduce_add_epi32, _mm512_set1_epi16, _mm512_setzero_si512,
-    _mm512_storeu_epi16, _mm512_sub_epi16,
+    __m512i, _mm512_add_epi16, _mm512_cmpgt_epi16_mask, _mm512_cmplt_epi16_mask,
+    _mm512_dpwssds_epi32, _mm512_loadu_epi16, _mm512_mask_mov_epi16, _mm512_reduce_add_epi32,
+    _mm512_set1_epi16, _mm512_setzero_si512, _mm512_storeu_epi16, _mm512_sub_epi16,
 };
 
 use crate::{

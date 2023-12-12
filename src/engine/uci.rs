@@ -75,7 +75,14 @@ pub fn main_loop() -> ! {
                 transpos_table.clear();
             }
             "go" => {
-                thread_pool.handle_go(&input, &board, &halt, &mut msg, hash_history.clone(), &transpos_table);
+                thread_pool.handle_go(
+                    &input,
+                    &board,
+                    &halt,
+                    &mut msg,
+                    hash_history.clone(),
+                    &transpos_table,
+                );
                 transpos_table.age_up();
             }
             "perft" => {
@@ -135,16 +142,20 @@ pub(crate) fn parse_time(buff: &[&str]) -> GameTime {
     for entry in vec {
         match entry {
             (&"wtime", wtime) => {
-                game_time.time_remaining[Color::White] = Duration::from_millis(wtime.parse::<u64>().expect("Valid u64"))
+                game_time.time_remaining[Color::White] =
+                    Duration::from_millis(wtime.parse::<u64>().expect("Valid u64"))
             }
             (&"btime", btime) => {
-                game_time.time_remaining[Color::Black] = Duration::from_millis(btime.parse::<u64>().expect("Valid u64"))
+                game_time.time_remaining[Color::Black] =
+                    Duration::from_millis(btime.parse::<u64>().expect("Valid u64"))
             }
             (&"winc", winc) => {
-                game_time.time_inc[Color::White] = Duration::from_millis(winc.parse::<u64>().expect("Valid u64"))
+                game_time.time_inc[Color::White] =
+                    Duration::from_millis(winc.parse::<u64>().expect("Valid u64"))
             }
             (&"binc", binc) => {
-                game_time.time_inc[Color::Black] = Duration::from_millis(binc.parse::<u64>().expect("Valid u64"))
+                game_time.time_inc[Color::Black] =
+                    Duration::from_millis(binc.parse::<u64>().expect("Valid u64"))
             }
             (&"movestogo", moves) => game_time.movestogo = moves.parse::<i32>().expect("Valid i32"),
             _ => return game_time,

@@ -196,14 +196,8 @@ impl TranspositionTable {
 
             let (zobrist_hash, remainder) = entry.into();
             unsafe {
-                self.vec
-                    .get_unchecked(idx)
-                    .zobrist_hash
-                    .store(zobrist_hash, Ordering::Relaxed);
-                self.vec
-                    .get_unchecked(idx)
-                    .remainder
-                    .store(remainder, Ordering::Relaxed);
+                self.vec.get_unchecked(idx).zobrist_hash.store(zobrist_hash, Ordering::Relaxed);
+                self.vec.get_unchecked(idx).remainder.store(remainder, Ordering::Relaxed);
             }
         }
     }

@@ -94,7 +94,9 @@ impl Board {
                 return true;
             }
             // If there is one bishop per side, checkmate is impossible
-            if self.color(Color::White).count_bits() == 2 && self.piece(PieceName::Bishop).count_bits() == 2 {
+            if self.color(Color::White).count_bits() == 2
+                && self.piece(PieceName::Bishop).count_bits() == 2
+            {
                 return true;
             }
         }
@@ -116,7 +118,9 @@ impl Board {
     }
 
     pub fn has_non_pawns(&self, side: Color) -> bool {
-        self.occupancies() ^ self.bitboard(side, PieceName::King) ^ self.bitboard(side, PieceName::Pawn)
+        self.occupancies()
+            ^ self.bitboard(side, PieceName::King)
+            ^ self.bitboard(side, PieceName::Pawn)
             != Bitboard::EMPTY
     }
 
@@ -134,7 +138,12 @@ impl Board {
         }
     }
 
-    pub fn place_piece<const NNUE: bool>(&mut self, piece_type: PieceName, color: Color, sq: Square) {
+    pub fn place_piece<const NNUE: bool>(
+        &mut self,
+        piece_type: PieceName,
+        color: Color,
+        sq: Square,
+    ) {
         self.array_board[sq] = Some(Piece::new(piece_type, color));
         self.bitboards[piece_type] ^= sq.bitboard();
         self.color_occupancies[color] ^= sq.bitboard();
@@ -161,7 +170,8 @@ impl Board {
     }
 
     pub fn attackers(&self, sq: Square, occupancy: Bitboard) -> Bitboard {
-        self.attackers_for_side(Color::White, sq, occupancy) | self.attackers_for_side(Color::Black, sq, occupancy)
+        self.attackers_for_side(Color::White, sq, occupancy)
+            | self.attackers_for_side(Color::Black, sq, occupancy)
     }
 
     pub fn attackers_for_side(&self, attacker: Color, sq: Square, occupancy: Bitboard) -> Bitboard {
@@ -172,7 +182,8 @@ impl Board {
         let bishop_attacks = MG.bishop_attacks(sq, occupancy) & bishops;
         let rook_attacks = MG.rook_attacks(sq, occupancy) & rooks;
         let king_attacks = MG.king_attacks(sq) & self.piece(PieceName::King);
-        (pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks) & self.color(attacker)
+        (pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks)
+            & self.color(attacker)
     }
 
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
@@ -233,11 +244,14 @@ impl Board {
                 } else {
                     let attacks = MG.pawn_attacks(origin, origin_color);
                     let enemy_color = self.color_at(origin).unwrap();
-                    attacks & m.dest_square().bitboard() & self.color(!enemy_color) != Bitboard::EMPTY
+                    attacks & m.dest_square().bitboard() & self.color(!enemy_color)
+                        != Bitboard::EMPTY
                 }
             }
             PieceName::King => MG.king_attacks(origin),
-            PieceName::Queen => MG.rook_attacks(origin, occupancies) | MG.bishop_attacks(origin, occupancies),
+            PieceName::Queen => {
+                MG.rook_attacks(origin, occupancies) | MG.bishop_attacks(origin, occupancies)
+            }
             PieceName::Rook => MG.rook_attacks(origin, occupancies),
             PieceName::Bishop => MG.bishop_attacks(origin, occupancies),
             PieceName::Knight => MG.knight_attacks(origin),
@@ -330,7 +344,8 @@ impl Board {
         }
 
         self.zobrist_hash ^= ZOBRIST.castling[self.castling_rights as usize];
-        self.castling_rights &= CASTLING_RIGHTS[m.origin_square()] & CASTLING_RIGHTS[m.dest_square()];
+        self.castling_rights &=
+            CASTLING_RIGHTS[m.origin_square()] & CASTLING_RIGHTS[m.dest_square()];
         self.zobrist_hash ^= ZOBRIST.castling[self.castling_rights as usize];
 
         self.to_move = !self.to_move;

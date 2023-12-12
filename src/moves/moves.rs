@@ -59,7 +59,12 @@ pub struct Move(pub u32);
 
 impl Move {
     pub const NULL: Move = Move(0);
-    pub fn new(origin: Square, destination: Square, move_type: MoveType, piece_moving: PieceName) -> Self {
+    pub fn new(
+        origin: Square,
+        destination: Square,
+        move_type: MoveType,
+        piece_moving: PieceName,
+    ) -> Self {
         let piece = piece_moving.idx() as u32;
         let m = origin.0 | (destination.0 << 6) | ((move_type as u32) << 12) | (piece << 16);
         Move(m)
@@ -107,7 +112,9 @@ impl Move {
     }
 
     pub fn is_tactical(self, board: &Board) -> bool {
-        self.promotion().is_some() || self.is_en_passant() || board.occupancies().occupied(self.dest_square())
+        self.promotion().is_some()
+            || self.is_en_passant()
+            || board.occupancies().occupied(self.dest_square())
     }
 
     pub fn as_u16(self) -> u16 {
@@ -200,7 +207,8 @@ pub fn from_san(str: &str, board: &Board) -> Move {
         _ => Castle::None,
     };
     let castle = castle != Castle::None;
-    let en_passant = { piece_moving == PieceName::Pawn && captured.is_none() && start_column != end_column };
+    let en_passant =
+        { piece_moving == PieceName::Pawn && captured.is_none() && start_column != end_column };
     let double_push = { piece_moving == PieceName::Pawn && origin_sq.dist(dest_sq) == 2 };
     let move_type = {
         if castle {

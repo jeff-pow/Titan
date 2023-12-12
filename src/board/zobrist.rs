@@ -25,21 +25,12 @@ impl Default for Zobrist {
         let mut rng = Rng::default();
         let turn_hash = rng.next_u64();
         let mut piece_square_hashes = [[[0; 64]; 6]; 2];
-        piece_square_hashes
-            .iter_mut()
-            .flatten()
-            .flatten()
-            .for_each(|x| *x = rng.next_u64());
+        piece_square_hashes.iter_mut().flatten().flatten().for_each(|x| *x = rng.next_u64());
         let mut castling = [0; 16];
         castling.iter_mut().for_each(|x| *x = rng.next_u64());
         let mut en_passant = [0; 64];
         en_passant.iter_mut().for_each(|x| *x = rng.next_u64());
-        Self {
-            turn_hash,
-            piece_square_hashes,
-            castling,
-            en_passant,
-        }
+        Self { turn_hash, piece_square_hashes, castling, en_passant }
     }
 }
 

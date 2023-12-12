@@ -100,7 +100,8 @@ impl HistoryTable {
     }
 
     pub(crate) fn quiet_history(&self, m: Move, side: Color, stack: &SearchStack, ply: i32) -> i32 {
-        self.search_history[side][m.piece_moving()][m.dest_square()].score + self.cont_hist(m, stack, ply, side)
+        self.search_history[side][m.piece_moving()][m.dest_square()].score
+            + self.cont_hist(m, stack, ply, side)
     }
 
     fn set_counter(&mut self, side: Color, prev: Move, m: Move) {
@@ -115,8 +116,16 @@ impl HistoryTable {
         }
     }
 
-    fn update_capt_hist(&mut self, m: Move, side: Color, capture: PieceName, depth: i32, is_good: bool) {
-        let i = &mut self.search_history[side][m.piece_moving()][m.dest_square()].capt_hist[capture];
+    fn update_capt_hist(
+        &mut self,
+        m: Move,
+        side: Color,
+        capture: PieceName,
+        depth: i32,
+        is_good: bool,
+    ) {
+        let i =
+            &mut self.search_history[side][m.piece_moving()][m.dest_square()].capt_hist[capture];
         update_history(i, depth, is_good);
     }
 
@@ -125,12 +134,16 @@ impl HistoryTable {
         self.search_history[side][m.piece_moving()][m.dest_square()].capt_hist[cap]
     }
 
-    fn update_cont_hist(&mut self, m: Move, stack: &SearchStack, ply: i32, is_good: bool, side: Color, depth: i32) {
-        let prevs = [
-            stack.prev_move(ply - 1),
-            stack.prev_move(ply - 2),
-            stack.prev_move(ply - 4),
-        ];
+    fn update_cont_hist(
+        &mut self,
+        m: Move,
+        stack: &SearchStack,
+        ply: i32,
+        is_good: bool,
+        side: Color,
+        depth: i32,
+    ) {
+        let prevs = [stack.prev_move(ply - 1), stack.prev_move(ply - 2), stack.prev_move(ply - 4)];
         let entry = &mut self.search_history[side][m.piece_moving()][m.dest_square()].cont_hist;
         for prev in prevs {
             if prev != Move::NULL {
@@ -142,11 +155,7 @@ impl HistoryTable {
 
     pub(crate) fn cont_hist(&self, m: Move, stack: &SearchStack, ply: i32, side: Color) -> i32 {
         let mut score = 0;
-        let prevs = [
-            stack.prev_move(ply - 1),
-            stack.prev_move(ply - 2),
-            stack.prev_move(ply - 4),
-        ];
+        let prevs = [stack.prev_move(ply - 1), stack.prev_move(ply - 2), stack.prev_move(ply - 4)];
         let entry = &self.search_history[side][m.piece_moving()][m.dest_square()];
         for prev in prevs {
             if prev != Move::NULL {
@@ -159,8 +168,6 @@ impl HistoryTable {
 
 impl Default for HistoryTable {
     fn default() -> Self {
-        Self {
-            search_history: Box::new([[[HistoryEntry::default(); 64]; 6]; 2]),
-        }
+        Self { search_history: Box::new([[[HistoryEntry::default(); 64]; 6]; 2]) }
     }
 }

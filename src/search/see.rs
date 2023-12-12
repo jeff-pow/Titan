@@ -17,18 +17,20 @@ impl Board {
         if m.is_en_passant() {
             return PieceName::Pawn.value();
         }
-        let mut score = if let Some(capture) = self.piece_at(m.dest_square()) {
-            capture.value()
-        } else {
-            0
-        };
+        let mut score =
+            if let Some(capture) = self.piece_at(m.dest_square()) { capture.value() } else { 0 };
         if let Some(p) = m.promotion() {
             score += p.value() - PieceName::Pawn.value();
         }
         score
     }
 
-    fn next_attacker(&self, occupied: &mut Bitboard, attackers: Bitboard, side: Color) -> PieceName {
+    fn next_attacker(
+        &self,
+        occupied: &mut Bitboard,
+        attackers: Bitboard,
+        side: Color,
+    ) -> PieceName {
         for p in PieceName::iter() {
             let bb = attackers & self.bitboard(side, p);
             if (attackers & self.bitboard(side, p)) != Bitboard::EMPTY {
@@ -52,11 +54,7 @@ impl Board {
         }
 
         let piece_moving = self.piece_at(src).expect("There is a piece here");
-        let next = if let Some(promo) = m.promotion() {
-            promo
-        } else {
-            piece_moving
-        };
+        let next = if let Some(promo) = m.promotion() { promo } else { piece_moving };
 
         score -= next.value();
 
@@ -99,7 +97,9 @@ impl Board {
             if score >= 0 {
                 // This statement states if a king is the next piece to be captured and the enemy
                 // has more pieces attacking the square, the move is illegal so we can break early
-                if next_piece == PieceName::King && (attackers & self.color(to_move) != Bitboard::EMPTY) {
+                if next_piece == PieceName::King
+                    && (attackers & self.color(to_move) != Bitboard::EMPTY)
+                {
                     to_move = !to_move;
                 }
                 break;

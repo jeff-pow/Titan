@@ -79,7 +79,9 @@ impl MoveList {
                 TTMOVE
             } else if let Some(promotion) = entry.m.promotion() {
                 match promotion {
-                    PieceName::Queen => QUEEN_PROMOTION + td.history.capt_hist(entry.m, board.to_move, board),
+                    PieceName::Queen => {
+                        QUEEN_PROMOTION + td.history.capt_hist(entry.m, board.to_move, board)
+                    }
                     _ => BAD_PROMOTION,
                 }
             } else if let Some(c) = board.capture(entry.m) {
@@ -162,10 +164,6 @@ impl Default for MoveList {
         // Uninitialized memory is much faster than initializing it when the important stuff will
         // be written over anyway ;)
         let arr: MaybeUninit<[MoveListEntry; MAX_LEN]> = MaybeUninit::uninit();
-        Self {
-            arr: unsafe { arr.assume_init() },
-            len: 0,
-            current_idx: 0,
-        }
+        Self { arr: unsafe { arr.assume_init() }, len: 0, current_idx: 0 }
     }
 }

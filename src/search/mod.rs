@@ -49,9 +49,7 @@ impl SearchStack {
 
 impl Default for SearchStack {
     fn default() -> Self {
-        Self {
-            stack: [PlyEntry::default(); MAX_SEARCH_DEPTH as usize],
-        }
+        Self { stack: [PlyEntry::default(); MAX_SEARCH_DEPTH as usize] }
     }
 }
 

@@ -65,7 +65,8 @@ impl<'a> ThreadData<'a> {
             self.sel_depth,
             self.iter_max_depth,
             self.nodes_searched,
-            (self.nodes_searched as f64 / self.game_time.search_start.elapsed().as_secs_f64()) as i64,
+            (self.nodes_searched as f64 / self.game_time.search_start.elapsed().as_secs_f64())
+                as i64,
             eval
         );
         for m in pv {

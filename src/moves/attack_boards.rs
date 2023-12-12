@@ -106,9 +106,11 @@ pub(crate) fn gen_knight_attack_boards() -> [Bitboard; 64] {
 pub(crate) fn gen_pawn_attack_boards() -> [[Bitboard; 64]; 2] {
     let mut arr = [[Bitboard::EMPTY; 64]; 2];
     for sq in Square::iter() {
-        arr[Color::White][sq] = Bitboard((sq.bitboard() & !FILE_A).0 << 7 | ((sq.bitboard() & !FILE_H).0 << 9));
+        arr[Color::White][sq] =
+            Bitboard((sq.bitboard() & !FILE_A).0 << 7 | ((sq.bitboard() & !FILE_H).0 << 9));
 
-        arr[Color::Black][sq] = Bitboard((sq.bitboard() & !FILE_A).0 >> 9 | ((sq.bitboard() & !FILE_H).0 >> 7));
+        arr[Color::Black][sq] =
+            Bitboard((sq.bitboard() & !FILE_A).0 >> 9 | ((sq.bitboard() & !FILE_H).0 >> 7));
     }
     arr
 }
@@ -127,7 +129,13 @@ mod test_attack_boards {
         assert_eq!(MG.pawn_attacks(p_sq, Color::White), Square(49).bitboard());
 
         let p_sq = Square(19);
-        assert_eq!(MG.pawn_attacks(p_sq, Color::Black), (Square(10).bitboard() | Square(12).bitboard()));
-        assert_eq!(MG.pawn_attacks(p_sq, Color::White), (Square(26).bitboard() | Square(28).bitboard()));
+        assert_eq!(
+            MG.pawn_attacks(p_sq, Color::Black),
+            (Square(10).bitboard() | Square(12).bitboard())
+        );
+        assert_eq!(
+            MG.pawn_attacks(p_sq, Color::White),
+            (Square(26).bitboard() | Square(28).bitboard())
+        );
     }
 }

@@ -12,7 +12,8 @@ use crate::{
 
 use super::{
     attack_boards::{
-        gen_king_attack_boards, gen_knight_attack_boards, gen_pawn_attack_boards, RANK2, RANK3, RANK6, RANK7,
+        gen_king_attack_boards, gen_knight_attack_boards, gen_pawn_attack_boards, RANK2, RANK3,
+        RANK6, RANK7,
     },
     magics::Magics,
     movelist::MoveList,
@@ -47,12 +48,7 @@ impl Default for MoveGenerator {
         let knight_table = gen_knight_attack_boards();
         let pawn_table = gen_pawn_attack_boards();
         let magics = Magics::default();
-        Self {
-            king_table,
-            knight_table,
-            pawn_table,
-            magics,
-        }
+        Self { king_table, knight_table, pawn_table, magics }
     }
 }
 
@@ -124,7 +120,12 @@ impl Board {
                 && !self.square_under_attack(Color::White, Square(61))
                 && !self.square_under_attack(Color::White, Square(62))
             {
-                moves.push(Move::new(Square(60), Square(62), MoveType::CastleMove, PieceName::King));
+                moves.push(Move::new(
+                    Square(60),
+                    Square(62),
+                    MoveType::CastleMove,
+                    PieceName::King,
+                ));
             }
 
             if self.can_castle(Castle::BlackQueen)
@@ -135,7 +136,12 @@ impl Board {
                 && !self.square_under_attack(Color::White, Square(59))
                 && !self.square_under_attack(Color::White, Square(60))
             {
-                moves.push(Move::new(Square(60), Square(58), MoveType::CastleMove, PieceName::King));
+                moves.push(Move::new(
+                    Square(60),
+                    Square(58),
+                    MoveType::CastleMove,
+                    PieceName::King,
+                ));
             }
         }
     }
@@ -197,22 +203,82 @@ impl Board {
             let left_capture_promotions = promotions.shift(up_left) & enemies;
             let right_capture_promotions = promotions.shift(up_right) & enemies;
             for dest in no_capture_promotions {
-                moves.push(Move::new(dest.shift(down), dest, MoveType::QueenPromotion, PieceName::Pawn));
-                moves.push(Move::new(dest.shift(down), dest, MoveType::RookPromotion, PieceName::Pawn));
-                moves.push(Move::new(dest.shift(down), dest, MoveType::BishopPromotion, PieceName::Pawn));
-                moves.push(Move::new(dest.shift(down), dest, MoveType::KnightPromotion, PieceName::Pawn));
+                moves.push(Move::new(
+                    dest.shift(down),
+                    dest,
+                    MoveType::QueenPromotion,
+                    PieceName::Pawn,
+                ));
+                moves.push(Move::new(
+                    dest.shift(down),
+                    dest,
+                    MoveType::RookPromotion,
+                    PieceName::Pawn,
+                ));
+                moves.push(Move::new(
+                    dest.shift(down),
+                    dest,
+                    MoveType::BishopPromotion,
+                    PieceName::Pawn,
+                ));
+                moves.push(Move::new(
+                    dest.shift(down),
+                    dest,
+                    MoveType::KnightPromotion,
+                    PieceName::Pawn,
+                ));
             }
             for dest in left_capture_promotions {
-                moves.push(Move::new(dest.shift(down_right), dest, MoveType::QueenPromotion, PieceName::Pawn));
-                moves.push(Move::new(dest.shift(down_right), dest, MoveType::RookPromotion, PieceName::Pawn));
-                moves.push(Move::new(dest.shift(down_right), dest, MoveType::BishopPromotion, PieceName::Pawn));
-                moves.push(Move::new(dest.shift(down_right), dest, MoveType::KnightPromotion, PieceName::Pawn));
+                moves.push(Move::new(
+                    dest.shift(down_right),
+                    dest,
+                    MoveType::QueenPromotion,
+                    PieceName::Pawn,
+                ));
+                moves.push(Move::new(
+                    dest.shift(down_right),
+                    dest,
+                    MoveType::RookPromotion,
+                    PieceName::Pawn,
+                ));
+                moves.push(Move::new(
+                    dest.shift(down_right),
+                    dest,
+                    MoveType::BishopPromotion,
+                    PieceName::Pawn,
+                ));
+                moves.push(Move::new(
+                    dest.shift(down_right),
+                    dest,
+                    MoveType::KnightPromotion,
+                    PieceName::Pawn,
+                ));
             }
             for dest in right_capture_promotions {
-                moves.push(Move::new(dest.shift(down_left), dest, MoveType::QueenPromotion, PieceName::Pawn));
-                moves.push(Move::new(dest.shift(down_left), dest, MoveType::RookPromotion, PieceName::Pawn));
-                moves.push(Move::new(dest.shift(down_left), dest, MoveType::BishopPromotion, PieceName::Pawn));
-                moves.push(Move::new(dest.shift(down_left), dest, MoveType::KnightPromotion, PieceName::Pawn));
+                moves.push(Move::new(
+                    dest.shift(down_left),
+                    dest,
+                    MoveType::QueenPromotion,
+                    PieceName::Pawn,
+                ));
+                moves.push(Move::new(
+                    dest.shift(down_left),
+                    dest,
+                    MoveType::RookPromotion,
+                    PieceName::Pawn,
+                ));
+                moves.push(Move::new(
+                    dest.shift(down_left),
+                    dest,
+                    MoveType::BishopPromotion,
+                    PieceName::Pawn,
+                ));
+                moves.push(Move::new(
+                    dest.shift(down_left),
+                    dest,
+                    MoveType::KnightPromotion,
+                    PieceName::Pawn,
+                ));
             }
         }
 
@@ -261,7 +327,10 @@ impl Board {
             let occupancies = self.occupancies();
             let attack_bitself = match piece_name {
                 PieceName::King => MG.king_attacks(sq),
-                PieceName::Queen => MG.magics.rook_attacks(occupancies, sq) | MG.magics.bishop_attacks(occupancies, sq),
+                PieceName::Queen => {
+                    MG.magics.rook_attacks(occupancies, sq)
+                        | MG.magics.bishop_attacks(occupancies, sq)
+                }
                 PieceName::Rook => MG.magics.rook_attacks(occupancies, sq),
                 PieceName::Bishop => MG.magics.bishop_attacks(occupancies, sq),
                 PieceName::Knight => MG.knight_attacks(sq),
