@@ -15,7 +15,7 @@ use std::env;
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
-    if args.len() > 1 && args[1] == "bench" {
+    if args.contains(&"bench".to_string()) {
         bench();
     } else {
         main_loop();
