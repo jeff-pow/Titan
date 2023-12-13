@@ -69,6 +69,10 @@ impl MoveGenerator {
         self.king_table[square]
     }
 
+    pub fn queen_attacks(&self, sq: Square, occupied: Bitboard) -> Bitboard {
+        self.bishop_attacks(sq, occupied) | self.rook_attacks(sq, occupied)
+    }
+
     pub fn pawn_attacks(&self, square: Square, attacker: Color) -> Bitboard {
         self.pawn_table[attacker][square]
     }

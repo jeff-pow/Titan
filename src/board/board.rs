@@ -213,54 +213,50 @@ impl Board {
         }
     }
 
-    pub fn is_valid(&self, m: Move) -> bool {
-        if m == Move::NULL {
+    #[allow(dead_code)]
+    pub(crate) fn is_pseudo_legal(&self, m: Move) -> bool {
+        let piece_moving = self.piece_at(m.origin_square());
+        if m == Move::NULL
+            || self.color_at(m.origin_square()).map_or(true, |c| c != self.to_move)
+            || piece_moving.is_none()
+        {
             return false;
         }
 
-        assert!(m.origin_square().is_valid() && m.dest_square().is_valid());
-
-        let origin = m.origin_square();
-        let dest = m.dest_square();
-        let color = self.color_at(origin);
-        let piece = self.piece_at(origin);
-
-        if piece.is_none() {
-            return false;
-        }
-
-        let origin_color = color.unwrap();
-        let dest_color = self.color_at(dest);
-
-        if dest_color.is_some() && dest_color.unwrap() == origin_color {
-            return false;
-        }
-
-        let occupancies = self.occupancies();
-        let attack_bitboard = match piece.unwrap() {
-            PieceName::Pawn => {
-                return if self.is_quiet(m) {
-                    self.occupancies().empty(dest)
-                } else {
-                    let attacks = MG.pawn_attacks(origin, origin_color);
-                    let enemy_color = self.color_at(origin).unwrap();
-                    attacks & m.dest_square().bitboard() & self.color(!enemy_color)
+        match piece_moving.unwrap() {
+            PieceName::Knight => {
+                m.flag() == MoveType::Normal
+                    && MG.knight_attacks(m.origin_square()) & !self.color(self.to_move)
                         != Bitboard::EMPTY
-                }
             }
-            PieceName::King => MG.king_attacks(origin),
+            PieceName::Bishop => {
+                m.flag() == MoveType::Normal
+                    && MG.bishop_attacks(m.origin_square(), self.occupancies())
+                        & !self.color(self.to_move)
+                        != Bitboard::EMPTY
+            }
+            PieceName::Rook => {
+                m.flag() == MoveType::Normal
+                    && MG.rook_attacks(m.origin_square(), self.occupancies())
+                        & !self.color(self.to_move)
+                        != Bitboard::EMPTY
+            }
             PieceName::Queen => {
-                MG.rook_attacks(origin, occupancies) | MG.bishop_attacks(origin, occupancies)
+                m.flag() == MoveType::Normal
+                    && MG.queen_attacks(m.origin_square(), self.occupancies())
+                        & !self.color(self.to_move)
+                        != Bitboard::EMPTY
             }
-            PieceName::Rook => MG.rook_attacks(origin, occupancies),
-            PieceName::Bishop => MG.bishop_attacks(origin, occupancies),
-            PieceName::Knight => MG.knight_attacks(origin),
-        };
-
-        let enemy_occupancies = !self.color(self.to_move);
-        let attacks = attack_bitboard & enemy_occupancies;
-
-        attacks & dest.bitboard() != Bitboard::EMPTY
+            PieceName::Pawn => todo!(),
+            PieceName::King => {
+                if self.square_under_attack(!self.to_move, self.king_square(self.to_move)) {
+                    return false;
+                }
+                m.flag() == MoveType::Normal
+                    && MG.king_attacks(m.origin_square()) & !self.color(self.to_move)
+                        != Bitboard::EMPTY
+            }
+        }
     }
 
     /// Returns true if a move does not capture a piece, and false if a piece is captured
