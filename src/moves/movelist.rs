@@ -89,7 +89,7 @@ impl MoveList {
                     GOOD_CAPTURE
                 } else {
                     BAD_CAPTURE
-                }) + c.value()
+                }) + MVV[c]
                     + td.history.capt_hist(entry.m, board.to_move, board)
             } else if killers[0] == entry.m {
                 KILLER_ONE
@@ -104,14 +104,15 @@ impl MoveList {
     }
 }
 
+const MVV: [i32; 6] = [0, 2400, 2400, 4800, 9600, 0];
 const TTMOVE: i32 = i32::MAX - 1000;
-pub const GOOD_CAPTURE: i32 = 3000000;
+const QUEEN_PROMOTION: i32 = 20_000_001;
+pub const GOOD_CAPTURE: i32 = 10_000_000;
+const KILLER_ONE: i32 = 1_000_000;
+const KILLER_TWO: i32 = 900_000;
+const COUNTER_MOVE: i32 = 800_000;
 pub const BAD_CAPTURE: i32 = -10000;
-const KILLER_ONE: i32 = 2000000;
-const KILLER_TWO: i32 = 1000000;
-const COUNTER_MOVE: i32 = 900000;
-const QUEEN_PROMOTION: i32 = 20000001;
-const BAD_PROMOTION: i32 = -20000001;
+const BAD_PROMOTION: i32 = -QUEEN_PROMOTION;
 
 impl Index<usize> for MoveList {
     type Output = Move;
