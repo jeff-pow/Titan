@@ -7,6 +7,7 @@ mod engine;
 mod eval;
 mod moves;
 mod search;
+mod spsa;
 mod types;
 
 use crate::bench::bench;

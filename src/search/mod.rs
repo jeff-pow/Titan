@@ -14,20 +14,9 @@ pub mod search;
 pub mod see;
 pub mod thread;
 
-// Tunable Constants
-/// Initial aspiration window value
-pub const INIT_ASP: i32 = 10;
-const MIN_ASP_DEPTH: i32 = 4;
 pub const NUM_KILLER_MOVES: usize = 2;
-/// Begin LMR if more than this many moves have been searched
 pub const LMR_THRESHOLD: i32 = 2;
 pub const MIN_LMR_DEPTH: i32 = 2;
-pub const MAX_LMP_DEPTH: i32 = 6;
-pub const LMP_CONST: i32 = 3;
-pub const RFP_MULTIPLIER: i32 = 70;
-pub const MAX_RFP_DEPTH: i32 = 9;
-pub const MIN_NMP_DEPTH: i32 = 3;
-pub const MIN_IIR_DEPTH: i32 = 4;
 
 #[derive(Clone, Copy, Default)]
 pub(super) struct PlyEntry {
@@ -115,7 +104,7 @@ pub fn get_reduction(depth: i32, moves_played: i32) -> i32 {
 }
 
 pub fn reduction(depth: i32, moves_played: i32) -> i32 {
-    if depth <= MIN_LMR_DEPTH || moves_played < LMR_THRESHOLD {
+    if depth <= 2 || moves_played < 2 {
         return 1;
     }
     let depth = depth as f32;
