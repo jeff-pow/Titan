@@ -67,7 +67,9 @@ impl TableEntry {
 pub enum EntryFlag {
     #[default]
     None,
+    /// Upper bound on the possible score at a position
     AlphaUnchanged,
+    /// Lower bound on the possible score at a position
     BetaCutOff,
     Exact,
 }
