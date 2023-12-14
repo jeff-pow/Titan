@@ -30,10 +30,30 @@ pub const MIN_NMP_DEPTH: i32 = 3;
 pub const MIN_IIR_DEPTH: i32 = 4;
 
 #[derive(Clone, Copy, Default)]
-pub struct PlyEntry {
+pub(super) struct PlyEntry {
     pub killers: [Move; 2],
     pub played_move: Move,
     pub static_eval: i32,
+}
+
+#[derive(Clone, Copy)]
+struct PV {
+    line: [Move; MAX_SEARCH_DEPTH as usize],
+    len: usize,
+}
+
+impl PV {
+    fn update(&mut self, m: Move, other: PV) {
+        self.line[0] = m;
+        self.line.copy_from_slice(&other.line[0..other.len]);
+        self.len = 1 + other.len;
+    }
+}
+
+impl Default for PV {
+    fn default() -> Self {
+        Self { line: [Move::NULL; MAX_SEARCH_DEPTH as usize], len: Default::default() }
+    }
 }
 
 #[derive(Clone)]
@@ -102,10 +122,4 @@ pub fn reduction(depth: i32, moves_played: i32) -> i32 {
     let ply = moves_played as f32;
     let ret = 1. + depth.ln() * ply.ln() / 2.;
     ret as i32
-}
-
-pub fn store_pv(pvs: &mut Vec<Move>, node_pvs: &mut Vec<Move>, m: Move) {
-    pvs.clear();
-    pvs.push(m);
-    pvs.append(node_pvs);
 }
