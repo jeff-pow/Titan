@@ -7,12 +7,13 @@ use crate::search::search::STALEMATE;
 
 use super::search::MAX_SEARCH_DEPTH;
 use super::search::{CHECKMATE, INFINITY};
-use super::{store_pv, thread::ThreadData};
+use super::thread::ThreadData;
+use super::PV;
 
-pub fn quiescence<const IS_PV: bool>(
+pub(super) fn quiescence<const IS_PV: bool>(
     mut alpha: i32,
     beta: i32,
-    pvs: &mut Vec<Move>,
+    pv: &mut PV,
     td: &mut ThreadData,
     tt: &TranspositionTable,
     board: &Board,
@@ -85,7 +86,7 @@ pub fn quiescence<const IS_PV: bool>(
     let mut moves_searched = 0;
 
     for MoveListEntry { m, .. } in moves {
-        let mut node_pvs = Vec::new();
+        let mut node_pv = PV::default();
         let mut new_b = *board;
 
         // Static exchange pruning - If we fail to immediately recapture a depth dependent
@@ -106,7 +107,7 @@ pub fn quiescence<const IS_PV: bool>(
 
         // TODO: Implement delta pruning
 
-        let eval = -quiescence::<IS_PV>(-beta, -alpha, &mut node_pvs, td, tt, &new_b);
+        let eval = -quiescence::<IS_PV>(-beta, -alpha, &mut node_pv, td, tt, &new_b);
 
         td.ply -= 1;
         td.hash_history.pop();
@@ -117,7 +118,7 @@ pub fn quiescence<const IS_PV: bool>(
             if eval > alpha {
                 best_move = m;
                 alpha = eval;
-                store_pv(pvs, &mut node_pvs, m);
+                pv.update(best_move, node_pv);
             }
 
             if alpha >= beta {

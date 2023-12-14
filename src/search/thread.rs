@@ -10,7 +10,6 @@ use std::{
 use crate::{
     board::board::Board,
     engine::{transposition::TranspositionTable, uci::parse_time},
-    moves::moves::Move,
     types::pieces::Color,
 };
 
@@ -18,7 +17,7 @@ use super::{
     game_time::GameTime,
     history_table::HistoryTable,
     search::{search, MAX_SEARCH_DEPTH},
-    SearchStack, SearchType,
+    SearchStack, SearchType, PV,
 };
 
 #[derive(Clone)]
@@ -58,7 +57,7 @@ impl<'a> ThreadData<'a> {
         }
     }
 
-    pub fn print_search_stats(&self, eval: i32, pv: &[Move]) {
+    pub(super) fn print_search_stats(&self, eval: i32, pv: &PV) {
         print!(
             "info time {} seldepth {} depth {} nodes {} nps {} score cp {} pv ",
             self.game_time.search_start.elapsed().as_millis(),
@@ -69,7 +68,7 @@ impl<'a> ThreadData<'a> {
                 as i64,
             eval
         );
-        for m in pv {
+        for m in pv.line.iter().take(pv.len) {
             print!("{} ", m.to_san());
         }
         println!();

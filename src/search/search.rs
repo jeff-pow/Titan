@@ -13,8 +13,8 @@ use super::history_table::MAX_HIST_VAL;
 use super::quiescence::quiescence;
 use super::thread::ThreadData;
 use super::{
-    get_reduction, store_pv, SearchType, LMP_CONST, LMR_THRESHOLD, MAX_LMP_DEPTH, MAX_RFP_DEPTH,
-    MIN_ASP_DEPTH, MIN_IIR_DEPTH, MIN_LMR_DEPTH, MIN_NMP_DEPTH, RFP_MULTIPLIER,
+    get_reduction, SearchType, LMP_CONST, LMR_THRESHOLD, MAX_LMP_DEPTH, MAX_RFP_DEPTH,
+    MIN_ASP_DEPTH, MIN_IIR_DEPTH, MIN_LMR_DEPTH, MIN_NMP_DEPTH, PV, RFP_MULTIPLIER,
 };
 
 pub const CHECKMATE: i32 = 25000;
@@ -42,7 +42,7 @@ pub(crate) fn iterative_deepening(
     print_uci: bool,
     tt: &TranspositionTable,
 ) -> Move {
-    let mut pv = Vec::new();
+    let mut pv = PV::default();
     let mut best_move = Move::NULL;
     let mut prev_score = -INFINITY;
 
@@ -53,9 +53,7 @@ pub(crate) fn iterative_deepening(
 
         prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt);
 
-        if !pv.is_empty() {
-            best_move = pv[0];
-        }
+        best_move = pv.line[0];
 
         if print_uci {
             td.print_search_stats(prev_score, &pv);
@@ -76,7 +74,7 @@ pub(crate) fn iterative_deepening(
 
 fn aspiration_windows(
     td: &mut ThreadData,
-    pv: &mut Vec<Move>,
+    pv: &mut PV,
     prev_score: i32,
     board: &Board,
     tt: &TranspositionTable,
@@ -114,7 +112,7 @@ fn alpha_beta<const IS_PV: bool>(
     mut depth: i32,
     mut alpha: i32,
     beta: i32,
-    pv: &mut Vec<Move>,
+    pv: &mut PV,
     td: &mut ThreadData,
     tt: &TranspositionTable,
     board: &Board,
@@ -223,7 +221,7 @@ fn alpha_beta<const IS_PV: bool>(
             && static_eval >= beta
             && td.stack[td.ply - 1].played_move != Move::NULL
         {
-            let mut node_pvs = Vec::new();
+            let mut node_pv = PV::default();
             let mut new_b = board.to_owned();
 
             new_b.make_null_move();
@@ -237,7 +235,7 @@ fn alpha_beta<const IS_PV: bool>(
                 depth - r,
                 -beta,
                 -beta + 1,
-                &mut node_pvs,
+                &mut node_pv,
                 td,
                 tt,
                 &new_b,
@@ -305,15 +303,12 @@ fn alpha_beta<const IS_PV: bool>(
         td.stack[td.ply].played_move = m;
         td.hash_history.push(new_b.zobrist_hash);
         td.ply += 1;
-        let mut node_pvs = Vec::new();
+        let mut node_pv = PV::default();
 
         let eval = if legal_moves_searched == 0 {
-            node_pvs.clear();
             // On the first move, just do a full depth search
-            -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, td, tt, &new_b, false)
+            -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
         } else {
-            node_pvs.clear();
-
             // Late Move Reductions - Search moves after the first with reduced depth and window as
             // they are much less likely to be the best move than the first move selected by the
             // move picker.
@@ -347,7 +342,7 @@ fn alpha_beta<const IS_PV: bool>(
                 depth - r,
                 -alpha - 1,
                 -alpha,
-                &mut node_pvs,
+                &mut node_pv,
                 td,
                 tt,
                 &new_b,
@@ -356,12 +351,11 @@ fn alpha_beta<const IS_PV: bool>(
 
             // If that search raises alpha and a reduction was applied, re-search at a zero window with full depth
             let zero_window_full_depth = if zero_window_reduced_depth > alpha && r > 1 {
-                node_pvs.clear();
                 -alpha_beta::<false>(
                     depth - 1,
                     -alpha - 1,
                     -alpha,
-                    &mut node_pvs,
+                    &mut node_pv,
                     td,
                     tt,
                     &new_b,
@@ -373,8 +367,7 @@ fn alpha_beta<const IS_PV: bool>(
 
             // If the verification score falls between alpha and beta, full window full depth search
             if zero_window_full_depth > alpha && zero_window_full_depth < beta {
-                node_pvs.clear();
-                -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pvs, td, tt, &new_b, false)
+                -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
             } else {
                 zero_window_full_depth
             }
@@ -390,7 +383,7 @@ fn alpha_beta<const IS_PV: bool>(
             if eval > alpha {
                 alpha = eval;
                 best_move = m;
-                store_pv(pv, &mut node_pvs, m);
+                pv.update(best_move, node_pv);
             }
 
             if alpha >= beta {
