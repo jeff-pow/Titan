@@ -3,10 +3,12 @@ use strum::IntoEnumIterator;
 
 use crate::{
     board::board::Board,
-    moves::magics::Rng,
+    const_array,
+    moves::magics::{rand_u64, Rng},
     types::pieces::{Color, PieceName},
 };
 
+#[derive(Debug, PartialEq)]
 pub struct Zobrist {
     pub piece_square_hashes: [[[u64; 64]; 6]; 2],
     pub turn_hash: u64,
@@ -19,6 +21,25 @@ pub struct Zobrist {
 lazy_static! {
     pub static ref ZOBRIST: Zobrist = Zobrist::default();
 }
+pub const Z: Zobrist = {
+    let mut prev = 0xE926E6210D9E3487u64;
+
+    let turn_hash = rand_u64(prev);
+
+    let piece_square_hashes = const_array!(|c, 2| const_array!(|p, 6| const_array!(|sq, 64| {
+        prev = rand_u64(prev);
+        prev
+    })));
+    let castling = const_array!(|c, 16| {
+        prev = rand_u64(prev);
+        prev
+    });
+    let en_passant = const_array!(|sq, 64| {
+        prev = rand_u64(prev);
+        prev
+    });
+    Zobrist { piece_square_hashes, turn_hash, castling, en_passant }
+};
 
 impl Default for Zobrist {
     fn default() -> Self {

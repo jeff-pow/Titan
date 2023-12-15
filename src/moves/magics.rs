@@ -11,7 +11,15 @@ use crate::{
 
 use super::moves::{Direction, Direction::*};
 
+pub const fn rand_u64(mut prev: u64) -> u64 {
+    prev ^= prev << 13;
+    prev ^= prev >> 7;
+    prev ^= prev << 17;
+    prev
+}
+
 /// Xorshift64 https://en.wikipedia.org/wiki/Xorshift
+#[derive(Copy, Clone)]
 pub struct Rng(u64);
 
 impl Default for Rng {
@@ -22,14 +30,6 @@ impl Default for Rng {
 
 impl Rng {
     pub fn next_u64(&mut self) -> u64 {
-        self.0 ^= self.0 << 13;
-        self.0 ^= self.0 >> 7;
-        self.0 ^= self.0 << 17;
-        self.0
-    }
-
-    #[allow(dead_code)]
-    pub const fn rand_u64(mut self) -> u64 {
         self.0 ^= self.0 << 13;
         self.0 ^= self.0 >> 7;
         self.0 ^= self.0 << 17;
