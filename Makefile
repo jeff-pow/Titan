@@ -7,7 +7,8 @@ else
 endif
 
 openbench:
-	cargo rustc --release --features simd -- -C target-cpu=native --emit link=$(NAME)
+	cargo rustc --release -- -C target-cpu=native --emit link=$(NAME)
+	# cargo rustc --release --features simd -- -C target-cpu=native --emit link=$(NAME)
 
 stable: 
 	cargo rustc --release -- -C target-cpu=native --emit link=$(NAME)
