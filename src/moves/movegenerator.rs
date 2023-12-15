@@ -1,5 +1,3 @@
-use lazy_static::lazy_static;
-
 use crate::{
     board::board::Board,
     moves::{moves::Direction, moves::Direction::*},
@@ -11,11 +9,8 @@ use crate::{
 };
 
 use super::{
-    attack_boards::{
-        gen_king_attack_boards, gen_knight_attack_boards, gen_pawn_attack_boards, RANK2, RANK3,
-        RANK6, RANK7,
-    },
-    magics::Magics,
+    attack_boards::{king_attacks, knight_attacks, RANK2, RANK3, RANK6, RANK7},
+    magics::{bishop_attacks, rook_attacks},
     movelist::MoveList,
     moves::{Castle, Move, MoveType},
 };
@@ -27,55 +22,6 @@ pub enum MoveGenerationType {
     CapturesOnly,
     QuietsOnly,
     All,
-}
-
-lazy_static! {
-    /// Object that contains the attack boards for each piece from each square
-    pub static ref MG: MoveGenerator = MoveGenerator::default();
-}
-
-#[derive(Clone)]
-pub struct MoveGenerator {
-    pub king_table: [Bitboard; 64],
-    pub knight_table: [Bitboard; 64],
-    pub pawn_table: [[Bitboard; 64]; 2],
-    pub magics: Magics,
-}
-
-impl Default for MoveGenerator {
-    fn default() -> Self {
-        let king_table = gen_king_attack_boards();
-        let knight_table = gen_knight_attack_boards();
-        let pawn_table = gen_pawn_attack_boards();
-        let magics = Magics::default();
-        Self { king_table, knight_table, pawn_table, magics }
-    }
-}
-
-impl MoveGenerator {
-    pub fn bishop_attacks(&self, square: Square, occupied: Bitboard) -> Bitboard {
-        self.magics.bishop_attacks(occupied, square)
-    }
-
-    pub fn rook_attacks(&self, square: Square, occupied: Bitboard) -> Bitboard {
-        self.magics.rook_attacks(occupied, square)
-    }
-
-    pub fn knight_attacks(&self, square: Square) -> Bitboard {
-        self.knight_table[square]
-    }
-
-    pub fn king_attacks(&self, square: Square) -> Bitboard {
-        self.king_table[square]
-    }
-
-    pub fn queen_attacks(&self, sq: Square, occupied: Bitboard) -> Bitboard {
-        self.bishop_attacks(sq, occupied) | self.rook_attacks(sq, occupied)
-    }
-
-    pub fn pawn_attacks(&self, square: Square, attacker: Color) -> Bitboard {
-        self.pawn_table[attacker][square]
-    }
 }
 
 impl Board {
@@ -330,14 +276,11 @@ impl Board {
         for sq in occ_bitself {
             let occupancies = self.occupancies();
             let attack_bitself = match piece_name {
-                PieceName::King => MG.king_attacks(sq),
-                PieceName::Queen => {
-                    MG.magics.rook_attacks(occupancies, sq)
-                        | MG.magics.bishop_attacks(occupancies, sq)
-                }
-                PieceName::Rook => MG.magics.rook_attacks(occupancies, sq),
-                PieceName::Bishop => MG.magics.bishop_attacks(occupancies, sq),
-                PieceName::Knight => MG.knight_attacks(sq),
+                PieceName::King => king_attacks(sq),
+                PieceName::Queen => rook_attacks(sq, occupancies) | bishop_attacks(sq, occupancies),
+                PieceName::Rook => rook_attacks(sq, occupancies),
+                PieceName::Bishop => bishop_attacks(sq, occupancies),
+                PieceName::Knight => knight_attacks(sq),
                 PieceName::Pawn => panic!(),
             };
             let attacks = match gen_type {
