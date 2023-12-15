@@ -1,7 +1,6 @@
 #[cfg(feature = "simd")]
 use std::arch::x86_64::{
-    __m512i, _mm512_add_epi16, _mm512_cmpgt_epi16_mask, _mm512_cmplt_epi16_mask,
-    _mm512_dpwssds_epi32, _mm512_loadu_epi16, _mm512_mask_mov_epi16, _mm512_reduce_add_epi32,
+    __m512i, _mm512_add_epi16, _mm512_dpwssds_epi32, _mm512_loadu_epi16, _mm512_reduce_add_epi32,
     _mm512_set1_epi16, _mm512_setzero_si512, _mm512_storeu_epi16, _mm512_sub_epi16,
 };
 
@@ -170,14 +169,11 @@ fn crelu(i: i16) -> i32 {
 
 #[cfg(feature = "simd")]
 unsafe fn clipped_relu(i: __m512i) -> __m512i {
+    use std::arch::x86_64::{_mm512_max_epi16, _mm512_min_epi16};
     let min = _mm512_set1_epi16(RELU_MIN);
     let max = _mm512_set1_epi16(RELU_MAX);
-    let cmp_lt = _mm512_cmplt_epi16_mask(i, min);
-    let cmp_gt = _mm512_cmpgt_epi16_mask(i, max);
 
-    let result_lt = _mm512_mask_mov_epi16(i, cmp_lt, min);
-
-    _mm512_mask_mov_epi16(result_lt, cmp_gt, max)
+    _mm512_min_epi16(_mm512_max_epi16(i, min), max)
 }
 
 #[cfg(feature = "simd")]
