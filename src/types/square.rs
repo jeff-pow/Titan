@@ -29,19 +29,20 @@ impl Square {
 
     /// Function does not check a shift's validity before returning it. Only to be used when the
     /// shifts validity has already been proven valid elsewhere
-    pub fn shift(self, dir: Direction) -> Self {
+    pub const fn shift(self, dir: Direction) -> Self {
         self.bitboard().shift(dir).get_lsb()
     }
 
-    /// Calculates the distance between two squares
+    /// Returns the max dist of file or rank between two squares
     #[rustfmt::skip]
-    pub fn dist(self, other: Square) -> u32 {
-        self.file().abs_diff(other.file())
-            .max(self.rank().abs_diff(other.rank()))
+    pub const fn dist(self, other: Square) -> u32 {
+        let this = self.file().abs_diff(other.file());
+        let other = self.rank().abs_diff(other.rank());
+        if this > other { this } else { other }
     }
 
     /// Rank is the horizontal row of the piece (y-coord)
-    pub fn rank(self) -> u32 {
+    pub const fn rank(self) -> u32 {
         self.0 >> 3
     }
 
@@ -50,11 +51,11 @@ impl Square {
     }
 
     /// File is the vertical column of the piece (x-coord)
-    pub fn file(self) -> u32 {
+    pub const fn file(self) -> u32 {
         self.0 & 0b111
     }
 
-    pub fn idx(self) -> usize {
+    pub const fn idx(self) -> usize {
         self.0 as usize
     }
 
@@ -88,11 +89,11 @@ impl Square {
         }
     }
 
-    pub fn is_valid(self) -> bool {
+    pub const fn is_valid(self) -> bool {
         self.0 < 64
     }
 
-    pub fn bitboard(self) -> Bitboard {
+    pub const fn bitboard(self) -> Bitboard {
         Bitboard(1 << self.0)
     }
 

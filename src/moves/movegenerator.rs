@@ -36,10 +36,10 @@ lazy_static! {
 
 #[derive(Clone)]
 pub struct MoveGenerator {
-    king_table: [Bitboard; 64],
-    knight_table: [Bitboard; 64],
-    pawn_table: [[Bitboard; 64]; 2],
-    magics: Magics,
+    pub king_table: [Bitboard; 64],
+    pub knight_table: [Bitboard; 64],
+    pub pawn_table: [[Bitboard; 64]; 2],
+    pub magics: Magics,
 }
 
 impl Default for MoveGenerator {

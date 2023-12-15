@@ -1,9 +1,18 @@
+use crate::init;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use crate::types::{bitboard::Bitboard, pieces::Color, square::Square};
 
 const FILE_A_U64: u64 = 0x101010101010101;
+// const FILE_B_U64: u64 = 0x101010101010101 << 1;
+// const FILE_C_U64: u64 = 0x101010101010101 << 2;
+// const FILE_D_U64: u64 = 0x101010101010101 << 3;
+// const FILE_E_U64: u64 = 0x101010101010101 << 4;
+// const FILE_F_U64: u64 = 0x101010101010101 << 5;
+// const FILE_G_U64: u64 = 0x101010101010101 << 6;
+const FILE_H_U64: u64 = 0x101010101010101 << 7;
+
 pub const FILE_A: Bitboard = Bitboard(FILE_A_U64);
 pub const FILE_B: Bitboard = Bitboard(FILE_A_U64 << 1);
 pub const FILE_C: Bitboard = Bitboard(FILE_A_U64 << 2);
@@ -14,6 +23,14 @@ pub const FILE_G: Bitboard = Bitboard(FILE_A_U64 << 6);
 pub const FILE_H: Bitboard = Bitboard(FILE_A_U64 << 7);
 
 const RANK1_U64: u64 = 0b11111111;
+// const RANK2_U64: u64 = 0b11111111 << 8;
+// const RANK3_U64: u64 = 0b11111111 << 16;
+// const RANK4_U64: u64 = 0b11111111 << 24;
+// const RANK5_U64: u64 = 0b11111111 << 32;
+// const RANK6_U64: u64 = 0b11111111 << 40;
+// const RANK7_U64: u64 = 0b11111111 << 48;
+// const RANK8_U64: u64 = 0b11111111 << 56;
+
 pub const RANK1: Bitboard = Bitboard(0b11111111);
 pub const RANK2: Bitboard = Bitboard(RANK1_U64 << 8);
 pub const RANK3: Bitboard = Bitboard(RANK1_U64 << 16);
@@ -23,6 +40,34 @@ pub const RANK6: Bitboard = Bitboard(RANK1_U64 << 40);
 pub const RANK7: Bitboard = Bitboard(RANK1_U64 << 48);
 pub const RANK8: Bitboard = Bitboard(RANK1_U64 << 56);
 
+pub const KING_ATTACKS: [Bitboard; 64] = init!(|sq, 64| {
+    let sq = 1 << sq;
+    // Create a bitboard out of the square
+    let mut bb = sq;
+    // Put in the bits above and below - These won't have any effect if they are outside of the range
+    // of the board
+    bb |= sq << 8 | sq >> 8;
+    // Then literally shake your column of bits back and forth to get diagonals and horizontal moves
+    bb |= (bb & !FILE_A_U64) >> 1 | (bb & !FILE_H_U64) << 1;
+    // Remove the square the piece is currently on from possible attacks
+    Bitboard(bb ^ sq)
+});
+
+pub const KNIGHT_ATTACKS: [Bitboard; 64] = init!(|sq, 64| {
+    let sq = 1 << sq;
+    let mut bb = sq;
+    // Get squares two rows above and below current occupied square
+    let vert = sq << 16 | sq >> 16;
+    // Shake those bits back and forth as long as it wouldn't end up in another row
+    bb |= (vert & !FILE_A_U64) >> 1 | (vert & !FILE_H_U64) << 1;
+    // Get squares two columns to the left and right of current occupied square. Constants ensure you
+    // won't go to a different row
+    let horizontal = (sq & 0x3f3f3f3f3f3f3f3f) << 2 | (sq & 0xfcfcfcfcfcfcfcfc) >> 2;
+    // Shake those bits back and forth - can't go out of bounds vertically
+    bb |= horizontal << 8 | horizontal >> 8;
+    // Remove current occupied square from final attack board
+    Bitboard(bb ^ sq)
+});
 #[rustfmt::skip]
 pub(crate) fn gen_king_attack_boards() -> [Bitboard; 64] {
     let mut arr = [Bitboard::EMPTY; 64];
@@ -113,6 +158,38 @@ pub(crate) fn gen_pawn_attack_boards() -> [[Bitboard; 64]; 2] {
             Bitboard((sq.bitboard() & !FILE_A).0 >> 9 | ((sq.bitboard() & !FILE_H).0 >> 7));
     }
     arr
+}
+
+pub const PAWN_ATTACKS: [[Bitboard; 64]; 2] = [
+    init!(|sq, 64| Bitboard(((1 << sq) & !FILE_A_U64) << 7 | (((1 << sq) & !FILE_H_U64) << 9))),
+    init!(|sq, 64| Bitboard(((1 << sq) & !FILE_A_U64) >> 9 | (((1 << sq) & !FILE_H_U64) >> 7))),
+];
+
+#[macro_export]
+macro_rules! init {
+    (| $i:ident, $size:literal | $($r:tt)+) => {{
+        let mut $i = 0;
+        let mut res = [{$($r)+}; $size];
+        while $i < $size - 1 {
+            $i += 1;
+            res[$i] = {$($r)+};
+        }
+        res
+    }}
+}
+
+#[macro_export]
+macro_rules! const_array {
+    ($size:expr, |$i:ident| $calc:expr) => {{
+        const SIZE: usize = $size;
+        let mut arr = [0; SIZE];
+        let mut $i = 0;
+        while $i < SIZE {
+            arr[$i] = $calc;
+            $i += 1;
+        }
+        arr
+    }};
 }
 
 #[cfg(test)]

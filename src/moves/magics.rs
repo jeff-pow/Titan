@@ -22,6 +22,13 @@ impl Rng {
         self.0
     }
 
+    pub const fn rand_u64(mut self) -> u64 {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 7;
+        self.0 ^= self.0 << 17;
+        self.0
+    }
+
     /// Method returns u64s with an average of 8 bits active, the desirable range for magic numbers
     pub fn next_magic(&mut self) -> u64 {
         self.next_u64() & self.next_u64() & self.next_u64()
@@ -46,11 +53,11 @@ struct MagicEntry {
 
 #[derive(Clone)]
 pub struct Magics {
-    rook_table: Vec<Bitboard>,
-    bishop_table: Vec<Bitboard>,
+    pub rook_table: Vec<Bitboard>,
+    pub bishop_table: Vec<Bitboard>,
 }
 
-fn index(entry: &MagicEntry, occupied: Bitboard) -> usize {
+const fn index(entry: &MagicEntry, occupied: Bitboard) -> usize {
     let blockers = occupied.0 & entry.mask.0;
     let hash = blockers.wrapping_mul(entry.magic);
     let index = (hash >> entry.shift) as usize;
@@ -69,6 +76,38 @@ impl Magics {
         let magic = &ROOK_MAGICS[sq];
         self.rook_table[index(magic, occupied)]
     }
+}
+
+pub const BISHOP_TABLE: &[Bitboard; BISHOP_M_SIZE] = &table::<BISHOP_M_SIZE, false>();
+pub const ROOK_TABLE: &[Bitboard; ROOK_M_SIZE] = &table::<ROOK_M_SIZE, true>();
+// pub const ROOK_TABLE: &[Bitboard; ROOK_M_SIZE] = &[Bitboard::EMPTY; ROOK_M_SIZE];
+
+const fn table<const T: usize, const IS_ROOK: bool>() -> [Bitboard; T] {
+    let mut a = [Bitboard::EMPTY; T];
+
+    let deltas = if IS_ROOK { R_DELTAS } else { B_DELTAS };
+    let magics = if IS_ROOK { ROOK_MAGICS } else { BISHOP_MAGICS };
+
+    let mut sq = 0;
+    while sq < 64 {
+        let magic_entry = magics[sq];
+        let mut blockers = Bitboard::EMPTY;
+        loop {
+            let moves = sliding_attack(deltas, Square(sq as u32), blockers);
+            let idx = index(&magic_entry, blockers);
+
+            // assert!(a[idx].0 == 0);
+            a[idx] = moves;
+
+            // Carry-Rippler trick to iterate through all subsections of blockers
+            blockers.0 = blockers.0.wrapping_sub(magic_entry.mask.0) & magic_entry.mask.0;
+            if blockers.0 == 0 {
+                break;
+            }
+        }
+        sq += 1;
+    }
+    a
 }
 
 /// This assumes the magics are already known and placed in a const array
@@ -94,7 +133,8 @@ impl Default for Magics {
 
 /// Extracts move bitboards using known constants
 fn create_table(sq: Square, deltas: [Direction; 4]) -> Vec<Bitboard> {
-    let magic_entry = if deltas.contains(&North) { ROOK_MAGICS[sq] } else { BISHOP_MAGICS[sq] };
+    let magic_entry =
+        if deltas[0] == North { ROOK_MAGICS[sq.0 as usize] } else { BISHOP_MAGICS[sq] };
     let idx_bits = 64 - magic_entry.shift;
     let mut table = vec![Bitboard::EMPTY; 1 << idx_bits];
     let mut blockers = Bitboard::EMPTY;
@@ -116,19 +156,22 @@ fn create_table(sq: Square, deltas: [Direction; 4]) -> Vec<Bitboard> {
 /// Returns a bitboards of sliding attacks given an array of 4 deltas/
 /// Does not include the original position/
 /// Includes occupied bits if it runs into them, but stops before going further.
-fn sliding_attack(deltas: [Direction; 4], sq: Square, occupied: Bitboard) -> Bitboard {
-    let mut attack = Bitboard::EMPTY;
-    for dir in deltas {
+const fn sliding_attack(deltas: [Direction; 4], sq: Square, occupied: Bitboard) -> Bitboard {
+    let mut attack = 0;
+    let mut count = 0;
+    while count < deltas.len() {
+        let dir = deltas[count];
         let mut s = sq.shift(dir);
         'inner: while s.is_valid() && s.dist(s.shift(dir.opp())) == 1 {
-            attack |= s.bitboard();
-            if occupied & s.bitboard() != Bitboard::EMPTY {
+            attack |= 1 << s.0 as usize;
+            if occupied.0 & 1 << s.0 as usize != 0 {
                 break 'inner;
             }
             s = s.shift(dir);
         }
+        count += 1;
     }
-    attack
+    Bitboard(attack)
 }
 
 #[rustfmt::skip]
