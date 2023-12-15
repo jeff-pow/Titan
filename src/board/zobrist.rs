@@ -19,9 +19,9 @@ pub struct Zobrist {
 }
 
 lazy_static! {
-    pub static ref ZOBRIST: Zobrist = Zobrist::default();
+    // pub static ref ZOBRIST: Zobrist = Zobrist::default();
 }
-pub const Z: Zobrist = {
+pub const ZOBRIST: Zobrist = {
     let mut prev = 0xE926E6210D9E3487u64;
 
     let turn_hash = rand_u64(prev);
