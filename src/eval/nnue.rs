@@ -14,10 +14,14 @@ use crate::{
 };
 
 pub const INPUT_SIZE: usize = 768;
-const HIDDEN_SIZE: usize = 768;
-const Q: i32 = 255 * 64;
+const HIDDEN_SIZE: usize = 1536;
+
+const QA: i32 = 255;
+const QB: i32 = 64;
+const QAB: i32 = QA * QB;
+
 const SCALE: i32 = 400;
-static NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net.nnue")) };
+static NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../255_screlu.bin")) };
 
 type Block = [i16; HIDDEN_SIZE];
 
@@ -132,17 +136,19 @@ impl Board {
                 output += us + them;
             }
         }
+        let mut sum = 0;
         #[cfg(not(feature = "simd"))]
         {
             for (&i, &w) in us.iter().zip(&weights[0]) {
-                output += crelu(i) * i32::from(w);
+                sum += crelu(i) * i32::from(w);
             }
 
             for (&i, &w) in them.iter().zip(&weights[1]) {
-                output += crelu(i) * i32::from(w);
+                sum += crelu(i) * i32::from(w);
             }
+            sum /= QA;
         }
-        let a = (output) * SCALE / Q;
+        let a = (output + sum) * SCALE / QAB;
         assert!(i16::MIN as i32 <= a && a <= i16::MAX as i32);
         a
     }
@@ -150,6 +156,12 @@ impl Board {
 
 const RELU_MIN: i16 = 0;
 const RELU_MAX: i16 = 255;
+
+#[cfg(not(feature = "simd"))]
+fn screlu(i: i16) -> i32 {
+    let x = i32::from(i.clamp(RELU_MIN, RELU_MAX));
+    x * x
+}
 
 #[cfg(not(feature = "simd"))]
 fn crelu(i: i16) -> i32 {
