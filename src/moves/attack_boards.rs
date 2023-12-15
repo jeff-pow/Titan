@@ -1,4 +1,4 @@
-use crate::init;
+use crate::const_array;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
@@ -40,7 +40,7 @@ pub const RANK6: Bitboard = Bitboard(RANK1_U64 << 40);
 pub const RANK7: Bitboard = Bitboard(RANK1_U64 << 48);
 pub const RANK8: Bitboard = Bitboard(RANK1_U64 << 56);
 
-pub const KING_ATTACKS: [Bitboard; 64] = init!(|sq, 64| {
+pub const KING_ATTACKS: [Bitboard; 64] = const_array!(|sq, 64| {
     let sq = 1 << sq;
     // Create a bitboard out of the square
     let mut bb = sq;
@@ -53,7 +53,7 @@ pub const KING_ATTACKS: [Bitboard; 64] = init!(|sq, 64| {
     Bitboard(bb ^ sq)
 });
 
-pub const KNIGHT_ATTACKS: [Bitboard; 64] = init!(|sq, 64| {
+pub const KNIGHT_ATTACKS: [Bitboard; 64] = const_array!(|sq, 64| {
     let sq = 1 << sq;
     let mut bb = sq;
     // Get squares two rows above and below current occupied square
@@ -161,12 +161,17 @@ pub(crate) fn gen_pawn_attack_boards() -> [[Bitboard; 64]; 2] {
 }
 
 pub const PAWN_ATTACKS: [[Bitboard; 64]; 2] = [
-    init!(|sq, 64| Bitboard(((1 << sq) & !FILE_A_U64) << 7 | (((1 << sq) & !FILE_H_U64) << 9))),
-    init!(|sq, 64| Bitboard(((1 << sq) & !FILE_A_U64) >> 9 | (((1 << sq) & !FILE_H_U64) >> 7))),
+    const_array!(|sq, 64| Bitboard(
+        ((1 << sq) & !FILE_A_U64) << 7 | (((1 << sq) & !FILE_H_U64) << 9)
+    )),
+    const_array!(|sq, 64| Bitboard(
+        ((1 << sq) & !FILE_A_U64) >> 9 | (((1 << sq) & !FILE_H_U64) >> 7)
+    )),
 ];
 
 #[macro_export]
-macro_rules! init {
+/// Credit for this macro goes to akimbo
+macro_rules! const_array {
     (| $i:ident, $size:literal | $($r:tt)+) => {{
         let mut $i = 0;
         let mut res = [{$($r)+}; $size];
@@ -178,19 +183,19 @@ macro_rules! init {
     }}
 }
 
-#[macro_export]
-macro_rules! const_array {
-    ($size:expr, |$i:ident| $calc:expr) => {{
-        const SIZE: usize = $size;
-        let mut arr = [0; SIZE];
-        let mut $i = 0;
-        while $i < SIZE {
-            arr[$i] = $calc;
-            $i += 1;
-        }
-        arr
-    }};
-}
+// #[macro_export]
+// macro_rules! const_array {
+//     ($size:expr, |$i:ident| $calc:expr) => {{
+//         const SIZE: usize = $size;
+//         let mut arr = [0; SIZE];
+//         let mut $i = 0;
+//         while $i < SIZE {
+//             arr[$i] = $calc;
+//             $i += 1;
+//         }
+//         arr
+//     }};
+// }
 
 #[cfg(test)]
 mod test_attack_boards {

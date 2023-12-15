@@ -13,8 +13,9 @@ mod types;
 use crate::bench::bench;
 use crate::engine::uci::main_loop;
 use crate::moves::attack_boards::{KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS};
-use crate::moves::magics::{BISHOP_TABLE, ROOK_TABLE};
+use crate::moves::magics::{BISHOP_TABLE, ROOK_M_SIZE, ROOK_TABLE};
 use crate::moves::movegenerator::MG;
+use crate::types::bitboard::Bitboard;
 use std::env;
 
 fn main() {
@@ -22,7 +23,8 @@ fn main() {
     assert_eq!(MG.king_table, KING_ATTACKS);
     assert_eq!(MG.knight_table, KNIGHT_ATTACKS);
     assert_eq!(MG.magics.bishop_table, BISHOP_TABLE);
-    // assert_eq!(MG.magics.rook_table, ROOK_TABLE);
+    assert_eq!(MG.magics.rook_table, ROOK_TABLE);
+    println!("{}", std::mem::size_of::<[Bitboard; ROOK_M_SIZE]>());
     for (idx, i) in MG.magics.rook_table.iter().enumerate() {
         assert_eq!(i, &ROOK_TABLE[idx], "{idx} {:?}", i);
     }

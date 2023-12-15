@@ -82,7 +82,7 @@ pub const BISHOP_TABLE: &[Bitboard; BISHOP_M_SIZE] = &table::<BISHOP_M_SIZE, fal
 pub const ROOK_TABLE: &[Bitboard; ROOK_M_SIZE] = &table::<ROOK_M_SIZE, true>();
 // pub const ROOK_TABLE: &[Bitboard; ROOK_M_SIZE] = &[Bitboard::EMPTY; ROOK_M_SIZE];
 
-const fn table<const T: usize, const IS_ROOK: bool>() -> [Bitboard; T] {
+pub const fn table<const T: usize, const IS_ROOK: bool>() -> [Bitboard; T] {
     let mut a = [Bitboard::EMPTY; T];
 
     let deltas = if IS_ROOK { R_DELTAS } else { B_DELTAS };
@@ -96,7 +96,6 @@ const fn table<const T: usize, const IS_ROOK: bool>() -> [Bitboard; T] {
             let moves = sliding_attack(deltas, Square(sq as u32), blockers);
             let idx = index(&magic_entry, blockers);
 
-            // assert!(a[idx].0 == 0);
             a[idx] = moves;
 
             // Carry-Rippler trick to iterate through all subsections of blockers
@@ -360,6 +359,7 @@ pub fn gen_magics() {
 
     assert_eq!(ROOK_M_SIZE, rook_table.len());
     assert_eq!(BISHOP_M_SIZE, bishop_table.len());
+    let magics = Magics::default();
 }
 
 /// Function finds a magic valid for a given square
