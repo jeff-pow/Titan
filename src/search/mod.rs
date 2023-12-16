@@ -1,9 +1,11 @@
+use arr_macro::arr;
 use std::ops::{Index, IndexMut};
+use std::sync::atomic::{AtomicI32, Ordering};
 
-use lazy_static::lazy_static;
-
+use crate::const_array;
 use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
+use crate::spsa::{LMR_BASE, LMR_DIVISOR};
 
 use self::search::MAX_SEARCH_DEPTH;
 
@@ -15,8 +17,6 @@ pub mod see;
 pub mod thread;
 
 pub const NUM_KILLER_MOVES: usize = 2;
-pub const LMR_THRESHOLD: i32 = 2;
-pub const MIN_LMR_DEPTH: i32 = 2;
 
 #[derive(Clone, Copy, Default)]
 pub(super) struct PlyEntry {
@@ -84,26 +84,21 @@ pub enum SearchType {
     Infinite, // Search forever
 }
 
-lazy_static! {
-    static ref LMR_REDUCTIONS: LmrReductions = lmr_reductions();
-}
+pub static LMR_REDUCTIONS: LmrReductions = arr![arr![AtomicI32::new(0); 219]; 101];
 
-pub static mut LMR_REDUC: LmrReductions = [[0; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
+type LmrReductions = [[AtomicI32; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
 
-type LmrReductions = [[i32; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
-
-fn lmr_reductions() -> LmrReductions {
-    let mut arr = [[0; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
+pub fn lmr_reductions() {
     for depth in 0..MAX_SEARCH_DEPTH + 1 {
         for moves_played in 0..MAX_LEN + 1 {
-            arr[depth as usize][moves_played] =
-                (1. + (depth as f32).ln() * (moves_played as f32).ln() / 2.) as i32;
+            let reduction = (LMR_BASE.val() as f32 / 100.
+                + (depth as f32).ln() * (moves_played as f32).ln()
+                    / (LMR_DIVISOR.val() as f32 / 100.)) as i32;
+            LMR_REDUCTIONS[depth as usize][moves_played].store(reduction, Ordering::Relaxed);
         }
     }
-    arr
 }
 
 pub fn get_reduction(depth: i32, moves_played: i32) -> i32 {
-    LMR_REDUCTIONS[depth as usize][moves_played as usize]
+    LMR_REDUCTIONS[depth as usize][moves_played as usize].load(Ordering::Relaxed)
 }
-
