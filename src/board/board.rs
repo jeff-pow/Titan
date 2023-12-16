@@ -6,7 +6,7 @@ use crate::moves::attack_boards::{king_attacks, knight_attacks, pawn_attacks};
 use crate::moves::magics::{bishop_attacks, queen_attacks, rook_attacks};
 use crate::moves::moves::{Castle, MoveType};
 use crate::{
-    eval::nnue::Accumulator,
+    eval::accumulator::Accumulator,
     moves::{
         moves::Move,
         moves::{Direction::*, CASTLING_RIGHTS},

@@ -1,21 +1,18 @@
+use super::{Block, INPUT_SIZE, NET};
+#[cfg(feature = "simd")]
+use super::{CHUNK_SIZE, REQUIRED_ITERS};
 #[cfg(feature = "simd")]
 use std::arch::x86_64::{
-    __m512i, _mm512_add_epi16, _mm512_dpwssds_epi32, _mm512_loadu_epi16, _mm512_reduce_add_epi32,
-    _mm512_set1_epi16, _mm512_setzero_si512, _mm512_storeu_epi16, _mm512_sub_epi16,
+    __m512i, _mm512_dpwssds_epi32, _mm512_loadu_epi16, _mm512_reduce_add_epi32, _mm512_set1_epi16,
+    _mm512_setzero_si512,
 };
 
-use crate::{
-    board::board::Board,
-    types::{
-        pieces::{Color, PieceName, NUM_PIECES},
-        square::{Square, NUM_SQUARES},
-    },
-};
-
-pub const INPUT_SIZE: usize = 768;
-const HIDDEN_SIZE: usize = 1536;
-
-const QA: i32 = 181; // CHANGES WITH NET CHANGE
+use crate::board::board::Board;
+/**
+* When changing activation functions, both the normalization factor and QA may need to change
+* alongside changing the crelu calls to screlu in simd and serial code.
+*/
+const QA: i32 = 181; // CHANGES WITH NET QUANZIZATION
 const QB: i32 = 64;
 const QAB: i32 = QA * QB;
 const NORMALIZATION_FACTOR: i32 = QA; // CHANGES WITH SCRELU/CRELU ACTIVATION
@@ -23,101 +20,14 @@ const RELU_MIN: i16 = 0;
 const RELU_MAX: i16 = QA as i16;
 
 const SCALE: i32 = 400;
-static NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../bins/181_screlu.bin")) };
-
-type Block = [i16; HIDDEN_SIZE];
-
-#[cfg(feature = "simd")]
-const CHUNK_SIZE: usize = 32;
-#[cfg(feature = "simd")]
-/// Number of SIMD vectors contained within one hidden layer
-const REQUIRED_ITERS: usize = HIDDEN_SIZE / CHUNK_SIZE;
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[repr(C, align(64))]
-pub struct Accumulator([Block; 2]);
-
-impl Default for Accumulator {
-    fn default() -> Self {
-        Self([NET.feature_bias; 2])
-    }
-}
-
-impl Accumulator {
-    pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
-        let white_idx = feature_idx(color, piece, sq);
-        let black_idx = feature_idx(!color, piece, sq.flip_vertical());
-        #[cfg(feature = "simd")]
-        {
-            unsafe {
-                self.simd_activate(&NET.feature_weights[white_idx], Color::White);
-                self.simd_activate(&NET.feature_weights[black_idx], Color::Black);
-            }
-        }
-        #[cfg(not(feature = "simd"))]
-        {
-            self.activate(&NET.feature_weights[white_idx], Color::White);
-            self.activate(&NET.feature_weights[black_idx], Color::Black);
-        }
-    }
-
-    pub fn remove_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
-        let white_idx = feature_idx(color, piece, sq);
-        let black_idx = feature_idx(!color, piece, sq.flip_vertical());
-        #[cfg(feature = "simd")]
-        unsafe {
-            self.simd_deactivate(&NET.feature_weights[white_idx], Color::White);
-            self.simd_deactivate(&NET.feature_weights[black_idx], Color::Black);
-        }
-        #[cfg(not(feature = "simd"))]
-        {
-            self.deactivate(&NET.feature_weights[white_idx], Color::White);
-            self.deactivate(&NET.feature_weights[black_idx], Color::Black);
-        }
-    }
-
-    #[cfg(feature = "simd")]
-    unsafe fn simd_activate(&mut self, weights: &Block, color: Color) {
-        for i in 0..REQUIRED_ITERS {
-            let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
-            let acc = _mm512_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
-            let updated_acc = _mm512_add_epi16(acc, weights);
-            _mm512_storeu_epi16(&mut self.0[color][i * CHUNK_SIZE], updated_acc);
-        }
-    }
-
-    #[cfg(feature = "simd")]
-    unsafe fn simd_deactivate(&mut self, weights: &Block, color: Color) {
-        for i in 0..REQUIRED_ITERS {
-            let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
-            let acc = _mm512_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
-            let updated_acc = _mm512_sub_epi16(acc, weights);
-            _mm512_storeu_epi16(&mut self.0[color][i * CHUNK_SIZE], updated_acc);
-        }
-    }
-
-    #[cfg(not(feature = "simd"))]
-    fn deactivate(&mut self, weights: &Block, color: Color) {
-        self.0[color].iter_mut().zip(weights).for_each(|(i, &d)| {
-            *i -= d;
-        });
-    }
-
-    #[cfg(not(feature = "simd"))]
-    fn activate(&mut self, weights: &Block, color: Color) {
-        self.0[color].iter_mut().zip(weights).for_each(|(i, &d)| {
-            *i += d;
-        });
-    }
-}
 
 #[derive(Clone, Debug)]
 #[repr(C, align(64))]
-struct Network {
-    feature_weights: [Block; INPUT_SIZE],
-    feature_bias: Block,
-    output_weights: [Block; 2],
-    output_bias: i16,
+pub(super) struct Network {
+    pub feature_weights: [Block; INPUT_SIZE],
+    pub feature_bias: Block,
+    pub output_weights: [Block; 2],
+    pub output_bias: i16,
 }
 
 impl Board {
@@ -129,7 +39,6 @@ impl Board {
         let mut output = 0;
         #[cfg(feature = "simd")]
         {
-            assert!(HIDDEN_SIZE % 16 == 0);
             unsafe {
                 let us = flatten(us, &weights[0]);
                 let them = flatten(them, &weights[1]);
@@ -157,8 +66,7 @@ impl Board {
 
 #[cfg(not(feature = "simd"))]
 fn screlu(i: i16) -> i32 {
-    let x = i32::from(i.clamp(RELU_MIN, RELU_MAX));
-    x * x
+    crelu(i) * crelu(i)
 }
 
 #[cfg(not(feature = "simd"))]
@@ -193,13 +101,6 @@ unsafe fn flatten(acc: &Block, weights: &Block) -> i32 {
         sum = _mm512_dpwssds_epi32(sum, crelu_result, weights);
     }
     _mm512_reduce_add_epi32(sum)
-}
-
-const COLOR_OFFSET: usize = NUM_SQUARES * NUM_PIECES;
-const PIECE_OFFSET: usize = NUM_SQUARES;
-
-fn feature_idx(color: Color, piece: PieceName, sq: Square) -> usize {
-    color.idx() * COLOR_OFFSET + piece.idx() * PIECE_OFFSET + sq.idx()
 }
 
 #[cfg(test)]
