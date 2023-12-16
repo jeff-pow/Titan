@@ -7,15 +7,12 @@ use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movegenerator::MGT;
 use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
-use crate::search::{SearchStack, INIT_ASP};
+use crate::search::{SearchStack, PV};
 
 use super::history_table::MAX_HIST_VAL;
 use super::quiescence::quiescence;
 use super::thread::ThreadData;
-use super::{
-    get_reduction, SearchType, LMP_CONST, LMR_THRESHOLD, MAX_LMP_DEPTH, MAX_RFP_DEPTH,
-    MIN_ASP_DEPTH, MIN_IIR_DEPTH, MIN_LMR_DEPTH, MIN_NMP_DEPTH, PV, RFP_MULTIPLIER,
-};
+use super::{get_reduction, SearchType};
 
 pub const CHECKMATE: i32 = 25000;
 pub const STALEMATE: i32 = 0;
@@ -82,10 +79,10 @@ fn aspiration_windows(
     let mut alpha = -INFINITY;
     let mut beta = INFINITY;
     // Asp window should start wider if score is more extreme
-    let mut delta = INIT_ASP + prev_score * prev_score / 10000;
+    let mut delta = 10 + prev_score * prev_score / 10000;
 
     // Only apply
-    if td.iter_max_depth >= MIN_ASP_DEPTH {
+    if td.iter_max_depth >= 4 {
         alpha = alpha.max(prev_score - delta);
         beta = beta.min(prev_score + delta);
     }
@@ -178,7 +175,7 @@ fn alpha_beta<const IS_PV: bool>(
         {
             return table_eval;
         }
-    } else if depth >= MIN_IIR_DEPTH && !IS_PV {
+    } else if depth >= 4 && !IS_PV {
         // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT hit and isn't a
         // PV node
         depth -= 1;
@@ -206,8 +203,8 @@ fn alpha_beta<const IS_PV: bool>(
     if !is_root && !IS_PV && !in_check {
         // Reverse futility pruning - If we are below beta by a certain amount, we are unlikely to
         // raise it, so we can prune the nodes that would have followed
-        if static_eval - RFP_MULTIPLIER * depth / if improving { 2 } else { 1 } >= beta
-            && depth < MAX_RFP_DEPTH
+        if static_eval - 70 * depth + i32::from(improving) * 35 >= beta
+            && depth < 9
             && static_eval.abs() < NEAR_CHECKMATE
         {
             return static_eval;
@@ -217,7 +214,7 @@ fn alpha_beta<const IS_PV: bool>(
         // raise beta, they likely won't be able to, so we can prune the nodes that would have
         // followed
         if board.has_non_pawns(board.to_move)
-            && depth >= MIN_NMP_DEPTH
+            && depth >= 3
             && static_eval >= beta
             && td.stack[td.ply - 1].played_move != Move::NULL
         {
@@ -272,16 +269,14 @@ fn alpha_beta<const IS_PV: bool>(
             if is_quiet {
                 // Late move pruning (LMP)
                 // By now all good tactical moves have been searched, so we can prune
-                if depth < MAX_LMP_DEPTH
-                    && legal_moves_searched
-                        > (LMP_CONST + depth * depth) / if improving { 1 } else { 2 }
-                {
+                let required_moves =
+                    if improving { 3 + depth * depth } else { 3 + 2 * depth * depth };
+                if depth < 6 && legal_moves_searched > required_moves {
                     break;
                 }
             }
             // Static exchange pruning - If we fail to immediately recapture a depth dependent
             // threshold, don't bother searching the move
-            // TODO: Try a depth * depth dependent capture threshold
             let margin = if m.is_capture(board) { -90 } else { -50 } * depth;
             if depth < 7 && !board.see(m, margin) {
                 continue;
@@ -313,7 +308,7 @@ fn alpha_beta<const IS_PV: bool>(
             // they are much less likely to be the best move than the first move selected by the
             // move picker.
             let r = {
-                if legal_moves_searched < LMR_THRESHOLD || depth < MIN_LMR_DEPTH {
+                if legal_moves_searched < 2 || depth < 2 {
                     1
                 } else {
                     let mut r = get_reduction(depth, legal_moves_searched);

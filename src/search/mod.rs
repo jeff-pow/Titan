@@ -14,20 +14,9 @@ pub mod search;
 pub mod see;
 pub mod thread;
 
-// Tunable Constants
-/// Initial aspiration window value
-pub const INIT_ASP: i32 = 10;
-const MIN_ASP_DEPTH: i32 = 4;
 pub const NUM_KILLER_MOVES: usize = 2;
-/// Begin LMR if more than this many moves have been searched
 pub const LMR_THRESHOLD: i32 = 2;
 pub const MIN_LMR_DEPTH: i32 = 2;
-pub const MAX_LMP_DEPTH: i32 = 6;
-pub const LMP_CONST: i32 = 3;
-pub const RFP_MULTIPLIER: i32 = 70;
-pub const MAX_RFP_DEPTH: i32 = 9;
-pub const MIN_NMP_DEPTH: i32 = 3;
-pub const MIN_IIR_DEPTH: i32 = 4;
 
 #[derive(Clone, Copy, Default)]
 pub(super) struct PlyEntry {
@@ -96,8 +85,10 @@ pub enum SearchType {
 }
 
 lazy_static! {
-    pub static ref LMR_REDUCTIONS: LmrReductions = lmr_reductions();
+    static ref LMR_REDUCTIONS: LmrReductions = lmr_reductions();
 }
+
+pub static mut LMR_REDUC: LmrReductions = [[0; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
 
 type LmrReductions = [[i32; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
 
@@ -115,3 +106,4 @@ fn lmr_reductions() -> LmrReductions {
 pub fn get_reduction(depth: i32, moves_played: i32) -> i32 {
     LMR_REDUCTIONS[depth as usize][moves_played as usize]
 }
+
