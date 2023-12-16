@@ -58,6 +58,16 @@ struct MagicEntry {
     offset: usize,
 }
 
+impl MagicEntry {
+    const fn index(&self, occupied: Bitboard) -> usize {
+        let blockers = occupied.0 & self.mask.0;
+        let hash = blockers.wrapping_mul(self.magic);
+        let index = (hash >> self.shift) as usize;
+        self.offset + index
+        // unsafe { self.offset + _pext_u64(occupied.0, self.mask.0) as usize }
+    }
+}
+
 // #[derive(Clone)]
 // pub struct Magics {
 //     pub rook_table: Vec<Bitboard>,
@@ -77,22 +87,14 @@ struct MagicEntry {
 //     }
 // }
 
-const fn index(entry: &MagicEntry, occupied: Bitboard) -> usize {
-    let blockers = occupied.0 & entry.mask.0;
-    let hash = blockers.wrapping_mul(entry.magic);
-    let index = (hash >> entry.shift) as usize;
-    entry.offset + index
-    // unsafe { entry.offset + _pext_u64(occupied.0, entry.mask.0) as usize }
-}
-
 pub fn bishop_attacks(sq: Square, occupied: Bitboard) -> Bitboard {
     let magic = &BISHOP_MAGICS[sq];
-    BISHOP_TABLE[index(magic, occupied)]
+    BISHOP_TABLE[magic.index(occupied)]
 }
 
 pub fn rook_attacks(sq: Square, occupied: Bitboard) -> Bitboard {
     let magic = &ROOK_MAGICS[sq];
-    ROOK_TABLE[index(magic, occupied)]
+    ROOK_TABLE[magic.index(occupied)]
 }
 
 pub fn queen_attacks(sq: Square, occupied: Bitboard) -> Bitboard {
@@ -311,7 +313,7 @@ fn make_table(
     let mut blockers = Bitboard::EMPTY;
     loop {
         let moves = sliding_attack(deltas, sq, blockers);
-        let idx = index(magic_entry, blockers);
+        let idx = magic_entry.index(blockers);
 
         if table[idx] == Bitboard::EMPTY {
             table[idx] = moves;
