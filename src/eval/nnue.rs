@@ -13,10 +13,17 @@ use crate::{
 };
 
 pub const INPUT_SIZE: usize = 768;
-const HIDDEN_SIZE: usize = 768;
-const Q: i32 = 255 * 64;
+const HIDDEN_SIZE: usize = 1536;
+
+const QA: i32 = 255; // CHANGES WITH NET CHANGE
+const QB: i32 = 64;
+const QAB: i32 = QA * QB;
+const NORMALIZATION_FACTOR: i32 = QA; // CHANGES WITH SCRELU/CRELU ACTIVATION
+const RELU_MIN: i16 = 0;
+const RELU_MAX: i16 = QA as i16;
+
 const SCALE: i32 = 400;
-static NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../net.nnue")) };
+static NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../255_screlu.bin")) };
 
 type Block = [i16; HIDDEN_SIZE];
 
@@ -119,8 +126,7 @@ impl Board {
         let (us, them) = (&self.accumulator.0[self.to_move], &self.accumulator.0[!self.to_move]);
         let weights = &NET.output_weights;
 
-        let mut output = i32::from(NET.output_bias);
-
+        let mut output = 0;
         #[cfg(feature = "simd")]
         {
             assert!(HIDDEN_SIZE % 16 == 0);
@@ -129,26 +135,31 @@ impl Board {
                 let them = flatten(them, &weights[1]);
 
                 output += us + them;
+                output /= NORMALIZATION_FACTOR;
             }
         }
         #[cfg(not(feature = "simd"))]
         {
             for (&i, &w) in us.iter().zip(&weights[0]) {
-                output += crelu(i) * i32::from(w);
+                output += screlu(i) * i32::from(w);
             }
 
             for (&i, &w) in them.iter().zip(&weights[1]) {
-                output += crelu(i) * i32::from(w);
+                output += screlu(i) * i32::from(w);
             }
+            output /= NORMALIZATION_FACTOR;
         }
-        let a = (output) * SCALE / Q;
+        let a = (i32::from(NET.output_bias) + output) * SCALE / QAB;
         assert!(i16::MIN as i32 <= a && a <= i16::MAX as i32);
         a
     }
 }
 
-const RELU_MIN: i16 = 0;
-const RELU_MAX: i16 = 255;
+#[cfg(not(feature = "simd"))]
+fn screlu(i: i16) -> i32 {
+    let x = i32::from(i.clamp(RELU_MIN, RELU_MAX));
+    x * x
+}
 
 #[cfg(not(feature = "simd"))]
 fn crelu(i: i16) -> i32 {
@@ -165,11 +176,19 @@ unsafe fn clipped_relu(i: __m512i) -> __m512i {
 }
 
 #[cfg(feature = "simd")]
+unsafe fn squared_crelu(i: __m512i) -> __m512i {
+    use std::arch::x86_64::_mm512_mullo_epi16;
+
+    let clamp = clipped_relu(i);
+    _mm512_mullo_epi16(clamp, clamp)
+}
+
+#[cfg(feature = "simd")]
 unsafe fn flatten(acc: &Block, weights: &Block) -> i32 {
     let mut sum = _mm512_setzero_si512();
     for i in 0..REQUIRED_ITERS {
         let us_vector = _mm512_loadu_epi16(&acc[i * CHUNK_SIZE]);
-        let crelu_result = clipped_relu(us_vector);
+        let crelu_result = squared_crelu(us_vector);
         let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
         sum = _mm512_dpwssds_epi32(sum, crelu_result, weights);
     }
