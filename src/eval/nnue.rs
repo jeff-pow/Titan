@@ -15,7 +15,7 @@ use crate::{
 pub const INPUT_SIZE: usize = 768;
 const HIDDEN_SIZE: usize = 1536;
 
-const QA: i32 = 255; // CHANGES WITH NET CHANGE
+const QA: i32 = 181; // CHANGES WITH NET CHANGE
 const QB: i32 = 64;
 const QAB: i32 = QA * QB;
 const NORMALIZATION_FACTOR: i32 = QA; // CHANGES WITH SCRELU/CRELU ACTIVATION
@@ -23,7 +23,7 @@ const RELU_MIN: i16 = 0;
 const RELU_MAX: i16 = QA as i16;
 
 const SCALE: i32 = 400;
-static NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../255_screlu.bin")) };
+static NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../181_screlu.bin")) };
 
 type Block = [i16; HIDDEN_SIZE];
 
