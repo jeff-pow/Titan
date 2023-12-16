@@ -96,7 +96,8 @@ fn lmr_reductions() -> LmrReductions {
     let mut arr = [[0; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
     for depth in 0..MAX_SEARCH_DEPTH + 1 {
         for moves_played in 0..MAX_LEN + 1 {
-            arr[depth as usize][moves_played] = reduction(depth, moves_played as i32);
+            arr[depth as usize][moves_played] =
+                (1. + (depth as f32).ln() * (moves_played as f32).ln() / 2.) as i32;
         }
     }
     arr
@@ -106,12 +107,3 @@ pub fn get_reduction(depth: i32, moves_played: i32) -> i32 {
     LMR_REDUCTIONS[depth as usize][moves_played as usize]
 }
 
-pub fn reduction(depth: i32, moves_played: i32) -> i32 {
-    if depth <= 2 || moves_played < 2 {
-        return 1;
-    }
-    let depth = depth as f32;
-    let ply = moves_played as f32;
-    let ret = 1. + depth.ln() * ply.ln() / 2.;
-    ret as i32
-}
