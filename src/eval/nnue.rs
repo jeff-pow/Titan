@@ -23,7 +23,7 @@ const RELU_MIN: i16 = 0;
 const RELU_MAX: i16 = QA as i16;
 
 const SCALE: i32 = 400;
-static NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../181_screlu.bin")) };
+static NET: Network = unsafe { std::mem::transmute(*include_bytes!("../../bins/181_screlu.bin")) };
 
 type Block = [i16; HIDDEN_SIZE];
 
