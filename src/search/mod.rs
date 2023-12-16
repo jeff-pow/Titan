@@ -89,6 +89,7 @@ lazy_static! {
 }
 
 type LmrReductions = [[i32; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
+
 fn lmr_reductions() -> LmrReductions {
     let mut arr = [[0; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
     for depth in 0..MAX_SEARCH_DEPTH + 1 {

@@ -6,7 +6,7 @@ use crate::{
 
 use super::SearchStack;
 
-pub const MAX_HIST_VAL: i32 = i16::MAX as i32;
+pub const MAX_HIST_VAL: i32 = 16384;
 
 #[derive(Clone, Copy)]
 pub struct HistoryEntry {

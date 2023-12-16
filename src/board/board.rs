@@ -2,11 +2,12 @@ use core::fmt;
 use strum::IntoEnumIterator;
 
 use crate::board::zobrist::ZOBRIST;
+use crate::moves::attack_boards::{king_attacks, knight_attacks, pawn_attacks};
+use crate::moves::magics::{bishop_attacks, queen_attacks, rook_attacks};
 use crate::moves::moves::{Castle, MoveType};
 use crate::{
     eval::nnue::Accumulator,
     moves::{
-        movegenerator::MG,
         moves::Move,
         moves::{Direction::*, CASTLING_RIGHTS},
     },
@@ -177,11 +178,11 @@ impl Board {
     pub fn attackers_for_side(&self, attacker: Color, sq: Square, occupancy: Bitboard) -> Bitboard {
         let bishops = self.piece(PieceName::Queen) | self.piece(PieceName::Bishop);
         let rooks = self.piece(PieceName::Queen) | self.piece(PieceName::Rook);
-        let pawn_attacks = MG.pawn_attacks(sq, !attacker) & self.piece(PieceName::Pawn);
-        let knight_attacks = MG.knight_attacks(sq) & self.piece(PieceName::Knight);
-        let bishop_attacks = MG.bishop_attacks(sq, occupancy) & bishops;
-        let rook_attacks = MG.rook_attacks(sq, occupancy) & rooks;
-        let king_attacks = MG.king_attacks(sq) & self.piece(PieceName::King);
+        let pawn_attacks = pawn_attacks(sq, !attacker) & self.piece(PieceName::Pawn);
+        let knight_attacks = knight_attacks(sq) & self.piece(PieceName::Knight);
+        let bishop_attacks = bishop_attacks(sq, occupancy) & bishops;
+        let rook_attacks = rook_attacks(sq, occupancy) & rooks;
+        let king_attacks = king_attacks(sq) & self.piece(PieceName::King);
         (pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks)
             & self.color(attacker)
     }
@@ -226,24 +227,24 @@ impl Board {
         match piece_moving.unwrap() {
             PieceName::Knight => {
                 m.flag() == MoveType::Normal
-                    && MG.knight_attacks(m.origin_square()) & !self.color(self.to_move)
+                    && knight_attacks(m.origin_square()) & !self.color(self.to_move)
                         != Bitboard::EMPTY
             }
             PieceName::Bishop => {
                 m.flag() == MoveType::Normal
-                    && MG.bishop_attacks(m.origin_square(), self.occupancies())
+                    && bishop_attacks(m.origin_square(), self.occupancies())
                         & !self.color(self.to_move)
                         != Bitboard::EMPTY
             }
             PieceName::Rook => {
                 m.flag() == MoveType::Normal
-                    && MG.rook_attacks(m.origin_square(), self.occupancies())
+                    && rook_attacks(m.origin_square(), self.occupancies())
                         & !self.color(self.to_move)
                         != Bitboard::EMPTY
             }
             PieceName::Queen => {
                 m.flag() == MoveType::Normal
-                    && MG.queen_attacks(m.origin_square(), self.occupancies())
+                    && queen_attacks(m.origin_square(), self.occupancies())
                         & !self.color(self.to_move)
                         != Bitboard::EMPTY
             }
@@ -253,7 +254,7 @@ impl Board {
                     return false;
                 }
                 m.flag() == MoveType::Normal
-                    && MG.king_attacks(m.origin_square()) & !self.color(self.to_move)
+                    && king_attacks(m.origin_square()) & !self.color(self.to_move)
                         != Bitboard::EMPTY
             }
         }
