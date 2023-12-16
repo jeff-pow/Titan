@@ -85,8 +85,10 @@ pub enum SearchType {
 }
 
 lazy_static! {
-    pub static ref LMR_REDUCTIONS: LmrReductions = lmr_reductions();
+    static ref LMR_REDUCTIONS: LmrReductions = lmr_reductions();
 }
+
+pub static mut LMR_REDUC: LmrReductions = [[0; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
 
 type LmrReductions = [[i32; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
 

@@ -7,15 +7,12 @@ use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movegenerator::MGT;
 use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
-use crate::search::{SearchStack, INIT_ASP};
+use crate::search::{SearchStack, PV};
 
 use super::history_table::MAX_HIST_VAL;
 use super::quiescence::quiescence;
 use super::thread::ThreadData;
-use super::{
-    get_reduction, SearchType, LMP_CONST, LMR_THRESHOLD, MAX_LMP_DEPTH, MAX_RFP_DEPTH,
-    MIN_ASP_DEPTH, MIN_IIR_DEPTH, MIN_LMR_DEPTH, MIN_NMP_DEPTH, PV, RFP_MULTIPLIER,
-};
+use super::{get_reduction, SearchType};
 
 pub const CHECKMATE: i32 = 25000;
 pub const STALEMATE: i32 = 0;
