@@ -1,4 +1,5 @@
 #![allow(clippy::module_inception)]
+#![allow(long_running_const_eval)]
 #![cfg_attr(feature = "simd", feature(stdsimd))]
 
 mod bench;

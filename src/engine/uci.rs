@@ -9,10 +9,8 @@ use crate::board::fen::{parse_fen_from_buffer, STARTING_FEN};
 use crate::board::zobrist::ZOBRIST;
 use crate::engine::perft::perft;
 use crate::engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
-use crate::moves::movegenerator::MG;
 use crate::search::get_reduction;
 use crate::search::thread::ThreadPool;
-use crate::types::square::Square;
 use crate::{
     board::{
         board::Board,
@@ -37,7 +35,6 @@ pub fn main_loop() -> ! {
     // initialized before the engine enters play, so it doesn't waste playing time initializing
     // constants. A large difference in STC
     let _ = ZOBRIST.turn_hash;
-    let _ = MG.king_attacks(Square(0));
     let _ = get_reduction(0, 0);
     println!("{ENGINE_NAME} by {}", env!("CARGO_PKG_AUTHORS"));
 

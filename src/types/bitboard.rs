@@ -21,7 +21,7 @@ impl Bitboard {
         lsb
     }
 
-    pub fn get_lsb(self) -> Square {
+    pub const fn get_lsb(self) -> Square {
         unsafe { std::mem::transmute(self.0.trailing_zeros()) }
     }
 
@@ -39,7 +39,7 @@ impl Bitboard {
 
     /// Executes a shift without checking to ensure no information is lost. Only to be used when a
     /// shift has already been proven to be safe
-    pub fn shift(self, dir: Direction) -> Bitboard {
+    pub const fn shift(self, dir: Direction) -> Bitboard {
         match dir {
             Direction::North => Bitboard(self.0 << 8),
             Direction::NorthWest => Bitboard((self.0 << 7) & !FILE_H.0),

@@ -3,7 +3,7 @@ use strum::IntoEnumIterator;
 use crate::{
     board::{board::Board, fen::build_board},
     moves::{
-        movegenerator::MG,
+        magics::{bishop_attacks, rook_attacks},
         moves::{from_san, Move},
     },
     types::{
@@ -84,10 +84,10 @@ impl Board {
             let next_piece = self.next_attacker(&mut occupied, my_attackers, to_move);
 
             if matches!(next_piece, PieceName::Pawn | PieceName::Bishop | PieceName::Queen) {
-                attackers |= MG.bishop_attacks(dest, occupied) & bishops;
+                attackers |= bishop_attacks(dest, occupied) & bishops;
             }
             if matches!(next_piece, PieceName::Rook | PieceName::Queen) {
-                attackers |= MG.rook_attacks(dest, occupied) & rooks;
+                attackers |= rook_attacks(dest, occupied) & rooks;
             }
 
             attackers &= occupied;
