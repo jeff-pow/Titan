@@ -24,6 +24,7 @@ pub fn uci_print_tunable_params() {
     }
 }
 
+#[allow(dead_code)]
 pub fn print_ob_tunable_params() {
     for e in MAP.read().unwrap().iter() {
         println!(
@@ -118,10 +119,10 @@ tunable_param!(NMP_EVAL_DIVISOR, 200, 100, 300);
 tunable_param!(NMP_EVAL_MIN, 3, 1, 6);
 
 tunable_param!(LMP_DEPTH, 6, 4, 8);
-tunable_param!(LMP_IMP_BASE, 3, 1, 6);
-tunable_param!(LMP_IMP_FACTOR, 3, 1, 6);
-tunable_param!(LMP_NOT_IMP_BASE, 3, 1, 6);
-tunable_param!(LMP_NOT_IMP_FACTOR, 2, 1, 4);
+tunable_param!(LMP_NOT_IMP_BASE, 100, 50, 300);
+tunable_param!(LMP_NOT_IMP_FACTOR, 50, 30, 150);
+tunable_param!(LMP_IMP_BASE, 250, 100, 300);
+tunable_param!(LMP_IMP_FACTOR, 100, 30, 150);
 
 tunable_param!(QUIET_SEE, 50, 40, 80);
 tunable_param!(CAPT_SEE, 90, 70, 110);

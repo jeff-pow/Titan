@@ -10,8 +10,9 @@ use crate::moves::moves::Move;
 use crate::search::SearchStack;
 use crate::spsa::{
     ASP_DIVISOR, ASP_MIN_DEPTH, CAPT_SEE, DELTA_EXPANSION, INIT_ASP, LMP_DEPTH, LMP_IMP_BASE,
-    LMR_MIN_MOVES, NMP_BASE_R, NMP_DEPTH, NMP_DEPTH_DIVISOR, NMP_EVAL_DIVISOR, NMP_EVAL_MIN,
-    QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH, RFP_IMPROVING_FACTOR, SEE_DEPTH,
+    LMP_IMP_FACTOR, LMP_NOT_IMP_BASE, LMP_NOT_IMP_FACTOR, LMR_MIN_MOVES, NMP_BASE_R, NMP_DEPTH,
+    NMP_DEPTH_DIVISOR, NMP_EVAL_DIVISOR, NMP_EVAL_MIN, QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH,
+    RFP_IMPROVING_FACTOR, SEE_DEPTH,
 };
 
 use super::history_table::MAX_HIST_VAL;
@@ -280,10 +281,14 @@ fn alpha_beta<const IS_PV: bool>(
                 // Late move pruning (LMP)
                 // By now all good tactical moves have been searched, so we can prune
                 // If eval is improving, we want to search more
-                if depth < LMP_DEPTH.val()
-                    && legal_moves_searched
-                        > (LMP_IMP_BASE.val() + depth * depth) / if improving { 1 } else { 2 }
-                {
+                let moves_required = if improving {
+                    (LMP_IMP_BASE.val() as f32 / 100.)
+                        + ((LMP_IMP_FACTOR.val() as f32) / 100. * depth as f32 * depth as f32)
+                } else {
+                    (LMP_NOT_IMP_BASE.val() as f32 / 100.)
+                        + ((LMP_NOT_IMP_FACTOR.val() as f32) / 100. * depth as f32 * depth as f32)
+                } as i32;
+                if depth < LMP_DEPTH.val() && legal_moves_searched > moves_required {
                     break;
                 }
             }
