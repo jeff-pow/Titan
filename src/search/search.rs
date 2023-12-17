@@ -7,18 +7,17 @@ use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movegenerator::MGT;
 use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
-use crate::search::{SearchStack, PV};
+use crate::search::SearchStack;
 use crate::spsa::{
     ASP_DIVISOR, ASP_MIN_DEPTH, CAPT_SEE, DELTA_EXPANSION, INIT_ASP, LMP_DEPTH, LMP_IMP_BASE,
-    LMP_NOT_IMP_BASE, LMP_NOT_IMP_FACTOR, LMR_MIN_MOVES, NMP_BASE_R, NMP_DEPTH, NMP_DEPTH_DIVISOR,
-    NMP_EVAL_DIVISOR, NMP_EVAL_MIN, QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH, RFP_IMPROVING_FACTOR,
-    SEE_DEPTH,
+    LMR_MIN_MOVES, NMP_BASE_R, NMP_DEPTH, NMP_DEPTH_DIVISOR, NMP_EVAL_DIVISOR, NMP_EVAL_MIN,
+    QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH, SEE_DEPTH,
 };
 
 use super::history_table::MAX_HIST_VAL;
 use super::quiescence::quiescence;
 use super::thread::ThreadData;
-use super::{get_reduction, SearchType};
+use super::{get_reduction, SearchType, PV};
 
 pub const CHECKMATE: i32 = 25000;
 pub const STALEMATE: i32 = 0;
@@ -209,9 +208,6 @@ fn alpha_beta<const IS_PV: bool>(
     if !is_root && !IS_PV && !in_check {
         // Reverse futility pruning - If we are below beta by a certain amount, we are unlikely to
         // raise it, so we can prune the nodes that would have followed
-        // if static_eval - RFP_BETA_FACTOR.val() * depth
-        //     + RFP_IMPROVING_FACTOR.val() * i32::from(improving)
-        //     >= beta
         if static_eval - RFP_BETA_FACTOR.val() * depth / if improving { 2 } else { 1 } >= beta
             && depth < RFP_DEPTH.val()
             && static_eval.abs() < NEAR_CHECKMATE
@@ -239,7 +235,6 @@ fn alpha_beta<const IS_PV: bool>(
             let r = NMP_BASE_R.val()
                 + depth / NMP_DEPTH_DIVISOR.val()
                 + min((static_eval - beta) / NMP_EVAL_DIVISOR.val(), NMP_EVAL_MIN.val());
-
             let mut null_eval = -alpha_beta::<false>(
                 depth - r,
                 -beta,
@@ -281,17 +276,17 @@ fn alpha_beta<const IS_PV: bool>(
             if is_quiet {
                 // Late move pruning (LMP)
                 // By now all good tactical moves have been searched, so we can prune
-                let required_moves = if improving {
-                    LMP_IMP_BASE.val() + depth * depth
-                } else {
-                    LMP_NOT_IMP_BASE.val() + LMP_NOT_IMP_FACTOR.val() * depth * depth
-                };
-                if depth < LMP_DEPTH.val() && legal_moves_searched > required_moves {
+                // If eval is improving, we want to search more
+                if depth < LMP_DEPTH.val()
+                    && legal_moves_searched
+                        > (LMP_IMP_BASE.val() + depth * depth) / if improving { 1 } else { 2 }
+                {
                     break;
                 }
             }
             // Static exchange pruning - If we fail to immediately recapture a depth dependent
             // threshold, don't bother searching the move
+            // TODO: Try a depth * depth dependent capture threshold
             let margin =
                 if m.is_capture(board) { -CAPT_SEE.val() } else { -QUIET_SEE.val() } * depth;
             if depth < SEE_DEPTH.val() && !board.see(m, margin) {

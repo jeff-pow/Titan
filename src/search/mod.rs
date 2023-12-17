@@ -2,7 +2,6 @@ use arr_macro::arr;
 use std::ops::{Index, IndexMut};
 use std::sync::atomic::{AtomicI32, Ordering};
 
-use crate::const_array;
 use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
 use crate::spsa::{LMR_BASE, LMR_DIVISOR};
@@ -84,9 +83,9 @@ pub enum SearchType {
     Infinite, // Search forever
 }
 
-pub static LMR_REDUCTIONS: LmrReductions = arr![arr![AtomicI32::new(0); 219]; 101];
-
 type LmrReductions = [[AtomicI32; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
+
+pub static LMR_REDUCTIONS: LmrReductions = arr![arr![AtomicI32::new(0); 219]; 101];
 
 pub fn lmr_reductions() {
     for depth in 0..MAX_SEARCH_DEPTH + 1 {
