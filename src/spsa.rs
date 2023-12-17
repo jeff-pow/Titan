@@ -19,6 +19,7 @@ impl TunableParam {
     }
 }
 
+tunable_param!(LMR_MIN_MOVES, 2, 1, 3, 1);
 tunable_param!(LMR_BASE, 100, 50, 150, 10, &lmr_reductions);
 tunable_param!(LMR_DIVISOR, 200, 100, 300, 20, &lmr_reductions);
 
@@ -45,8 +46,6 @@ tunable_param!(LMP_NOT_IMP_FACTOR, 2, 1, 4, 1);
 tunable_param!(QUIET_SEE, 50, 40, 80, 5);
 tunable_param!(CAPT_SEE, 90, 70, 110, 5);
 tunable_param!(SEE_DEPTH, 7, 5, 9, 1);
-
-tunable_param!(LMR_MIN_MOVES, 2, 1, 3, 1);
 
 #[macro_export]
 macro_rules! tunable_param {
