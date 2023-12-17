@@ -86,6 +86,7 @@ lazy_static! {
 
         map.insert("LMP_DEPTH", &LMP_DEPTH);
         map.insert("LMP_IMP_BASE", &LMP_IMP_BASE);
+        map.insert("LMP_IMP_FACTOR", &LMP_IMP_FACTOR);
         map.insert("LMP_NOT_IMP_BASE", &LMP_NOT_IMP_BASE);
         map.insert("LMP_NOT_IMP_FACTOR", &LMP_NOT_IMP_FACTOR);
 
@@ -118,6 +119,7 @@ tunable_param!(NMP_EVAL_MIN, 3, 1, 6);
 
 tunable_param!(LMP_DEPTH, 6, 4, 8);
 tunable_param!(LMP_IMP_BASE, 3, 1, 6);
+tunable_param!(LMP_IMP_FACTOR, 3, 1, 6);
 tunable_param!(LMP_NOT_IMP_BASE, 3, 1, 6);
 tunable_param!(LMP_NOT_IMP_FACTOR, 2, 1, 4);
 

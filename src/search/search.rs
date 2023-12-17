@@ -11,7 +11,7 @@ use crate::search::SearchStack;
 use crate::spsa::{
     ASP_DIVISOR, ASP_MIN_DEPTH, CAPT_SEE, DELTA_EXPANSION, INIT_ASP, LMP_DEPTH, LMP_IMP_BASE,
     LMR_MIN_MOVES, NMP_BASE_R, NMP_DEPTH, NMP_DEPTH_DIVISOR, NMP_EVAL_DIVISOR, NMP_EVAL_MIN,
-    QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH, SEE_DEPTH,
+    QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH, RFP_IMPROVING_FACTOR, SEE_DEPTH,
 };
 
 use super::history_table::MAX_HIST_VAL;
@@ -208,7 +208,10 @@ fn alpha_beta<const IS_PV: bool>(
     if !is_root && !IS_PV && !in_check {
         // Reverse futility pruning - If we are below beta by a certain amount, we are unlikely to
         // raise it, so we can prune the nodes that would have followed
-        if static_eval - RFP_BETA_FACTOR.val() * depth / if improving { 2 } else { 1 } >= beta
+        // if static_eval - RFP_BETA_FACTOR.val() * depth / if improving { 2 } else { 1 } >= beta
+        if static_eval - RFP_BETA_FACTOR.val() * depth
+            + i32::from(improving) * RFP_IMPROVING_FACTOR.val() * depth
+            >= beta
             && depth < RFP_DEPTH.val()
             && static_eval.abs() < NEAR_CHECKMATE
         {
