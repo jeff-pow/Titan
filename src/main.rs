@@ -20,7 +20,7 @@ use std::env;
 
 fn main() {
     lmr_reductions();
-    print_ob_tunable_params();
+    // print_ob_tunable_params();
     let args = env::args().collect::<Vec<_>>();
     if args.contains(&"bench".to_string()) {
         bench();
