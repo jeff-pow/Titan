@@ -92,6 +92,7 @@ pub fn main_loop() -> ! {
                     transpos_table = TranspositionTable::new(x.parse().unwrap())
                 }
                 ["setoption", "name", "Clear", "Hash"] => transpos_table.clear(),
+                ["setoption", "name", "Threads", "value", _] => (),
                 _ => {
                     if SPSA_TUNE {
                         parse_param(&input)
