@@ -12,6 +12,7 @@ mod spsa;
 mod types;
 
 use search::lmr_reductions;
+use spsa::print_ob_tunable_params;
 
 use crate::bench::bench;
 use crate::engine::uci::main_loop;
@@ -19,6 +20,7 @@ use std::env;
 
 fn main() {
     lmr_reductions();
+    print_ob_tunable_params();
     let args = env::args().collect::<Vec<_>>();
     if args.contains(&"bench".to_string()) {
         bench();

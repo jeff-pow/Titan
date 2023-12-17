@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::process::exit;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{io, time::Duration};
@@ -11,6 +10,7 @@ use crate::engine::perft::perft;
 use crate::engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
 use crate::search::lmr_reductions;
 use crate::search::thread::ThreadPool;
+use crate::spsa::{parse_param, uci_print_tunable_params, SPSA_TUNE};
 use crate::{
     board::{
         board::Board,
@@ -23,8 +23,6 @@ use crate::{
 
 pub const ENGINE_NAME: &str = "Titan";
 
-pub const SPSA_TUNE: bool = true;
-
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
     let mut transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
@@ -34,8 +32,6 @@ pub fn main_loop() -> ! {
     let halt = AtomicBool::new(false);
     let mut thread_pool = ThreadPool::new(&board, &halt, Vec::new());
     lmr_reductions();
-    // let spsa_map = HashMap::new();
-    if SPSA_TUNE {}
     println!("{ENGINE_NAME} by {}", env!("CARGO_PKG_AUTHORS"));
 
     loop {
@@ -96,7 +92,11 @@ pub fn main_loop() -> ! {
                     transpos_table = TranspositionTable::new(x.parse().unwrap())
                 }
                 ["setoption", "name", "Clear", "Hash"] => transpos_table.clear(),
-                _ => {}
+                _ => {
+                    if SPSA_TUNE {
+                        parse_param(&input)
+                    }
+                }
             },
             _ => (),
         };
@@ -108,6 +108,9 @@ fn uci_opts() {
     println!("id author {}", env!("CARGO_PKG_AUTHORS"));
     println!("option name Threads type spin default 1 min 1 max 1");
     println!("option name Hash type spin default 16 min 1 max 8388608");
+    if SPSA_TUNE {
+        uci_print_tunable_params();
+    }
     println!("uciok");
 }
 
