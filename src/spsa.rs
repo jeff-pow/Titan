@@ -1,16 +1,15 @@
 use std::{
-    collections::HashMap,
     ops::RangeInclusive,
     sync::atomic::{AtomicI32, Ordering},
 };
 pub const SPSA_TUNE: bool = true;
 
-use lazy_static::lazy_static;
+use phf::{phf_map, Map};
 
 use crate::{max, search::lmr_reductions, tunable_param};
 
 pub fn uci_print_tunable_params() {
-    for e in MAP.iter() {
+    for e in &ENTRIES {
         println!(
             "option name {} type spin default {} min {} max {}",
             e.0,
@@ -23,7 +22,7 @@ pub fn uci_print_tunable_params() {
 
 #[allow(dead_code)]
 pub fn print_ob_tunable_params() {
-    for e in MAP.iter() {
+    for e in &ENTRIES {
         println!(
             "{}, int, {}, {}, {}, {}, 0.002",
             e.0,
@@ -38,7 +37,7 @@ pub fn print_ob_tunable_params() {
 pub fn parse_param(a: &[&str]) {
     let [_, _, name, _, value] = a[..5] else { todo!() };
     let name = name.to_uppercase();
-    let param = MAP.get(name.as_str()).unwrap();
+    let param = ENTRIES.get(name.as_str()).unwrap();
     param.value.store(value.parse().unwrap(), Ordering::SeqCst);
     (param.callback)();
 }
@@ -59,41 +58,72 @@ impl TunableParam {
     }
 }
 
-lazy_static! {
-    static ref MAP: HashMap<&'static str, &'static TunableParam> = {
-        let mut map = HashMap::new();
-        map.insert("LMR_MIN_MOVES", &LMR_MIN_MOVES);
-        map.insert("LMR_BASE", &LMR_BASE);
-        map.insert("LMR_DIVISOR", &LMR_DIVISOR);
+static ENTRIES: Map<&'static str, &'static TunableParam> = phf_map! {
+    "LMR_MIN_MOVES"=> &LMR_MIN_MOVES,
+    "LMR_BASE"=> &LMR_BASE,
+    "LMR_DIVISOR"=> &LMR_DIVISOR,
 
-        map.insert("INIT_ASP", &INIT_ASP);
-        map.insert("ASP_DIVISOR", &ASP_DIVISOR);
-        map.insert("ASP_MIN_DEPTH", &ASP_MIN_DEPTH);
-        map.insert("DELTA_EXPANSION", &DELTA_EXPANSION);
+    "INIT_ASP"=> &INIT_ASP,
+    "ASP_DIVISOR"=> &ASP_DIVISOR,
+    "ASP_MIN_DEPTH"=> &ASP_MIN_DEPTH,
+    "DELTA_EXPANSION"=> &DELTA_EXPANSION,
 
-        map.insert("RFP_BETA_FACTOR", &RFP_BETA_FACTOR);
-        map.insert("RFP_IMPROVING_FACTOR", &RFP_IMPROVING_FACTOR);
-        map.insert("RFP_DEPTH", &RFP_DEPTH);
+    "RFP_BETA_FACTOR"=> &RFP_BETA_FACTOR,
+    "RFP_IMPROVING_FACTOR"=> &RFP_IMPROVING_FACTOR,
+    "RFP_DEPTH"=> &RFP_DEPTH,
 
-        map.insert("NMP_DEPTH", &NMP_DEPTH);
-        map.insert("NMP_BASE_R", &NMP_BASE_R);
-        map.insert("NMP_DEPTH_DIVISOR", &NMP_DEPTH_DIVISOR);
-        map.insert("NMP_EVAL_DIVISOR", &NMP_EVAL_DIVISOR);
-        map.insert("NMP_EVAL_MIN", &NMP_EVAL_MIN);
+    "NMP_DEPTH"=> &NMP_DEPTH,
+    "NMP_BASE_R"=> &NMP_BASE_R,
+    "NMP_DEPTH_DIVISOR"=> &NMP_DEPTH_DIVISOR,
+    "NMP_EVAL_DIVISOR"=> &NMP_EVAL_DIVISOR,
+    "NMP_EVAL_MIN"=> &NMP_EVAL_MIN,
 
-        map.insert("LMP_DEPTH", &LMP_DEPTH);
-        map.insert("LMP_IMP_BASE", &LMP_IMP_BASE);
-        map.insert("LMP_IMP_FACTOR", &LMP_IMP_FACTOR);
-        map.insert("LMP_NOT_IMP_BASE", &LMP_NOT_IMP_BASE);
-        map.insert("LMP_NOT_IMP_FACTOR", &LMP_NOT_IMP_FACTOR);
+    "LMP_DEPTH"=> &LMP_DEPTH,
+    "LMP_IMP_BASE"=> &LMP_IMP_BASE,
+    "LMP_IMP_FACTOR"=> &LMP_IMP_FACTOR,
+    "LMP_NOT_IMP_BASE"=> &LMP_NOT_IMP_BASE,
+    "LMP_NOT_IMP_FACTOR"=> &LMP_NOT_IMP_FACTOR,
 
-        map.insert("QUIET_SEE", &QUIET_SEE);
-        map.insert("CAPT_SEE", &CAPT_SEE);
-        map.insert("SEE_DEPTH", &SEE_DEPTH);
+    "QUIET_SEE"=> &QUIET_SEE,
+    "CAPT_SEE"=> &CAPT_SEE,
+    "SEE_DEPTH"=> &SEE_DEPTH,
+};
 
-        map
-    };
-}
+// lazy_static! {
+//     static ref MAP: HashMap<&'static str, &'static TunableParam> = {
+//         let mut map = HashMap::new();
+//         map.insert("LMR_MIN_MOVES", &LMR_MIN_MOVES);
+//         map.insert("LMR_BASE", &LMR_BASE);
+//         map.insert("LMR_DIVISOR", &LMR_DIVISOR);
+//
+//         map.insert("INIT_ASP", &INIT_ASP);
+//         map.insert("ASP_DIVISOR", &ASP_DIVISOR);
+//         map.insert("ASP_MIN_DEPTH", &ASP_MIN_DEPTH);
+//         map.insert("DELTA_EXPANSION", &DELTA_EXPANSION);
+//
+//         map.insert("RFP_BETA_FACTOR", &RFP_BETA_FACTOR);
+//         map.insert("RFP_IMPROVING_FACTOR", &RFP_IMPROVING_FACTOR);
+//         map.insert("RFP_DEPTH", &RFP_DEPTH);
+//
+//         map.insert("NMP_DEPTH", &NMP_DEPTH);
+//         map.insert("NMP_BASE_R", &NMP_BASE_R);
+//         map.insert("NMP_DEPTH_DIVISOR", &NMP_DEPTH_DIVISOR);
+//         map.insert("NMP_EVAL_DIVISOR", &NMP_EVAL_DIVISOR);
+//         map.insert("NMP_EVAL_MIN", &NMP_EVAL_MIN);
+//
+//         map.insert("LMP_DEPTH", &LMP_DEPTH);
+//         map.insert("LMP_IMP_BASE", &LMP_IMP_BASE);
+//         map.insert("LMP_IMP_FACTOR", &LMP_IMP_FACTOR);
+//         map.insert("LMP_NOT_IMP_BASE", &LMP_NOT_IMP_BASE);
+//         map.insert("LMP_NOT_IMP_FACTOR", &LMP_NOT_IMP_FACTOR);
+//
+//         map.insert("QUIET_SEE", &QUIET_SEE);
+//         map.insert("CAPT_SEE", &CAPT_SEE);
+//         map.insert("SEE_DEPTH", &SEE_DEPTH);
+//
+//         map
+//     };
+// }
 
 tunable_param!(LMR_MIN_MOVES, 2, 1, 3);
 tunable_param!(LMR_BASE, 100, 50, 150, &lmr_reductions);
