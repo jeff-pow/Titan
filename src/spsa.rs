@@ -1,10 +1,7 @@
 use std::{
     collections::HashMap,
     ops::RangeInclusive,
-    sync::{
-        atomic::{AtomicI32, Ordering},
-        RwLock,
-    },
+    sync::atomic::{AtomicI32, Ordering},
 };
 pub const SPSA_TUNE: bool = true;
 
@@ -13,7 +10,7 @@ use lazy_static::lazy_static;
 use crate::{max, search::lmr_reductions, tunable_param};
 
 pub fn uci_print_tunable_params() {
-    for e in MAP.read().unwrap().iter() {
+    for e in MAP.iter() {
         println!(
             "option name {} type spin default {} min {} max {}",
             e.0,
@@ -26,7 +23,7 @@ pub fn uci_print_tunable_params() {
 
 #[allow(dead_code)]
 pub fn print_ob_tunable_params() {
-    for e in MAP.read().unwrap().iter() {
+    for e in MAP.iter() {
         println!(
             "{}, int, {}, {}, {}, {}, 0.002",
             e.0,
@@ -41,8 +38,7 @@ pub fn print_ob_tunable_params() {
 pub fn parse_param(a: &[&str]) {
     let [_, _, name, _, value] = a[..5] else { todo!() };
     let name = name.to_uppercase();
-    let binding = MAP.read().unwrap();
-    let param = binding.get(name.as_str()).unwrap();
+    let param = MAP.get(name.as_str()).unwrap();
     param.value.store(value.parse().unwrap(), Ordering::SeqCst);
     (param.callback)();
 }
@@ -64,7 +60,7 @@ impl TunableParam {
 }
 
 lazy_static! {
-    static ref MAP: RwLock<HashMap<&'static str, &'static TunableParam>> = RwLock::new({
+    static ref MAP: HashMap<&'static str, &'static TunableParam> = {
         let mut map = HashMap::new();
         map.insert("LMR_MIN_MOVES", &LMR_MIN_MOVES);
         map.insert("LMR_BASE", &LMR_BASE);
@@ -96,7 +92,7 @@ lazy_static! {
         map.insert("SEE_DEPTH", &SEE_DEPTH);
 
         map
-    });
+    };
 }
 
 tunable_param!(LMR_MIN_MOVES, 2, 1, 3);
