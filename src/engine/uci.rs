@@ -6,11 +6,11 @@ use itertools::Itertools;
 
 use crate::bench::bench;
 use crate::board::fen::{parse_fen_from_buffer, STARTING_FEN};
-use crate::board::zobrist::ZOBRIST;
 use crate::engine::perft::perft;
 use crate::engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
-use crate::search::get_reduction;
+use crate::search::lmr_reductions;
 use crate::search::thread::ThreadPool;
+use crate::spsa::{parse_param, uci_print_tunable_params, SPSA_TUNE};
 use crate::{
     board::{
         board::Board,
@@ -31,11 +31,7 @@ pub fn main_loop() -> ! {
     let mut hash_history = Vec::new();
     let halt = AtomicBool::new(false);
     let mut thread_pool = ThreadPool::new(&board, &halt, Vec::new());
-    // Calling this code will allow the global static zobrist and movegenerator constants to be
-    // initialized before the engine enters play, so it doesn't waste playing time initializing
-    // constants. A large difference in STC
-    let _ = ZOBRIST.turn_hash;
-    let _ = get_reduction(0, 0);
+    lmr_reductions();
     println!("{ENGINE_NAME} by {}", env!("CARGO_PKG_AUTHORS"));
 
     loop {
@@ -89,22 +85,34 @@ pub fn main_loop() -> ! {
                 exit(0);
             }
             "uci" => {
-                println!("id name {ENGINE_NAME}");
-                println!("id author {}", env!("CARGO_PKG_AUTHORS"));
-                println!("option name Threads type spin default 1 min 1 max 1");
-                println!("option name Hash type spin default 16 min 1 max 8388608");
-                println!("uciok");
+                uci_opts();
             }
             "setoption" => match input[..] {
                 ["setoption", "name", "Hash", "value", x] => {
                     transpos_table = TranspositionTable::new(x.parse().unwrap())
                 }
                 ["setoption", "name", "Clear", "Hash"] => transpos_table.clear(),
-                _ => {}
+                ["setoption", "name", "Threads", "value", _] => (),
+                _ => {
+                    if SPSA_TUNE {
+                        parse_param(&input)
+                    }
+                }
             },
             _ => (),
         };
     }
+}
+
+fn uci_opts() {
+    println!("id name {ENGINE_NAME}");
+    println!("id author {}", env!("CARGO_PKG_AUTHORS"));
+    println!("option name Threads type spin default 1 min 1 max 1");
+    println!("option name Hash type spin default 16 min 1 max 8388608");
+    if SPSA_TUNE {
+        uci_print_tunable_params();
+    }
+    println!("uciok");
 }
 
 fn position_command(input: &[&str], board: &mut Board, hash_history: &mut Vec<u64>) {

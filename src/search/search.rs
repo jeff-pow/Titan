@@ -7,15 +7,18 @@ use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movegenerator::MGT;
 use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
-use crate::search::{SearchStack, INIT_ASP};
+use crate::search::SearchStack;
+use crate::spsa::{
+    ASP_DIVISOR, ASP_MIN_DEPTH, CAPT_SEE, DELTA_EXPANSION, INIT_ASP, LMP_DEPTH, LMP_IMP_BASE,
+    LMP_IMP_FACTOR, LMP_NOT_IMP_BASE, LMP_NOT_IMP_FACTOR, LMR_MIN_MOVES, NMP_BASE_R, NMP_DEPTH,
+    NMP_DEPTH_DIVISOR, NMP_EVAL_DIVISOR, NMP_EVAL_MIN, QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH,
+    RFP_IMPROVING_FACTOR, SEE_DEPTH,
+};
 
 use super::history_table::MAX_HIST_VAL;
 use super::quiescence::quiescence;
 use super::thread::ThreadData;
-use super::{
-    get_reduction, SearchType, LMP_CONST, LMR_THRESHOLD, MAX_LMP_DEPTH, MAX_RFP_DEPTH,
-    MIN_ASP_DEPTH, MIN_IIR_DEPTH, MIN_LMR_DEPTH, MIN_NMP_DEPTH, PV, RFP_MULTIPLIER,
-};
+use super::{get_reduction, SearchType, PV};
 
 pub const CHECKMATE: i32 = 25000;
 pub const STALEMATE: i32 = 0;
@@ -82,10 +85,10 @@ fn aspiration_windows(
     let mut alpha = -INFINITY;
     let mut beta = INFINITY;
     // Asp window should start wider if score is more extreme
-    let mut delta = INIT_ASP + prev_score * prev_score / 10000;
+    let mut delta = INIT_ASP.val() + prev_score * prev_score / ASP_DIVISOR.val();
 
     // Only apply
-    if td.iter_max_depth >= MIN_ASP_DEPTH {
+    if td.iter_max_depth >= ASP_MIN_DEPTH.val() {
         alpha = alpha.max(prev_score - delta);
         beta = beta.min(prev_score + delta);
     }
@@ -101,7 +104,7 @@ fn aspiration_windows(
         } else {
             return score;
         }
-        delta += delta / 3;
+        delta += delta * DELTA_EXPANSION.val() / 3;
     }
 }
 
@@ -178,7 +181,7 @@ fn alpha_beta<const IS_PV: bool>(
         {
             return table_eval;
         }
-    } else if depth >= MIN_IIR_DEPTH && !IS_PV {
+    } else if depth >= 4 && !IS_PV {
         // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT hit and isn't a
         // PV node
         depth -= 1;
@@ -206,8 +209,11 @@ fn alpha_beta<const IS_PV: bool>(
     if !is_root && !IS_PV && !in_check {
         // Reverse futility pruning - If we are below beta by a certain amount, we are unlikely to
         // raise it, so we can prune the nodes that would have followed
-        if static_eval - RFP_MULTIPLIER * depth / if improving { 2 } else { 1 } >= beta
-            && depth < MAX_RFP_DEPTH
+        // if static_eval - RFP_BETA_FACTOR.val() * depth / if improving { 2 } else { 1 } >= beta
+        if static_eval - RFP_BETA_FACTOR.val() * depth
+            + i32::from(improving) * RFP_IMPROVING_FACTOR.val() * depth
+            >= beta
+            && depth < RFP_DEPTH.val()
             && static_eval.abs() < NEAR_CHECKMATE
         {
             return static_eval;
@@ -217,7 +223,7 @@ fn alpha_beta<const IS_PV: bool>(
         // raise beta, they likely won't be able to, so we can prune the nodes that would have
         // followed
         if board.has_non_pawns(board.to_move)
-            && depth >= MIN_NMP_DEPTH
+            && depth >= NMP_DEPTH.val()
             && static_eval >= beta
             && td.stack[td.ply - 1].played_move != Move::NULL
         {
@@ -230,7 +236,9 @@ fn alpha_beta<const IS_PV: bool>(
             td.ply += 1;
 
             // Reduction
-            let r = 3 + depth / 3 + min((static_eval - beta) / 200, 3);
+            let r = NMP_BASE_R.val()
+                + depth / NMP_DEPTH_DIVISOR.val()
+                + min((static_eval - beta) / NMP_EVAL_DIVISOR.val(), NMP_EVAL_MIN.val());
             let mut null_eval = -alpha_beta::<false>(
                 depth - r,
                 -beta,
@@ -272,18 +280,24 @@ fn alpha_beta<const IS_PV: bool>(
             if is_quiet {
                 // Late move pruning (LMP)
                 // By now all good tactical moves have been searched, so we can prune
-                if depth < MAX_LMP_DEPTH
-                    && legal_moves_searched
-                        > (LMP_CONST + depth * depth) / if improving { 1 } else { 2 }
-                {
+                // If eval is improving, we want to search more
+                let moves_required = if improving {
+                    (LMP_IMP_BASE.val() as f32 / 100.)
+                        + ((LMP_IMP_FACTOR.val() as f32) / 100. * depth as f32 * depth as f32)
+                } else {
+                    (LMP_NOT_IMP_BASE.val() as f32 / 100.)
+                        + ((LMP_NOT_IMP_FACTOR.val() as f32) / 100. * depth as f32 * depth as f32)
+                } as i32;
+                if depth < LMP_DEPTH.val() && legal_moves_searched > moves_required {
                     break;
                 }
             }
             // Static exchange pruning - If we fail to immediately recapture a depth dependent
             // threshold, don't bother searching the move
             // TODO: Try a depth * depth dependent capture threshold
-            let margin = if m.is_capture(board) { -90 } else { -50 } * depth;
-            if depth < 7 && !board.see(m, margin) {
+            let margin =
+                if m.is_capture(board) { -CAPT_SEE.val() } else { -QUIET_SEE.val() } * depth;
+            if depth < SEE_DEPTH.val() && !board.see(m, margin) {
                 continue;
             }
         }
@@ -313,7 +327,7 @@ fn alpha_beta<const IS_PV: bool>(
             // they are much less likely to be the best move than the first move selected by the
             // move picker.
             let r = {
-                if legal_moves_searched < LMR_THRESHOLD || depth < MIN_LMR_DEPTH {
+                if legal_moves_searched < LMR_MIN_MOVES.val() || depth < 2 {
                     1
                 } else {
                     let mut r = get_reduction(depth, legal_moves_searched);

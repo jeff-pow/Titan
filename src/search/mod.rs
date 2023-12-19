@@ -1,9 +1,10 @@
+use arr_macro::arr;
 use std::ops::{Index, IndexMut};
-
-use lazy_static::lazy_static;
+use std::sync::atomic::{AtomicI32, Ordering};
 
 use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
+use crate::spsa::{LMR_BASE, LMR_DIVISOR};
 
 use self::search::MAX_SEARCH_DEPTH;
 
@@ -14,20 +15,7 @@ pub mod search;
 pub mod see;
 pub mod thread;
 
-// Tunable Constants
-/// Initial aspiration window value
-pub const INIT_ASP: i32 = 10;
-const MIN_ASP_DEPTH: i32 = 4;
 pub const NUM_KILLER_MOVES: usize = 2;
-/// Begin LMR if more than this many moves have been searched
-pub const LMR_THRESHOLD: i32 = 2;
-pub const MIN_LMR_DEPTH: i32 = 2;
-pub const MAX_LMP_DEPTH: i32 = 6;
-pub const LMP_CONST: i32 = 3;
-pub const RFP_MULTIPLIER: i32 = 70;
-pub const MAX_RFP_DEPTH: i32 = 9;
-pub const MIN_NMP_DEPTH: i32 = 3;
-pub const MIN_IIR_DEPTH: i32 = 4;
 
 #[derive(Clone, Copy, Default)]
 pub(super) struct PlyEntry {
@@ -95,23 +83,21 @@ pub enum SearchType {
     Infinite, // Search forever
 }
 
-lazy_static! {
-    pub static ref LMR_REDUCTIONS: LmrReductions = lmr_reductions();
-}
+type LmrReductions = [[AtomicI32; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
 
-type LmrReductions = [[i32; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
+pub static LMR_REDUCTIONS: LmrReductions = arr![arr![AtomicI32::new(0); 219]; 101];
 
-fn lmr_reductions() -> LmrReductions {
-    let mut arr = [[0; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
+pub fn lmr_reductions() {
     for depth in 0..MAX_SEARCH_DEPTH + 1 {
         for moves_played in 0..MAX_LEN + 1 {
-            arr[depth as usize][moves_played] =
-                (1. + (depth as f32).ln() * (moves_played as f32).ln() / 2.) as i32;
+            let reduction = (LMR_BASE.val() as f32 / 100.
+                + (depth as f32).ln() * (moves_played as f32).ln()
+                    / (LMR_DIVISOR.val() as f32 / 100.)) as i32;
+            LMR_REDUCTIONS[depth as usize][moves_played].store(reduction, Ordering::Relaxed);
         }
     }
-    arr
 }
 
 pub fn get_reduction(depth: i32, moves_played: i32) -> i32 {
-    LMR_REDUCTIONS[depth as usize][moves_played as usize]
+    LMR_REDUCTIONS[depth as usize][moves_played as usize].load(Ordering::Relaxed)
 }
