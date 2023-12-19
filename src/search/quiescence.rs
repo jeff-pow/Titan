@@ -123,6 +123,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
             }
 
             if alpha >= beta {
+                tt.prefetch(board.zobrist_hash);
                 break;
             }
         }
