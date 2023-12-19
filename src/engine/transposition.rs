@@ -124,6 +124,16 @@ const BYTES_PER_MB: usize = 1024 * 1024;
 const ENTRY_SIZE: usize = size_of::<TableEntry>();
 
 impl TranspositionTable {
+    pub fn prefetch(&self, hash: u64) {
+        #[cfg(target_arch = "x86_64")]
+        use std::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
+        unsafe {
+            let index = index(hash, self.vec.len());
+            let entry = self.vec.get_unchecked(index);
+            _mm_prefetch((entry as *const InternalEntry).cast::<i8>(), _MM_HINT_T0);
+        }
+    }
+
     /// Size here is the desired size in MB
     pub fn new(mb: usize) -> Self {
         let target_size = mb * BYTES_PER_MB;
