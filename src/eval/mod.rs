@@ -6,7 +6,7 @@ pub mod nnue;
 type Block = [i16; HIDDEN_SIZE];
 
 #[cfg(feature = "simd")]
-const CHUNK_SIZE: usize = 32;
+const CHUNK_SIZE: usize = 16;
 #[cfg(feature = "simd")]
 /// Number of SIMD vectors contained within one hidden layer
 const REQUIRED_ITERS: usize = HIDDEN_SIZE / CHUNK_SIZE;

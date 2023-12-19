@@ -9,7 +9,7 @@ use super::{Block, NET};
 use super::{CHUNK_SIZE, REQUIRED_ITERS};
 #[cfg(feature = "simd")]
 use std::arch::x86_64::{
-    _mm512_add_epi16, _mm512_loadu_epi16, _mm512_storeu_epi16, _mm512_sub_epi16,
+    _mm256_add_epi16, _mm256_loadu_epi16, _mm256_storeu_epi16, _mm256_sub_epi16,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -41,10 +41,10 @@ impl Accumulator {
         #[cfg(feature = "simd")]
         unsafe {
             for i in 0..REQUIRED_ITERS {
-                let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
-                let acc = _mm512_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
-                let updated_acc = _mm512_sub_epi16(acc, weights);
-                _mm512_storeu_epi16(&mut self.0[color][i * CHUNK_SIZE], updated_acc);
+                let weights = _mm256_loadu_epi16(&weights[i * CHUNK_SIZE]);
+                let acc = _mm256_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
+                let updated_acc = _mm256_sub_epi16(acc, weights);
+                _mm256_storeu_epi16(&mut self.0[color][i * CHUNK_SIZE], updated_acc);
             }
         }
         #[cfg(not(feature = "simd"))]
@@ -57,10 +57,10 @@ impl Accumulator {
         #[cfg(feature = "simd")]
         unsafe {
             for i in 0..REQUIRED_ITERS {
-                let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
-                let acc = _mm512_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
-                let updated_acc = _mm512_add_epi16(acc, weights);
-                _mm512_storeu_epi16(&mut self.0[color][i * CHUNK_SIZE], updated_acc);
+                let weights = _mm256_loadu_epi16(&weights[i * CHUNK_SIZE]);
+                let acc = _mm256_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
+                let updated_acc = _mm256_add_epi16(acc, weights);
+                _mm256_storeu_epi16(&mut self.0[color][i * CHUNK_SIZE], updated_acc);
             }
         }
         #[cfg(not(feature = "simd"))]
