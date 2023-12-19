@@ -3,7 +3,7 @@ use super::{Block, INPUT_SIZE, NET};
 use super::{CHUNK_SIZE, REQUIRED_ITERS};
 #[cfg(feature = "simd")]
 use std::arch::x86_64::{
-    __m512i, _mm512_dpwssds_epi32, _mm512_loadu_epi16, _mm512_reduce_add_epi32, _mm512_set1_epi16,
+    __m512i, _mm512_dpwssd_epi32, _mm512_loadu_epi16, _mm512_reduce_add_epi32, _mm512_set1_epi16,
     _mm512_setzero_si512,
 };
 
@@ -37,25 +37,11 @@ impl Board {
         let weights = &NET.output_weights;
 
         let mut output = 0;
-        #[cfg(feature = "simd")]
-        {
-            unsafe {
-                let us = flatten(us, &weights[0]);
-                let them = flatten(them, &weights[1]);
+        unsafe {
+            let us = flatten(us, &weights[0]);
+            let them = flatten(them, &weights[1]);
 
-                output += us + them;
-                output /= NORMALIZATION_FACTOR;
-            }
-        }
-        #[cfg(not(feature = "simd"))]
-        {
-            for (&i, &w) in us.iter().zip(&weights[0]) {
-                output += screlu(i) * i32::from(w);
-            }
-
-            for (&i, &w) in them.iter().zip(&weights[1]) {
-                output += screlu(i) * i32::from(w);
-            }
+            output += us + them;
             output /= NORMALIZATION_FACTOR;
         }
         let a = (i32::from(NET.output_bias) + output) * SCALE / QAB;
@@ -91,16 +77,28 @@ unsafe fn squared_crelu(i: __m512i) -> __m512i {
     _mm512_mullo_epi16(clamp, clamp)
 }
 
-#[cfg(feature = "simd")]
+#[inline(never)]
 unsafe fn flatten(acc: &Block, weights: &Block) -> i32 {
-    let mut sum = _mm512_setzero_si512();
-    for i in 0..REQUIRED_ITERS {
-        let us_vector = _mm512_loadu_epi16(&acc[i * CHUNK_SIZE]);
-        let crelu_result = squared_crelu(us_vector);
-        let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
-        sum = _mm512_dpwssds_epi32(sum, crelu_result, weights);
+    #[cfg(feature = "simd")]
+    {
+        let mut sum = _mm512_setzero_si512();
+        for i in 0..REQUIRED_ITERS {
+            let us_vector = _mm512_loadu_epi16(&acc[i * CHUNK_SIZE]);
+            let crelu_result = squared_crelu(us_vector);
+            let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
+            sum = _mm512_dpwssd_epi32(sum, crelu_result, weights);
+        }
+        _mm512_reduce_add_epi32(sum)
     }
-    _mm512_reduce_add_epi32(sum)
+
+    #[cfg(not(feature = "simd"))]
+    {
+        let mut sum = 0;
+        for (&i, &w) in acc.iter().zip(weights) {
+            sum += screlu(i) * i32::from(w);
+        }
+        sum
+    }
 }
 
 #[cfg(test)]
