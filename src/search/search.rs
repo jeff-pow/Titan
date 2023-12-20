@@ -59,7 +59,7 @@ pub(crate) fn iterative_deepening(
         best_move = pv.line[0];
 
         if print_uci {
-            td.print_search_stats(prev_score, &pv);
+            td.print_search_stats(prev_score, &pv, tt);
         }
 
         if td.search_type == SearchType::Time && td.game_time.soft_termination() {
