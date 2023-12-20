@@ -14,6 +14,7 @@ use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKM
 pub struct TableEntry {
     key: u64,
     depth: u8,
+    /// Holds flag in the first two bits and age in the most significant six bits
     other: u8,
     search_score: i16,
     best_move: u16,
@@ -221,6 +222,17 @@ impl TranspositionTable {
         }
 
         Some(entry)
+    }
+
+    pub(crate) fn permille_usage(&self) -> usize {
+        self.vec
+            .iter()
+            .take(1000)
+            .map(|e| TableEntry::from(e.clone()))
+            // We only consider entries meaningful if their age is current (due to age based overwrites)
+            // and their depth is > 0. 0 depth entries are from qsearch and should not be counted.
+            .filter(|e| e.depth() > 0 && e.age() == self.age())
+            .count()
     }
 }
 

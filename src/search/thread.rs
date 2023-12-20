@@ -57,16 +57,17 @@ impl<'a> ThreadData<'a> {
         }
     }
 
-    pub(super) fn print_search_stats(&self, eval: i32, pv: &PV) {
+    pub(super) fn print_search_stats(&self, eval: i32, pv: &PV, tt: &TranspositionTable) {
         print!(
-            "info time {} seldepth {} depth {} nodes {} nps {} score cp {} pv ",
+            "info time {} depth {} seldepth {} nodes {} nps {} score cp {} hashfull {} pv ",
             self.game_time.search_start.elapsed().as_millis(),
-            self.sel_depth,
             self.iter_max_depth,
+            self.sel_depth,
             self.nodes_searched,
             (self.nodes_searched as f64 / self.game_time.search_start.elapsed().as_secs_f64())
                 as i64,
-            eval
+            eval,
+            tt.permille_usage(),
         );
         for m in pv.line.iter().take(pv.len) {
             print!("{} ", m.to_san());
