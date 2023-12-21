@@ -306,6 +306,7 @@ fn alpha_beta<const IS_PV: bool>(
         if !new_b.make_move::<true>(m) {
             continue;
         }
+        tt.prefetch(new_b.zobrist_hash);
 
         if is_quiet {
             quiets_tried.push(m)
@@ -401,6 +402,10 @@ fn alpha_beta<const IS_PV: bool>(
             }
 
             if alpha >= beta {
+                // Prefetch here since we're going to want to write to the tt for this board in a
+                // few lines anyway
+                tt.prefetch(board.zobrist_hash);
+
                 if is_quiet {
                     // We don't want to store tactical moves in our killer moves, because they are obviously already
                     // good.

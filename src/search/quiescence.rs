@@ -99,6 +99,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
         if !new_b.make_move::<true>(m) {
             continue;
         }
+        tt.prefetch(new_b.zobrist_hash);
         td.hash_history.push(new_b.zobrist_hash);
         td.stack[td.ply].played_move = m;
         td.nodes_searched += 1;
@@ -122,6 +123,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
             }
 
             if alpha >= beta {
+                tt.prefetch(board.zobrist_hash);
                 break;
             }
         }
