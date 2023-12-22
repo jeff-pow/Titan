@@ -87,7 +87,6 @@ fn aspiration_windows(
     // Asp window should start wider if score is more extreme
     let mut delta = INIT_ASP.val() + prev_score * prev_score / ASP_DIVISOR.val();
 
-    // Only apply
     if td.iter_max_depth >= ASP_MIN_DEPTH.val() {
         alpha = alpha.max(prev_score - delta);
         beta = beta.min(prev_score + delta);
