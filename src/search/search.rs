@@ -9,10 +9,10 @@ use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
 use crate::search::SearchStack;
 use crate::spsa::{
-    ASP_DIVISOR, ASP_MIN_DEPTH, CAPT_SEE, DELTA_EXPANSION, INIT_ASP, LMP_DEPTH, LMP_IMP_BASE,
-    LMP_IMP_FACTOR, LMP_NOT_IMP_BASE, LMP_NOT_IMP_FACTOR, LMR_MIN_MOVES, NMP_BASE_R, NMP_DEPTH,
-    NMP_DEPTH_DIVISOR, NMP_EVAL_DIVISOR, NMP_EVAL_MIN, QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH,
-    RFP_IMPROVING_FACTOR, SEE_DEPTH,
+    ASP_DIVISOR, ASP_MIN_DEPTH, CAPT_SEE, DELTA_EXPANSION, EXT_DEPTH, EXT_TT_DEPTH_MARGIN,
+    INIT_ASP, LMP_DEPTH, LMP_IMP_BASE, LMP_IMP_FACTOR, LMP_NOT_IMP_BASE, LMP_NOT_IMP_FACTOR,
+    LMR_MIN_MOVES, NMP_BASE_R, NMP_DEPTH, NMP_DEPTH_DIVISOR, NMP_EVAL_DIVISOR, NMP_EVAL_MIN,
+    QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH, RFP_IMPROVING_FACTOR, SEE_DEPTH,
 };
 
 use super::history_table::MAX_HIST_VAL;
@@ -87,7 +87,6 @@ fn aspiration_windows(
     // Asp window should start wider if score is more extreme
     let mut delta = INIT_ASP.val() + prev_score * prev_score / ASP_DIVISOR.val();
 
-    // Only apply
     if td.iter_max_depth >= ASP_MIN_DEPTH.val() {
         alpha = alpha.max(prev_score - delta);
         beta = beta.min(prev_score + delta);
@@ -123,6 +122,9 @@ fn alpha_beta<const IS_PV: bool>(
 ) -> i32 {
     let is_root = td.ply == 0;
     let in_check = board.in_check;
+    let singular_move = td.stack[td.ply].singular;
+    let singular_search = singular_move != Move::NULL;
+
     if IS_PV {
         td.sel_depth = td.sel_depth.max(td.ply);
     }
@@ -162,28 +164,35 @@ fn alpha_beta<const IS_PV: bool>(
         depth += i32::from(in_check);
     }
 
-    let mut table_move = Move::NULL;
+    let mut tt_move = Move::NULL;
+    let mut tt_flag = EntryFlag::None;
+    let mut tt_score = -INFINITY;
+    let mut tt_depth = -1;
     let entry = tt.get(board.zobrist_hash, td.ply);
     if let Some(entry) = entry {
-        let flag = entry.flag();
-        let table_eval = entry.search_score();
-        table_move = entry.best_move(board);
+        tt_flag = entry.flag();
+        tt_score = entry.search_score();
+        tt_move = entry.best_move(board);
+        tt_depth = entry.depth();
 
-        if !IS_PV
+        // Don't do TT cutoffs in verification search for singular moves
+        if !singular_search
+            && !IS_PV
             && !is_root
             && depth <= entry.depth()
-            && match flag {
+            && match tt_flag {
                 EntryFlag::None => false,
                 EntryFlag::Exact => true,
-                EntryFlag::AlphaUnchanged => table_eval <= alpha,
-                EntryFlag::BetaCutOff => table_eval >= beta,
+                EntryFlag::AlphaUnchanged => tt_score <= alpha,
+                EntryFlag::BetaCutOff => tt_score >= beta,
             }
         {
-            return table_eval;
+            return tt_score;
         }
-    } else if depth >= 4 && !IS_PV {
+    } else if depth >= 4 && !IS_PV && !singular_search {
         // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT hit and isn't a
         // PV node
+        // TODO: Unlink IIR from the entry existing - just check if tt move is null instead
         depth -= 1;
     }
 
@@ -204,12 +213,14 @@ fn alpha_beta<const IS_PV: bool>(
 
     // TODO: Killers should probably be reset here
     // td.stack[td.ply + 1].killers = [Move::NULL; 2];
+    if td.ply < MAX_SEARCH_DEPTH {
+        td.stack[td.ply + 1].singular = Move::NULL
+    }
 
     // Pre-move loop pruning
-    if !is_root && !IS_PV && !in_check {
+    if !is_root && !IS_PV && !in_check && !singular_search {
         // Reverse futility pruning - If we are below beta by a certain amount, we are unlikely to
         // raise it, so we can prune the nodes that would have followed
-        // if static_eval - RFP_BETA_FACTOR.val() * depth / if improving { 2 } else { 1 } >= beta
         if static_eval - RFP_BETA_FACTOR.val() * depth
             + i32::from(improving) * RFP_IMPROVING_FACTOR.val() * depth
             >= beta
@@ -228,7 +239,7 @@ fn alpha_beta<const IS_PV: bool>(
             && td.stack[td.ply - 1].played_move != Move::NULL
         {
             let mut node_pv = PV::default();
-            let mut new_b = board.to_owned();
+            let mut new_b = *board;
 
             new_b.make_null_move();
             td.stack[td.ply].played_move = Move::NULL;
@@ -265,15 +276,16 @@ fn alpha_beta<const IS_PV: bool>(
 
     let mut moves = board.generate_moves(MGT::All);
     let mut legal_moves_searched = 0;
-    moves.score_moves(board, table_move, td.stack[td.ply].killers, td);
+    moves.score_moves(board, tt_move, td.stack[td.ply].killers, td);
 
     let mut quiets_tried = Vec::new();
     let mut tacticals_tried = Vec::new();
 
     // Start of search
     for MoveListEntry { m, score: hist_score } in moves {
-        let mut new_b = board.to_owned();
-        // let is_quiet = board.is_quiet(m);
+        if m == singular_move {
+            continue;
+        }
         let is_quiet = !m.is_tactical(board);
 
         if !is_root && best_score >= -NEAR_CHECKMATE {
@@ -302,6 +314,7 @@ fn alpha_beta<const IS_PV: bool>(
             }
         }
 
+        let mut new_b = *board;
         // Make move filters out illegal moves by returning false if a move was illegal
         if !new_b.make_move::<true>(m) {
             continue;
@@ -314,6 +327,42 @@ fn alpha_beta<const IS_PV: bool>(
             tacticals_tried.push(m)
         };
 
+        let extension = if tt_depth >= depth - EXT_TT_DEPTH_MARGIN.val()
+            && tt_flag != EntryFlag::AlphaUnchanged
+            && tt_flag != EntryFlag::None
+            && m == tt_move
+            && !singular_search
+            && depth >= EXT_DEPTH.val()
+            && !is_root
+        {
+            let ext_beta = (tt_score - 2 * depth).max(-CHECKMATE);
+            let ext_depth = (depth - 1) / 2;
+            let mut node_pv = PV::default();
+
+            td.stack[td.ply].singular = m;
+            let ext_score = alpha_beta::<false>(
+                ext_depth,
+                ext_beta - 1,
+                ext_beta,
+                &mut node_pv,
+                td,
+                tt,
+                board,
+                cut_node,
+            );
+            td.stack[td.ply].singular = Move::NULL;
+
+            if ext_score < ext_beta {
+                1
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+
+        let new_depth = depth - 1 + extension;
+
         td.nodes_searched += 1;
         td.stack[td.ply].played_move = m;
         td.hash_history.push(new_b.zobrist_hash);
@@ -322,7 +371,7 @@ fn alpha_beta<const IS_PV: bool>(
 
         let eval = if legal_moves_searched == 0 {
             // On the first move, just do a full depth search
-            -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
+            -alpha_beta::<IS_PV>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
         } else {
             // Late Move Reductions - Search moves after the first with reduced depth and window as
             // they are much less likely to be the best move than the first move selected by the
@@ -348,13 +397,13 @@ fn alpha_beta<const IS_PV: bool>(
                         r += 1;
                     }
                     // Don't let LMR send us into qsearch
-                    r.clamp(1, depth - 1)
+                    r.clamp(1, new_depth)
                 }
             };
 
             // Start with a zero window reduced search
             let zero_window_reduced_depth = -alpha_beta::<false>(
-                depth - r,
+                new_depth - r,
                 -alpha - 1,
                 -alpha,
                 &mut node_pv,
@@ -367,7 +416,7 @@ fn alpha_beta<const IS_PV: bool>(
             // If that search raises alpha and a reduction was applied, re-search at a zero window with full depth
             let zero_window_full_depth = if zero_window_reduced_depth > alpha && r > 1 {
                 -alpha_beta::<false>(
-                    depth - 1,
+                    new_depth,
                     -alpha - 1,
                     -alpha,
                     &mut node_pv,
@@ -382,7 +431,7 @@ fn alpha_beta<const IS_PV: bool>(
 
             // If the verification score falls between alpha and beta, full window full depth search
             if zero_window_full_depth > alpha && zero_window_full_depth < beta {
-                -alpha_beta::<IS_PV>(depth - 1, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
+                -alpha_beta::<IS_PV>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
             } else {
                 zero_window_full_depth
             }
@@ -447,16 +496,20 @@ fn alpha_beta<const IS_PV: bool>(
         EntryFlag::AlphaUnchanged
     };
 
-    tt.store(
-        board.zobrist_hash,
-        best_move,
-        depth,
-        entry_flag,
-        best_score,
-        td.ply,
-        IS_PV,
-        static_eval,
-    );
+    // Don't save to TT while in a singular extension verification search
+    if !singular_search {
+        // TODO: Don't update best move if upper bound
+        tt.store(
+            board.zobrist_hash,
+            best_move,
+            depth,
+            entry_flag,
+            best_score,
+            td.ply,
+            IS_PV,
+            static_eval,
+        );
+    }
 
     best_score
 }

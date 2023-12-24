@@ -1,4 +1,5 @@
 use arr_macro::arr;
+use std::mem::MaybeUninit;
 use std::ops::{Index, IndexMut};
 use std::sync::atomic::{AtomicI32, Ordering};
 
@@ -22,6 +23,7 @@ pub(super) struct PlyEntry {
     pub killers: [Move; 2],
     pub played_move: Move,
     pub static_eval: i32,
+    pub singular: Move,
 }
 
 #[derive(Clone, Copy)]
@@ -40,7 +42,8 @@ impl PV {
 
 impl Default for PV {
     fn default() -> Self {
-        Self { line: [Move::NULL; MAX_SEARCH_DEPTH as usize], len: Default::default() }
+        let arr: MaybeUninit<[Move; MAX_SEARCH_DEPTH as usize]> = MaybeUninit::uninit();
+        Self { line: unsafe { arr.assume_init() }, len: Default::default() }
     }
 }
 
