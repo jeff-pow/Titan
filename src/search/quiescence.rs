@@ -50,8 +50,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
     }
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
-    // let stand_pat = if let Some(entry) = entry { entry.static_eval() } else { board.evaluate() };
-    let stand_pat = entry.map_or_else(|| board.evaluate(), |e| e.static_eval());
+    let stand_pat = if let Some(entry) = entry { entry.static_eval() } else { board.evaluate() };
     td.stack[td.ply].static_eval = stand_pat;
     // Store eval in tt if it wasn't previously found in tt
     if entry.is_none() && !board.in_check {
