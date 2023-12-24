@@ -8,7 +8,8 @@ authors = ["Jeff Powell"]
 
 
 [features]
-simd = []
+avx2 = []
+avx512 = []
 
 [dependencies]
 

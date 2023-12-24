@@ -2,14 +2,9 @@ use self::nnue::Network;
 
 pub(crate) mod accumulator;
 pub mod nnue;
+mod simd;
 
 type Block = [i16; HIDDEN_SIZE];
-
-#[cfg(feature = "simd")]
-const CHUNK_SIZE: usize = 16;
-#[cfg(feature = "simd")]
-/// Number of SIMD vectors contained within one hidden layer
-const REQUIRED_ITERS: usize = HIDDEN_SIZE / CHUNK_SIZE;
 
 pub const INPUT_SIZE: usize = 768;
 const HIDDEN_SIZE: usize = 1536;
