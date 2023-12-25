@@ -9,10 +9,10 @@ use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
 use crate::search::SearchStack;
 use crate::spsa::{
-    ASP_DIVISOR, ASP_MIN_DEPTH, CAPT_SEE, DELTA_EXPANSION, EXT_DEPTH, EXT_TT_DEPTH_MARGIN,
-    INIT_ASP, LMP_DEPTH, LMP_IMP_BASE, LMP_IMP_FACTOR, LMP_NOT_IMP_BASE, LMP_NOT_IMP_FACTOR,
-    LMR_MIN_MOVES, NMP_BASE_R, NMP_DEPTH, NMP_DEPTH_DIVISOR, NMP_EVAL_DIVISOR, NMP_EVAL_MIN,
-    QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH, RFP_IMPROVING_FACTOR, SEE_DEPTH,
+    ASP_DIVISOR, ASP_MIN_DEPTH, CAPT_SEE, DELTA_EXPANSION, INIT_ASP, LMP_DEPTH, LMP_IMP_BASE,
+    LMP_IMP_FACTOR, LMP_NOT_IMP_BASE, LMP_NOT_IMP_FACTOR, LMR_MIN_MOVES, NMP_BASE_R, NMP_DEPTH,
+    NMP_DEPTH_DIVISOR, NMP_EVAL_DIVISOR, NMP_EVAL_MIN, QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH,
+    RFP_IMPROVING_FACTOR, SEE_DEPTH,
 };
 
 use super::history_table::MAX_HIST_VAL;
@@ -361,7 +361,7 @@ fn alpha_beta<const IS_PV: bool>(
             0
         };
 
-        let new_depth = depth - 1 + extension;
+        let new_depth = depth + extension;
 
         td.nodes_searched += 1;
         td.stack[td.ply].played_move = m;
@@ -371,7 +371,7 @@ fn alpha_beta<const IS_PV: bool>(
 
         let eval = if legal_moves_searched == 0 {
             // On the first move, just do a full depth search
-            -alpha_beta::<IS_PV>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
+            -alpha_beta::<IS_PV>(new_depth - 1, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
         } else {
             // Late Move Reductions - Search moves after the first with reduced depth and window as
             // they are much less likely to be the best move than the first move selected by the
@@ -396,8 +396,7 @@ fn alpha_beta<const IS_PV: bool>(
                     if m.is_capture(board) && hist_score < BAD_CAPTURE + 100 {
                         r += 1;
                     }
-                    // Don't let LMR send us into qsearch
-                    r.clamp(1, new_depth + 1)
+                    min(new_depth, max(r, 1))
                 }
             };
 
@@ -416,7 +415,7 @@ fn alpha_beta<const IS_PV: bool>(
             // If that search raises alpha and a reduction was applied, re-search at a zero window with full depth
             let zero_window_full_depth = if zero_window_reduced_depth > alpha && r > 1 {
                 -alpha_beta::<false>(
-                    new_depth,
+                    new_depth - 1,
                     -alpha - 1,
                     -alpha,
                     &mut node_pv,
@@ -431,7 +430,16 @@ fn alpha_beta<const IS_PV: bool>(
 
             // If the verification score falls between alpha and beta, full window full depth search
             if zero_window_full_depth > alpha && zero_window_full_depth < beta {
-                -alpha_beta::<IS_PV>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
+                -alpha_beta::<IS_PV>(
+                    new_depth - 1,
+                    -beta,
+                    -alpha,
+                    &mut node_pv,
+                    td,
+                    tt,
+                    &new_b,
+                    false,
+                )
             } else {
                 zero_window_full_depth
             }
