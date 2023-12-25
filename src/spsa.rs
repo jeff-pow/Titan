@@ -89,8 +89,8 @@ static ENTRIES: Map<&'static str, &'static TunableParam> = phf_map! {
     "EXT_DEPTH" => &EXT_DEPTH,
     "EXT_TT_DEPTH_MARGIN" => &EXT_TT_DEPTH_MARGIN,
     "EXT_BETA_MOD" => &EXT_BETA_MOD,
-    // "DBL_EXT_MARGIN" => &DBL_EXT_MARGIN,
-    // "MAX_DBL_EXT" => &MAX_DBL_EXT,
+    "DBL_EXT_MARGIN" => &DBL_EXT_MARGIN,
+    "MAX_DBL_EXT" => &MAX_DBL_EXT,
 };
 
 tunable_param!(LMR_MIN_MOVES, 2);
@@ -123,10 +123,10 @@ tunable_param!(CAPT_SEE, 89);
 tunable_param!(SEE_DEPTH, 7);
 
 tunable_param!(EXT_DEPTH, 8);
-tunable_param!(EXT_TT_DEPTH_MARGIN, 3);
+tunable_param!(EXT_TT_DEPTH_MARGIN, 2);
 tunable_param!(EXT_BETA_MOD, 100);
-// tunable_param!(DBL_EXT_MARGIN, 18);
-// tunable_param!(MAX_DBL_EXT, 8);
+tunable_param!(DBL_EXT_MARGIN, 18);
+tunable_param!(MAX_DBL_EXT, 8);
 
 #[macro_export]
 macro_rules! tunable_param {

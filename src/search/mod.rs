@@ -24,6 +24,8 @@ pub(super) struct PlyEntry {
     pub played_move: Move,
     pub static_eval: i32,
     pub singular: Move,
+    /// Double extensions
+    pub dbl_extns: i32,
 }
 
 #[derive(Clone, Copy)]
