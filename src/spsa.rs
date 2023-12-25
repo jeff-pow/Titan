@@ -2,7 +2,7 @@ use std::{
     ops::RangeInclusive,
     sync::atomic::{AtomicI32, Ordering},
 };
-pub const SPSA_TUNE: bool = true;
+pub const SPSA_TUNE: bool = false;
 
 use phf::{phf_map, Map};
 
@@ -57,34 +57,40 @@ impl TunableParam {
 }
 
 static ENTRIES: Map<&'static str, &'static TunableParam> = phf_map! {
-    "LMR_MIN_MOVES"=> &LMR_MIN_MOVES,
-    "LMR_BASE"=> &LMR_BASE,
-    "LMR_DIVISOR"=> &LMR_DIVISOR,
+    "LMR_MIN_MOVES" => &LMR_MIN_MOVES,
+    "LMR_BASE" => &LMR_BASE,
+    "LMR_DIVISOR" => &LMR_DIVISOR,
 
-    "INIT_ASP"=> &INIT_ASP,
-    "ASP_DIVISOR"=> &ASP_DIVISOR,
-    "ASP_MIN_DEPTH"=> &ASP_MIN_DEPTH,
-    "DELTA_EXPANSION"=> &DELTA_EXPANSION,
+    "INIT_ASP" => &INIT_ASP,
+    "ASP_DIVISOR" => &ASP_DIVISOR,
+    "ASP_MIN_DEPTH" => &ASP_MIN_DEPTH,
+    "DELTA_EXPANSION" => &DELTA_EXPANSION,
 
-    "RFP_BETA_FACTOR"=> &RFP_BETA_FACTOR,
-    "RFP_IMPROVING_FACTOR"=> &RFP_IMPROVING_FACTOR,
-    "RFP_DEPTH"=> &RFP_DEPTH,
+    "RFP_BETA_FACTOR" => &RFP_BETA_FACTOR,
+    "RFP_IMPROVING_FACTOR" => &RFP_IMPROVING_FACTOR,
+    "RFP_DEPTH" => &RFP_DEPTH,
 
-    "NMP_DEPTH"=> &NMP_DEPTH,
-    "NMP_BASE_R"=> &NMP_BASE_R,
-    "NMP_DEPTH_DIVISOR"=> &NMP_DEPTH_DIVISOR,
-    "NMP_EVAL_DIVISOR"=> &NMP_EVAL_DIVISOR,
-    "NMP_EVAL_MIN"=> &NMP_EVAL_MIN,
+    "NMP_DEPTH" => &NMP_DEPTH,
+    "NMP_BASE_R" => &NMP_BASE_R,
+    "NMP_DEPTH_DIVISOR" => &NMP_DEPTH_DIVISOR,
+    "NMP_EVAL_DIVISOR" => &NMP_EVAL_DIVISOR,
+    "NMP_EVAL_MIN" => &NMP_EVAL_MIN,
 
-    "LMP_DEPTH"=> &LMP_DEPTH,
-    "LMP_IMP_BASE"=> &LMP_IMP_BASE,
-    "LMP_IMP_FACTOR"=> &LMP_IMP_FACTOR,
-    "LMP_NOT_IMP_BASE"=> &LMP_NOT_IMP_BASE,
-    "LMP_NOT_IMP_FACTOR"=> &LMP_NOT_IMP_FACTOR,
+    "LMP_DEPTH" => &LMP_DEPTH,
+    "LMP_IMP_BASE" => &LMP_IMP_BASE,
+    "LMP_IMP_FACTOR" => &LMP_IMP_FACTOR,
+    "LMP_NOT_IMP_BASE" => &LMP_NOT_IMP_BASE,
+    "LMP_NOT_IMP_FACTOR" => &LMP_NOT_IMP_FACTOR,
 
-    "QUIET_SEE"=> &QUIET_SEE,
-    "CAPT_SEE"=> &CAPT_SEE,
-    "SEE_DEPTH"=> &SEE_DEPTH,
+    "QUIET_SEE" => &QUIET_SEE,
+    "CAPT_SEE" => &CAPT_SEE,
+    "SEE_DEPTH" => &SEE_DEPTH,
+
+    "EXT_DEPTH" => &EXT_DEPTH,
+    "EXT_TT_DEPTH_MARGIN" => &EXT_TT_DEPTH_MARGIN,
+    "EXT_BETA_MOD" => &EXT_BETA_MOD,
+    // "DBL_EXT_MARGIN" => &DBL_EXT_MARGIN,
+    // "MAX_DBL_EXT" => &MAX_DBL_EXT,
 };
 
 tunable_param!(LMR_MIN_MOVES, 2);
@@ -115,6 +121,12 @@ tunable_param!(LMP_IMP_FACTOR, 99);
 tunable_param!(QUIET_SEE, 48);
 tunable_param!(CAPT_SEE, 89);
 tunable_param!(SEE_DEPTH, 7);
+
+tunable_param!(EXT_DEPTH, 8);
+tunable_param!(EXT_TT_DEPTH_MARGIN, 3);
+tunable_param!(EXT_BETA_MOD, 100);
+// tunable_param!(DBL_EXT_MARGIN, 18);
+// tunable_param!(MAX_DBL_EXT, 8);
 
 #[macro_export]
 macro_rules! tunable_param {
