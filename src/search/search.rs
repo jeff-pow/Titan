@@ -327,12 +327,12 @@ fn alpha_beta<const IS_PV: bool>(
             tacticals_tried.push(m)
         };
 
-        let extension = if tt_depth >= depth - EXT_TT_DEPTH_MARGIN.val()
+        let extension = if tt_depth >= depth - 3
             && tt_flag != EntryFlag::AlphaUnchanged
             && tt_flag != EntryFlag::None
             && m == tt_move
             && !singular_search
-            && depth >= EXT_DEPTH.val()
+            && depth >= 8
             && !is_root
         {
             let ext_beta = (tt_score - 2 * depth).max(-CHECKMATE);
@@ -397,7 +397,7 @@ fn alpha_beta<const IS_PV: bool>(
                         r += 1;
                     }
                     // Don't let LMR send us into qsearch
-                    r.clamp(1, new_depth)
+                    r.clamp(1, new_depth + 1)
                 }
             };
 
