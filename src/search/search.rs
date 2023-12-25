@@ -9,10 +9,11 @@ use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
 use crate::moves::moves::Move;
 use crate::search::SearchStack;
 use crate::spsa::{
-    ASP_DIVISOR, ASP_MIN_DEPTH, CAPT_SEE, DELTA_EXPANSION, INIT_ASP, LMP_DEPTH, LMP_IMP_BASE,
-    LMP_IMP_FACTOR, LMP_NOT_IMP_BASE, LMP_NOT_IMP_FACTOR, LMR_MIN_MOVES, NMP_BASE_R, NMP_DEPTH,
-    NMP_DEPTH_DIVISOR, NMP_EVAL_DIVISOR, NMP_EVAL_MIN, QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH,
-    RFP_IMPROVING_FACTOR, SEE_DEPTH,
+    ASP_DIVISOR, ASP_MIN_DEPTH, CAPT_SEE, DBL_EXT_MARGIN, DELTA_EXPANSION, EXT_DEPTH,
+    EXT_TT_DEPTH_MARGIN, INIT_ASP, LMP_DEPTH, LMP_IMP_BASE, LMP_IMP_FACTOR, LMP_NOT_IMP_BASE,
+    LMP_NOT_IMP_FACTOR, LMR_MIN_MOVES, MAX_DBL_EXT, NMP_BASE_R, NMP_DEPTH, NMP_DEPTH_DIVISOR,
+    NMP_EVAL_DIVISOR, NMP_EVAL_MIN, QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH, RFP_IMPROVING_FACTOR,
+    SEE_DEPTH,
 };
 
 use super::history_table::MAX_HIST_VAL;
@@ -216,6 +217,9 @@ fn alpha_beta<const IS_PV: bool>(
     if td.ply < MAX_SEARCH_DEPTH {
         td.stack[td.ply + 1].singular = Move::NULL
     }
+    if !is_root {
+        td.stack[td.ply].dbl_extns = td.stack[td.ply - 1].dbl_extns;
+    }
 
     // Pre-move loop pruning
     if !is_root && !IS_PV && !in_check && !singular_search {
@@ -327,15 +331,15 @@ fn alpha_beta<const IS_PV: bool>(
             tacticals_tried.push(m)
         };
 
-        let extension = if tt_depth >= depth - 3
+        let extension = if tt_depth >= depth - EXT_TT_DEPTH_MARGIN.val()
             && tt_flag != EntryFlag::AlphaUnchanged
             && tt_flag != EntryFlag::None
             && m == tt_move
             && !singular_search
-            && depth >= 8
+            && depth >= EXT_DEPTH.val()
             && !is_root
         {
-            let ext_beta = (tt_score - 2 * depth).max(-CHECKMATE);
+            let ext_beta = (tt_score - EXT_TT_DEPTH_MARGIN.val() * depth).max(-CHECKMATE);
             let ext_depth = (depth - 1) / 2;
             let mut node_pv = PV::default();
 
@@ -353,7 +357,15 @@ fn alpha_beta<const IS_PV: bool>(
             td.stack[td.ply].singular = Move::NULL;
 
             if ext_score < ext_beta {
-                1
+                if td.stack[td.ply].dbl_extns <= MAX_DBL_EXT.val()
+                    && !IS_PV
+                    && ext_score < ext_beta - DBL_EXT_MARGIN.val()
+                {
+                    td.stack[td.ply].dbl_extns = td.stack[td.ply - 1].dbl_extns + 1;
+                    2
+                } else {
+                    1
+                }
             } else {
                 0
             }
