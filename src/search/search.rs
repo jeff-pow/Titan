@@ -298,11 +298,11 @@ fn alpha_beta<const IS_PV: bool>(
                 // By now all good tactical moves have been searched, so we can prune
                 // If eval is improving, we want to search more
                 let moves_required = if improving {
-                    (LMP_IMP_BASE.val() as f32 / 100.)
-                        + ((LMP_IMP_FACTOR.val() as f32) / 100. * depth as f32 * depth as f32)
+                    LMP_IMP_BASE.val() as f32 / 100.
+                        + LMP_IMP_FACTOR.val() as f32 / 100. * depth as f32 * depth as f32
                 } else {
-                    (LMP_NOT_IMP_BASE.val() as f32 / 100.)
-                        + ((LMP_NOT_IMP_FACTOR.val() as f32) / 100. * depth as f32 * depth as f32)
+                    LMP_NOT_IMP_BASE.val() as f32 / 100.
+                        + LMP_NOT_IMP_FACTOR.val() as f32 / 100. * depth as f32 * depth as f32
                 } as i32;
                 if depth < LMP_DEPTH.val() && legal_moves_searched > moves_required {
                     break;
