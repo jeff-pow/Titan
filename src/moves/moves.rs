@@ -80,7 +80,7 @@ impl Move {
     }
 
     pub fn piece_moving(self) -> PieceName {
-        let piece_flag = (self.0 >> 16) & 0b1111;
+        let piece_flag = (self.0 >> 16) & 0b111;
         PieceName::from(piece_flag as usize)
     }
 
