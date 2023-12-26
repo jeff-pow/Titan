@@ -16,6 +16,8 @@ pub const FILE_F: Bitboard = Bitboard(FILE_A_U64 << 5);
 pub const FILE_G: Bitboard = Bitboard(FILE_A_U64 << 6);
 pub const FILE_H: Bitboard = Bitboard(FILE_A_U64 << 7);
 
+pub const FILES: [Bitboard; 8] = const_array!(|f, 8| Bitboard(FILE_A_U64 << f));
+
 const RANK1_U64: u64 = 0b11111111;
 
 pub const RANK1: Bitboard = Bitboard(0b11111111);
@@ -26,6 +28,8 @@ pub const RANK5: Bitboard = Bitboard(RANK1_U64 << 32);
 pub const RANK6: Bitboard = Bitboard(RANK1_U64 << 40);
 pub const RANK7: Bitboard = Bitboard(RANK1_U64 << 48);
 pub const RANK8: Bitboard = Bitboard(RANK1_U64 << 56);
+
+pub const RANKS: [Bitboard; 8] = const_array!(|p, 8| Bitboard(RANK1_U64 << (8 * p)));
 
 pub fn knight_attacks(sq: Square) -> Bitboard {
     KNIGHT_ATTACKS[sq]
@@ -90,20 +94,6 @@ macro_rules! const_array {
         res
     }}
 }
-
-// #[macro_export]
-// macro_rules! const_array {
-//     ($size:expr, |$i:ident| $calc:expr) => {{
-//         const SIZE: usize = $size;
-//         let mut arr = [0; SIZE];
-//         let mut $i = 0;
-//         while $i < SIZE {
-//             arr[$i] = $calc;
-//             $i += 1;
-//         }
-//         arr
-//     }};
-// }
 
 #[cfg(test)]
 mod test_attack_boards {
