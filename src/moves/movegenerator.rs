@@ -40,7 +40,7 @@ impl Board {
         moves
     }
 
-    fn generate_castling_moves(&self, moves: &mut MoveList) {
+    pub(crate) fn generate_castling_moves(&self, moves: &mut MoveList) {
         if self.to_move == Color::White {
             if self.can_castle(Castle::WhiteKing)
                 && self.occupancies().empty(Square(5))

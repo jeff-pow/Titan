@@ -4,6 +4,7 @@ use strum::IntoEnumIterator;
 use crate::board::zobrist::ZOBRIST;
 use crate::moves::attack_boards::{king_attacks, knight_attacks, pawn_attacks};
 use crate::moves::magics::{bishop_attacks, queen_attacks, rook_attacks};
+use crate::moves::movelist::MoveList;
 use crate::moves::moves::{Castle, MoveType};
 use crate::{
     eval::accumulator::Accumulator,
@@ -220,6 +221,7 @@ impl Board {
         if m == Move::NULL
             || self.color_at(m.origin_square()).map_or(true, |c| c != self.to_move)
             || piece_moving.is_none()
+            || self.piece_at(m.dest_square()).map_or(0b111, |p| usize::from(p)) != m.piece_moving()
         {
             return false;
         }
@@ -248,10 +250,23 @@ impl Board {
                         & !self.color(self.to_move)
                         != Bitboard::EMPTY
             }
-            PieceName::Pawn => todo!(),
+            PieceName::Pawn => {
+                todo!()
+            }
             PieceName::King => {
                 if self.square_under_attack(!self.to_move, self.king_square(self.to_move)) {
                     return false;
+                }
+                if m.flag() == MoveType::CastleMove {
+                    let mut list = MoveList::default();
+                    // Verifying castling moves is sort of a PITA, so we just generate the moves
+                    // and match it against the move in question to determine if it's legal
+                    self.generate_castling_moves(&mut list);
+                    for castle in list.arr.map(|e| e.m) {
+                        if m == castle {
+                            return true;
+                        }
+                    }
                 }
                 m.flag() == MoveType::Normal
                     && king_attacks(m.origin_square()) & !self.color(self.to_move)
