@@ -9,7 +9,7 @@ use crate::{
 };
 
 use super::{
-    attack_boards::{king_attacks, knight_attacks, RANK2, RANK3, RANK6, RANK7},
+    attack_boards::{king_attacks, knight_attacks, RANKS},
     magics::{bishop_attacks, rook_attacks},
     movelist::MoveList,
     moves::{Castle, Move, MoveType},
@@ -101,12 +101,12 @@ impl Board {
         let vacancies = !self.occupancies();
         let enemies = self.color(!self.to_move);
         let non_promotions = match self.to_move {
-            Color::White => pawns & !RANK7,
-            Color::Black => pawns & !RANK2,
+            Color::White => pawns & !RANKS[6],
+            Color::Black => pawns & !RANKS[1],
         };
         let promotions = match self.to_move {
-            Color::White => pawns & RANK7,
-            Color::Black => pawns & RANK2,
+            Color::White => pawns & RANKS[6],
+            Color::Black => pawns & RANKS[1],
         };
 
         let up = match self.to_move {
@@ -128,8 +128,8 @@ impl Board {
         let down_left = up_right.opp();
 
         let rank3_bb = match self.to_move {
-            Color::White => RANK3,
-            Color::Black => RANK6,
+            Color::White => RANKS[2],
+            Color::Black => RANKS[5],
         };
 
         if matches!(gen_type, MGT::All | MGT::QuietsOnly) {

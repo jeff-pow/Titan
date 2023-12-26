@@ -1,9 +1,6 @@
 use std::{fmt, ops};
 
-use crate::moves::{
-    attack_boards::{FILE_A, FILE_H},
-    moves::Direction,
-};
+use crate::moves::{attack_boards::FILES, moves::Direction};
 
 use super::square::Square;
 
@@ -42,13 +39,13 @@ impl Bitboard {
     pub const fn shift(self, dir: Direction) -> Bitboard {
         match dir {
             Direction::North => Bitboard(self.0 << 8),
-            Direction::NorthWest => Bitboard((self.0 << 7) & !FILE_H.0),
-            Direction::West => Bitboard((self.0 >> 1) & !FILE_H.0),
-            Direction::SouthWest => Bitboard((self.0 >> 9) & !FILE_H.0),
+            Direction::NorthWest => Bitboard((self.0 << 7) & !FILES[7].0),
+            Direction::West => Bitboard((self.0 >> 1) & !FILES[7].0),
+            Direction::SouthWest => Bitboard((self.0 >> 9) & !FILES[7].0),
             Direction::South => Bitboard(self.0 >> 8),
-            Direction::SouthEast => Bitboard((self.0 >> 7) & !FILE_A.0),
-            Direction::East => Bitboard((self.0 << 1) & !FILE_A.0),
-            Direction::NorthEast => Bitboard((self.0 << 9) & !FILE_A.0),
+            Direction::SouthEast => Bitboard((self.0 >> 7) & !FILES[0].0),
+            Direction::East => Bitboard((self.0 << 1) & !FILES[0].0),
+            Direction::NorthEast => Bitboard((self.0 << 9) & !FILES[0].0),
         }
     }
 }
