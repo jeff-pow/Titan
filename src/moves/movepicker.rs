@@ -34,7 +34,7 @@ pub struct MovePicker {
 }
 
 impl MovePicker {
-    pub fn next(&mut self, td: &ThreadData, board: &Board) -> Option<MoveListEntry> {
+    pub(crate) fn next(&mut self, td: &ThreadData, board: &Board) -> Option<MoveListEntry> {
         if self.phase == MovePickerPhase::TTMove {
             self.phase = MovePickerPhase::CapturesInit;
             if board.is_pseudo_legal(self.tt_move) {
@@ -119,7 +119,7 @@ impl MovePicker {
         unreachable!()
     }
 
-    pub fn qsearch(tt_move: Move, td: &ThreadData, board: &Board, gen_quiets: bool) -> Self {
+    pub(crate) fn qsearch(tt_move: Move, td: &ThreadData, board: &Board, gen_quiets: bool) -> Self {
         let prev = td.stack.prev_move(td.ply - 1);
         let counter = td.history.get_counter(board.to_move, prev);
         MovePicker {
@@ -133,7 +133,7 @@ impl MovePicker {
         }
     }
 
-    pub fn new(tt_move: Move, td: &ThreadData, board: &Board) -> Self {
+    pub(crate) fn new(tt_move: Move, td: &ThreadData, board: &Board) -> Self {
         let prev = td.stack.prev_move(td.ply - 1);
         let counter = td.history.get_counter(board.to_move, prev);
         MovePicker {
