@@ -96,7 +96,7 @@ impl Board {
         }
     }
 
-    fn generate_pawn_moves(&self, gen_type: MGT, moves: &mut MoveList) {
+    pub(crate) fn generate_pawn_moves(&self, gen_type: MGT, moves: &mut MoveList) {
         let pawns = self.bitboard(self.to_move, PieceName::Pawn);
         let vacancies = !self.occupancies();
         let enemies = self.color(!self.to_move);
