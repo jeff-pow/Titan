@@ -60,10 +60,7 @@ struct MagicEntry {
 
 impl MagicEntry {
     const fn index(&self, occupied: Bitboard) -> usize {
-        let blockers = occupied.0 & self.mask.0;
-        let hash = blockers.wrapping_mul(self.magic);
-        let index = (hash >> self.shift) as usize;
-        self.offset + index
+        (((occupied.0 & self.mask.0).wrapping_mul(self.magic)) >> self.shift) as usize + self.offset
         // unsafe { self.offset + _pext_u64(occupied.0, self.mask.0) as usize }
     }
 }
