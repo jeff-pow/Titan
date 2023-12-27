@@ -97,7 +97,11 @@ impl MovePicker {
             self.current = self.moves.len();
             self.moves.append(board.generate_moves(MGT::QuietsOnly));
             for m in self.moves.arr.iter().take(self.moves.len()) {
-                assert!(self.moves.arr.iter().filter(|&x| x == m).count() == 1, "{}", m.m.to_san());
+                assert!(
+                    self.moves.arr.iter().take(self.moves.len()).filter(|&x| x == m).count() == 1,
+                    "{}",
+                    m.m.to_san()
+                );
             }
             self.score_moves(board, td);
         }

@@ -41,14 +41,6 @@ impl MoveList {
         self.len += other.len;
     }
 
-    fn swap(&mut self, a: usize, b: usize) {
-        unsafe {
-            let ptr_a: *mut MoveListEntry = &mut self.arr[a];
-            let ptr_b: *mut MoveListEntry = &mut self.arr[b];
-            std::ptr::swap(ptr_a, ptr_b);
-        }
-    }
-
     /// Sorts next move into position and then returns the move entry
     pub(super) fn pick_move(&mut self, idx: usize) -> MoveListEntry {
         self.sort_next_move(idx);
@@ -62,7 +54,7 @@ impl MoveList {
                 max_idx = i;
             }
         }
-        self.swap(max_idx, idx);
+        self.arr.swap(max_idx, idx)
     }
 }
 
