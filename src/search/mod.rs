@@ -1,5 +1,5 @@
 use arr_macro::arr;
-use std::mem::MaybeUninit;
+use arrayvec::ArrayVec;
 use std::ops::{Index, IndexMut};
 use std::sync::atomic::{AtomicI32, Ordering};
 
@@ -28,9 +28,10 @@ pub(super) struct PlyEntry {
     pub dbl_extns: i32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct PV {
-    line: [Move; MAX_SEARCH_DEPTH as usize],
+    // line: [Move; MAX_SEARCH_DEPTH as usize],
+    line: ArrayVec<Move, { MAX_SEARCH_DEPTH as usize }>,
     len: usize,
 }
 
@@ -44,8 +45,7 @@ impl PV {
 
 impl Default for PV {
     fn default() -> Self {
-        let arr: MaybeUninit<[Move; MAX_SEARCH_DEPTH as usize]> = MaybeUninit::uninit();
-        Self { line: unsafe { arr.assume_init() }, len: Default::default() }
+        Self { line: ArrayVec::new(), len: Default::default() }
     }
 }
 

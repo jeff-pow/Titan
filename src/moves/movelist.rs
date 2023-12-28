@@ -1,18 +1,21 @@
+use arrayvec::ArrayVec;
+
 use crate::{
     board::board::Board,
     search::{thread::ThreadData, NUM_KILLER_MOVES},
     types::pieces::PieceName,
 };
-use std::{mem::MaybeUninit, ops::Index};
+use std::ops::Index;
 
 use super::moves::Move;
 
 pub const MAX_LEN: usize = 218;
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 /// Movelist elements contains a move and an i32 where a score can be stored later to be used in move ordering
 /// for efficient search pruning
 pub struct MoveList {
-    pub arr: [MoveListEntry; MAX_LEN],
+    // pub arr: [MoveListEntry; MAX_LEN],
+    pub arr: ArrayVec<MoveListEntry, MAX_LEN>,
     len: usize,
     current_idx: usize,
 }
@@ -151,7 +154,6 @@ impl Default for MoveList {
     fn default() -> Self {
         // Uninitialized memory is much faster than initializing it when the important stuff will
         // be written over anyway ;)
-        let arr: MaybeUninit<[MoveListEntry; MAX_LEN]> = MaybeUninit::uninit();
-        Self { arr: unsafe { arr.assume_init() }, len: 0, current_idx: 0 }
+        Self { arr: ArrayVec::new(), len: 0, current_idx: 0 }
     }
 }
