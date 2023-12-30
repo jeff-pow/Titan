@@ -16,7 +16,6 @@ pub const MAX_LEN: usize = 218;
 pub struct MoveList {
     // pub arr: [MoveListEntry; MAX_LEN],
     pub arr: ArrayVec<MoveListEntry, MAX_LEN>,
-    len: usize,
     current_idx: usize,
 }
 
@@ -34,21 +33,11 @@ impl MoveListEntry {
 
 impl MoveList {
     pub fn push(&mut self, m: Move) {
-        debug_assert!(self.len < MAX_LEN);
-        self.arr[self.len] = MoveListEntry::new(m, 0);
-        self.len += 1;
-    }
-
-    pub fn len(&self) -> usize {
-        self.len
+        self.arr.push(MoveListEntry::new(m, 0));
     }
 
     fn swap(&mut self, a: usize, b: usize) {
-        unsafe {
-            let ptr_a: *mut MoveListEntry = &mut self.arr[a];
-            let ptr_b: *mut MoveListEntry = &mut self.arr[b];
-            std::ptr::swap(ptr_a, ptr_b);
-        }
+        self.arr.swap(a, b);
     }
 
     /// Sorts next move into position and then returns a reference to the move
@@ -59,7 +48,7 @@ impl MoveList {
 
     fn sort_next_move(&mut self, idx: usize) {
         let mut max_idx = idx;
-        for i in (idx + 1)..self.len {
+        for i in (idx + 1)..self.arr.len() {
             if self.arr[i].score > self.arr[max_idx].score {
                 max_idx = i;
             }
@@ -74,7 +63,7 @@ impl MoveList {
         killers: [Move; NUM_KILLER_MOVES],
         td: &ThreadData,
     ) {
-        for i in 0..self.len {
+        for i in 0..self.arr.len() {
             let entry = &mut self.arr[i];
             let prev = td.stack.prev_move(td.ply - 1);
             let counter = td.history.get_counter(board.to_move, prev);
@@ -130,7 +119,7 @@ impl Iterator for MoveList {
     type Item = MoveListEntry;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_idx >= self.len {
+        if self.current_idx >= self.arr.len() {
             None
         } else {
             let m = self.pick_move(self.current_idx);
@@ -154,6 +143,6 @@ impl Default for MoveList {
     fn default() -> Self {
         // Uninitialized memory is much faster than initializing it when the important stuff will
         // be written over anyway ;)
-        Self { arr: ArrayVec::new(), len: 0, current_idx: 0 }
+        Self { arr: ArrayVec::new(), current_idx: 0 }
     }
 }

@@ -69,7 +69,7 @@ impl<'a> ThreadData<'a> {
             eval,
             tt.permille_usage(),
         );
-        for m in pv.line.iter().take(pv.len) {
+        for m in pv.line.iter().take(pv.line.len()) {
             print!("{} ", m.to_san());
         }
         println!();

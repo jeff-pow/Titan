@@ -30,22 +30,19 @@ pub(super) struct PlyEntry {
 
 #[derive(Clone)]
 struct PV {
-    // line: [Move; MAX_SEARCH_DEPTH as usize],
     line: ArrayVec<Move, { MAX_SEARCH_DEPTH as usize }>,
-    len: usize,
 }
 
 impl PV {
     fn update(&mut self, m: Move, other: PV) {
-        self.line[0] = m;
-        self.line[1..=other.len].copy_from_slice(&other.line[..other.len]);
-        self.len = other.len + 1;
+        self.line.push(m);
+        self.line.try_extend_from_slice(&other.line).expect("Capacity should be enough");
     }
 }
 
 impl Default for PV {
     fn default() -> Self {
-        Self { line: ArrayVec::new(), len: Default::default() }
+        Self { line: ArrayVec::new() }
     }
 }
 
