@@ -169,7 +169,8 @@ impl MovePicker {
     fn score_moves(&mut self, board: &Board, td: &ThreadData) {
         for i in self.current..self.moves.len() {
             let entry = &mut self.moves.arr[i];
-            entry.score = if entry.m == self.tt_move {
+            let q = entry.m.to_san();
+                entry.score = if entry.m == self.tt_move {
                 TTMOVE
             } else if let Some(promotion) = entry.m.promotion() {
                 match promotion {

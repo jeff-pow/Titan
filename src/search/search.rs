@@ -323,6 +323,8 @@ fn alpha_beta<const IS_PV: bool>(
             continue;
         }
         tt.prefetch(new_b.zobrist_hash);
+        let q = new_b.to_string();
+        let s = m.to_san();
 
         if is_quiet {
             quiets_tried.push(m)
