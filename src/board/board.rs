@@ -4,6 +4,8 @@ use strum::IntoEnumIterator;
 use crate::board::zobrist::ZOBRIST;
 use crate::moves::attack_boards::{king_attacks, knight_attacks, pawn_attacks};
 use crate::moves::magics::{bishop_attacks, queen_attacks, rook_attacks};
+use crate::moves::movegenerator::MGT;
+use crate::moves::movelist::MoveList;
 use crate::moves::moves::{Castle, MoveType};
 use crate::{
     eval::accumulator::Accumulator,
@@ -199,62 +201,80 @@ impl Board {
         self.square_under_attack(!side, king_square)
     }
 
-    fn material_val(&self, c: Color) -> i32 {
-        self.bitboard(c, PieceName::Queen).count_bits() as i32 * PieceName::Queen.value()
-            + self.bitboard(c, PieceName::Rook).count_bits() as i32 * PieceName::Rook.value()
-            + self.bitboard(c, PieceName::Bishop).count_bits() as i32 * PieceName::Bishop.value()
-            + self.bitboard(c, PieceName::Knight).count_bits() as i32 * PieceName::Knight.value()
-            + self.bitboard(c, PieceName::Pawn).count_bits() as i32 * PieceName::Pawn.value()
-    }
-
-    pub fn material_balance(&self) -> i32 {
-        match self.to_move {
-            Color::White => self.material_val(Color::White) - self.material_val(Color::Black),
-            Color::Black => self.material_val(Color::Black) - self.material_val(Color::White),
-        }
-    }
-
-    #[allow(dead_code)]
     pub(crate) fn is_pseudo_legal(&self, m: Move) -> bool {
         let piece_moving = self.piece_at(m.origin_square());
         if m == Move::NULL
             || self.color_at(m.origin_square()).map_or(true, |c| c != self.to_move)
             || piece_moving.is_none()
+            || self.piece_at(m.origin_square()) != piece_moving
         {
+            return false;
+        }
+
+        if let Some(PieceName::King) = self.capture(m) {
             return false;
         }
 
         match piece_moving.unwrap() {
             PieceName::Knight => {
                 m.flag() == MoveType::Normal
-                    && knight_attacks(m.origin_square()) & !self.color(self.to_move)
+                    && knight_attacks(m.origin_square())
+                        & !self.color(self.to_move)
+                        & m.dest_square().bitboard()
                         != Bitboard::EMPTY
             }
             PieceName::Bishop => {
                 m.flag() == MoveType::Normal
                     && bishop_attacks(m.origin_square(), self.occupancies())
                         & !self.color(self.to_move)
+                        & m.dest_square().bitboard()
                         != Bitboard::EMPTY
             }
             PieceName::Rook => {
                 m.flag() == MoveType::Normal
                     && rook_attacks(m.origin_square(), self.occupancies())
                         & !self.color(self.to_move)
+                        & m.dest_square().bitboard()
                         != Bitboard::EMPTY
             }
             PieceName::Queen => {
                 m.flag() == MoveType::Normal
                     && queen_attacks(m.origin_square(), self.occupancies())
                         & !self.color(self.to_move)
+                        & m.dest_square().bitboard()
                         != Bitboard::EMPTY
             }
-            PieceName::Pawn => todo!(),
+            PieceName::Pawn => {
+                let mut list = MoveList::default();
+                // Verifying pawn moves, like castles, is also a pain that I didn't feel like
+                // typing the checks for :). So just generate the moves and find if it exists
+                self.generate_pawn_moves(MGT::All, &mut list);
+                for pawn in list.arr.map(|e| e.m) {
+                    if m == pawn {
+                        return true;
+                    }
+                }
+                false
+            }
             PieceName::King => {
                 if self.square_under_attack(!self.to_move, self.king_square(self.to_move)) {
                     return false;
                 }
+                if m.flag() == MoveType::CastleMove {
+                    let mut list = MoveList::default();
+                    // Verifying castling moves is sort of a PITA, so we just generate the moves
+                    // and match it against the move in question to determine if it's legal
+                    self.generate_castling_moves(&mut list);
+                    for castle in list.arr.map(|e| e.m) {
+                        if m == castle {
+                            return true;
+                        }
+                    }
+                }
                 m.flag() == MoveType::Normal
-                    && king_attacks(m.origin_square()) & !self.color(self.to_move)
+                    && king_attacks(m.origin_square())
+                        & !self.color(self.to_move)
+                        & m.dest_square().bitboard()
                         != Bitboard::EMPTY
             }
         }

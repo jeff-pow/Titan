@@ -48,6 +48,10 @@ pub fn main_loop() -> ! {
 
         match *input.first().unwrap_or(&"Invalid command") {
             "isready" => println!("readyok"),
+            "l" => {
+                let m = from_san(input[1], &board);
+                println!("is_psuedo_legal: {}", board.is_pseudo_legal(m));
+            }
             "ucinewgame" => {
                 transpos_table.clear();
                 halt.store(false, Ordering::Relaxed);
