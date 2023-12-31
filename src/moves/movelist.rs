@@ -86,6 +86,7 @@ impl MoveList {
                 }
             } else if let Some(c) = board.capture(entry.m) {
                 // TODO: Try a threshold of 0 or 1 here
+                assert_ne!(c, PieceName::King);
                 (if board.see(entry.m, -PieceName::Pawn.value()) {
                     GOOD_CAPTURE
                 } else {
