@@ -43,6 +43,15 @@ pub fn pawn_attacks(square: Square, attacker: Color) -> Bitboard {
     PAWN_ATTACKS[attacker][square]
 }
 
+pub const fn pawn_set_attacks(pawns: Bitboard, side: Color) -> Bitboard {
+    let pawns = pawns.0;
+    if side.idx() == Color::White.idx() {
+        Bitboard((pawns & !FILE_A_U64) << 7 | (pawns & !FILE_H_U64) << 9)
+    } else {
+        Bitboard((pawns & !FILE_A_U64) >> 9 | (pawns & !FILE_H_U64) >> 7)
+    }
+}
+
 pub const KING_ATTACKS: [Bitboard; 64] = const_array!(|sq, 64| {
     let sq = 1 << sq;
     // Create a bitboard out of the square
@@ -73,12 +82,8 @@ pub const KNIGHT_ATTACKS: [Bitboard; 64] = const_array!(|sq, 64| {
 });
 
 pub const PAWN_ATTACKS: [[Bitboard; 64]; 2] = [
-    const_array!(|sq, 64| Bitboard(
-        ((1 << sq) & !FILE_A_U64) << 7 | (((1 << sq) & !FILE_H_U64) << 9)
-    )),
-    const_array!(|sq, 64| Bitboard(
-        ((1 << sq) & !FILE_A_U64) >> 9 | (((1 << sq) & !FILE_H_U64) >> 7)
-    )),
+    const_array!(|sq, 64| pawn_set_attacks(Bitboard(1 << sq), Color::White)),
+    const_array!(|sq, 64| pawn_set_attacks(Bitboard(1 << sq), Color::Black)),
 ];
 
 #[macro_export]
