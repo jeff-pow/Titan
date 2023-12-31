@@ -10,6 +10,7 @@ pub const MAX_LEN: usize = 218;
 /// for efficient search pruning
 pub struct MoveList {
     pub arr: ArrayVec<MoveListEntry, MAX_LEN>,
+    // pub arr: Vec<MoveListEntry>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -41,6 +42,7 @@ impl MoveList {
 
     pub(super) fn append(&mut self, other: Self) {
         assert!(self.arr.try_extend_from_slice(&other.arr).is_ok());
+        // self.arr.extend_from_slice(&other.arr);
     }
 
     fn sort_next_move(&mut self, idx: usize) {
