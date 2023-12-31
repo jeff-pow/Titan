@@ -1,15 +1,25 @@
-use std::{mem::MaybeUninit, ops::Index};
+
+use arrayvec::ArrayVec;
+
+use crate::{
+    board::board::Board,
+    search::{thread::ThreadData, NUM_KILLER_MOVES},
+    types::pieces::PieceName,
+};
+use std::ops::Index;
+
 
 use super::moves::Move;
 
 pub const MAX_LEN: usize = 218;
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 /// Movelist elements contains a move and an i32 where a score can be stored later to be used in move ordering
 /// for efficient search pruning
 pub struct MoveList {
-    pub arr: [MoveListEntry; MAX_LEN],
-    len: usize,
-    _current_idx: usize,
+    // pub arr: [MoveListEntry; MAX_LEN],
+    pub arr: ArrayVec<MoveListEntry, MAX_LEN>,
+    current_idx: usize,
+
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -26,19 +36,12 @@ impl MoveListEntry {
 
 impl MoveList {
     pub fn push(&mut self, m: Move) {
-        debug_assert!(self.len < MAX_LEN);
-        self.arr[self.len] = MoveListEntry::new(m, 0);
-        self.len += 1;
+        self.arr.push(MoveListEntry::new(m, 0));
     }
 
-    pub fn len(&self) -> usize {
-        self.len
-    }
 
-    pub fn append(&mut self, other: MoveList) {
-        assert!(self.len + other.len <= MAX_LEN);
-        self.arr[self.len..self.len + other.len].copy_from_slice(&other.arr[..other.len]);
-        self.len += other.len;
+    fn swap(&mut self, a: usize, b: usize) {
+        self.arr.swap(a, b);
     }
 
     /// Sorts next move into position and then returns the move entry
@@ -49,12 +52,13 @@ impl MoveList {
 
     fn sort_next_move(&mut self, idx: usize) {
         let mut max_idx = idx;
-        for i in (idx + 1)..self.len {
+        for i in (idx + 1)..self.arr.len() {
             if self.arr[i].score > self.arr[max_idx].score {
                 max_idx = i;
             }
         }
-        self.arr.swap(max_idx, idx)
+
+        self.swap(max_idx, idx);
     }
 }
 
@@ -80,36 +84,6 @@ impl Default for MoveList {
     fn default() -> Self {
         // Uninitialized memory is much faster than initializing it when the important stuff will
         // be written over anyway ;)
-        let arr: MaybeUninit<[MoveListEntry; MAX_LEN]> = MaybeUninit::uninit();
-        Self { arr: unsafe { arr.assume_init() }, len: 0, _current_idx: 0 }
-    }
-}
-
-#[cfg(test)]
-mod movelist_test {
-    use super::*;
-    #[test]
-    fn test_append_move_lists() {
-        let mut move_list1 = MoveList::default();
-        move_list1.push(Move(1));
-        move_list1.push(Move(2));
-
-        let mut move_list2 = MoveList::default();
-        move_list2.push(Move(3));
-        move_list2.push(Move(4));
-
-        move_list1.append(move_list2);
-
-        // Check if the combined length is as expected
-        assert_eq!(move_list1.len(), 4);
-
-        // Check if the elements are appended correctly
-        let other = [
-            MoveListEntry { m: Move(1), score: 0 },
-            MoveListEntry { m: Move(2), score: 0 },
-            MoveListEntry { m: Move(3), score: 0 },
-            MoveListEntry { m: Move(4), score: 0 },
-        ];
-        assert_eq!(&move_list1.arr[..move_list1.len()], &other);
+        Self { arr: ArrayVec::new(), current_idx: 0 }
     }
 }

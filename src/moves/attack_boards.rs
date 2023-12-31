@@ -6,6 +6,7 @@ use crate::types::square::Square;
 
 const FILE_A_U64: u64 = 0x101010101010101;
 const FILE_H_U64: u64 = 0x101010101010101 << 7;
+
 const RANK1_U64: u64 = 0b11111111;
 
 pub const FILES: [Bitboard; 8] = const_array!(|f, 8| Bitboard(FILE_A_U64 << f));
