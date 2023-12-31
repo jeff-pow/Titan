@@ -30,7 +30,7 @@ macro_rules! impl_index {
 }
 
 impl Color {
-    pub fn idx(self) -> usize {
+    pub const fn idx(self) -> usize {
         match self {
             Color::White => 0,
             Color::Black => 1,
