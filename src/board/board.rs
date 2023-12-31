@@ -211,6 +211,10 @@ impl Board {
             return false;
         }
 
+        if let Some(PieceName::King) = self.capture(m) {
+            return false;
+        }
+
         match piece_moving.unwrap() {
             PieceName::Knight => {
                 m.flag() == MoveType::Normal
