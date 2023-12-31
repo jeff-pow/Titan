@@ -26,6 +26,7 @@ pub enum MoveGenerationType {
 
 impl Board {
     /// Generates all pseudolegal moves
+    #[must_use]
     pub fn generate_moves(&self, gen_type: MGT) -> MoveList {
         let mut moves = MoveList::default();
         self.generate_bitboard_moves(PieceName::Knight, gen_type, &mut moves);
@@ -147,8 +148,8 @@ impl Board {
         }
 
         // Promotions - captures and straight pushes
-        // Always generate all promotions because they are so good
-        if promotions != Bitboard::EMPTY {
+        // Promotions are generated with captures because they are so good
+        if matches!(gen_type, MGT::All | MGT::CapturesOnly) && promotions != Bitboard::EMPTY {
             let no_capture_promotions = promotions.shift(up) & vacancies;
             let left_capture_promotions = promotions.shift(up_left) & enemies;
             let right_capture_promotions = promotions.shift(up_right) & enemies;

@@ -11,26 +11,30 @@ use super::{movelist::MoveList, moves::Move};
 enum MovePickerPhase {
     #[default]
     TTMove,
+
     CapturesInit,
     GoodCaptures,
+
     FirstKiller,
     SecondKiller,
     Counter,
+
     QuietsInit,
     Remainders,
+
     Finished,
 }
 
 pub struct MovePicker {
     phase: MovePickerPhase,
-    current: usize,
+    gen_quiets: bool,
 
     moves: MoveList,
+    current: usize,
 
     tt_move: Move,
     killers: [Move; NUM_KILLER_MOVES],
     counter: Move,
-    gen_quiets: bool,
 }
 
 impl MovePicker {
@@ -44,7 +48,10 @@ impl MovePicker {
 
         if self.phase == MovePickerPhase::CapturesInit {
             self.phase = MovePickerPhase::GoodCaptures;
-            board.generate_moves(MGT::CapturesOnly);
+            self.moves = board.generate_moves(MGT::CapturesOnly);
+            for m in self.moves.arr.clone().iter().take(self.moves.len()) {
+                assert!(m.m.is_tactical(board));
+            }
             self.score_moves(board, td);
         }
 
@@ -55,6 +62,7 @@ impl MovePicker {
                 if entry.m == self.tt_move {
                     return self.next(td, board);
                 }
+                assert!(entry.m.is_tactical(board));
                 return Some(entry);
             }
             self.phase = MovePickerPhase::FirstKiller;
@@ -120,7 +128,10 @@ impl MovePicker {
             }
         }
 
-        unreachable!()
+        if self.phase == MovePickerPhase::Finished {
+            return None;
+        }
+        None
     }
 
     pub(crate) fn qsearch(tt_move: Move, td: &ThreadData, board: &Board, gen_quiets: bool) -> Self {
@@ -155,8 +166,8 @@ impl MovePicker {
         m == self.tt_move || self.killers.contains(&m) || m == self.counter
     }
 
-    pub(crate) fn score_moves(&mut self, board: &Board, td: &ThreadData) {
-        for i in 0..self.moves.len() {
+    fn score_moves(&mut self, board: &Board, td: &ThreadData) {
+        for i in self.current..self.moves.len() {
             let entry = &mut self.moves.arr[i];
             entry.score = if entry.m == self.tt_move {
                 TTMOVE
