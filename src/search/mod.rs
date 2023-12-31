@@ -28,21 +28,16 @@ pub(super) struct PlyEntry {
     pub dbl_extns: i32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct PV {
     line: ArrayVec<Move, { MAX_SEARCH_DEPTH as usize }>,
 }
 
 impl PV {
     fn update(&mut self, m: Move, other: PV) {
+        self.line.clear();
         self.line.push(m);
-        self.line.try_extend_from_slice(&other.line).expect("Capacity should be enough");
-    }
-}
-
-impl Default for PV {
-    fn default() -> Self {
-        Self { line: ArrayVec::new() }
+        assert!(self.line.try_extend_from_slice(&other.line).is_ok());
     }
 }
 
