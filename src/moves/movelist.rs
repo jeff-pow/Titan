@@ -1,25 +1,15 @@
-
 use arrayvec::ArrayVec;
 
-use crate::{
-    board::board::Board,
-    search::{thread::ThreadData, NUM_KILLER_MOVES},
-    types::pieces::PieceName,
-};
 use std::ops::Index;
-
 
 use super::moves::Move;
 
 pub const MAX_LEN: usize = 218;
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 /// Movelist elements contains a move and an i32 where a score can be stored later to be used in move ordering
 /// for efficient search pruning
 pub struct MoveList {
-    // pub arr: [MoveListEntry; MAX_LEN],
     pub arr: ArrayVec<MoveListEntry, MAX_LEN>,
-    current_idx: usize,
-
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -39,15 +29,18 @@ impl MoveList {
         self.arr.push(MoveListEntry::new(m, 0));
     }
 
-
-    fn swap(&mut self, a: usize, b: usize) {
-        self.arr.swap(a, b);
+    pub fn len(&self) -> usize {
+        self.arr.len()
     }
 
     /// Sorts next move into position and then returns the move entry
     pub(super) fn pick_move(&mut self, idx: usize) -> MoveListEntry {
         self.sort_next_move(idx);
         self.arr[idx]
+    }
+
+    pub(super) fn append(&mut self, other: Self) {
+        assert!(self.arr.try_extend_from_slice(&other.arr).is_ok());
     }
 
     fn sort_next_move(&mut self, idx: usize) {
@@ -58,7 +51,7 @@ impl MoveList {
             }
         }
 
-        self.swap(max_idx, idx);
+        self.arr.swap(max_idx, idx);
     }
 }
 
@@ -77,13 +70,5 @@ impl FromIterator<MoveListEntry> for MoveList {
             move_list.push(m.m);
         }
         move_list
-    }
-}
-
-impl Default for MoveList {
-    fn default() -> Self {
-        // Uninitialized memory is much faster than initializing it when the important stuff will
-        // be written over anyway ;)
-        Self { arr: ArrayVec::new(), current_idx: 0 }
     }
 }

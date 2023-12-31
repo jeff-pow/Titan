@@ -249,7 +249,7 @@ impl Board {
                 // Verifying pawn moves, like castles, is also a pain that I didn't feel like
                 // typing the checks for :). So just generate the moves and find if it exists
                 self.generate_pawn_moves(MGT::All, &mut list);
-                for pawn in list.arr.map(|e| e.m) {
+                for pawn in list.arr.iter().map(|e| e.m) {
                     if m == pawn {
                         return true;
                     }
@@ -265,7 +265,7 @@ impl Board {
                     // Verifying castling moves is sort of a PITA, so we just generate the moves
                     // and match it against the move in question to determine if it's legal
                     self.generate_castling_moves(&mut list);
-                    for castle in list.arr.map(|e| e.m) {
+                    for castle in list.arr.iter().map(|e| e.m) {
                         if m == castle {
                             return true;
                         }
