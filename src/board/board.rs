@@ -289,6 +289,12 @@ impl Board {
     /// Returns true if a move was legal, and false if it was illegal.
     #[must_use]
     pub fn make_move<const NNUE: bool>(&mut self, m: Move) -> bool {
+        let dest = m.dest_square();
+        let src = m.origin_square();
+        let str = self.to_string();
+        let r = m.to_san();
+        let board = self.clone();
+
         let piece_moving = m.piece_moving();
         assert_eq!(piece_moving, m.piece_moving());
         let capture = self.capture(m);
@@ -373,7 +379,13 @@ impl Board {
         self.in_check = self.in_check(self.to_move);
 
         // Return false if the move leaves the opposite side in check, denoting an invalid move
-        !self.in_check(!self.to_move)
+        let ret = !self.in_check(!self.to_move);
+        let a = self.to_string();
+        if ret {
+            assert_eq!((self.color_occupancies[0] & self.bitboards[PieceName::King]).count_bits(), 1, "{} {}", self.zobrist_hash, m.0);
+            assert_eq!((self.color_occupancies[1] & self.bitboards[PieceName::King]).count_bits(), 1);
+        }
+        ret
     }
 
     pub fn make_null_move(&mut self) {

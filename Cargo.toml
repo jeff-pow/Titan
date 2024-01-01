@@ -11,13 +11,14 @@ authors = ["Jeff Powell"]
 simd = []
 
 [dependencies]
-
 strum = { version = "0.24", features = ["derive"] }
 strum_macros = "0.24"
 itertools = "0.11.0"
-rayon = "1.7.0"
 arr_macro = "0.2.1"
 arrayvec = "0.7.4"
+
+[dev-dependencies]
+rayon = "1.7.0"
 
 [profile.release]
 codegen-units = 1
