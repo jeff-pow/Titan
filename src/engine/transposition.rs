@@ -192,6 +192,11 @@ impl TranspositionTable {
                 m.as_u16()
             };
 
+            if Move(best_m as u32).to_san() == "g2h1" {
+                // dbg!(m.piece_moving());
+                // panic!();
+            }
+
             if score > NEAR_CHECKMATE {
                 score += ply;
             } else if score < -NEAR_CHECKMATE {

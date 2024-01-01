@@ -7,28 +7,9 @@ use crate::types::square::Square;
 const FILE_A_U64: u64 = 0x101010101010101;
 const FILE_H_U64: u64 = 0x101010101010101 << 7;
 
-pub const FILE_A: Bitboard = Bitboard(FILE_A_U64);
-pub const FILE_B: Bitboard = Bitboard(FILE_A_U64 << 1);
-pub const FILE_C: Bitboard = Bitboard(FILE_A_U64 << 2);
-pub const FILE_D: Bitboard = Bitboard(FILE_A_U64 << 3);
-pub const FILE_E: Bitboard = Bitboard(FILE_A_U64 << 4);
-pub const FILE_F: Bitboard = Bitboard(FILE_A_U64 << 5);
-pub const FILE_G: Bitboard = Bitboard(FILE_A_U64 << 6);
-pub const FILE_H: Bitboard = Bitboard(FILE_A_U64 << 7);
-
-pub const FILES: [Bitboard; 8] = const_array!(|f, 8| Bitboard(FILE_A_U64 << f));
-
 const RANK1_U64: u64 = 0b11111111;
 
-pub const RANK1: Bitboard = Bitboard(0b11111111);
-pub const RANK2: Bitboard = Bitboard(RANK1_U64 << 8);
-pub const RANK3: Bitboard = Bitboard(RANK1_U64 << 16);
-pub const RANK4: Bitboard = Bitboard(RANK1_U64 << 24);
-pub const RANK5: Bitboard = Bitboard(RANK1_U64 << 32);
-pub const RANK6: Bitboard = Bitboard(RANK1_U64 << 40);
-pub const RANK7: Bitboard = Bitboard(RANK1_U64 << 48);
-pub const RANK8: Bitboard = Bitboard(RANK1_U64 << 56);
-
+pub const FILES: [Bitboard; 8] = const_array!(|f, 8| Bitboard(FILE_A_U64 << f));
 pub const RANKS: [Bitboard; 8] = const_array!(|p, 8| Bitboard(RANK1_U64 << (8 * p)));
 
 pub fn knight_attacks(sq: Square) -> Bitboard {
