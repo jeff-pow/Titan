@@ -1,5 +1,6 @@
 use crate::board::board::Board;
 use crate::moves::movegenerator::MGT;
+use crate::search::history_table::capthist_capture;
 use crate::search::thread::ThreadData;
 use crate::search::NUM_KILLER_MOVES;
 use crate::types::pieces::PieceName;
@@ -49,10 +50,7 @@ impl MovePicker {
         if self.phase == MovePickerPhase::CapturesInit {
             self.phase = MovePickerPhase::GoodCaptures;
             self.moves = board.generate_moves(MGT::CapturesOnly);
-            // for m in self.moves.arr.clone().iter().take(self.moves.len()) {
-            // assert!(m.m.is_tactical(board));
-            // }
-            self.score_moves(board, td);
+            score_captures(td, board, &mut self.moves.arr[self.current..]);
         }
 
         if self.phase == MovePickerPhase::GoodCaptures {
@@ -62,27 +60,30 @@ impl MovePicker {
                 if entry.m == self.tt_move {
                     return self.next(td, board);
                 }
-                // assert!(entry.m.is_tactical(board));
                 return Some(entry);
             }
-            self.phase = MovePickerPhase::FirstKiller;
-        }
-
-        if !self.gen_quiets {
-            return None;
+            self.phase = if self.gen_quiets {
+                MovePickerPhase::FirstKiller
+            } else {
+                MovePickerPhase::Remainders
+            };
         }
 
         if self.phase == MovePickerPhase::FirstKiller {
             self.phase = MovePickerPhase::SecondKiller;
-            if self.killers[0] != self.tt_move && board.is_pseudo_legal(self.killers[0]) {
+            if self.gen_quiets
+                && self.killers[0] != self.tt_move
+                && board.is_pseudo_legal(self.killers[0])
+            {
                 return Some(MoveListEntry { m: self.killers[0], score: KILLER_ONE });
             }
         }
 
         if self.phase == MovePickerPhase::SecondKiller {
             self.phase = MovePickerPhase::Counter;
-            if self.killers[1] != self.killers[0]
+            if self.gen_quiets
                 && self.killers[1] != self.tt_move
+                && self.killers[1] != self.killers[0]
                 && board.is_pseudo_legal(self.killers[1])
             {
                 return Some(MoveListEntry { m: self.killers[1], score: KILLER_TWO });
@@ -91,7 +92,8 @@ impl MovePicker {
 
         if self.phase == MovePickerPhase::Counter {
             self.phase = MovePickerPhase::QuietsInit;
-            if self.counter != self.tt_move
+            if self.gen_quiets
+                && self.counter != self.tt_move
                 && self.counter != self.killers[0]
                 && self.counter != self.killers[1]
                 && board.is_pseudo_legal(self.counter)
@@ -102,16 +104,20 @@ impl MovePicker {
 
         if self.phase == MovePickerPhase::QuietsInit {
             self.phase = MovePickerPhase::Remainders;
-            self.current = self.moves.len();
-            self.moves.append(board.generate_moves(MGT::QuietsOnly));
-            // for m in self.moves.arr.iter().take(self.moves.len()) {
-            //     assert!(
-            //         self.moves.arr.iter().take(self.moves.len()).filter(|&x| x == m).count() == 1,
-            //         "{}",
-            //         m.m.to_san()
-            //     );
-            // }
-            self.score_moves(board, td);
+            if self.gen_quiets {
+                self.current = self.moves.len();
+                self.moves.append(board.generate_moves(MGT::QuietsOnly));
+            }
+
+            for m in self.moves.arr.iter().take(self.moves.len()) {
+                assert!(
+                    self.moves.arr.iter().take(self.moves.len()).filter(|&x| x == m).count() == 1,
+                    "{}",
+                    m.m.to_san()
+                );
+            }
+
+            score_quiets(td, board, &mut self.moves.arr[self.current..]);
         }
 
         if self.phase == MovePickerPhase::Remainders {
@@ -165,42 +171,40 @@ impl MovePicker {
     fn is_cached(&self, m: Move) -> bool {
         m == self.tt_move || self.killers.contains(&m) || m == self.counter
     }
+}
 
-    fn score_moves(&mut self, board: &Board, td: &ThreadData) {
-        for i in self.current..self.moves.len() {
-            let entry = &mut self.moves.arr[i];
-            let q = entry.m.to_san();
-            entry.score = if entry.m == self.tt_move {
-                TTMOVE
-            } else if let Some(promotion) = entry.m.promotion() {
-                match promotion {
-                    PieceName::Queen => {
-                        QUEEN_PROMOTION + td.history.capt_hist(entry.m, board.to_move, board)
-                    }
-                    _ => BAD_PROMOTION,
-                }
-            } else if let Some(c) = board.capture(entry.m) {
-                // TODO: Try a threshold of 0 or 1 here
-                (if board.see(entry.m, -PieceName::Pawn.value()) {
-                    GOOD_CAPTURE
-                } else {
-                    BAD_CAPTURE
-                }) + MVV[c]
-                    + td.history.capt_hist(entry.m, board.to_move, board)
-            } else if self.killers[0] == entry.m {
-                KILLER_ONE
-            } else if self.killers[1] == entry.m {
-                KILLER_TWO
-            } else if self.counter == entry.m {
-                COUNTER_MOVE
-            } else {
-                td.history.quiet_history(entry.m, board.to_move, &td.stack, td.ply)
-            };
+fn score_captures(td: &ThreadData, board: &Board, moves: &mut [MoveListEntry]) {
+    const MVV: [i32; 6] = [0, 2400, 2400, 4800, 9600, 0];
+    for m in &mut *moves {
+        assert!(m.score == 0);
+        assert!(m.m.is_tactical(board));
+    }
+
+    for MoveListEntry { m, score } in moves {
+        *score = if let Some(p) = m.promotion() {
+            match p {
+                PieceName::Queen => QUEEN_PROMOTION + td.history.capt_hist(*m, board),
+                _ => BAD_PROMOTION,
+            }
+        } else {
+            (if board.see(*m, -PieceName::Pawn.value()) { GOOD_CAPTURE } else { BAD_CAPTURE })
+                + MVV[capthist_capture(board, *m)]
+                + td.history.capt_hist(*m, board)
         }
     }
 }
 
-const MVV: [i32; 6] = [0, 2400, 2400, 4800, 9600, 0];
+fn score_quiets(td: &ThreadData, board: &Board, moves: &mut [MoveListEntry]) {
+    for m in &mut *moves {
+        assert!(m.score == 0);
+        assert!(board.is_quiet(m.m));
+    }
+
+    for MoveListEntry { m, score } in moves {
+        *score = td.history.quiet_history(*m, board.to_move, &td.stack, td.ply)
+    }
+}
+
 const TTMOVE: i32 = i32::MAX - 1000;
 const QUEEN_PROMOTION: i32 = 20_000_001;
 pub const GOOD_CAPTURE: i32 = 10_000_000;

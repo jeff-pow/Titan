@@ -285,7 +285,6 @@ fn alpha_beta<const IS_PV: bool>(
     let mut tacticals_tried = Vec::new();
 
     // Start of search
-    let l = board.to_string();
     while let Some(MoveListEntry { m, score: hist_score }) = picker.next(td, board) {
         if m == singular_move {
             continue;
@@ -318,18 +317,12 @@ fn alpha_beta<const IS_PV: bool>(
             }
         }
 
-        let q = board.to_string();
-        let prior_src = board.piece_at(m.origin_square());
-        let prior_dest = board.piece_at(m.dest_square());
-        let s = m.to_san();
         let mut new_b = *board;
         // Make move filters out illegal moves by returning false if a move was illegal
         if !new_b.make_move::<true>(m) {
             continue;
         }
         tt.prefetch(new_b.zobrist_hash);
-        let after_src = new_b.piece_at(m.origin_square());
-        let after_dest = new_b.piece_at(m.dest_square());
 
         if is_quiet {
             quiets_tried.push(m)

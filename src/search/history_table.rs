@@ -42,7 +42,7 @@ fn update_history(score: &mut i32, depth: i32, is_good: bool) {
     *score += bonus - *score * bonus.abs() / MAX_HIST_VAL;
 }
 
-fn capthist_capture(board: &Board, m: Move) -> PieceName {
+pub(crate) fn capthist_capture(board: &Board, m: Move) -> PieceName {
     if m.is_en_passant() || m.promotion().is_some() {
         // Use Pawn for promotions here because pawns can't be in the back ranks anyways, so these
         // spaces can't be occupied anyway
@@ -129,9 +129,9 @@ impl HistoryTable {
         update_history(i, depth, is_good);
     }
 
-    pub fn capt_hist(&self, m: Move, side: Color, board: &Board) -> i32 {
+    pub fn capt_hist(&self, m: Move, board: &Board) -> i32 {
         let cap = capthist_capture(board, m);
-        self.search_history[side][m.piece_moving()][m.dest_square()].capt_hist[cap]
+        self.search_history[board.to_move][m.piece_moving()][m.dest_square()].capt_hist[cap]
     }
 
     fn update_cont_hist(

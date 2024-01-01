@@ -6,8 +6,6 @@ use crate::moves::attack_boards::{
     king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, FILES,
 };
 use crate::moves::magics::{bishop_attacks, queen_attacks, rook_attacks};
-use crate::moves::movegenerator::MGT;
-use crate::moves::movelist::MoveList;
 use crate::moves::moves::{Castle, MoveType};
 use crate::{
     eval::accumulator::Accumulator,
@@ -295,12 +293,6 @@ impl Board {
     /// Returns true if a move was legal, and false if it was illegal.
     #[must_use]
     pub fn make_move<const NNUE: bool>(&mut self, m: Move) -> bool {
-        let dest = m.dest_square();
-        let src = m.origin_square();
-        let str = self.to_string();
-        let r = m.to_san();
-        let board = self.clone();
-
         let piece_moving = m.piece_moving();
         assert_eq!(piece_moving, self.piece_at(m.origin_square()).unwrap());
         let capture = self.capture(m);
@@ -386,7 +378,6 @@ impl Board {
 
         // Return false if the move leaves the opposite side in check, denoting an invalid move
         let ret = !self.in_check(!self.to_move);
-        let a = self.to_string();
         if ret {
             // assert_eq!(
             //     (self.color_occupancies[0] & self.bitboards[PieceName::King]).count_bits(),
