@@ -1,9 +1,8 @@
 use core::fmt;
-use strum::IntoEnumIterator;
 
 use crate::board::zobrist::ZOBRIST;
 use crate::moves::attack_boards::{king_attacks, knight_attacks, pawn_attacks};
-use crate::moves::magics::{bishop_attacks, queen_attacks, rook_attacks};
+use crate::moves::magics::{bishop_attacks, rook_attacks};
 use crate::moves::moves::{Castle, MoveType};
 use crate::{
     eval::accumulator::Accumulator,
@@ -22,7 +21,7 @@ use crate::{
 pub struct Board {
     bitboards: [Bitboard; NUM_PIECES],
     color_occupancies: [Bitboard; 2],
-    pub array_board: [Option<Piece>; 64],
+    pub array_board: [Piece; 64],
     pub to_move: Color,
     pub castling_rights: u32,
     pub en_passant_square: Option<Square>,
@@ -38,7 +37,7 @@ impl Default for Board {
         Self {
             bitboards: [Bitboard::EMPTY; 6],
             color_occupancies: [Bitboard::EMPTY; 2],
-            array_board: [None; 64],
+            array_board: [Piece::None; 64],
             castling_rights: 0,
             to_move: Color::White,
             en_passant_square: None,
@@ -68,12 +67,8 @@ impl Board {
         self.color(Color::White) | self.color(Color::Black)
     }
 
-    pub fn color_at(&self, sq: Square) -> Option<Color> {
-        self.array_board[sq].map(|piece| piece.color)
-    }
-
-    pub fn piece_at(&self, sq: Square) -> Option<PieceName> {
-        self.array_board[sq].map(|piece| piece.name)
+    pub fn piece_at(&self, sq: Square) -> Piece {
+        self.array_board[sq]
     }
 
     fn is_material_draw(&self) -> bool {
@@ -106,9 +101,9 @@ impl Board {
     }
 
     /// Returns the type of piece captured by a move, if any
-    pub fn capture(&self, m: Move) -> Option<PieceName> {
+    pub fn capture(&self, m: Move) -> Piece {
         if m.is_en_passant() {
-            Some(PieceName::Pawn)
+            Piece::new(PieceName::Pawn, !self.to_move)
         } else {
             self.piece_at(m.dest_square())
         }
@@ -139,29 +134,26 @@ impl Board {
         }
     }
 
-    pub fn place_piece<const NNUE: bool>(
-        &mut self,
-        piece_type: PieceName,
-        color: Color,
-        sq: Square,
-    ) {
-        self.array_board[sq] = Some(Piece::new(piece_type, color));
-        self.bitboards[piece_type] ^= sq.bitboard();
+    pub fn place_piece<const NNUE: bool>(&mut self, piece: Piece, color: Color, sq: Square) {
+        assert_eq!(color, piece.color());
+        self.array_board[sq] = piece;
+        self.bitboards[piece.name()] ^= sq.bitboard();
         self.color_occupancies[color] ^= sq.bitboard();
-        self.zobrist_hash ^= ZOBRIST.piece_square_hashes[color][piece_type][sq];
+        self.zobrist_hash ^= ZOBRIST.piece_square_hashes[color][piece.name()][sq];
         if NNUE {
-            self.accumulator.add_feature(piece_type, color, sq);
+            self.accumulator.add_feature(piece.name(), color, sq);
         }
     }
 
     fn remove_piece<const NNUE: bool>(&mut self, sq: Square) {
-        if let Some(piece) = self.array_board[sq] {
-            self.array_board[sq] = None;
-            self.bitboards[piece.name] ^= sq.bitboard();
-            self.color_occupancies[piece.color] ^= sq.bitboard();
-            self.zobrist_hash ^= ZOBRIST.piece_square_hashes[piece.color][piece.name][sq];
+        let piece = self.array_board[sq];
+        if piece != Piece::None {
+            self.array_board[sq] = Piece::None;
+            self.bitboards[piece.name()] ^= sq.bitboard();
+            self.color_occupancies[piece.color()] ^= sq.bitboard();
+            self.zobrist_hash ^= ZOBRIST.piece_square_hashes[piece.color()][piece.name()][sq];
             if NNUE {
-                self.accumulator.remove_feature(piece.name, piece.color, sq);
+                self.accumulator.remove_feature(piece.name(), piece.color(), sq);
             }
         }
     }
@@ -214,52 +206,6 @@ impl Board {
         }
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn is_pseudo_legal(&self, m: Move) -> bool {
-        let piece_moving = self.piece_at(m.origin_square());
-        if m == Move::NULL
-            || self.color_at(m.origin_square()).map_or(true, |c| c != self.to_move)
-            || piece_moving.is_none()
-        {
-            return false;
-        }
-
-        match piece_moving.unwrap() {
-            PieceName::Knight => {
-                m.flag() == MoveType::Normal
-                    && knight_attacks(m.origin_square()) & !self.color(self.to_move)
-                        != Bitboard::EMPTY
-            }
-            PieceName::Bishop => {
-                m.flag() == MoveType::Normal
-                    && bishop_attacks(m.origin_square(), self.occupancies())
-                        & !self.color(self.to_move)
-                        != Bitboard::EMPTY
-            }
-            PieceName::Rook => {
-                m.flag() == MoveType::Normal
-                    && rook_attacks(m.origin_square(), self.occupancies())
-                        & !self.color(self.to_move)
-                        != Bitboard::EMPTY
-            }
-            PieceName::Queen => {
-                m.flag() == MoveType::Normal
-                    && queen_attacks(m.origin_square(), self.occupancies())
-                        & !self.color(self.to_move)
-                        != Bitboard::EMPTY
-            }
-            PieceName::Pawn => todo!(),
-            PieceName::King => {
-                if self.square_under_attack(!self.to_move, self.king_square(self.to_move)) {
-                    return false;
-                }
-                m.flag() == MoveType::Normal
-                    && king_attacks(m.origin_square()) & !self.color(self.to_move)
-                        != Bitboard::EMPTY
-            }
-        }
-    }
-
     /// Returns true if a move does not capture a piece, and false if a piece is captured
     pub fn is_quiet(&self, m: Move) -> bool {
         self.occupancies().empty(m.dest_square())
@@ -280,19 +226,35 @@ impl Board {
         if m.is_castle() {
             match m.castle_type() {
                 Castle::WhiteKing => {
-                    self.place_piece::<NNUE>(PieceName::Rook, self.to_move, Square(5));
+                    self.place_piece::<NNUE>(
+                        Piece::new(PieceName::Rook, self.to_move),
+                        self.to_move,
+                        Square(5),
+                    );
                     self.remove_piece::<NNUE>(Square(7));
                 }
                 Castle::WhiteQueen => {
-                    self.place_piece::<NNUE>(PieceName::Rook, self.to_move, Square(3));
+                    self.place_piece::<NNUE>(
+                        Piece::new(PieceName::Rook, self.to_move),
+                        self.to_move,
+                        Square(3),
+                    );
                     self.remove_piece::<NNUE>(Square(0));
                 }
                 Castle::BlackKing => {
-                    self.place_piece::<NNUE>(PieceName::Rook, self.to_move, Square(61));
+                    self.place_piece::<NNUE>(
+                        Piece::new(PieceName::Rook, self.to_move),
+                        self.to_move,
+                        Square(61),
+                    );
                     self.remove_piece::<NNUE>(Square(63));
                 }
                 Castle::BlackQueen => {
-                    self.place_piece::<NNUE>(PieceName::Rook, self.to_move, Square(59));
+                    self.place_piece::<NNUE>(
+                        Piece::new(PieceName::Rook, self.to_move),
+                        self.to_move,
+                        Square(59),
+                    );
                     self.remove_piece::<NNUE>(Square(56));
                 }
                 Castle::None => (),
@@ -334,7 +296,7 @@ impl Board {
 
         // If a piece isn't captured and a pawn isn't moved, increment the half move clock.
         // Otherwise set it to zero
-        if capture.is_none() && piece_moving != PieceName::Pawn {
+        if capture != Piece::None && piece_moving.name() != PieceName::Pawn {
             self.half_moves += 1;
         } else {
             self.half_moves = 0;
@@ -379,7 +341,7 @@ impl Board {
     pub fn refresh_accumulators(&mut self) {
         self.accumulator = Accumulator::default();
         for c in Color::iter() {
-            for p in PieceName::iter().rev() {
+            for p in PieceName::iter() {
                 for sq in self.bitboard(c, p) {
                     self.accumulator.add_feature(p, c, sq)
                 }
@@ -401,27 +363,9 @@ impl fmt::Display for Board {
 
                 // Append piece characters for white pieces
                 let piece = self.piece_at(Square(idx));
-                let color = self.color_at(Square(idx));
-                let char = match piece {
-                    Some(p) => match p {
-                        PieceName::Pawn => "P",
-                        PieceName::Knight => "N",
-                        PieceName::Bishop => "B",
-                        PieceName::Rook => "R",
-                        PieceName::Queen => "Q",
-                        PieceName::King => "K",
-                    },
-                    None => "_",
-                };
-                let char = if let Some(c) = color {
-                    match c {
-                        Color::White => char.to_uppercase(),
-                        Color::Black => char.to_lowercase(),
-                    }
-                } else {
-                    "_".to_string()
-                };
-                str += char.as_str();
+                let char = piece.char();
+
+                str += &char;
 
                 str.push_str(" | ");
             }
@@ -475,11 +419,11 @@ impl fmt::Debug for Board {
 #[cfg(test)]
 mod board_tests {
     use super::*;
-    use crate::{board::fen, types::pieces::PieceName::*};
+    use crate::board::fen;
     #[test]
     fn test_place_piece() {
         let mut board = Board::default();
-        board.place_piece::<false>(Rook, Color::White, Square(0));
+        board.place_piece::<false>(Piece::WhiteRook, Color::White, Square(0));
         assert!(board.bitboard(Color::White, PieceName::Rook).occupied(Square(0)));
     }
 

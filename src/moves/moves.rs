@@ -4,7 +4,10 @@ use std::fmt::Display;
 use crate::{
     board::board::Board,
     moves::moves::Direction::*,
-    types::{pieces::PieceName, square::Square},
+    types::{
+        pieces::{Piece, PieceName},
+        square::Square,
+    },
 };
 
 use strum_macros::EnumIter;
@@ -52,7 +55,7 @@ pub enum MoveType {
 /// bit  0-5: origin square (from 0 to 63)
 /// bit  6-11: destination square (from 0 to 63)
 /// bit 12-15: special move flag: normal move(0), promotion (1), en passant (2), castling (3)
-/// bit 16-19: piece moving - useful in continuation history
+/// bit 16-20: piece moving - useful in continuation history
 /// NOTE: en passant bit is set only when a pawn can be captured
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Move(pub u32);
@@ -63,7 +66,7 @@ impl Move {
         origin: Square,
         destination: Square,
         move_type: MoveType,
-        piece_moving: PieceName,
+        piece_moving: Piece,
     ) -> Self {
         let piece = piece_moving.idx() as u32;
         let m = origin.0 | (destination.0 << 6) | ((move_type as u32) << 12) | (piece << 16);
@@ -79,9 +82,9 @@ impl Move {
         castle_flag == MoveType::CastleMove as u32
     }
 
-    pub fn piece_moving(self) -> PieceName {
-        let piece_flag = (self.0 >> 16) & 0b111;
-        PieceName::from(piece_flag as usize)
+    pub fn piece_moving(self) -> Piece {
+        let piece_flag = (self.0 >> 16) & 0b1111;
+        Piece::from_u32(piece_flag)
     }
 
     pub fn flag(self) -> MoveType {
@@ -93,12 +96,12 @@ impl Move {
         en_passant_flag == MoveType::EnPassant as u32
     }
 
-    pub fn promotion(self) -> Option<PieceName> {
+    pub fn promotion(self) -> Option<Piece> {
         match self.flag() {
-            QueenPromotion => Some(PieceName::Queen),
-            RookPromotion => Some(PieceName::Rook),
-            BishopPromotion => Some(PieceName::Bishop),
-            KnightPromotion => Some(PieceName::Knight),
+            QueenPromotion => Some(Piece::new(PieceName::Queen, self.piece_moving().color())),
+            RookPromotion => Some(Piece::new(PieceName::Rook, self.piece_moving().color())),
+            BishopPromotion => Some(Piece::new(PieceName::Bishop, self.piece_moving().color())),
+            KnightPromotion => Some(Piece::new(PieceName::Knight, self.piece_moving().color())),
             _ => None,
         }
     }
@@ -133,12 +136,14 @@ impl Move {
         str += &origin_number.to_string();
         str += arr[end_letter as usize];
         str += &end_number.to_string();
-        match self.promotion() {
-            Some(PieceName::Queen) => str += "q",
-            Some(PieceName::Rook) => str += "r",
-            Some(PieceName::Bishop) => str += "b",
-            Some(PieceName::Knight) => str += "n",
-            _ => (),
+        if let Some(p) = self.promotion() {
+            match p.name() {
+                PieceName::Queen => str += "q",
+                PieceName::Rook => str += "r",
+                PieceName::Bishop => str += "b",
+                PieceName::Knight => str += "n",
+                _ => (),
+            }
         }
         str
     }
@@ -186,9 +191,10 @@ pub fn from_san(str: &str, board: &Board) -> Move {
     } else {
         None
     };
-    let piece_moving = board.piece_at(origin_sq).expect("There should be a piece here...");
+    let piece_moving = board.piece_at(origin_sq);
+    assert!(piece_moving != Piece::None);
     let captured = board.piece_at(dest_sq);
-    let castle = match piece_moving {
+    let castle = match piece_moving.name() {
         PieceName::King => {
             if origin_sq.dist(dest_sq) != 2 {
                 Castle::None
@@ -207,9 +213,12 @@ pub fn from_san(str: &str, board: &Board) -> Move {
         _ => Castle::None,
     };
     let castle = castle != Castle::None;
-    let en_passant =
-        { piece_moving == PieceName::Pawn && captured.is_none() && start_column != end_column };
-    let double_push = { piece_moving == PieceName::Pawn && origin_sq.dist(dest_sq) == 2 };
+    let en_passant = {
+        piece_moving.name() == PieceName::Pawn
+            && captured != Piece::None
+            && start_column != end_column
+    };
+    let double_push = { piece_moving.name() == PieceName::Pawn && origin_sq.dist(dest_sq) == 2 };
     let move_type = {
         if castle {
             CastleMove
@@ -245,11 +254,11 @@ impl Display for Move {
         str += " Castle: ";
         str += &self.is_castle().to_string();
         str += " Promotion: ";
-        match self.promotion() {
-            Some(PieceName::Queen) => str += "Queen ",
-            Some(PieceName::Rook) => str += "Rook ",
-            Some(PieceName::Bishop) => str += "Bishop ",
-            Some(PieceName::Knight) => str += "Knight ",
+        match self.promotion().map_or(PieceName::Pawn, |p| p.name()) {
+            PieceName::Queen => str += "Queen ",
+            PieceName::Rook => str += "Rook ",
+            PieceName::Bishop => str += "Bishop ",
+            PieceName::Knight => str += "Knight ",
             _ => str += "None ",
         }
         str += " En Passant: ";
@@ -308,28 +317,29 @@ mod move_test {
 
     #[test]
     fn test_move_creation() {
-        let normal_move = Move::new(Square(10), Square(20), MoveType::Normal, PieceName::Pawn);
+        let normal_move = Move::new(Square(10), Square(20), MoveType::Normal, Piece::WhitePawn);
         assert_eq!(normal_move.origin_square(), Square(10));
         assert_eq!(normal_move.dest_square(), Square(20));
         assert!(!normal_move.is_castle());
         assert!(!normal_move.is_en_passant());
         assert_eq!(normal_move.promotion(), None);
 
-        let promotion_move = Move::new(Square(15), Square(25), QueenPromotion, PieceName::Pawn);
+        let promotion_move = Move::new(Square(15), Square(25), QueenPromotion, Piece::WhitePawn);
         assert_eq!(promotion_move.origin_square(), Square(15));
         assert_eq!(promotion_move.dest_square(), Square(25));
         assert!(!promotion_move.is_castle());
         assert!(!promotion_move.is_en_passant());
-        assert_eq!(promotion_move.promotion(), Some(PieceName::Queen));
+        assert_eq!(promotion_move.promotion(), Some(Piece::WhiteQueen));
 
-        let castle_move = Move::new(Square(4), Square(2), CastleMove, PieceName::King);
+        let castle_move = Move::new(Square(4), Square(2), CastleMove, Piece::WhiteKing);
         assert_eq!(castle_move.origin_square(), Square(4));
         assert_eq!(castle_move.dest_square(), Square(2));
         assert!(castle_move.is_castle());
         assert!(!castle_move.is_en_passant());
         assert_eq!(castle_move.promotion(), None);
 
-        let en_passant_move = Move::new(Square(7), Square(5), MoveType::EnPassant, PieceName::King);
+        let en_passant_move =
+            Move::new(Square(7), Square(5), MoveType::EnPassant, Piece::WhiteKing);
         assert_eq!(en_passant_move.origin_square(), Square(7));
         assert_eq!(en_passant_move.dest_square(), Square(5));
         assert!(!en_passant_move.is_castle());
@@ -339,16 +349,16 @@ mod move_test {
 
     #[test]
     fn test_promotion_conversion() {
-        let knight_promotion = Move::new(Square(0), Square(7), KnightPromotion, PieceName::Pawn);
-        assert_eq!(knight_promotion.promotion(), Some(PieceName::Knight));
+        let knight_promotion = Move::new(Square(0), Square(7), KnightPromotion, Piece::WhitePawn);
+        assert_eq!(knight_promotion.promotion(), Some(Piece::WhiteKnight));
 
-        let bishop_promotion = Move::new(Square(15), Square(23), BishopPromotion, PieceName::Pawn);
-        assert_eq!(bishop_promotion.promotion(), Some(PieceName::Bishop));
+        let bishop_promotion = Move::new(Square(15), Square(23), BishopPromotion, Piece::WhitePawn);
+        assert_eq!(bishop_promotion.promotion(), Some(Piece::WhiteBishop));
 
-        let rook_promotion = Move::new(Square(28), Square(31), RookPromotion, PieceName::Pawn);
-        assert_eq!(rook_promotion.promotion(), Some(PieceName::Rook));
+        let rook_promotion = Move::new(Square(28), Square(31), RookPromotion, Piece::BlackPawn);
+        assert_eq!(rook_promotion.promotion(), Some(Piece::BlackRook));
 
-        let queen_promotion = Move::new(Square(62), Square(61), QueenPromotion, PieceName::Pawn);
-        assert_eq!(queen_promotion.promotion(), Some(PieceName::Queen));
+        let queen_promotion = Move::new(Square(62), Square(61), QueenPromotion, Piece::BlackPawn);
+        assert_eq!(queen_promotion.promotion(), Some(Piece::BlackQueen));
     }
 }
