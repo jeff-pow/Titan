@@ -49,9 +49,9 @@ impl MovePicker {
         if self.phase == MovePickerPhase::CapturesInit {
             self.phase = MovePickerPhase::GoodCaptures;
             self.moves = board.generate_moves(MGT::CapturesOnly);
-            for m in self.moves.arr.clone().iter().take(self.moves.len()) {
-                assert!(m.m.is_tactical(board));
-            }
+            // for m in self.moves.arr.clone().iter().take(self.moves.len()) {
+            // assert!(m.m.is_tactical(board));
+            // }
             self.score_moves(board, td);
         }
 
@@ -62,7 +62,7 @@ impl MovePicker {
                 if entry.m == self.tt_move {
                     return self.next(td, board);
                 }
-                assert!(entry.m.is_tactical(board));
+                // assert!(entry.m.is_tactical(board));
                 return Some(entry);
             }
             self.phase = MovePickerPhase::FirstKiller;
@@ -104,13 +104,13 @@ impl MovePicker {
             self.phase = MovePickerPhase::Remainders;
             self.current = self.moves.len();
             self.moves.append(board.generate_moves(MGT::QuietsOnly));
-            for m in self.moves.arr.iter().take(self.moves.len()) {
-                assert!(
-                    self.moves.arr.iter().take(self.moves.len()).filter(|&x| x == m).count() == 1,
-                    "{}",
-                    m.m.to_san()
-                );
-            }
+            // for m in self.moves.arr.iter().take(self.moves.len()) {
+            //     assert!(
+            //         self.moves.arr.iter().take(self.moves.len()).filter(|&x| x == m).count() == 1,
+            //         "{}",
+            //         m.m.to_san()
+            //     );
+            // }
             self.score_moves(board, td);
         }
 

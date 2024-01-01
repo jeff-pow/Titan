@@ -56,10 +56,6 @@ impl TableEntry {
 
     pub fn best_move(self, b: &Board) -> Move {
         let m = Move(self.best_move as u32);
-        if m.to_san() == "g2h1" {
-            let q = b.to_string();
-            panic!()
-        }
         // The reasoning here is if there is indeed a piece at the square in question, we can extract it.
         // Otherwise use 0b111 which isn't a flag at all, and will thus not show equivalent to any
         // generated moves. If the move is null, it won't be generated, and won't be falsely scored either

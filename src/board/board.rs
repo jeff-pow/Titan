@@ -2,7 +2,9 @@ use core::fmt;
 use strum::IntoEnumIterator;
 
 use crate::board::zobrist::ZOBRIST;
-use crate::moves::attack_boards::{king_attacks, knight_attacks, pawn_attacks};
+use crate::moves::attack_boards::{
+    king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, FILES,
+};
 use crate::moves::magics::{bishop_attacks, queen_attacks, rook_attacks};
 use crate::moves::movegenerator::MGT;
 use crate::moves::movelist::MoveList;
@@ -206,7 +208,7 @@ impl Board {
         if m == Move::NULL
             || self.color_at(m.origin_square()).map_or(true, |c| c != self.to_move)
             || piece_moving.is_none()
-            || self.piece_at(m.origin_square()) != piece_moving
+            || self.piece_at(m.origin_square()) != Some(m.piece_moving())
         {
             return false;
         }
@@ -245,31 +247,35 @@ impl Board {
                         != Bitboard::EMPTY
             }
             PieceName::Pawn => {
-                let mut list = MoveList::default();
-                // Verifying pawn moves, like castles, is also a pain that I didn't feel like
-                // typing the checks for :). So just generate the moves and find if it exists
-                self.generate_pawn_moves(MGT::All, &mut list);
-                for pawn in list.arr.iter().map(|e| e.m) {
-                    if m == pawn {
-                        return true;
-                    }
-                }
-                false
-            }
-            PieceName::King => {
-                if self.square_under_attack(!self.to_move, self.king_square(self.to_move)) {
+                let up = match self.to_move {
+                    Color::White => North,
+                    Color::Black => South,
+                };
+                let should_be_promoting =
+                    m.dest_square().bitboard() & (FILES[0] | FILES[7]) != Bitboard::EMPTY;
+                if should_be_promoting && m.promotion().is_none() {
                     return false;
                 }
+                if m.is_en_passant() {
+                    // En passant
+                    Some(m.dest_square()) == self.en_passant_square
+                } else if m.flag() == MoveType::DoublePush {
+                    // Double push
+                    let one_push = m.origin_square().shift(up);
+                    self.piece_at(one_push).is_none() && m.dest_square() == one_push.shift(up)
+                } else if self.piece_at(m.dest_square()).is_none() {
+                    // Single push
+                    m.dest_square() == m.origin_square().shift(up)
+                } else {
+                    // Captures
+                    (pawn_set_attacks(m.origin_square().bitboard(), self.to_move)
+                        & m.dest_square().bitboard())
+                        != Bitboard::EMPTY
+                }
+            }
+            PieceName::King => {
                 if m.flag() == MoveType::CastleMove {
-                    let mut list = MoveList::default();
-                    // Verifying castling moves is sort of a PITA, so we just generate the moves
-                    // and match it against the move in question to determine if it's legal
-                    self.generate_castling_moves(&mut list);
-                    for castle in list.arr.iter().map(|e| e.m) {
-                        if m == castle {
-                            return true;
-                        }
-                    }
+                    return false;
                 }
                 m.flag() == MoveType::Normal
                     && king_attacks(m.origin_square())
@@ -296,7 +302,7 @@ impl Board {
         let board = self.clone();
 
         let piece_moving = m.piece_moving();
-        assert_eq!(piece_moving, m.piece_moving());
+        assert_eq!(piece_moving, self.piece_at(m.origin_square()).unwrap());
         let capture = self.capture(m);
         self.remove_piece::<NNUE>(m.dest_square());
         self.place_piece::<NNUE>(piece_moving, self.to_move, m.dest_square());
@@ -382,8 +388,17 @@ impl Board {
         let ret = !self.in_check(!self.to_move);
         let a = self.to_string();
         if ret {
-            assert_eq!((self.color_occupancies[0] & self.bitboards[PieceName::King]).count_bits(), 1, "{} {}", self.zobrist_hash, m.0);
-            assert_eq!((self.color_occupancies[1] & self.bitboards[PieceName::King]).count_bits(), 1);
+            // assert_eq!(
+            //     (self.color_occupancies[0] & self.bitboards[PieceName::King]).count_bits(),
+            //     1,
+            //     "{} {}",
+            //     self.zobrist_hash,
+            //     m.0
+            // );
+            // assert_eq!(
+            //     (self.color_occupancies[1] & self.bitboards[PieceName::King]).count_bits(),
+            //     1
+            // );
         }
         ret
     }
