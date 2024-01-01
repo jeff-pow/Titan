@@ -1,17 +1,13 @@
 use core::fmt;
 use strum::IntoEnumIterator;
 
-use crate::board::zobrist::ZOBRIST;
-use crate::moves::attack_boards::{
-    king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, FILES,
-};
-use crate::moves::magics::{bishop_attacks, queen_attacks, rook_attacks};
-use crate::moves::moves::{Castle, MoveType};
 use crate::{
+    board::zobrist::ZOBRIST,
     eval::accumulator::Accumulator,
     moves::{
-        moves::Move,
-        moves::{Direction::*, CASTLING_RIGHTS},
+        attack_boards::{king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, RANKS},
+        magics::{bishop_attacks, queen_attacks, rook_attacks},
+        moves::{Castle, Direction::*, Move, MoveType, CASTLING_RIGHTS},
     },
     types::{
         bitboard::Bitboard,
@@ -201,86 +197,85 @@ impl Board {
         self.square_under_attack(!side, king_square)
     }
 
-    pub(crate) fn is_pseudo_legal(&self, m: Move) -> bool {
-        let piece_moving = self.piece_at(m.origin_square());
-        if m == Move::NULL
-            || self.color_at(m.origin_square()).map_or(true, |c| c != self.to_move)
-            || piece_moving.is_none()
-            || self.piece_at(m.origin_square()) != Some(m.piece_moving())
-        {
+    pub fn is_pseudo_legal(&self, m: Move) -> bool {
+        if m == Move::NULL {
             return false;
         }
 
-        if let Some(PieceName::King) = self.capture(m) {
+        let from = m.origin_square();
+        let to = m.dest_square();
+
+        let moved_piece = self.array_board[from];
+        let captured_piece = self.array_board[to];
+        let is_capture = captured_piece.is_some();
+        let is_pawn_double_push = m.flag() == MoveType::DoublePush;
+
+        if moved_piece.map(|p| p.name) != m.piece_moving() {
             return false;
         }
 
-        match piece_moving.unwrap() {
-            PieceName::Knight => {
-                m.flag() == MoveType::Normal
-                    && knight_attacks(m.origin_square())
-                        & !self.color(self.to_move)
-                        & m.dest_square().bitboard()
-                        != Bitboard::EMPTY
-            }
-            PieceName::Bishop => {
-                m.flag() == MoveType::Normal
-                    && bishop_attacks(m.origin_square(), self.occupancies())
-                        & !self.color(self.to_move)
-                        & m.dest_square().bitboard()
-                        != Bitboard::EMPTY
-            }
-            PieceName::Rook => {
-                m.flag() == MoveType::Normal
-                    && rook_attacks(m.origin_square(), self.occupancies())
-                        & !self.color(self.to_move)
-                        & m.dest_square().bitboard()
-                        != Bitboard::EMPTY
-            }
-            PieceName::Queen => {
-                m.flag() == MoveType::Normal
-                    && queen_attacks(m.origin_square(), self.occupancies())
-                        & !self.color(self.to_move)
-                        & m.dest_square().bitboard()
-                        != Bitboard::EMPTY
-            }
+        if moved_piece.is_none() {
+            return false;
+        }
+        let moved_piece = moved_piece.unwrap();
+
+        if moved_piece.color != self.to_move {
+            return false;
+        }
+
+        if is_capture && captured_piece.map_or(false, |piece| piece.color == self.to_move) {
+            return false;
+        }
+
+        if moved_piece.name != PieceName::King && m.is_castle() {
+            return false;
+        }
+
+        if is_capture && is_pawn_double_push {
+            return false;
+        }
+
+        if m.is_castle() {
+            return true;
+        }
+
+        match moved_piece.name {
             PieceName::Pawn => {
+                // let should_be_promoting = to > Square::H7 || to < Square::A2;
+                let should_be_promoting = to.bitboard() & RANKS[7] != Bitboard::EMPTY
+                    || to.bitboard() & RANKS[0] != Bitboard::EMPTY;
+                if should_be_promoting && m.promotion().is_none() {
+                    return false;
+                }
                 let up = match self.to_move {
                     Color::White => North,
                     Color::Black => South,
                 };
-                let should_be_promoting =
-                    m.dest_square().bitboard() & (FILES[0] | FILES[7]) != Bitboard::EMPTY;
-                if should_be_promoting && m.promotion().is_none() {
-                    return false;
-                }
                 if m.is_en_passant() {
-                    // En passant
-                    Some(m.dest_square()) == self.en_passant_square
-                } else if m.flag() == MoveType::DoublePush {
-                    // Double push
-                    let one_push = m.origin_square().shift(up);
-                    self.piece_at(one_push).is_none() && m.dest_square() == one_push.shift(up)
-                } else if self.piece_at(m.dest_square()).is_none() {
-                    // Single push
-                    m.dest_square() == m.origin_square().shift(up)
-                } else {
-                    // Captures
-                    (pawn_set_attacks(m.origin_square().bitboard(), self.to_move)
-                        & m.dest_square().bitboard())
-                        != Bitboard::EMPTY
+                    return Some(to) == self.en_passant_square;
+                } else if is_pawn_double_push {
+                    let one_forward = from.shift(up);
+                    return self.piece_at(one_forward).is_none() && to == one_forward.shift(up);
+                } else if !is_capture {
+                    return to == from.shift(up) && captured_piece.is_none();
                 }
-            }
-            PieceName::King => {
-                if m.flag() == MoveType::CastleMove {
-                    return false;
+                // pawn capture
+                if self.to_move == Color::White {
+                    return (pawn_attacks(from, self.to_move) & to.bitboard()) != Bitboard::EMPTY;
                 }
-                m.flag() == MoveType::Normal
-                    && king_attacks(m.origin_square())
-                        & !self.color(self.to_move)
-                        & m.dest_square().bitboard()
-                        != Bitboard::EMPTY
+                (pawn_set_attacks(from.bitboard(), self.to_move) & to.bitboard()) != Bitboard::EMPTY
             }
+            PieceName::Knight => to.bitboard() & knight_attacks(from) != Bitboard::EMPTY,
+            PieceName::Bishop => {
+                to.bitboard() & bishop_attacks(from, self.occupancies()) != Bitboard::EMPTY
+            }
+            PieceName::Rook => {
+                to.bitboard() & rook_attacks(from, self.occupancies()) != Bitboard::EMPTY
+            }
+            PieceName::Queen => {
+                to.bitboard() & queen_attacks(from, self.occupancies()) != Bitboard::EMPTY
+            }
+            PieceName::King => to.bitboard() & king_attacks(from) != Bitboard::EMPTY,
         }
     }
 
@@ -294,10 +289,10 @@ impl Board {
     #[must_use]
     pub fn make_move<const NNUE: bool>(&mut self, m: Move) -> bool {
         let piece_moving = m.piece_moving();
-        assert_eq!(piece_moving, self.piece_at(m.origin_square()).unwrap());
+        assert_eq!(piece_moving, self.piece_at(m.origin_square()));
         let capture = self.capture(m);
         self.remove_piece::<NNUE>(m.dest_square());
-        self.place_piece::<NNUE>(piece_moving, self.to_move, m.dest_square());
+        self.place_piece::<NNUE>(piece_moving.unwrap(), self.to_move, m.dest_square());
         self.remove_piece::<NNUE>(m.origin_square());
 
         // Move rooks if a castle move is applied
@@ -358,7 +353,7 @@ impl Board {
 
         // If a piece isn't captured and a pawn isn't moved, increment the half move clock.
         // Otherwise set it to zero
-        if capture.is_none() && piece_moving != PieceName::Pawn {
+        if capture.is_none() && piece_moving != Some(PieceName::Pawn) {
             self.half_moves += 1;
         } else {
             self.half_moves = 0;
@@ -377,21 +372,7 @@ impl Board {
         self.in_check = self.in_check(self.to_move);
 
         // Return false if the move leaves the opposite side in check, denoting an invalid move
-        let ret = !self.in_check(!self.to_move);
-        if ret {
-            // assert_eq!(
-            //     (self.color_occupancies[0] & self.bitboards[PieceName::King]).count_bits(),
-            //     1,
-            //     "{} {}",
-            //     self.zobrist_hash,
-            //     m.0
-            // );
-            // assert_eq!(
-            //     (self.color_occupancies[1] & self.bitboards[PieceName::King]).count_bits(),
-            //     1
-            // );
-        }
-        ret
+        !self.in_check(!self.to_move)
     }
 
     pub fn make_null_move(&mut self) {

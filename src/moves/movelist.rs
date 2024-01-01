@@ -53,7 +53,6 @@ impl MoveList {
             }
         }
 
-
         self.arr.swap(max_idx, idx);
     }
 }

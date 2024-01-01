@@ -81,18 +81,16 @@ impl PieceName {
     pub fn idx(self) -> usize {
         self as usize
     }
-}
 
-impl From<usize> for PieceName {
-    fn from(value: usize) -> Self {
-        match value {
-            5 => PieceName::King,
-            4 => PieceName::Queen,
-            3 => PieceName::Rook,
-            2 => PieceName::Bishop,
-            1 => PieceName::Knight,
-            0 => PieceName::Pawn,
-            _ => panic!("Invalid piece index"),
+    pub(crate) fn try_from_u32(u: u32) -> Option<PieceName> {
+        match u {
+            5 => Some(PieceName::King),
+            4 => Some(PieceName::Queen),
+            3 => Some(PieceName::Rook),
+            2 => Some(PieceName::Bishop),
+            1 => Some(PieceName::Knight),
+            0 => Some(PieceName::Pawn),
+            _ => None,
         }
     }
 }

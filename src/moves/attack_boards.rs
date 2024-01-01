@@ -9,7 +9,9 @@ const FILE_H_U64: u64 = 0x101010101010101 << 7;
 
 const RANK1_U64: u64 = 0b11111111;
 
+/// Vertical
 pub const FILES: [Bitboard; 8] = const_array!(|f, 8| Bitboard(FILE_A_U64 << f));
+/// Horizontal
 pub const RANKS: [Bitboard; 8] = const_array!(|p, 8| Bitboard(RANK1_U64 << (8 * p)));
 
 pub fn knight_attacks(sq: Square) -> Bitboard {
@@ -24,9 +26,9 @@ pub fn pawn_attacks(square: Square, attacker: Color) -> Bitboard {
     PAWN_ATTACKS[attacker][square]
 }
 
-pub const fn pawn_set_attacks(pawns: Bitboard, side: Color) -> Bitboard {
+pub const fn pawn_set_attacks(pawns: Bitboard, attacker: Color) -> Bitboard {
     let pawns = pawns.0;
-    if side.idx() == Color::White.idx() {
+    if attacker.idx() == Color::White.idx() {
         Bitboard((pawns & !FILE_A_U64) << 7 | (pawns & !FILE_H_U64) << 9)
     } else {
         Bitboard((pawns & !FILE_A_U64) >> 9 | (pawns & !FILE_H_U64) >> 7)
