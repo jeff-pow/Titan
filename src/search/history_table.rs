@@ -61,6 +61,7 @@ impl HistoryTable {
         stack: &SearchStack,
         ply: i32,
     ) {
+        assert_ne!(best_move, Move::NULL);
         if best_move.is_tactical(board) {
             let cap = capthist_capture(board, best_move);
             self.update_capt_hist(best_move, cap, depth, true);
@@ -72,6 +73,7 @@ impl HistoryTable {
             self.update_cont_hist(best_move, stack, ply, true, depth);
             // Only penalize quiets if best_move was quiet
             for m in quiets_tried {
+                assert_ne!(m, &Move::NULL);
                 if *m == best_move {
                     continue;
                 }
@@ -85,6 +87,7 @@ impl HistoryTable {
             if *m == best_move {
                 continue;
             }
+            assert_ne!(m, &Move::NULL);
             let cap = capthist_capture(board, *m);
             self.update_capt_hist(*m, cap, depth, false);
         }

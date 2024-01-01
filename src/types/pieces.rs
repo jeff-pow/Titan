@@ -142,32 +142,28 @@ pub enum Piece {
 }
 
 impl Piece {
-    pub fn new(name: PieceName, color: Color) -> Self {
+    pub(crate) fn new(name: PieceName, color: Color) -> Self {
         unsafe { transmute((name as u32) << 1 | color as u32) }
     }
 
-    pub fn name(self) -> PieceName {
+    pub(crate) fn name(self) -> PieceName {
         PieceName::from_u32(self as u32 >> 1)
     }
 
-    pub fn value(self) -> i32 {
+    pub(crate) fn value(self) -> i32 {
         self.name().value()
     }
 
-    pub fn color(self) -> Color {
+    pub(crate) fn color(self) -> Color {
         Color::from_u32(self as u32 & 0b1)
     }
 
-    pub fn idx(self) -> usize {
-        self as usize
-    }
-
-    pub fn from_u32(x: u32) -> Self {
+    pub(crate) fn from_u32(x: u32) -> Self {
         assert!((0..12).contains(&x) || x == 15);
         unsafe { transmute(x) }
     }
 
-    pub fn char(self) -> String {
+    pub(crate) fn char(self) -> String {
         let c = match self.name() {
             PieceName::Pawn => "P",
             PieceName::Knight => "N",
