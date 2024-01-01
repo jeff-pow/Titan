@@ -73,7 +73,6 @@ impl HistoryTable {
             self.update_cont_hist(best_move, stack, ply, true, depth);
             // Only penalize quiets if best_move was quiet
             for m in quiets_tried {
-                assert_ne!(m, &Move::NULL);
                 if *m == best_move {
                     continue;
                 }

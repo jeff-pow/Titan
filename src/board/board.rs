@@ -296,7 +296,7 @@ impl Board {
 
         // If a piece isn't captured and a pawn isn't moved, increment the half move clock.
         // Otherwise set it to zero
-        if capture != Piece::None && piece_moving.name() != PieceName::Pawn {
+        if capture == Piece::None && piece_moving.name() != PieceName::Pawn {
             self.half_moves += 1;
         } else {
             self.half_moves = 0;
@@ -429,9 +429,16 @@ mod board_tests {
 
     #[test]
     fn test_remove_piece() {
-        let mut board = fen::build_board(fen::STARTING_FEN);
-        board.remove_piece::<false>(Square(0));
-        assert!(board.bitboard(Color::White, PieceName::Rook).empty(Square(0)));
-        assert!(board.occupancies().empty(Square(0)));
+        let board = fen::build_board(fen::STARTING_FEN);
+
+        let mut c = board;
+        c.remove_piece::<false>(Square(0));
+        assert!(c.bitboard(Color::White, PieceName::Rook).empty(Square(0)));
+        assert!(c.occupancies().empty(Square(0)));
+        assert_ne!(c, board);
+
+        let mut c = board;
+        c.remove_piece::<false>(Square(27));
+        assert_eq!(board, c);
     }
 }

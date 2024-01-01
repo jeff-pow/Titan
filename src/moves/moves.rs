@@ -10,8 +10,6 @@ use crate::{
     },
 };
 
-use strum_macros::EnumIter;
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Castle {
     WhiteKing = 1,
@@ -64,7 +62,7 @@ impl Move {
     // pub const NULL: Move = Move(0b1111 << 16);
     pub const NULL: Move = Move(0);
 
-    pub fn new(
+    pub const fn new(
         origin: Square,
         destination: Square,
         move_type: MoveType,
@@ -219,7 +217,7 @@ pub fn from_san(str: &str, board: &Board) -> Move {
     let castle = castle != Castle::None;
     let en_passant = {
         piece_moving.name() == PieceName::Pawn
-            && captured != Piece::None
+            && captured == Piece::None
             && start_column != end_column
     };
     let double_push = { piece_moving.name() == PieceName::Pawn && origin_sq.dist(dest_sq) == 2 };
@@ -274,7 +272,7 @@ impl Display for Move {
 }
 
 /// Cardinal directions from the point of view of white side
-#[derive(EnumIter, Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Direction {
     North = 8,
     NorthWest = 7,

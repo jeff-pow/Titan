@@ -12,8 +12,6 @@ simd = []
 
 [dependencies]
 
-strum = { version = "0.24", features = ["derive"] }
-strum_macros = "0.24"
 rustc-hash = "1.1.0"
 log = "0.4.20"
 itertools = "0.11.0"
