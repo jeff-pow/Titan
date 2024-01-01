@@ -132,6 +132,9 @@ fn alpha_beta<const IS_PV: bool>(
 ) -> i32 {
     let is_root = td.ply == 0;
     let in_check = board.in_check;
+
+    // Prevent overflows of the search stack
+
     let singular_move = td.stack[td.ply].singular;
     let singular_search = singular_move != Move::NULL;
 
@@ -157,8 +160,7 @@ fn alpha_beta<const IS_PV: bool>(
             return STALEMATE;
         }
 
-        // Prevent overflows of the search stack
-        if td.ply >= MAX_SEARCH_DEPTH {
+        if td.ply >= MAX_SEARCH_DEPTH - 1 {
             return if in_check { 0 } else { board.evaluate() };
         }
 
