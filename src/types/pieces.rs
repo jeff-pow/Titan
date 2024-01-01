@@ -98,7 +98,7 @@ impl PieceName {
 
     pub(crate) fn from_u32(val: u32) -> Self {
         match val {
-            6 => PieceName::None,
+            7 => PieceName::None,
             5 => PieceName::King,
             4 => PieceName::Queen,
             3 => PieceName::Rook,
@@ -177,8 +177,8 @@ impl Piece {
             PieceName::King => "K",
             PieceName::None => "_",
         };
-        if self.color() == Color::White {
-            c.to_ascii_uppercase()
+        if self.color() == Color::Black {
+            c.to_ascii_lowercase()
         } else {
             c.to_string()
         }
@@ -246,7 +246,7 @@ mod piece_tests {
         assert_eq!(PieceName::from_u32(3), PieceName::Rook);
         assert_eq!(PieceName::from_u32(4), PieceName::Queen);
         assert_eq!(PieceName::from_u32(5), PieceName::King);
-        assert_eq!(PieceName::from_u32(6), PieceName::None);
+        assert_eq!(PieceName::from_u32(7), PieceName::None);
     }
 
     #[test]
