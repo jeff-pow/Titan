@@ -480,7 +480,9 @@ fn alpha_beta<const IS_PV: bool>(
             if eval > alpha {
                 alpha = eval;
                 best_move = m;
-                pv.update(best_move, node_pv);
+                if IS_PV {
+                    pv.update(best_move, node_pv);
+                }
             }
 
             if alpha >= beta {
