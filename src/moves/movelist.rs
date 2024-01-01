@@ -90,7 +90,7 @@ impl MoveList {
                     GOOD_CAPTURE
                 } else {
                     BAD_CAPTURE
-                }) + MVV[c]
+                }) + MVV[c.name()]
                     + td.history.capt_hist(entry.m, board)
             } else if killers[0] == entry.m {
                 KILLER_ONE

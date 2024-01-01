@@ -133,7 +133,7 @@ impl HistoryTable {
         let entry = &mut self.search_history[m.piece_moving()][m.dest_square()].cont_hist;
         for prev in prevs {
             if prev != Move::NULL {
-                let i = &mut entry[prev.piece_moving()][prev.dest_square()];
+                let i = &mut entry[prev.piece_moving().name()][prev.dest_square()];
                 update_history(i, depth, is_good);
             }
         }
@@ -145,7 +145,7 @@ impl HistoryTable {
         let entry = &self.search_history[m.piece_moving()][m.dest_square()];
         for prev in prevs {
             if prev != Move::NULL {
-                score += entry.cont_hist[prev.piece_moving()][prev.dest_square()];
+                score += entry.cont_hist[prev.piece_moving().name()][prev.dest_square()];
             }
         }
         score
