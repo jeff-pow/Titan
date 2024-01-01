@@ -104,5 +104,6 @@ pub fn lmr_reductions() {
 }
 
 pub fn get_reduction(depth: i32, moves_played: i32) -> i32 {
-    LMR_REDUCTIONS[depth as usize][moves_played as usize].load(Ordering::Relaxed)
+    LMR_REDUCTIONS[depth.min(MAX_SEARCH_DEPTH) as usize][(moves_played as usize).min(MAX_LEN)]
+        .load(Ordering::Relaxed)
 }

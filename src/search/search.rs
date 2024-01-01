@@ -88,6 +88,8 @@ fn aspiration_windows(
     // Asp window should start wider if score is more extreme
     let mut delta = INIT_ASP.val() + prev_score * prev_score / ASP_DIVISOR.val();
 
+    let mut depth = td.iter_max_depth;
+
     if td.iter_max_depth >= ASP_MIN_DEPTH.val() {
         alpha = alpha.max(prev_score - delta);
         beta = beta.min(prev_score + delta);
@@ -95,12 +97,19 @@ fn aspiration_windows(
 
     loop {
         assert_eq!(0, td.ply);
-        let score = alpha_beta::<true>(td.iter_max_depth, alpha, beta, pv, td, tt, board, false);
+        let score = alpha_beta::<true>(depth, alpha, beta, pv, td, tt, board, false);
+
         if score <= alpha {
             beta = (alpha + beta) / 2;
             alpha = max(score - delta, -INFINITY);
+            // If move/position proves to not be as good as we thought, we need to do a full depth
+            // search to get the best idea possible of its actual score.
+            depth = td.iter_max_depth;
         } else if score >= beta {
             beta = min(score + delta, INFINITY);
+            // If window is better than beta, we have a potentially untrustworthy best move that we
+            // want to prove is safe quickly, so we reduce depth.
+            depth -= 1;
         } else {
             return score;
         }
@@ -123,6 +132,9 @@ fn alpha_beta<const IS_PV: bool>(
 ) -> i32 {
     let is_root = td.ply == 0;
     let in_check = board.in_check;
+
+    // Prevent overflows of the search stack
+
     let singular_move = td.stack[td.ply].singular;
     let singular_search = singular_move != Move::NULL;
 
@@ -148,8 +160,7 @@ fn alpha_beta<const IS_PV: bool>(
             return STALEMATE;
         }
 
-        // Prevent overflows of the search stack
-        if td.ply >= MAX_SEARCH_DEPTH {
+        if td.ply >= MAX_SEARCH_DEPTH - 1 {
             return if in_check { 0 } else { board.evaluate() };
         }
 
@@ -502,6 +513,7 @@ fn alpha_beta<const IS_PV: bool>(
     }
 
     if legal_moves_searched == 0 {
+        // TODO: Return alpha if singular verification search
         if board.in_check {
             // Distance from root is returned in order for other recursive calls to determine
             // shortest viable checkmate path
