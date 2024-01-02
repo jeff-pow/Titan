@@ -21,7 +21,7 @@ use crate::{
 pub struct Board {
     bitboards: [Bitboard; NUM_PIECES],
     color_occupancies: [Bitboard; 2],
-    pub array_board: [Piece; 64],
+    array_board: [Piece; 64],
     pub to_move: Color,
     pub castling_rights: u32,
     pub en_passant_square: Option<Square>,

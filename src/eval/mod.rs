@@ -3,7 +3,7 @@ use self::nnue::Network;
 pub(crate) mod accumulator;
 pub mod nnue;
 
-type Block = [i16; HIDDEN_SIZE];
+pub type Block = [i16; HIDDEN_SIZE];
 
 #[cfg(feature = "simd")]
 const CHUNK_SIZE: usize = 32;

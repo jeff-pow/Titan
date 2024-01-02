@@ -123,25 +123,32 @@ impl PieceName {
 
 impl_index!(Piece);
 #[derive(Eq, Copy, Clone, PartialEq, Debug)]
+#[repr(u8)]
 pub enum Piece {
     WhitePawn,
     BlackPawn,
+
     WhiteKnight,
     BlackKnight,
+
     WhiteBishop,
     BlackBishop,
+
     WhiteRook,
     BlackRook,
+
     WhiteQueen,
     BlackQueen,
+
     WhiteKing,
     BlackKing,
+
     None = 15,
 }
 
 impl Piece {
     pub(crate) fn new(name: PieceName, color: Color) -> Self {
-        unsafe { transmute((name as u32) << 1 | color as u32) }
+        unsafe { transmute(((name as u32) << 1 | color as u32) as u8) }
     }
 
     pub(crate) fn name(self) -> PieceName {
@@ -158,7 +165,7 @@ impl Piece {
 
     pub(crate) fn from_u32(x: u32) -> Self {
         assert!((0..12).contains(&x) || x == 15);
-        unsafe { transmute(x as ) }
+        unsafe { transmute(x as u8) }
     }
 
     pub(crate) fn char(self) -> String {
