@@ -123,7 +123,6 @@ impl PieceName {
 
 impl_index!(Piece);
 #[derive(Eq, Copy, Clone, PartialEq, Debug)]
-#[repr(u32)]
 pub enum Piece {
     WhitePawn,
     BlackPawn,
@@ -159,7 +158,7 @@ impl Piece {
 
     pub(crate) fn from_u32(x: u32) -> Self {
         assert!((0..12).contains(&x) || x == 15);
-        unsafe { transmute(x) }
+        unsafe { transmute(x as ) }
     }
 
     pub(crate) fn char(self) -> String {
