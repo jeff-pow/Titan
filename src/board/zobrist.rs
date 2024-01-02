@@ -1,5 +1,4 @@
 use lazy_static::lazy_static;
-use strum::IntoEnumIterator;
 
 use crate::{
     board::board::Board,

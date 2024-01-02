@@ -119,7 +119,9 @@ pub(super) fn quiescence<const IS_PV: bool>(
             if eval > alpha {
                 best_move = m;
                 alpha = eval;
-                pv.update(best_move, node_pv);
+                if IS_PV {
+                    pv.update(best_move, node_pv);
+                }
             }
 
             if alpha >= beta {

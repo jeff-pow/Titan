@@ -3,14 +3,14 @@ use crate::{
     moves::{moves::Direction, moves::Direction::*},
     types::{
         bitboard::Bitboard,
-        pieces::{Color, PieceName},
+        pieces::{Color, Piece, PieceName},
         square::Square,
     },
 };
 
 use super::{
     attack_boards::{king_attacks, knight_attacks, RANK2, RANK3, RANK6, RANK7},
-    magics::{bishop_attacks, rook_attacks},
+    magics::{bishop_attacks, queen_attacks, rook_attacks},
     movelist::MoveList,
     moves::{Castle, Move, MoveType},
 };
@@ -28,6 +28,7 @@ impl Board {
     /// Generates all pseudolegal moves
     pub fn generate_moves(&self, gen_type: MGT) -> MoveList {
         let mut moves = MoveList::default();
+
         self.generate_bitboard_moves(PieceName::Knight, gen_type, &mut moves);
         self.generate_bitboard_moves(PieceName::King, gen_type, &mut moves);
         self.generate_bitboard_moves(PieceName::Queen, gen_type, &mut moves);
@@ -49,7 +50,7 @@ impl Board {
                 && !self.square_under_attack(Color::Black, Square(5))
                 && !self.square_under_attack(Color::Black, Square(6))
             {
-                moves.push(Move::new(Square(4), Square(6), MoveType::CastleMove, PieceName::King));
+                moves.push(Move::new(Square(4), Square(6), MoveType::CastleMove, Piece::WhiteKing));
             }
 
             if self.can_castle(Castle::WhiteQueen)
@@ -60,7 +61,7 @@ impl Board {
                 && !self.square_under_attack(Color::Black, Square(3))
                 && !self.square_under_attack(Color::Black, Square(4))
             {
-                moves.push(Move::new(Square(4), Square(2), MoveType::CastleMove, PieceName::King));
+                moves.push(Move::new(Square(4), Square(2), MoveType::CastleMove, Piece::WhiteKing));
             }
         } else {
             if self.can_castle(Castle::BlackKing)
@@ -74,7 +75,7 @@ impl Board {
                     Square(60),
                     Square(62),
                     MoveType::CastleMove,
-                    PieceName::King,
+                    Piece::BlackKing,
                 ));
             }
 
@@ -90,13 +91,14 @@ impl Board {
                     Square(60),
                     Square(58),
                     MoveType::CastleMove,
-                    PieceName::King,
+                    Piece::BlackKing,
                 ));
             }
         }
     }
 
     fn generate_pawn_moves(&self, gen_type: MGT, moves: &mut MoveList) {
+        let piece = Piece::new(PieceName::Pawn, self.to_move);
         let pawns = self.bitboard(self.to_move, PieceName::Pawn);
         let vacancies = !self.occupancies();
         let enemies = self.color(!self.to_move);
@@ -138,11 +140,11 @@ impl Board {
             let push_two = vacancies & (push_one & rank3_bb).shift(up);
             for dest in push_one {
                 let src = dest.shift(down);
-                moves.push(Move::new(src, dest, MoveType::Normal, PieceName::Pawn));
+                moves.push(Move::new(src, dest, MoveType::Normal, piece));
             }
             for dest in push_two {
                 let src = dest.shift(down).shift(down);
-                moves.push(Move::new(src, dest, MoveType::DoublePush, PieceName::Pawn));
+                moves.push(Move::new(src, dest, MoveType::DoublePush, piece));
             }
         }
 
@@ -153,82 +155,13 @@ impl Board {
             let left_capture_promotions = promotions.shift(up_left) & enemies;
             let right_capture_promotions = promotions.shift(up_right) & enemies;
             for dest in no_capture_promotions {
-                moves.push(Move::new(
-                    dest.shift(down),
-                    dest,
-                    MoveType::QueenPromotion,
-                    PieceName::Pawn,
-                ));
-                moves.push(Move::new(
-                    dest.shift(down),
-                    dest,
-                    MoveType::RookPromotion,
-                    PieceName::Pawn,
-                ));
-                moves.push(Move::new(
-                    dest.shift(down),
-                    dest,
-                    MoveType::BishopPromotion,
-                    PieceName::Pawn,
-                ));
-                moves.push(Move::new(
-                    dest.shift(down),
-                    dest,
-                    MoveType::KnightPromotion,
-                    PieceName::Pawn,
-                ));
+                gen_promotions(piece, dest.shift(down), dest, moves);
             }
             for dest in left_capture_promotions {
-                moves.push(Move::new(
-                    dest.shift(down_right),
-                    dest,
-                    MoveType::QueenPromotion,
-                    PieceName::Pawn,
-                ));
-                moves.push(Move::new(
-                    dest.shift(down_right),
-                    dest,
-                    MoveType::RookPromotion,
-                    PieceName::Pawn,
-                ));
-                moves.push(Move::new(
-                    dest.shift(down_right),
-                    dest,
-                    MoveType::BishopPromotion,
-                    PieceName::Pawn,
-                ));
-                moves.push(Move::new(
-                    dest.shift(down_right),
-                    dest,
-                    MoveType::KnightPromotion,
-                    PieceName::Pawn,
-                ));
+                gen_promotions(piece, dest.shift(down_right), dest, moves);
             }
             for dest in right_capture_promotions {
-                moves.push(Move::new(
-                    dest.shift(down_left),
-                    dest,
-                    MoveType::QueenPromotion,
-                    PieceName::Pawn,
-                ));
-                moves.push(Move::new(
-                    dest.shift(down_left),
-                    dest,
-                    MoveType::RookPromotion,
-                    PieceName::Pawn,
-                ));
-                moves.push(Move::new(
-                    dest.shift(down_left),
-                    dest,
-                    MoveType::BishopPromotion,
-                    PieceName::Pawn,
-                ));
-                moves.push(Move::new(
-                    dest.shift(down_left),
-                    dest,
-                    MoveType::KnightPromotion,
-                    PieceName::Pawn,
-                ));
+                gen_promotions(piece, dest.shift(down_left), dest, moves);
             }
         }
 
@@ -239,33 +172,33 @@ impl Board {
                 let right_captures = non_promotions.shift(up_right) & enemies;
                 for dest in left_captures {
                     let src = dest.shift(down_right);
-                    moves.push(Move::new(src, dest, MoveType::Normal, PieceName::Pawn));
+                    moves.push(Move::new(src, dest, MoveType::Normal, piece));
                 }
                 for dest in right_captures {
                     let src = dest.shift(down_left);
-                    moves.push(Move::new(src, dest, MoveType::Normal, PieceName::Pawn));
+                    moves.push(Move::new(src, dest, MoveType::Normal, piece));
                 }
             }
 
             // En Passant
             if self.can_en_passant() {
-                if let Some(x) = self.get_en_passant(down_right) {
+                if let Some(x) = self.get_en_passant(down_right, piece) {
                     moves.push(x)
                 }
-                if let Some(x) = self.get_en_passant(down_left) {
+                if let Some(x) = self.get_en_passant(down_left, piece) {
                     moves.push(x)
                 }
             }
         }
     }
 
-    fn get_en_passant(&self, dir: Direction) -> Option<Move> {
+    fn get_en_passant(&self, dir: Direction, piece: Piece) -> Option<Move> {
         let sq = self.en_passant_square?.checked_shift(dir)?;
         let pawn = sq.bitboard() & self.bitboard(self.to_move, PieceName::Pawn);
         if pawn != Bitboard::EMPTY {
             let dest = self.en_passant_square?;
             let src = dest.checked_shift(dir)?;
-            return Some(Move::new(src, dest, MoveType::EnPassant, PieceName::Pawn));
+            return Some(Move::new(src, dest, MoveType::EnPassant, piece));
         }
         None
     }
@@ -273,15 +206,16 @@ impl Board {
     fn generate_bitboard_moves(&self, piece_name: PieceName, gen_type: MGT, moves: &mut MoveList) {
         // Don't calculate any moves if no pieces of that type exist for the given color
         let occ_bitself = self.bitboard(self.to_move, piece_name);
+        let piece_moving = Piece::new(piece_name, self.to_move);
         for sq in occ_bitself {
             let occupancies = self.occupancies();
             let attack_bitself = match piece_name {
                 PieceName::King => king_attacks(sq),
-                PieceName::Queen => rook_attacks(sq, occupancies) | bishop_attacks(sq, occupancies),
+                PieceName::Queen => queen_attacks(sq, occupancies),
                 PieceName::Rook => rook_attacks(sq, occupancies),
                 PieceName::Bishop => bishop_attacks(sq, occupancies),
                 PieceName::Knight => knight_attacks(sq),
-                PieceName::Pawn => panic!(),
+                _ => panic!(),
             };
             let attacks = match gen_type {
                 MoveGenerationType::CapturesOnly => attack_bitself & self.color(!self.to_move),
@@ -289,8 +223,20 @@ impl Board {
                 MoveGenerationType::All => attack_bitself & (!self.color(self.to_move)),
             };
             for dest in attacks {
-                moves.push(Move::new(sq, dest, MoveType::Normal, piece_name));
+                moves.push(Move::new(sq, dest, MoveType::Normal, piece_moving));
             }
         }
+    }
+}
+
+fn gen_promotions(piece: Piece, src: Square, dest: Square, moves: &mut MoveList) {
+    const PROMOS: [MoveType; 4] = [
+        MoveType::QueenPromotion,
+        MoveType::RookPromotion,
+        MoveType::BishopPromotion,
+        MoveType::KnightPromotion,
+    ];
+    for promo in PROMOS {
+        moves.push(Move::new(src, dest, promo, piece));
     }
 }

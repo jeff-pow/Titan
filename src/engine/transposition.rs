@@ -3,7 +3,9 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use crate::{board::board::Board, moves::moves::Move, search::search::NEAR_CHECKMATE};
+use crate::{
+    board::board::Board, moves::moves::Move, search::search::NEAR_CHECKMATE, types::pieces::Piece,
+};
 
 #[derive(Clone, Copy, Debug, Default)]
 #[repr(C)]
@@ -56,11 +58,12 @@ impl TableEntry {
 
     pub fn best_move(self, b: &Board) -> Move {
         let m = Move(self.best_move as u32);
-        // The reasoning here is if there is indeed a piece at the square in question, we can extract it.
-        // Otherwise use 0b111 which isn't a flag at all, and will thus not show equivalent to any
-        // generated moves. If the move is null, it won't be generated, and won't be falsely scored either
-        let p = b.piece_at(m.origin_square()).map_or(0b111, |p| p as u32);
-        Move(self.best_move as u32 | (p & 0b111) << 16)
+        if b.piece_at(m.origin_square()) == Piece::None {
+            Move::NULL
+        } else {
+            let p = b.piece_at(m.origin_square()) as u32;
+            Move(self.best_move as u32 | p << 16)
+        }
     }
 }
 
@@ -256,7 +259,7 @@ mod transpos_tests {
         board::fen::{build_board, STARTING_FEN},
         engine::transposition::{EntryFlag, TranspositionTable},
         moves::moves::{Move, MoveType},
-        types::{pieces::PieceName, square::Square},
+        types::{pieces::Piece, square::Square},
     };
 
     #[test]
@@ -266,7 +269,7 @@ mod transpos_tests {
         let entry = table.get(b.zobrist_hash, 4);
         assert!(entry.is_none());
 
-        let m = Move::new(Square(12), Square(28), MoveType::Normal, PieceName::Pawn);
+        let m = Move::new(Square(12), Square(28), MoveType::Normal, Piece::WhitePawn);
         table.store(b.zobrist_hash, m, 0, EntryFlag::Exact, 25, 4, false, 25);
         let entry = table.get(b.zobrist_hash, 2);
         assert_eq!(25, entry.unwrap().static_eval());

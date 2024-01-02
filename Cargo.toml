@@ -12,8 +12,6 @@ simd = []
 
 [dependencies]
 
-strum = { version = "0.24", features = ["derive"] }
-strum_macros = "0.24"
 rustc-hash = "1.1.0"
 log = "0.4.20"
 itertools = "0.11.0"
@@ -25,6 +23,7 @@ wide = "0.7.13"
 lazy_static = "1.4.0"
 arr_macro = "0.2.1"
 phf = { version = "0.11", features = ["macros"] }
+arrayvec = "0.7.4"
 
 [profile.release]
 codegen-units = 1
