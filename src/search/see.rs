@@ -56,7 +56,7 @@ impl Board {
         assert!(piece_moving != Piece::None);
         let next = if let Some(promo) = m.promotion() { promo } else { piece_moving };
 
-        score -= next.name().value();
+        score -= next.value();
 
         if score >= 0 {
             return true;

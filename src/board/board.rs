@@ -134,14 +134,15 @@ impl Board {
         }
     }
 
-    pub fn place_piece<const NNUE: bool>(&mut self, piece: Piece, color: Color, sq: Square) {
-        assert_eq!(color, piece.color());
+    pub fn place_piece<const NNUE: bool>(&mut self, piece: Piece, sq: Square) {
+        let color = piece.color();
+        let name = piece.name();
         self.array_board[sq] = piece;
         self.bitboards[piece.name()] ^= sq.bitboard();
         self.color_occupancies[color] ^= sq.bitboard();
-        self.zobrist_hash ^= ZOBRIST.piece_square_hashes[color][piece.name()][sq];
+        self.zobrist_hash ^= ZOBRIST.piece_square_hashes[color][name][sq];
         if NNUE {
-            self.accumulator.add_feature(piece.name(), color, sq);
+            self.accumulator.add_feature(name, color, sq);
         }
     }
 
@@ -219,49 +220,33 @@ impl Board {
         assert_eq!(piece_moving, m.piece_moving());
         let capture = self.capture(m);
         self.remove_piece::<NNUE>(m.dest_square());
-        self.place_piece::<NNUE>(piece_moving, self.to_move, m.dest_square());
+        self.place_piece::<NNUE>(piece_moving, m.dest_square());
         self.remove_piece::<NNUE>(m.origin_square());
 
         // Move rooks if a castle move is applied
         if m.is_castle() {
             match m.castle_type() {
                 Castle::WhiteKing => {
-                    self.place_piece::<NNUE>(
-                        Piece::new(PieceName::Rook, self.to_move),
-                        self.to_move,
-                        Square(5),
-                    );
+                    self.place_piece::<NNUE>(Piece::new(PieceName::Rook, self.to_move), Square(5));
                     self.remove_piece::<NNUE>(Square(7));
                 }
                 Castle::WhiteQueen => {
-                    self.place_piece::<NNUE>(
-                        Piece::new(PieceName::Rook, self.to_move),
-                        self.to_move,
-                        Square(3),
-                    );
+                    self.place_piece::<NNUE>(Piece::new(PieceName::Rook, self.to_move), Square(3));
                     self.remove_piece::<NNUE>(Square(0));
                 }
                 Castle::BlackKing => {
-                    self.place_piece::<NNUE>(
-                        Piece::new(PieceName::Rook, self.to_move),
-                        self.to_move,
-                        Square(61),
-                    );
+                    self.place_piece::<NNUE>(Piece::new(PieceName::Rook, self.to_move), Square(61));
                     self.remove_piece::<NNUE>(Square(63));
                 }
                 Castle::BlackQueen => {
-                    self.place_piece::<NNUE>(
-                        Piece::new(PieceName::Rook, self.to_move),
-                        self.to_move,
-                        Square(59),
-                    );
+                    self.place_piece::<NNUE>(Piece::new(PieceName::Rook, self.to_move), Square(59));
                     self.remove_piece::<NNUE>(Square(56));
                 }
                 Castle::None => (),
             }
         } else if let Some(p) = m.promotion() {
             self.remove_piece::<NNUE>(m.dest_square());
-            self.place_piece::<NNUE>(p, self.to_move, m.dest_square());
+            self.place_piece::<NNUE>(p, m.dest_square());
         } else if m.is_en_passant() {
             match self.to_move {
                 Color::White => {
@@ -423,7 +408,7 @@ mod board_tests {
     #[test]
     fn test_place_piece() {
         let mut board = Board::default();
-        board.place_piece::<false>(Piece::WhiteRook, Color::White, Square(0));
+        board.place_piece::<false>(Piece::WhiteRook, Square(0));
         assert!(board.bitboard(Color::White, PieceName::Rook).occupied(Square(0)));
     }
 

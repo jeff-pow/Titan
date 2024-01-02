@@ -33,9 +33,6 @@ pub fn search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &Transposi
     td.nodes_searched = 0;
     td.stack = SearchStack::default();
 
-    // td.history = HistoryTable::default();
-    // tt.clear();
-
     let best_move = iterative_deepening(td, &board, print_uci, tt);
 
     assert_ne!(best_move, Move::NULL);

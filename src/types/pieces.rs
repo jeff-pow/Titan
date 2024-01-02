@@ -76,6 +76,7 @@ pub const NUM_PIECES: usize = 6;
 
 impl_index!(PieceName);
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u8)]
 pub enum PieceName {
     Pawn,
     Knight,
@@ -91,11 +92,12 @@ impl PieceName {
         PIECE_VALUES[self]
     }
 
-    pub fn idx(self) -> usize {
+    pub(crate) fn idx(self) -> usize {
         self as usize
     }
 
-    pub(crate) fn from_u32(val: u32) -> Self {
+    #[allow(dead_code)]
+    fn from_u32(val: u32) -> Self {
         match val {
             7 => PieceName::None,
             5 => PieceName::King,
@@ -106,6 +108,11 @@ impl PieceName {
             0 => PieceName::Pawn,
             _ => panic!("Invalid piece index"),
         }
+    }
+
+    fn transmute(val: u32) -> Self {
+        assert!((0..6).contains(&val) || val == 7);
+        unsafe { transmute(val as u8) }
     }
 
     pub fn iter() -> impl Iterator<Item = Self> {
@@ -152,7 +159,8 @@ impl Piece {
     }
 
     pub(crate) fn name(self) -> PieceName {
-        PieceName::from_u32(self as u32 >> 1)
+        // PieceName::from_u32(self as u32 >> 1)
+        PieceName::transmute(self as u32 >> 1)
     }
 
     pub(crate) fn value(self) -> i32 {
