@@ -66,7 +66,6 @@ pub(crate) mod avx512 {
     /// Number of SIMD vectors contained within one hidden layer
     const REQUIRED_ITERS: usize = HIDDEN_SIZE / CHUNK_SIZE;
 
-    #[inline]
     pub unsafe fn flatten(acc: &Block, weights: &Block) -> i32 {
         {
             let mut sum = _mm512_setzero_si512();
@@ -80,7 +79,6 @@ pub(crate) mod avx512 {
         }
     }
 
-    #[inline]
     unsafe fn clipped_relu(i: __m512i) -> __m512i {
         let min = _mm512_set1_epi16(RELU_MIN);
         let max = _mm512_set1_epi16(RELU_MAX);
@@ -88,7 +86,6 @@ pub(crate) mod avx512 {
         _mm512_min_epi16(_mm512_max_epi16(i, min), max)
     }
 
-    #[inline]
     unsafe fn squared_crelu(i: __m512i) -> __m512i {
         let clamp = clipped_relu(i);
         _mm512_mullo_epi16(clamp, clamp)
