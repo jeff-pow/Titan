@@ -1,5 +1,3 @@
-use strum::IntoEnumIterator;
-
 use crate::{
     board::{board::Board, fen::build_board},
     moves::{
@@ -8,7 +6,7 @@ use crate::{
     },
     types::{
         bitboard::Bitboard,
-        pieces::{Color, PieceName},
+        pieces::{Color, Piece, PieceName},
     },
 };
 
@@ -17,8 +15,9 @@ impl Board {
         if m.is_en_passant() {
             return PieceName::Pawn.value();
         }
-        let mut score =
-            if let Some(capture) = self.piece_at(m.dest_square()) { capture.value() } else { 0 };
+        let capture = self.piece_at(m.dest_square());
+        let mut score = if capture != Piece::None { capture.value() } else { 0 };
+
         if let Some(p) = m.promotion() {
             score += p.value() - PieceName::Pawn.value();
         }
@@ -53,7 +52,8 @@ impl Board {
             return false;
         }
 
-        let piece_moving = self.piece_at(src).expect("There is a piece here");
+        let piece_moving = self.piece_at(src);
+        assert!(piece_moving != Piece::None);
         let next = if let Some(promo) = m.promotion() { promo } else { piece_moving };
 
         score -= next.value();

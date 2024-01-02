@@ -1,19 +1,20 @@
+use arrayvec::ArrayVec;
+
 use crate::{
     board::board::Board,
     search::{thread::ThreadData, NUM_KILLER_MOVES},
-    types::pieces::PieceName,
+    types::pieces::{Piece, PieceName},
 };
-use std::{mem::MaybeUninit, ops::Index};
+use std::ops::Index;
 
 use super::moves::Move;
 
 pub const MAX_LEN: usize = 218;
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 /// Movelist elements contains a move and an i32 where a score can be stored later to be used in move ordering
 /// for efficient search pruning
 pub struct MoveList {
-    pub arr: [MoveListEntry; MAX_LEN],
-    len: usize,
+    pub arr: ArrayVec<MoveListEntry, MAX_LEN>,
     current_idx: usize,
 }
 
@@ -31,13 +32,11 @@ impl MoveListEntry {
 
 impl MoveList {
     pub fn push(&mut self, m: Move) {
-        debug_assert!(self.len < MAX_LEN);
-        self.arr[self.len] = MoveListEntry::new(m, 0);
-        self.len += 1;
+        self.arr.push(MoveListEntry::new(m, 0));
     }
 
     pub fn len(&self) -> usize {
-        self.len
+        self.arr.len()
     }
 
     fn swap(&mut self, a: usize, b: usize) {
@@ -56,7 +55,7 @@ impl MoveList {
 
     fn sort_next_move(&mut self, idx: usize) {
         let mut max_idx = idx;
-        for i in (idx + 1)..self.len {
+        for i in (idx + 1)..self.len() {
             if self.arr[i].score > self.arr[max_idx].score {
                 max_idx = i;
             }
@@ -71,28 +70,27 @@ impl MoveList {
         killers: [Move; NUM_KILLER_MOVES],
         td: &ThreadData,
     ) {
-        for i in 0..self.len {
+        for i in 0..self.len() {
             let entry = &mut self.arr[i];
             let prev = td.stack.prev_move(td.ply - 1);
-            let counter = td.history.get_counter(board.to_move, prev);
+            let counter = td.history.get_counter(prev);
             entry.score = if entry.m == table_move {
                 TTMOVE
             } else if let Some(promotion) = entry.m.promotion() {
-                match promotion {
-                    PieceName::Queen => {
-                        QUEEN_PROMOTION + td.history.capt_hist(entry.m, board.to_move, board)
-                    }
+                match promotion.name() {
+                    PieceName::Queen => QUEEN_PROMOTION + td.history.capt_hist(entry.m, board),
                     _ => BAD_PROMOTION,
                 }
-            } else if let Some(c) = board.capture(entry.m) {
+            } else if board.capture(entry.m) != Piece::None {
+                let c = board.capture(entry.m);
                 // TODO: Try a threshold of 0 or 1 here
-                assert_ne!(c, PieceName::King);
+                assert_ne!(c.name(), PieceName::King);
                 (if board.see(entry.m, -PieceName::Pawn.value()) {
                     GOOD_CAPTURE
                 } else {
                     BAD_CAPTURE
-                }) + MVV[c]
-                    + td.history.capt_hist(entry.m, board.to_move, board)
+                }) + MVV[c.name()]
+                    + td.history.capt_hist(entry.m, board)
             } else if killers[0] == entry.m {
                 KILLER_ONE
             } else if killers[1] == entry.m {
@@ -100,7 +98,7 @@ impl MoveList {
             } else if counter == entry.m {
                 COUNTER_MOVE
             } else {
-                td.history.quiet_history(entry.m, board.to_move, &td.stack, td.ply)
+                td.history.quiet_history(entry.m, &td.stack, td.ply)
             };
         }
     }
@@ -128,7 +126,7 @@ impl Iterator for MoveList {
     type Item = MoveListEntry;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_idx >= self.len {
+        if self.current_idx >= self.len() {
             None
         } else {
             let m = self.pick_move(self.current_idx);
@@ -150,9 +148,6 @@ impl FromIterator<MoveListEntry> for MoveList {
 
 impl Default for MoveList {
     fn default() -> Self {
-        // Uninitialized memory is much faster than initializing it when the important stuff will
-        // be written over anyway ;)
-        let arr: MaybeUninit<[MoveListEntry; MAX_LEN]> = MaybeUninit::uninit();
-        Self { arr: unsafe { arr.assume_init() }, len: 0, current_idx: 0 }
+        Self { arr: ArrayVec::new(), current_idx: 0 }
     }
 }
