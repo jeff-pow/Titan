@@ -28,16 +28,8 @@ impl Board {
     pub fn evaluate(&self) -> i32 {
         let (us, them) = (&self.accumulator.0[self.to_move], &self.accumulator.0[!self.to_move]);
         let weights = &NET.output_weights;
-
-        let mut output = 0;
-        unsafe {
-            let us = flatten(us, &weights[0]);
-            let them = flatten(them, &weights[1]);
-
-            output += us + them;
-            output /= NORMALIZATION_FACTOR;
-        }
-        let a = (i32::from(NET.output_bias) + output) * SCALE / QAB;
+        let output = flatten(us, &weights[0]) + flatten(them, &weights[1]);
+        let a = (i32::from(NET.output_bias) + output / NORMALIZATION_FACTOR) * SCALE / QAB;
         assert!(i16::MIN as i32 <= a && a <= i16::MAX as i32);
         a
     }
@@ -53,16 +45,16 @@ fn crelu(i: i16) -> i32 {
     i32::from(i.clamp(RELU_MIN, RELU_MAX))
 }
 
-unsafe fn flatten(acc: &Block, weights: &Block) -> i32 {
+fn flatten(acc: &Block, weights: &Block) -> i32 {
     #[cfg(feature = "avx512")]
     {
         use super::simd::avx512;
-        avx512::flatten(acc, weights)
+        unsafe { avx512::flatten(acc, weights) }
     }
     #[cfg(all(not(feature = "avx512"), feature = "avx2"))]
     {
         use super::simd::avx2;
-        avx2::flatten(acc, weights)
+        unsafe { avx2::flatten(acc, weights) }
     }
     #[cfg(all(not(feature = "avx2"), not(feature = "avx512")))]
     {
