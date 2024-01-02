@@ -79,8 +79,10 @@ pub(crate) mod avx2 {
 #[cfg(feature = "avx512")]
 pub(crate) mod avx512 {
 
+    use crate::eval::accumulator::Accumulator;
     use crate::eval::nnue::{RELU_MAX, RELU_MIN};
     use crate::eval::{Block, HIDDEN_SIZE};
+    use crate::types::pieces::Color;
 
     const CHUNK_SIZE: usize = 32;
     /// Number of SIMD vectors contained within one hidden layer
@@ -112,6 +114,26 @@ pub(crate) mod avx512 {
     unsafe fn squared_crelu(i: __m512i) -> __m512i {
         let clamp = clipped_relu(i);
         _mm512_mullo_epi16(clamp, clamp)
+    }
+
+    impl Accumulator {
+        pub(crate) unsafe fn avx512_activate(&mut self, weights: &Block, color: Color) {
+            for i in 0..REQUIRED_ITERS {
+                let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
+                let acc = _mm512_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
+                let updated_acc = _mm512_add_epi16(acc, weights);
+                _mm512_storeu_epi16(&mut self.0[color][i * CHUNK_SIZE], updated_acc);
+            }
+        }
+
+        pub(crate) unsafe fn avx512_deactivate(&mut self, weights: &Block, color: Color) {
+            for i in 0..REQUIRED_ITERS {
+                let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
+                let acc = _mm512_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
+                let updated_acc = _mm512_sub_epi16(acc, weights);
+                _mm512_storeu_epi16(&mut self.0[color][i * CHUNK_SIZE], updated_acc);
+            }
+        }
     }
 
     use std::arch::x86_64::*;

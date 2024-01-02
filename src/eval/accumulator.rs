@@ -31,12 +31,24 @@ impl Accumulator {
     }
 
     fn deactivate(&mut self, weights: &Block, color: Color) {
+        #[cfg(feature = "avx512")]
+        unsafe {
+            self.avx512_deactivate(weights, color);
+        }
+
+        #[cfg(not(feature = "avx512"))]
         self.0[color].iter_mut().zip(weights).for_each(|(i, &d)| {
             *i -= d;
         });
     }
 
     fn activate(&mut self, weights: &Block, color: Color) {
+        #[cfg(feature = "avx512")]
+        unsafe {
+            self.avx512_activate(weights, color);
+        }
+
+        #[cfg(not(feature = "avx512"))]
         self.0[color].iter_mut().zip(weights).for_each(|(i, &d)| {
             *i += d;
         });
