@@ -227,19 +227,19 @@ impl Board {
         if m.is_castle() {
             match m.castle_type() {
                 Castle::WhiteKing => {
-                    self.place_piece::<NNUE>(Piece::new(PieceName::Rook, self.to_move), Square(5));
+                    self.place_piece::<NNUE>(Piece::WhiteRook, Square(5));
                     self.remove_piece::<NNUE>(Square(7));
                 }
                 Castle::WhiteQueen => {
-                    self.place_piece::<NNUE>(Piece::new(PieceName::Rook, self.to_move), Square(3));
+                    self.place_piece::<NNUE>(Piece::WhiteRook, Square(3));
                     self.remove_piece::<NNUE>(Square(0));
                 }
                 Castle::BlackKing => {
-                    self.place_piece::<NNUE>(Piece::new(PieceName::Rook, self.to_move), Square(61));
+                    self.place_piece::<NNUE>(Piece::BlackRook, Square(61));
                     self.remove_piece::<NNUE>(Square(63));
                 }
                 Castle::BlackQueen => {
-                    self.place_piece::<NNUE>(Piece::new(PieceName::Rook, self.to_move), Square(59));
+                    self.place_piece::<NNUE>(Piece::BlackRook, Square(59));
                     self.remove_piece::<NNUE>(Square(56));
                 }
                 Castle::None => (),
