@@ -1,11 +1,4 @@
 use super::{Block, INPUT_SIZE, NET};
-#[cfg(feature = "simd")]
-use super::{CHUNK_SIZE, REQUIRED_ITERS};
-#[cfg(feature = "simd")]
-use std::arch::x86_64::{
-    __m512i, _mm512_dpwssd_epi32, _mm512_loadu_epi16, _mm512_reduce_add_epi32, _mm512_set1_epi16,
-    _mm512_setzero_si512,
-};
 
 use crate::board::board::Board;
 /**
@@ -16,8 +9,8 @@ const QA: i32 = 181; // CHANGES WITH NET QUANZIZATION
 const QB: i32 = 64;
 const QAB: i32 = QA * QB;
 const NORMALIZATION_FACTOR: i32 = QA; // CHANGES WITH SCRELU/CRELU ACTIVATION
-const RELU_MIN: i16 = 0;
-const RELU_MAX: i16 = QA as i16;
+pub(super) const RELU_MIN: i16 = 0;
+pub(super) const RELU_MAX: i16 = QA as i16;
 
 const SCALE: i32 = 400;
 
@@ -35,63 +28,35 @@ impl Board {
     pub fn evaluate(&self) -> i32 {
         let (us, them) = (&self.accumulator.0[self.to_move], &self.accumulator.0[!self.to_move]);
         let weights = &NET.output_weights;
-
-        let mut output = 0;
-        unsafe {
-            let us = flatten(us, &weights[0]);
-            let them = flatten(them, &weights[1]);
-
-            output += us + them;
-            output /= NORMALIZATION_FACTOR;
-        }
-        let a = (i32::from(NET.output_bias) + output) * SCALE / QAB;
+        let output = flatten(us, &weights[0]) + flatten(them, &weights[1]);
+        let a = (i32::from(NET.output_bias) + output / NORMALIZATION_FACTOR) * SCALE / QAB;
         assert!(i16::MIN as i32 <= a && a <= i16::MAX as i32);
         a
     }
 }
 
-#[cfg(not(feature = "simd"))]
+#[cfg(all(not(feature = "avx2"), not(feature = "avx512")))]
 fn screlu(i: i16) -> i32 {
     crelu(i) * crelu(i)
 }
 
-#[cfg(not(feature = "simd"))]
+#[cfg(all(not(feature = "avx2"), not(feature = "avx512")))]
 fn crelu(i: i16) -> i32 {
     i32::from(i.clamp(RELU_MIN, RELU_MAX))
 }
 
-#[cfg(feature = "simd")]
-unsafe fn clipped_relu(i: __m512i) -> __m512i {
-    use std::arch::x86_64::{_mm512_max_epi16, _mm512_min_epi16};
-    let min = _mm512_set1_epi16(RELU_MIN);
-    let max = _mm512_set1_epi16(RELU_MAX);
-
-    _mm512_min_epi16(_mm512_max_epi16(i, min), max)
-}
-
-#[cfg(feature = "simd")]
-unsafe fn squared_crelu(i: __m512i) -> __m512i {
-    use std::arch::x86_64::_mm512_mullo_epi16;
-
-    let clamp = clipped_relu(i);
-    _mm512_mullo_epi16(clamp, clamp)
-}
-
-#[inline(never)]
-unsafe fn flatten(acc: &Block, weights: &Block) -> i32 {
-    #[cfg(feature = "simd")]
+fn flatten(acc: &Block, weights: &Block) -> i32 {
+    #[cfg(feature = "avx512")]
     {
-        let mut sum = _mm512_setzero_si512();
-        for i in 0..REQUIRED_ITERS {
-            let us_vector = _mm512_loadu_epi16(&acc[i * CHUNK_SIZE]);
-            let crelu_result = squared_crelu(us_vector);
-            let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
-            sum = _mm512_dpwssd_epi32(sum, crelu_result, weights);
-        }
-        _mm512_reduce_add_epi32(sum)
+        use super::simd::avx512;
+        unsafe { avx512::flatten(acc, weights) }
     }
-
-    #[cfg(not(feature = "simd"))]
+    #[cfg(all(not(feature = "avx512"), feature = "avx2"))]
+    {
+        use super::simd::avx2;
+        unsafe { avx2::flatten(acc, weights) }
+    }
+    #[cfg(all(not(feature = "avx2"), not(feature = "avx512")))]
     {
         let mut sum = 0;
         for (&i, &w) in acc.iter().zip(weights) {
