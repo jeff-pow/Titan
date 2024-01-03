@@ -4,8 +4,8 @@ use std::time::Instant;
 
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TranspositionTable};
-use crate::moves::movegenerator::MGT;
-use crate::moves::movelist::{MoveListEntry, BAD_CAPTURE};
+use crate::moves::movelist::MoveListEntry;
+use crate::moves::movepicker::{MovePicker, BAD_CAPTURE};
 use crate::moves::moves::Move;
 use crate::search::SearchStack;
 use crate::spsa::{
@@ -289,15 +289,14 @@ fn alpha_beta<const IS_PV: bool>(
         }
     }
 
-    let mut moves = board.generate_moves(MGT::All);
+    let mut picker = MovePicker::new(tt_move, td, board);
     let mut legal_moves_searched = 0;
-    moves.score_moves(board, tt_move, td.stack[td.ply].killers, td);
 
     let mut quiets_tried = Vec::new();
     let mut tacticals_tried = Vec::new();
 
     // Start of search
-    for MoveListEntry { m, score: hist_score } in moves {
+    while let Some(MoveListEntry { m, score: hist_score }) = picker.next(td, board) {
         if m == singular_move {
             continue;
         }

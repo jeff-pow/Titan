@@ -38,7 +38,7 @@ fn update_history(score: &mut i32, depth: i32, is_good: bool) {
     *score += bonus - *score * bonus.abs() / MAX_HIST_VAL;
 }
 
-fn capthist_capture(board: &Board, m: Move) -> PieceName {
+pub(crate) fn capthist_capture(board: &Board, m: Move) -> PieceName {
     if m.is_en_passant() || m.promotion().is_some() {
         // Use Pawn for promotions here because pawns can't be in the back ranks anyways, so these
         // spaces can't be occupied anyway
@@ -92,6 +92,7 @@ impl HistoryTable {
         }
     }
 
+
     fn update_quiet_history(&mut self, m: Move, is_good: bool, depth: i32) {
         let i = &mut self.search_history[m.piece_moving()][m.dest_square()].score;
         update_history(i, depth, is_good);
@@ -103,24 +104,29 @@ impl HistoryTable {
 
     fn set_counter(&mut self, prev: Move, m: Move) {
         self.search_history[prev.piece_moving()][prev.dest_square()].counter = m;
+
     }
 
     pub fn get_counter(&self, m: Move) -> Move {
         if m == Move::NULL {
             Move::NULL
         } else {
+
             self.search_history[m.piece_moving()][m.dest_square()].counter
         }
     }
 
     fn update_capt_hist(&mut self, m: Move, capture: PieceName, depth: i32, is_good: bool) {
         let i = &mut self.search_history[m.piece_moving()][m.dest_square()].capt_hist[capture];
+
         update_history(i, depth, is_good);
     }
 
     pub fn capt_hist(&self, m: Move, board: &Board) -> i32 {
         let cap = capthist_capture(board, m);
+
         self.search_history[m.piece_moving()][m.dest_square()].capt_hist[cap]
+
     }
 
     fn update_cont_hist(
@@ -132,10 +138,12 @@ impl HistoryTable {
         depth: i32,
     ) {
         let prevs = [stack.prev_move(ply - 1), stack.prev_move(ply - 2), stack.prev_move(ply - 4)];
+
         let entry = &mut self.search_history[m.piece_moving()][m.dest_square()].cont_hist;
         for prev in prevs {
             if prev != Move::NULL {
                 let i = &mut entry[prev.piece_moving().name()][prev.dest_square()];
+
                 update_history(i, depth, is_good);
             }
         }
@@ -144,10 +152,12 @@ impl HistoryTable {
     pub(crate) fn cont_hist(&self, m: Move, stack: &SearchStack, ply: i32) -> i32 {
         let mut score = 0;
         let prevs = [stack.prev_move(ply - 1), stack.prev_move(ply - 2), stack.prev_move(ply - 4)];
+
         let entry = &self.search_history[m.piece_moving()][m.dest_square()];
         for prev in prevs {
             if prev != Move::NULL {
                 score += entry.cont_hist[prev.piece_moving().name()][prev.dest_square()];
+
             }
         }
         score

@@ -84,9 +84,11 @@ impl Move {
         castle_flag == MoveType::CastleMove as u32
     }
 
+
     pub fn piece_moving(self) -> Piece {
         let piece_flag = (self.0 >> 16) & 0b1111;
         Piece::from_u32(piece_flag)
+
     }
 
     pub fn flag(self) -> MoveType {
@@ -95,7 +97,7 @@ impl Move {
 
     pub fn is_en_passant(self) -> bool {
         let en_passant_flag = (self.0 >> 12) & 0b1111;
-        en_passant_flag == MoveType::EnPassant as u32
+        en_passant_flag == EnPassant as u32
     }
 
     pub fn promotion(self) -> Option<Piece> {

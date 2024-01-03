@@ -16,7 +16,7 @@ fn non_bulk_perft<const ROOT: bool>(board: &Board, depth: i32) -> usize {
     }
     let mut total = 0;
     let moves = board.generate_moves(MGT::All);
-    for i in 0..moves.len() {
+    for i in 0..moves.arr.len() {
         let m = moves[i];
         let mut new_b = *board;
         if !new_b.make_move::<false>(m) {

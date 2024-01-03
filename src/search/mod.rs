@@ -28,7 +28,7 @@ pub(super) struct PlyEntry {
     pub dbl_extns: i32,
 }
 
-#[derive(Clone)]
+
 struct PV {
     line: ArrayVec<Move, { MAX_SEARCH_DEPTH as usize }>,
 }
@@ -44,6 +44,7 @@ impl PV {
 impl Default for PV {
     fn default() -> Self {
         Self { line: ArrayVec::new() }
+
     }
 }
 

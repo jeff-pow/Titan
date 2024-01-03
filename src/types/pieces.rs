@@ -107,6 +107,7 @@ impl PieceName {
             1 => PieceName::Knight,
             0 => PieceName::Pawn,
             _ => panic!("Invalid piece index"),
+
         }
     }
 

@@ -1,14 +1,18 @@
 use core::fmt;
 
+
 use crate::board::zobrist::ZOBRIST;
 use crate::moves::attack_boards::{king_attacks, knight_attacks, pawn_attacks};
 use crate::moves::magics::{bishop_attacks, rook_attacks};
 use crate::moves::moves::{Castle, MoveType};
+
 use crate::{
+    board::zobrist::ZOBRIST,
     eval::accumulator::Accumulator,
     moves::{
-        moves::Move,
-        moves::{Direction::*, CASTLING_RIGHTS},
+        attack_boards::{king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, RANKS},
+        magics::{bishop_attacks, queen_attacks, rook_attacks},
+        moves::{Castle, Direction::*, Move, MoveType, CASTLING_RIGHTS},
     },
     types::{
         bitboard::Bitboard,
@@ -192,20 +196,89 @@ impl Board {
         self.square_under_attack(!side, king_square)
     }
 
-    fn material_val(&self, c: Color) -> i32 {
-        self.bitboard(c, PieceName::Queen).count_bits() as i32 * PieceName::Queen.value()
-            + self.bitboard(c, PieceName::Rook).count_bits() as i32 * PieceName::Rook.value()
-            + self.bitboard(c, PieceName::Bishop).count_bits() as i32 * PieceName::Bishop.value()
-            + self.bitboard(c, PieceName::Knight).count_bits() as i32 * PieceName::Knight.value()
-            + self.bitboard(c, PieceName::Pawn).count_bits() as i32 * PieceName::Pawn.value()
-    }
+    pub fn is_pseudo_legal(&self, m: Move) -> bool {
+        if m == Move::NULL {
+            return false;
+        }
 
-    pub fn material_balance(&self) -> i32 {
-        match self.to_move {
-            Color::White => self.material_val(Color::White) - self.material_val(Color::Black),
-            Color::Black => self.material_val(Color::Black) - self.material_val(Color::White),
+        let from = m.origin_square();
+        let to = m.dest_square();
+
+        let moved_piece = self.array_board[from];
+        let captured_piece = self.array_board[to];
+        let is_capture = captured_piece.is_some();
+        let is_pawn_double_push = m.flag() == MoveType::DoublePush;
+
+        if moved_piece.map(|p| p.name) != m.piece_moving() {
+            return false;
+        }
+
+
+        if moved_piece.is_none() {
+            return false;
+        }
+        let moved_piece = moved_piece.unwrap();
+
+        if moved_piece.color != self.to_move {
+            return false;
+        }
+
+        if is_capture && captured_piece.map_or(false, |piece| piece.color == self.to_move) {
+            return false;
+        }
+
+        if moved_piece.name != PieceName::King && m.is_castle() {
+            return false;
+        }
+
+        if is_capture && is_pawn_double_push {
+            return false;
+        }
+
+        if m.is_castle() {
+            return true;
+        }
+
+        match moved_piece.name {
+            PieceName::Pawn => {
+                // let should_be_promoting = to > Square::H7 || to < Square::A2;
+                let should_be_promoting = to.bitboard() & RANKS[7] != Bitboard::EMPTY
+                    || to.bitboard() & RANKS[0] != Bitboard::EMPTY;
+                if should_be_promoting && m.promotion().is_none() {
+                    return false;
+                }
+                let up = match self.to_move {
+                    Color::White => North,
+                    Color::Black => South,
+                };
+                if m.is_en_passant() {
+                    return Some(to) == self.en_passant_square;
+                } else if is_pawn_double_push {
+                    let one_forward = from.shift(up);
+                    return self.piece_at(one_forward).is_none() && to == one_forward.shift(up);
+                } else if !is_capture {
+                    return to == from.shift(up) && captured_piece.is_none();
+                }
+                // pawn capture
+                if self.to_move == Color::White {
+                    return (pawn_attacks(from, self.to_move) & to.bitboard()) != Bitboard::EMPTY;
+                }
+                (pawn_set_attacks(from.bitboard(), self.to_move) & to.bitboard()) != Bitboard::EMPTY
+            }
+            PieceName::Knight => to.bitboard() & knight_attacks(from) != Bitboard::EMPTY,
+            PieceName::Bishop => {
+                to.bitboard() & bishop_attacks(from, self.occupancies()) != Bitboard::EMPTY
+            }
+            PieceName::Rook => {
+                to.bitboard() & rook_attacks(from, self.occupancies()) != Bitboard::EMPTY
+            }
+            PieceName::Queen => {
+                to.bitboard() & queen_attacks(from, self.occupancies()) != Bitboard::EMPTY
+            }
+            PieceName::King => to.bitboard() & king_attacks(from) != Bitboard::EMPTY,
         }
     }
+
 
     /// Returns true if a move does not capture a piece, and false if a piece is captured
     pub fn is_quiet(&self, m: Move) -> bool {
@@ -217,10 +290,12 @@ impl Board {
     #[must_use]
     pub fn make_move<const NNUE: bool>(&mut self, m: Move) -> bool {
         let piece_moving = m.piece_moving();
-        assert_eq!(piece_moving, m.piece_moving());
+        assert_eq!(piece_moving, self.piece_at(m.origin_square()));
         let capture = self.capture(m);
         self.remove_piece::<NNUE>(m.dest_square());
+
         self.place_piece::<NNUE>(piece_moving, m.dest_square());
+
         self.remove_piece::<NNUE>(m.origin_square());
 
         // Move rooks if a castle move is applied
@@ -281,7 +356,9 @@ impl Board {
 
         // If a piece isn't captured and a pawn isn't moved, increment the half move clock.
         // Otherwise set it to zero
+
         if capture == Piece::None && piece_moving.name() != PieceName::Pawn {
+
             self.half_moves += 1;
         } else {
             self.half_moves = 0;
