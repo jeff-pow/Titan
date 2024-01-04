@@ -1,31 +1,20 @@
 use crate::const_array;
 
 use crate::types::bitboard::Bitboard;
-use crate::types::pieces::Color;
+use crate::types::pieces::{Color, PieceName};
 use crate::types::square::Square;
+
+use super::magics::{bishop_attacks, queen_attacks, rook_attacks};
 
 const FILE_A_U64: u64 = 0x101010101010101;
 const FILE_H_U64: u64 = 0x101010101010101 << 7;
 
-pub const FILE_A: Bitboard = Bitboard(FILE_A_U64);
-pub const FILE_B: Bitboard = Bitboard(FILE_A_U64 << 1);
-pub const FILE_C: Bitboard = Bitboard(FILE_A_U64 << 2);
-pub const FILE_D: Bitboard = Bitboard(FILE_A_U64 << 3);
-pub const FILE_E: Bitboard = Bitboard(FILE_A_U64 << 4);
-pub const FILE_F: Bitboard = Bitboard(FILE_A_U64 << 5);
-pub const FILE_G: Bitboard = Bitboard(FILE_A_U64 << 6);
-pub const FILE_H: Bitboard = Bitboard(FILE_A_U64 << 7);
-
 const RANK1_U64: u64 = 0b11111111;
 
-pub const RANK1: Bitboard = Bitboard(0b11111111);
-pub const RANK2: Bitboard = Bitboard(RANK1_U64 << 8);
-pub const RANK3: Bitboard = Bitboard(RANK1_U64 << 16);
-pub const RANK4: Bitboard = Bitboard(RANK1_U64 << 24);
-pub const RANK5: Bitboard = Bitboard(RANK1_U64 << 32);
-pub const RANK6: Bitboard = Bitboard(RANK1_U64 << 40);
-pub const RANK7: Bitboard = Bitboard(RANK1_U64 << 48);
-pub const RANK8: Bitboard = Bitboard(RANK1_U64 << 56);
+/// Vertical
+pub const FILES: [Bitboard; 8] = const_array!(|f, 8| Bitboard(FILE_A_U64 << f));
+/// Horizontal
+pub const RANKS: [Bitboard; 8] = const_array!(|r, 8| Bitboard(RANK1_U64 << (8 * r)));
 
 pub fn knight_attacks(sq: Square) -> Bitboard {
     KNIGHT_ATTACKS[sq]
@@ -35,8 +24,8 @@ pub fn king_attacks(sq: Square) -> Bitboard {
     KING_ATTACKS[sq]
 }
 
-pub fn pawn_attacks(square: Square, attacker: Color) -> Bitboard {
-    PAWN_ATTACKS[attacker][square]
+pub fn pawn_attacks(sq: Square, attacker: Color) -> Bitboard {
+    PAWN_ATTACKS[attacker][sq]
 }
 
 pub const fn pawn_set_attacks(pawns: Bitboard, side: Color) -> Bitboard {
@@ -45,6 +34,20 @@ pub const fn pawn_set_attacks(pawns: Bitboard, side: Color) -> Bitboard {
         Bitboard((pawns & !FILE_A_U64) << 7 | (pawns & !FILE_H_U64) << 9)
     } else {
         Bitboard((pawns & !FILE_A_U64) >> 9 | (pawns & !FILE_H_U64) >> 7)
+    }
+}
+
+impl PieceName {
+    pub(crate) fn attacks(self, side: Color, sq: Square, occupancies: Bitboard) -> Bitboard {
+        match self {
+            PieceName::Pawn => pawn_attacks(sq, side),
+            PieceName::Knight => knight_attacks(sq),
+            PieceName::Bishop => bishop_attacks(sq, occupancies),
+            PieceName::Rook => rook_attacks(sq, occupancies),
+            PieceName::Queen => queen_attacks(sq, occupancies),
+            PieceName::King => king_attacks(sq),
+            PieceName::None => unreachable!("Illegal piece type: None"),
+        }
     }
 }
 
@@ -81,6 +84,63 @@ pub const PAWN_ATTACKS: [[Bitboard; 64]; 2] = [
     const_array!(|sq, 64| pawn_set_attacks(Bitboard(1 << sq), Color::White)),
     const_array!(|sq, 64| pawn_set_attacks(Bitboard(1 << sq), Color::Black)),
 ];
+
+// pub const BETWEEN_SQUARES: [[Bitboard; 64]; 64] = {
+//     let mut arr = [[Bitboard::EMPTY; 64]; 64];
+//     let mut src = 0;
+//     while src < 64 {
+//         let mut dest = src + 1;
+//         while dest < 64 {
+//             if Square(src).rank() == Square(dest).rank() {
+//                 // dest > src, so we always want to shift in a smaller direction,
+//                 // from dest towards src
+//                 let mut i = Square(dest).shift(Direction::West);
+//                 while i.0 > src && i.is_valid() {
+//                     arr[src as usize][dest as usize].0 |= i.bitboard().0;
+//                     i = i.shift(Direction::West);
+//                 }
+//             } else if Square(src).file() == Square(dest).file() {
+//                 let mut i = Square(dest).shift(Direction::South);
+//                 while i.0 > src && i.is_valid() {
+//                     arr[src as usize][dest as usize].0 |= i.bitboard().0;
+//                     i = i.shift(Direction::South);
+//                 }
+//             } else if (dest - src) % Direction::NorthWest as u32 == 0
+//                 && Square(dest).file() < Square(src).file()
+//             {
+//                 let mut i = Square(dest).shift(Direction::SouthEast);
+//
+//                 while i.0 > src && i.is_valid() {
+//                     arr[src as usize][dest as usize].0 |= i.bitboard().0;
+//                     i = i.shift(Direction::SouthEast);
+//                 }
+//             } else if (dest - src) % Direction::NorthEast as u32 == 0
+//                 && Square(dest).file() > Square(src).file()
+//             {
+//                 let mut i = Square(dest).shift(Direction::SouthWest);
+//
+//                 while i.0 > src && i.is_valid() {
+//                     arr[src as usize][dest as usize].0 |= i.bitboard().0;
+//                     i = i.shift(Direction::SouthWest);
+//                 }
+//             }
+//             dest += 1;
+//         }
+//         src += 1;
+//     }
+//
+//     // Copy top half of the triangle over to the bottom half
+//     let mut src = 0;
+//     while src < 64 {
+//         let mut dest = 0;
+//         while dest < src {
+//             arr[src][dest] = arr[dest][src];
+//             dest += 1;
+//         }
+//         src += 1;
+//     }
+//     arr
+// };
 
 #[macro_export]
 /// Credit for this macro goes to akimbo

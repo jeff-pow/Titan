@@ -9,7 +9,7 @@ use crate::{
 };
 
 use super::{
-    attack_boards::{king_attacks, knight_attacks, RANK2, RANK3, RANK6, RANK7},
+    attack_boards::{king_attacks, knight_attacks, RANKS},
     magics::{bishop_attacks, queen_attacks, rook_attacks},
     movelist::MoveList,
     moves::{Castle, Move, MoveType},
@@ -26,50 +26,36 @@ pub enum MoveGenerationType {
 
 impl Board {
     /// Generates all pseudolegal moves
-    pub fn generate_moves(&self, gen_type: MGT) -> MoveList {
-        let mut moves = MoveList::default();
-
-        self.generate_bitboard_moves(PieceName::Knight, gen_type, &mut moves);
-        self.generate_bitboard_moves(PieceName::King, gen_type, &mut moves);
-        self.generate_bitboard_moves(PieceName::Queen, gen_type, &mut moves);
-        self.generate_bitboard_moves(PieceName::Rook, gen_type, &mut moves);
-        self.generate_bitboard_moves(PieceName::Bishop, gen_type, &mut moves);
-        self.generate_pawn_moves(gen_type, &mut moves);
+    pub fn generate_moves(&self, gen_type: MGT, moves: &mut MoveList) {
+        self.generate_bitboard_moves(PieceName::Knight, gen_type, moves);
+        self.generate_bitboard_moves(PieceName::King, gen_type, moves);
+        self.generate_bitboard_moves(PieceName::Queen, gen_type, moves);
+        self.generate_bitboard_moves(PieceName::Rook, gen_type, moves);
+        self.generate_bitboard_moves(PieceName::Bishop, gen_type, moves);
+        self.generate_pawn_moves(gen_type, moves);
         if gen_type == MGT::QuietsOnly || gen_type == MGT::All {
-            self.generate_castling_moves(&mut moves);
+            self.generate_castling_moves(moves);
         }
-        moves
     }
 
     fn generate_castling_moves(&self, moves: &mut MoveList) {
         if self.to_move == Color::White {
             if self.can_castle(Castle::WhiteKing)
-                && self.occupancies().empty(Square(5))
-                && self.occupancies().empty(Square(6))
-                && !self.square_under_attack(Color::Black, Square(4))
-                && !self.square_under_attack(Color::Black, Square(5))
-                && !self.square_under_attack(Color::Black, Square(6))
+                && self.threats() & Castle::WhiteKing.check_squares() == Bitboard::EMPTY
+                && self.occupancies() & Castle::WhiteKing.empty_squares() == Bitboard::EMPTY
             {
                 moves.push(Move::new(Square(4), Square(6), MoveType::CastleMove, Piece::WhiteKing));
             }
-
             if self.can_castle(Castle::WhiteQueen)
-                && self.occupancies().empty(Square(1))
-                && self.occupancies().empty(Square(2))
-                && self.occupancies().empty(Square(3))
-                && !self.square_under_attack(Color::Black, Square(2))
-                && !self.square_under_attack(Color::Black, Square(3))
-                && !self.square_under_attack(Color::Black, Square(4))
+                && self.threats() & Castle::WhiteQueen.check_squares() == Bitboard::EMPTY
+                && self.occupancies() & Castle::WhiteQueen.empty_squares() == Bitboard::EMPTY
             {
                 moves.push(Move::new(Square(4), Square(2), MoveType::CastleMove, Piece::WhiteKing));
             }
         } else {
             if self.can_castle(Castle::BlackKing)
-                && self.occupancies().empty(Square(61))
-                && self.occupancies().empty(Square(62))
-                && !self.square_under_attack(Color::White, Square(60))
-                && !self.square_under_attack(Color::White, Square(61))
-                && !self.square_under_attack(Color::White, Square(62))
+                && self.threats() & Castle::BlackKing.check_squares() == Bitboard::EMPTY
+                && self.occupancies() & Castle::BlackKing.empty_squares() == Bitboard::EMPTY
             {
                 moves.push(Move::new(
                     Square(60),
@@ -78,14 +64,9 @@ impl Board {
                     Piece::BlackKing,
                 ));
             }
-
             if self.can_castle(Castle::BlackQueen)
-                && self.occupancies().empty(Square(57))
-                && self.occupancies().empty(Square(58))
-                && self.occupancies().empty(Square(59))
-                && !self.square_under_attack(Color::White, Square(58))
-                && !self.square_under_attack(Color::White, Square(59))
-                && !self.square_under_attack(Color::White, Square(60))
+                && self.threats() & Castle::BlackQueen.check_squares() == Bitboard::EMPTY
+                && self.occupancies() & Castle::BlackQueen.empty_squares() == Bitboard::EMPTY
             {
                 moves.push(Move::new(
                     Square(60),
@@ -99,16 +80,17 @@ impl Board {
 
     fn generate_pawn_moves(&self, gen_type: MGT, moves: &mut MoveList) {
         let piece = Piece::new(PieceName::Pawn, self.to_move);
+
         let pawns = self.bitboard(self.to_move, PieceName::Pawn);
         let vacancies = !self.occupancies();
         let enemies = self.color(!self.to_move);
         let non_promotions = match self.to_move {
-            Color::White => pawns & !RANK7,
-            Color::Black => pawns & !RANK2,
+            Color::White => pawns & !RANKS[6],
+            Color::Black => pawns & !RANKS[1],
         };
         let promotions = match self.to_move {
-            Color::White => pawns & RANK7,
-            Color::Black => pawns & RANK2,
+            Color::White => pawns & RANKS[6],
+            Color::Black => pawns & RANKS[1],
         };
 
         let up = match self.to_move {
@@ -130,8 +112,8 @@ impl Board {
         let down_left = up_right.opp();
 
         let rank3_bb = match self.to_move {
-            Color::White => RANK3,
-            Color::Black => RANK6,
+            Color::White => RANKS[2],
+            Color::Black => RANKS[5],
         };
 
         if matches!(gen_type, MGT::All | MGT::QuietsOnly) {
@@ -149,8 +131,8 @@ impl Board {
         }
 
         // Promotions - captures and straight pushes
-        // Always generate all promotions because they are so good
-        if promotions != Bitboard::EMPTY {
+        // Promotions are generated with captures because they are so good
+        if matches!(gen_type, MGT::All | MGT::CapturesOnly) && promotions != Bitboard::EMPTY {
             let no_capture_promotions = promotions.shift(up) & vacancies;
             let left_capture_promotions = promotions.shift(up_left) & enemies;
             let right_capture_promotions = promotions.shift(up_right) & enemies;

@@ -5,31 +5,11 @@ use crate::{
     board::board::Board,
     moves::moves::Direction::*,
     types::{
+        bitboard::Bitboard,
         pieces::{Piece, PieceName},
         square::Square,
     },
 };
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Castle {
-    WhiteKing = 1,
-    WhiteQueen = 2,
-    BlackKing = 4,
-    BlackQueen = 8,
-    None,
-}
-
-#[rustfmt::skip]
-pub const CASTLING_RIGHTS: [u32; 64] = [
-    13, 15, 15, 15, 12, 15, 15, 14,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    7,  15, 15, 15,  3, 15, 15, 11,
-];
 
 use MoveType::*;
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -80,8 +60,7 @@ impl Move {
     }
 
     pub fn is_castle(self) -> bool {
-        let castle_flag = (self.0 >> 12) & 0b1111;
-        castle_flag == MoveType::CastleMove as u32
+        self.flag() == MoveType::CastleMove
     }
 
     pub fn piece_moving(self) -> Piece {
@@ -94,8 +73,7 @@ impl Move {
     }
 
     pub fn is_en_passant(self) -> bool {
-        let en_passant_flag = (self.0 >> 12) & 0b1111;
-        en_passant_flag == MoveType::EnPassant as u32
+        self.flag() == MoveType::EnPassant
     }
 
     pub fn promotion(self) -> Option<Piece> {
@@ -270,6 +248,71 @@ impl Display for Move {
         write!(f, "{}", str)
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Castle {
+    WhiteKing = 1,
+    WhiteQueen = 2,
+    BlackKing = 4,
+    BlackQueen = 8,
+    None,
+}
+
+impl Castle {
+    /// These squares may not be under attack for a castle to be valid
+    pub(crate) fn check_squares(self) -> Bitboard {
+        match self {
+            Castle::WhiteKing => Bitboard(112),
+            Castle::WhiteQueen => Bitboard(28),
+            Castle::BlackKing => Bitboard(0x7000000000000000),
+            Castle::BlackQueen => Bitboard(0x1C00000000000000),
+            Castle::None => todo!(),
+        }
+    }
+
+    /// These squares must be unoccupied for a castle to be valid
+    pub(crate) fn empty_squares(self) -> Bitboard {
+        match self {
+            Castle::WhiteKing => Bitboard(96),
+            Castle::WhiteQueen => Bitboard(14),
+            Castle::BlackKing => Bitboard(0x6000000000000000),
+            Castle::BlackQueen => Bitboard(0xE00000000000000),
+            Castle::None => todo!(),
+        }
+    }
+
+    pub(crate) fn rook_dest(self) -> Square {
+        match self {
+            Castle::WhiteKing => Square(5),
+            Castle::WhiteQueen => Square(3),
+            Castle::BlackKing => Square(61),
+            Castle::BlackQueen => Square(59),
+            Castle::None => panic!("Invalid castle"),
+        }
+    }
+
+    pub(crate) fn rook_src(self) -> Square {
+        match self {
+            Castle::WhiteKing => Square(7),
+            Castle::WhiteQueen => Square(0),
+            Castle::BlackKing => Square(63),
+            Castle::BlackQueen => Square(56),
+            Castle::None => panic!("Invalid castle"),
+        }
+    }
+}
+
+#[rustfmt::skip]
+pub const CASTLING_RIGHTS: [u32; 64] = [
+    13, 15, 15, 15, 12, 15, 15, 14,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    7,  15, 15, 15,  3, 15, 15, 11,
+];
 
 /// Cardinal directions from the point of view of white side
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

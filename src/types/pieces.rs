@@ -84,7 +84,7 @@ pub enum PieceName {
     Rook,
     Queen,
     King,
-    None,
+    None = 7,
 }
 
 impl PieceName {
@@ -96,21 +96,7 @@ impl PieceName {
         self as usize
     }
 
-    #[allow(dead_code)]
     fn from_u32(val: u32) -> Self {
-        match val {
-            7 => PieceName::None,
-            5 => PieceName::King,
-            4 => PieceName::Queen,
-            3 => PieceName::Rook,
-            2 => PieceName::Bishop,
-            1 => PieceName::Knight,
-            0 => PieceName::Pawn,
-            _ => panic!("Invalid piece index"),
-        }
-    }
-
-    fn transmute(val: u32) -> Self {
         assert!((0..6).contains(&val) || val == 7);
         unsafe { transmute(val as u8) }
     }
@@ -160,7 +146,7 @@ impl Piece {
 
     pub(crate) fn name(self) -> PieceName {
         // PieceName::from_u32(self as u32 >> 1)
-        PieceName::transmute(self as u32 >> 1)
+        PieceName::from_u32(self as u32 >> 1)
     }
 
     pub(crate) fn value(self) -> i32 {
