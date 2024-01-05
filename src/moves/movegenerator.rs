@@ -192,7 +192,7 @@ impl Board {
         for sq in occ_bitself {
             let occupancies = self.occupancies();
             let attack_bitself = match piece_name {
-                PieceName::King => king_attacks(sq),
+                PieceName::King => king_attacks(sq) & !self.threats(),
                 PieceName::Queen => queen_attacks(sq, occupancies),
                 PieceName::Rook => rook_attacks(sq, occupancies),
                 PieceName::Bishop => bishop_attacks(sq, occupancies),

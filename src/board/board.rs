@@ -223,7 +223,7 @@ impl Board {
         self.threats = threats
     }
 
-    pub fn is_pseudo_legal(&self, m: Move) -> bool {
+    pub(crate) fn is_pseudo_legal(&self, m: Move) -> bool {
         if m == Move::NULL {
             return false;
         }
@@ -414,6 +414,9 @@ impl Board {
             self.zobrist_hash ^= ZOBRIST.en_passant[sq];
         }
         self.en_passant_square = None;
+        let q = self.threats();
+        self.calculate_threats();
+        assert_eq!(q, self.threats());
     }
 
     pub fn debug_bitboards(&self) {
