@@ -260,28 +260,28 @@ pub enum Castle {
 
 impl Castle {
     /// These squares may not be under attack for a castle to be valid
-    pub(crate) fn check_squares(self) -> Bitboard {
+    pub(crate) const fn check_squares(self) -> Bitboard {
         match self {
             Castle::WhiteKing => Bitboard(112),
             Castle::WhiteQueen => Bitboard(28),
             Castle::BlackKing => Bitboard(0x7000000000000000),
             Castle::BlackQueen => Bitboard(0x1C00000000000000),
-            Castle::None => todo!(),
+            Castle::None => panic!("Invalid castle"),
         }
     }
 
     /// These squares must be unoccupied for a castle to be valid
-    pub(crate) fn empty_squares(self) -> Bitboard {
+    pub(crate) const fn empty_squares(self) -> Bitboard {
         match self {
             Castle::WhiteKing => Bitboard(96),
             Castle::WhiteQueen => Bitboard(14),
             Castle::BlackKing => Bitboard(0x6000000000000000),
             Castle::BlackQueen => Bitboard(0xE00000000000000),
-            Castle::None => todo!(),
+            Castle::None => panic!("Invalid castle"),
         }
     }
 
-    pub(crate) fn rook_dest(self) -> Square {
+    pub(crate) const fn rook_dest(self) -> Square {
         match self {
             Castle::WhiteKing => Square(5),
             Castle::WhiteQueen => Square(3),
@@ -291,7 +291,7 @@ impl Castle {
         }
     }
 
-    pub(crate) fn rook_src(self) -> Square {
+    pub(crate) const fn rook_src(self) -> Square {
         match self {
             Castle::WhiteKing => Square(7),
             Castle::WhiteQueen => Square(0),
