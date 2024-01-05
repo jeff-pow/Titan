@@ -203,14 +203,23 @@ impl Board {
     pub(crate) fn calculate_threats(&mut self) {
         let attacker = !self.to_move;
         let mut threats = Bitboard::EMPTY;
-        for p in PieceName::iter().skip(1) {
-            debug_assert!(p != PieceName::Pawn);
-            let bb = self.bitboard(attacker, p);
-            for sq in bb {
-                threats |= p.attacks(attacker, sq, self.occupancies()) & !self.color(attacker);
-            }
-        }
+
         threats |= pawn_set_attacks(self.bitboard(attacker, PieceName::Pawn), attacker);
+
+        let rooks =
+            (self.piece(PieceName::Rook) | self.piece(PieceName::Queen)) & self.color(attacker);
+        rooks.into_iter().for_each(|sq| threats |= rook_attacks(sq, self.occupancies()));
+
+        let bishops =
+            (self.piece(PieceName::Bishop) | self.piece(PieceName::Queen)) & self.color(attacker);
+        bishops.into_iter().for_each(|sq| threats |= bishop_attacks(sq, self.occupancies()));
+
+        self.bitboard(attacker, PieceName::Knight)
+            .into_iter()
+            .for_each(|sq| threats |= knight_attacks(sq));
+
+        threats |= king_attacks(self.king_square(attacker));
+
         self.threats = threats
     }
 
