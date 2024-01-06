@@ -496,7 +496,6 @@ fn alpha_beta<const IS_PV: bool>(
                     // good.
                     // Also don't store killers that we have already stored
                     if td.stack[td.ply].killers[0] != m {
-                        td.stack[td.ply].killers[1] = td.stack[td.ply].killers[0];
                         td.stack[td.ply].killers[0] = m;
                     }
                 }
