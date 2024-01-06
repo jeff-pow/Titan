@@ -85,8 +85,8 @@ impl MoveList {
                     + td.history.capt_hist(entry.m, board)
             } else if killers[0] == entry.m {
                 KILLER_ONE
-            } else if killers[1] == entry.m {
-                KILLER_TWO
+            // } else if killers[1] == entry.m {
+            //     KILLER_TWO
             } else if counter == entry.m {
                 COUNTER_MOVE
             } else {
