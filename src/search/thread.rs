@@ -10,6 +10,7 @@ use std::{
 use crate::{
     board::board::Board,
     engine::{transposition::TranspositionTable, uci::parse_time},
+    search::search::{CHECKMATE, NEAR_CHECKMATE, STALEMATE},
     types::pieces::Color,
 };
 
@@ -59,16 +60,29 @@ impl<'a> ThreadData<'a> {
 
     pub(super) fn print_search_stats(&self, eval: i32, pv: &PV, tt: &TranspositionTable) {
         print!(
-            "info time {} depth {} seldepth {} nodes {} nps {} score cp {} hashfull {} pv ",
+            "info time {} depth {} seldepth {} nodes {} nps {} score ",
             self.game_time.search_start.elapsed().as_millis(),
             self.iter_max_depth,
             self.sel_depth,
             self.nodes_searched,
             (self.nodes_searched as f64 / self.game_time.search_start.elapsed().as_secs_f64())
                 as i64,
-            eval,
-            tt.permille_usage(),
         );
+
+        let score = eval;
+
+        if score.abs() >= NEAR_CHECKMATE {
+            if score.is_positive() {
+                print!("mate {}", (CHECKMATE - score + 1) / 2);
+            } else {
+                print!("mate {}", (-(CHECKMATE + score) / 2));
+            }
+        } else {
+            print!("cp {}", score);
+        }
+
+        print!(" hashfull {} pv ", tt.permille_usage());
+
         for m in pv.line.iter().take(pv.line.len()) {
             print!("{} ", m.to_san());
         }
