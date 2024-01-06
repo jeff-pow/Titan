@@ -1,5 +1,3 @@
-use lazy_static::lazy_static;
-
 use crate::{
     board::board::Board,
     const_array,
@@ -17,9 +15,6 @@ pub struct Zobrist {
     pub en_passant: [u64; 64],
 }
 
-lazy_static! {
-    // pub static ref ZOBRIST: Zobrist = Zobrist::default();
-}
 pub const ZOBRIST: Zobrist = {
     let mut prev = 0xE926E6210D9E3487u64;
 

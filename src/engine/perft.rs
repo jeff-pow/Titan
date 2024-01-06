@@ -1,6 +1,9 @@
 use std::time::Instant;
 
-use crate::{board::board::Board, moves::movegenerator::MGT};
+use crate::{
+    board::board::Board,
+    moves::{movegenerator::MGT, movelist::MoveList},
+};
 
 pub fn perft(board: &Board, depth: i32) -> usize {
     let start = Instant::now();
@@ -15,7 +18,8 @@ fn non_bulk_perft<const ROOT: bool>(board: &Board, depth: i32) -> usize {
         return 1;
     }
     let mut total = 0;
-    let moves = board.generate_moves(MGT::All);
+    let mut moves = MoveList::default();
+    board.generate_moves(MGT::All, &mut moves);
     for i in 0..moves.len() {
         let m = moves[i];
         let mut new_b = *board;

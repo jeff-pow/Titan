@@ -39,16 +39,8 @@ impl MoveList {
         self.arr.len()
     }
 
-    fn swap(&mut self, a: usize, b: usize) {
-        unsafe {
-            let ptr_a: *mut MoveListEntry = &mut self.arr[a];
-            let ptr_b: *mut MoveListEntry = &mut self.arr[b];
-            std::ptr::swap(ptr_a, ptr_b);
-        }
-    }
-
     /// Sorts next move into position and then returns a reference to the move
-    fn pick_move(&mut self, idx: usize) -> MoveListEntry {
+    pub(super) fn pick_move(&mut self, idx: usize) -> MoveListEntry {
         self.sort_next_move(idx);
         self.arr[idx]
     }
@@ -60,7 +52,7 @@ impl MoveList {
                 max_idx = i;
             }
         }
-        self.swap(max_idx, idx);
+        self.arr.swap(max_idx, idx);
     }
 
     pub(crate) fn score_moves(
@@ -100,6 +92,17 @@ impl MoveList {
             } else {
                 td.history.quiet_history(entry.m, &td.stack, td.ply)
             };
+        }
+    }
+
+    #[allow(dead_code)]
+    pub(super) fn assert_no_duplicates(&self) {
+        for m in self.arr.iter().take(self.len()) {
+            assert!(
+                self.arr.iter().take(self.len()).filter(|&x| x == m).count() == 1,
+                "{}",
+                m.m.to_san()
+            );
         }
     }
 }

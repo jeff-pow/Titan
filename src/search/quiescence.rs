@@ -1,7 +1,7 @@
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movegenerator::MGT;
-use crate::moves::movelist::MoveListEntry;
+use crate::moves::movelist::{MoveList, MoveListEntry};
 use crate::moves::moves::Move;
 use crate::search::search::STALEMATE;
 
@@ -73,10 +73,12 @@ pub(super) fn quiescence<const IS_PV: bool>(
 
     let in_check = board.in_check;
     // Try to find an evasion if we are in check, otherwise just generate captures
-    let mut moves = if in_check {
-        board.generate_moves(MGT::All)
+
+    let mut moves = MoveList::default();
+    if in_check {
+        board.generate_moves(MGT::All, &mut moves)
     } else {
-        board.generate_moves(MGT::CapturesOnly)
+        board.generate_moves(MGT::CapturesOnly, &mut moves)
     };
     moves.score_moves(board, table_move, td.stack[td.ply].killers, td);
 

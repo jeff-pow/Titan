@@ -109,6 +109,7 @@ pub fn build_board(fen_string: &str) -> Board {
     }
     assert_eq!(iter.next(), None);
     board.zobrist_hash = board.generate_hash();
+    board.calculate_threats();
     board.refresh_accumulators();
     board
 }

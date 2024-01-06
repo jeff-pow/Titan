@@ -16,6 +16,7 @@ pub mod search;
 pub mod see;
 pub mod thread;
 
+// TODO: One killer instead of two
 pub const NUM_KILLER_MOVES: usize = 2;
 
 #[derive(Clone, Copy, Default)]
@@ -28,7 +29,7 @@ pub(super) struct PlyEntry {
     pub dbl_extns: i32,
 }
 
-#[derive(Clone)]
+#[derive(Default)]
 struct PV {
     line: ArrayVec<Move, { MAX_SEARCH_DEPTH as usize }>,
 }
@@ -38,12 +39,6 @@ impl PV {
         self.line.clear();
         self.line.push(m);
         self.line.extend(other.line);
-    }
-}
-
-impl Default for PV {
-    fn default() -> Self {
-        Self { line: ArrayVec::new() }
     }
 }
 

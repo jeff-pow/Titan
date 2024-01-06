@@ -1,10 +1,7 @@
 use core::ops::{Index, IndexMut};
 
 use crate::moves::{
-    attack_boards::{
-        FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, RANK1, RANK2, RANK3, RANK4,
-        RANK5, RANK6, RANK7, RANK8,
-    },
+    attack_boards::{FILES, RANKS},
     moves::Direction,
 };
 
@@ -41,7 +38,7 @@ impl Square {
         if this > other { this } else { other }
     }
 
-    /// Rank is the horizontal row of the piece (y-coord)
+    /// Rank is the horizontal component of the piece (y-coord)
     pub const fn rank(self) -> u32 {
         self.0 >> 3
     }
@@ -50,7 +47,7 @@ impl Square {
         Self(self.0 ^ 56)
     }
 
-    /// File is the vertical column of the piece (x-coord)
+    /// File is the vertical component of the piece (x-coord)
     pub const fn file(self) -> u32 {
         self.0 & 0b111
     }
@@ -61,32 +58,12 @@ impl Square {
 
     pub fn get_rank_bitboard(self) -> Bitboard {
         let x = self.rank();
-        match x {
-            0 => RANK1,
-            1 => RANK2,
-            2 => RANK3,
-            3 => RANK4,
-            4 => RANK5,
-            5 => RANK6,
-            6 => RANK7,
-            7 => RANK8,
-            _ => panic!(),
-        }
+        RANKS[x as usize]
     }
 
     pub fn get_file_bitboard(self) -> Bitboard {
         let y = self.file();
-        match y {
-            0 => FILE_A,
-            1 => FILE_B,
-            2 => FILE_C,
-            3 => FILE_D,
-            4 => FILE_E,
-            5 => FILE_F,
-            6 => FILE_G,
-            7 => FILE_H,
-            _ => panic!(),
-        }
+        FILES[y as usize]
     }
 
     pub const fn is_valid(self) -> bool {

@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    moves::attack_boards::{FILE_A, FILE_H, RANK1, RANK8},
+    moves::attack_boards::{FILES, RANKS},
     types::{bitboard::Bitboard, square::Square},
 };
 
@@ -60,10 +60,7 @@ struct MagicEntry {
 
 impl MagicEntry {
     const fn index(&self, occupied: Bitboard) -> usize {
-        let blockers = occupied.0 & self.mask.0;
-        let hash = blockers.wrapping_mul(self.magic);
-        let index = (hash >> self.shift) as usize;
-        self.offset + index
+        (((occupied.0 & self.mask.0).wrapping_mul(self.magic)) >> self.shift) as usize + self.offset
         // unsafe { self.offset + _pext_u64(occupied.0, self.mask.0) as usize }
     }
 }
@@ -188,21 +185,28 @@ pub fn queen_attacks(sq: Square, occupied: Bitboard) -> Bitboard {
 /// Returns a bitboards of sliding attacks given an array of 4 deltas/
 /// Does not include the original position/
 /// Includes occupied bits if it runs into them, but stops before going further.
-const fn sliding_attack(deltas: [Direction; 4], sq: Square, occupied: Bitboard) -> Bitboard {
+const fn sliding_attack(deltas: [Direction; 4], square: Square, occupied: Bitboard) -> Bitboard {
     let mut attack = 0;
-    let mut count = 0;
-    while count < deltas.len() {
-        let dir = deltas[count];
-        let mut s = sq.shift(dir);
-        'inner: while s.is_valid() && s.dist(s.shift(dir.opp())) == 1 {
-            attack |= 1 << s.0 as usize;
-            if occupied.0 & 1 << s.0 as usize != 0 {
-                break 'inner;
+    let mut i = 0;
+    let len = deltas.len();
+    while i < len {
+        let mut previous = square;
+        loop {
+            let sq = previous.shift(deltas[i]);
+            let file_diff = sq.file() as i32 - previous.file() as i32;
+            if file_diff > 2 || file_diff < -2 || !sq.is_valid() {
+                break;
             }
-            s = s.shift(dir);
+            let bb = sq.bitboard();
+            attack |= bb.0;
+            if occupied.0 & bb.0 != 0 {
+                break;
+            }
+            previous = sq;
         }
-        count += 1;
+        i += 1;
     }
+
     Bitboard(attack)
 }
 
@@ -216,8 +220,8 @@ pub fn gen_magics() {
     let mut bishop_magics = [MagicEntry::default(); 64];
 
     for sq in Square::iter() {
-        let edges = ((RANK1 | RANK8) & !(sq.get_rank_bitboard()))
-            | ((FILE_A | FILE_H) & !(sq.get_file_bitboard()));
+        let edges = ((RANKS[0] | RANKS[7]) & !(sq.get_rank_bitboard()))
+            | ((FILES[0] | FILES[7]) & !(sq.get_file_bitboard()));
 
         let rook_bits = sliding_attack(R_DELTAS, sq, Bitboard::EMPTY);
         let mask = rook_bits & !edges;
