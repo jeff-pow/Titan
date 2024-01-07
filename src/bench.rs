@@ -4,7 +4,6 @@ use crate::{
     board::fen::build_board,
     engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB},
     search::{search::search, thread::ThreadData, SearchType},
-    types::pieces::Color,
 };
 
 pub fn bench() {
@@ -12,7 +11,7 @@ pub fn bench() {
 
     let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
     let halt = AtomicBool::new(false);
-    let mut thread = ThreadData::new(Color::White, &halt, Vec::new());
+    let mut thread = ThreadData::new(&halt, Vec::new());
     thread.max_depth = 14;
     thread.search_type = SearchType::Depth;
 
