@@ -2,7 +2,7 @@ use arrayvec::ArrayVec;
 
 use crate::{
     board::board::Board,
-    search::{thread::ThreadData, NUM_KILLER_MOVES},
+    search::thread::ThreadData,
     types::pieces::{Piece, PieceName},
 };
 use std::ops::Index;
@@ -59,7 +59,7 @@ impl MoveList {
         &mut self,
         board: &Board,
         table_move: Move,
-        killers: [Move; NUM_KILLER_MOVES],
+        killer_move: Move,
         td: &ThreadData,
     ) {
         for i in 0..self.len() {
@@ -83,10 +83,8 @@ impl MoveList {
                     BAD_CAPTURE
                 }) + MVV[c.name()]
                     + td.history.capt_hist(entry.m, board)
-            } else if killers[0] == entry.m {
+            } else if killer_move == entry.m {
                 KILLER_ONE
-            // } else if killers[1] == entry.m {
-            //     KILLER_TWO
             } else if counter == entry.m {
                 COUNTER_MOVE
             } else {
@@ -112,7 +110,6 @@ const TTMOVE: i32 = i32::MAX - 1000;
 const QUEEN_PROMOTION: i32 = 20_000_001;
 pub const GOOD_CAPTURE: i32 = 10_000_000;
 const KILLER_ONE: i32 = 1_000_000;
-const KILLER_TWO: i32 = 900_000;
 const COUNTER_MOVE: i32 = 800_000;
 pub const BAD_CAPTURE: i32 = -10000;
 const BAD_PROMOTION: i32 = -QUEEN_PROMOTION;

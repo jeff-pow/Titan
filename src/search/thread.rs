@@ -10,7 +10,7 @@ use std::{
 use crate::{
     board::board::Board,
     engine::{transposition::TranspositionTable, uci::parse_time},
-    search::search::{CHECKMATE, NEAR_CHECKMATE, STALEMATE},
+    search::search::{CHECKMATE, NEAR_CHECKMATE},
     types::pieces::Color,
 };
 

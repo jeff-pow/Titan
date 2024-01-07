@@ -292,7 +292,7 @@ fn alpha_beta<const IS_PV: bool>(
     let mut moves = MoveList::default();
     board.generate_moves(MGT::All, &mut moves);
     let mut legal_moves_searched = 0;
-    moves.score_moves(board, tt_move, td.stack[td.ply].killers, td);
+    moves.score_moves(board, tt_move, td.stack[td.ply].killer_move, td);
 
     let mut quiets_tried = Vec::new();
     let mut tacticals_tried = Vec::new();
@@ -495,8 +495,8 @@ fn alpha_beta<const IS_PV: bool>(
                     // We don't want to store tactical moves in our killer moves, because they are obviously already
                     // good.
                     // Also don't store killers that we have already stored
-                    if td.stack[td.ply].killers[0] != m {
-                        td.stack[td.ply].killers[0] = m;
+                    if td.stack[td.ply].killer_move != m {
+                        td.stack[td.ply].killer_move = m;
                     }
                 }
                 // Update history tables on a beta cutoff

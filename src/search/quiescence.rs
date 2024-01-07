@@ -80,7 +80,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
     } else {
         board.generate_moves(MGT::CapturesOnly, &mut moves)
     };
-    moves.score_moves(board, table_move, td.stack[td.ply].killers, td);
+    moves.score_moves(board, table_move, td.stack[td.ply].killer_move, td);
 
     let mut best_score = if in_check { -INFINITY } else { stand_pat };
 

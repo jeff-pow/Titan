@@ -16,12 +16,9 @@ pub mod search;
 pub mod see;
 pub mod thread;
 
-// TODO: One killer instead of two
-pub const NUM_KILLER_MOVES: usize = 1;
-
 #[derive(Clone, Copy, Default)]
 pub(super) struct PlyEntry {
-    pub killers: [Move; NUM_KILLER_MOVES],
+    pub killer_move: Move,
     pub played_move: Move,
     pub static_eval: i32,
     pub singular: Move,
