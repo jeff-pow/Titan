@@ -33,7 +33,7 @@ pub enum MovePickerPhase {
 }
 
 pub struct MovePicker {
-    pub phase: MovePickerPhase,
+    phase: MovePickerPhase,
     skip_quiets: bool,
 
     moves: MoveList,
