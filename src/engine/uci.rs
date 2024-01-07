@@ -110,7 +110,7 @@ pub fn main_loop() -> ! {
 fn uci_opts() {
     println!("id name {ENGINE_NAME}");
     println!("id author {}", env!("CARGO_PKG_AUTHORS"));
-    println!("option name Threads type spin default 1 min 1 max 1");
+    println!("option name Threads type spin default 1 min 1 max 64");
     println!("option name Hash type spin default 16 min 1 max 8388608");
     if SPSA_TUNE {
         uci_print_tunable_params();
