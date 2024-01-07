@@ -38,7 +38,7 @@ fn update_history(score: &mut i32, depth: i32, is_good: bool) {
     *score += bonus - *score * bonus.abs() / MAX_HIST_VAL;
 }
 
-fn capthist_capture(board: &Board, m: Move) -> PieceName {
+pub(crate) fn capthist_capture(board: &Board, m: Move) -> PieceName {
     if m.is_en_passant() || m.promotion().is_some() {
         // Use Pawn for promotions here because pawns can't be in the back ranks anyways, so these
         // spaces can't be occupied anyway
