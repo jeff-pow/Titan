@@ -1,10 +1,5 @@
 use arrayvec::ArrayVec;
 
-use crate::{
-    board::board::Board,
-    search::thread::ThreadData,
-    types::pieces::{Piece, PieceName},
-};
 use std::ops::Index;
 
 use super::moves::Move;
@@ -39,13 +34,13 @@ impl MoveList {
         self.arr.len()
     }
 
-    /// Sorts next move into position and then returns a reference to the move
+    /// Sorts next move into position via partial insertion sort and then returns the move's entry
     pub(super) fn pick_move(&mut self, idx: usize) -> MoveListEntry {
         self.sort_next_move(idx);
         self.arr[idx]
     }
 
-    fn sort_next_move(&mut self, idx: usize) {
+    pub(super) fn sort_next_move(&mut self, idx: usize) {
         let mut max_idx = idx;
         for i in (idx + 1)..self.len() {
             if self.arr[i].score > self.arr[max_idx].score {
@@ -55,43 +50,43 @@ impl MoveList {
         self.arr.swap(max_idx, idx);
     }
 
-    pub(crate) fn score_moves(
-        &mut self,
-        board: &Board,
-        table_move: Move,
-        killer_move: Move,
-        td: &ThreadData,
-    ) {
-        for i in 0..self.len() {
-            let entry = &mut self.arr[i];
-            let prev = td.stack.prev_move(td.ply - 1);
-            let counter = td.history.get_counter(prev);
-            entry.score = if entry.m == table_move {
-                TTMOVE
-            } else if let Some(promotion) = entry.m.promotion() {
-                match promotion.name() {
-                    PieceName::Queen => QUEEN_PROMOTION + td.history.capt_hist(entry.m, board),
-                    _ => BAD_PROMOTION,
-                }
-            } else if board.capture(entry.m) != Piece::None {
-                let c = board.capture(entry.m);
-                // TODO: Try a threshold of 0 or 1 here
-                assert_ne!(c.name(), PieceName::King);
-                (if board.see(entry.m, -PieceName::Pawn.value()) {
-                    GOOD_CAPTURE
-                } else {
-                    BAD_CAPTURE
-                }) + MVV[c.name()]
-                    + td.history.capt_hist(entry.m, board)
-            } else if killer_move == entry.m {
-                KILLER_ONE
-            } else if counter == entry.m {
-                COUNTER_MOVE
-            } else {
-                td.history.quiet_history(entry.m, &td.stack, td.ply)
-            };
-        }
-    }
+    // pub(crate) fn score_moves(
+    //     &mut self,
+    //     board: &Board,
+    //     table_move: Move,
+    //     killer_move: Move,
+    //     td: &ThreadData,
+    // ) {
+    //     for i in 0..self.len() {
+    //         let entry = &mut self.arr[i];
+    //         let prev = td.stack.prev_move(td.ply - 1);
+    //         let counter = td.history.get_counter(prev);
+    //         entry.score = if entry.m == table_move {
+    //             TTMOVE
+    //         } else if let Some(promotion) = entry.m.promotion() {
+    //             match promotion.name() {
+    //                 PieceName::Queen => QUEEN_PROMOTION + td.history.capt_hist(entry.m, board),
+    //                 _ => BAD_PROMOTION,
+    //             }
+    //         } else if board.capture(entry.m) != Piece::None {
+    //             let c = board.capture(entry.m);
+    //             // TODO: Try a threshold of 0 or 1 here
+    //             assert_ne!(c.name(), PieceName::King);
+    //             (if board.see(entry.m, -PieceName::Pawn.value()) {
+    //                 GOOD_CAPTURE
+    //             } else {
+    //                 BAD_CAPTURE
+    //             }) + MVV[c.name()]
+    //                 + td.history.capt_hist(entry.m, board)
+    //         } else if killer_move == entry.m {
+    //             KILLER_ONE
+    //         } else if counter == entry.m {
+    //             COUNTER_MOVE
+    //         } else {
+    //             td.history.quiet_history(entry.m, &td.stack, td.ply)
+    //         };
+    //     }
+    // }
 
     #[allow(dead_code)]
     pub(super) fn assert_no_duplicates(&self) {
@@ -105,14 +100,14 @@ impl MoveList {
     }
 }
 
-const MVV: [i32; 6] = [0, 2400, 2400, 4800, 9600, 0];
-const TTMOVE: i32 = i32::MAX - 1000;
-const QUEEN_PROMOTION: i32 = 20_000_001;
-pub const GOOD_CAPTURE: i32 = 10_000_000;
-const KILLER_ONE: i32 = 1_000_000;
-const COUNTER_MOVE: i32 = 800_000;
-pub const BAD_CAPTURE: i32 = -10000;
-const BAD_PROMOTION: i32 = -QUEEN_PROMOTION;
+// const MVV: [i32; 6] = [0, 2400, 2400, 4800, 9600, 0];
+// const TTMOVE: i32 = i32::MAX - 1000;
+// const QUEEN_PROMOTION: i32 = 20_000_001;
+// pub const GOOD_CAPTURE: i32 = 10_000_000;
+// const KILLER_ONE: i32 = 1_000_000;
+// const COUNTER_MOVE: i32 = 800_000;
+// pub const BAD_CAPTURE: i32 = -10000;
+// const BAD_PROMOTION: i32 = -QUEEN_PROMOTION;
 
 impl Index<usize> for MoveList {
     type Output = Move;
