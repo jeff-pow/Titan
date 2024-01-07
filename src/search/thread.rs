@@ -200,13 +200,11 @@ impl<'a> ThreadPool<'a> {
             s.spawn(|| {
                 search(&mut self.main_thread, true, *board, tt);
                 self.halt.store(true, Ordering::Relaxed);
-                println!("main: {}", self.main_thread.nodes_searched);
                 println!("bestmove {}", self.main_thread.best_move.to_san());
             });
             for t in &mut self.workers {
                 s.spawn(|| {
                     search(t, false, *board, tt);
-                    println!("another: {}", t.nodes_searched);
                 });
             }
 
