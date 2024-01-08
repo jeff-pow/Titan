@@ -36,7 +36,7 @@ pub fn parse_param(a: &[&str]) {
     let [_, _, name, _, value] = a[..5] else { unimplemented!() };
     let name = name.to_uppercase();
     let param = ARR.iter().find(|&x| x.name == name).unwrap();
-    param.value.store(value.parse().unwrap(), Ordering::SeqCst);
+    param.value.store(value.parse().unwrap(), Ordering::Relaxed);
     (param.callback)();
 }
 

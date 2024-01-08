@@ -52,7 +52,9 @@ pub(crate) fn iterative_deepening(
 
         prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt);
 
-        td.global_nodes.fetch_add(td.nodes_searched - last_nodes, Ordering::Relaxed);
+        if depth >= 7 {
+            td.global_nodes.fetch_add(td.nodes_searched - last_nodes, Ordering::Relaxed);
+        }
 
         td.best_move = pv.line[0];
 
@@ -64,7 +66,7 @@ pub(crate) fn iterative_deepening(
             break;
         }
 
-        if td.halt.load(Ordering::SeqCst) {
+        if td.halt.load(Ordering::Relaxed) {
             break;
         }
     }
@@ -139,7 +141,7 @@ fn alpha_beta<const IS_PV: bool>(
 
     // Stop if we have reached hard time limit or decided else where it is time to stop
     if td.halt.load(Ordering::Relaxed) || td.game_time.hard_termination() {
-        td.halt.store(true, Ordering::SeqCst);
+        td.halt.store(true, Ordering::Relaxed);
         // return board.evaluate();
         return 0;
     }

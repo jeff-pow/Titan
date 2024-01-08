@@ -135,7 +135,7 @@ impl<'a> ThreadPool<'a> {
         }
         self.halt.store(false, Ordering::Relaxed);
         self.searching.store(false, Ordering::Relaxed);
-        self.total_nodes.store(0, Ordering::SeqCst);
+        self.total_nodes.store(0, Ordering::Relaxed);
     }
 
     /// This thread creates a number of workers equal to threads - 1. If 4 threads are requested,
@@ -156,8 +156,8 @@ impl<'a> ThreadPool<'a> {
         hash_history: Vec<u64>,
         tt: &TranspositionTable,
     ) {
-        self.halt.store(false, Ordering::SeqCst);
-        self.total_nodes.store(0, Ordering::SeqCst);
+        self.halt.store(false, Ordering::Relaxed);
+        self.total_nodes.store(0, Ordering::Relaxed);
         self.main_thread.global_nodes = self.total_nodes.clone();
         self.main_thread.hash_history = hash_history.clone();
         for t in self.workers.iter_mut() {
