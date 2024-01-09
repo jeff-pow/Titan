@@ -430,7 +430,7 @@ fn alpha_beta<const IS_PV: bool>(
                 td,
                 tt,
                 &new_b,
-                !cut_node,
+                true,
             );
 
             // If that search raises alpha and a reduction was applied, re-search at a zero window with full depth
