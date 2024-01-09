@@ -33,7 +33,7 @@ pub enum MovePickerPhase {
 }
 
 pub struct MovePicker {
-    phase: MovePickerPhase,
+    pub phase: MovePickerPhase,
     skip_quiets: bool,
 
     moves: MoveList,
@@ -63,7 +63,9 @@ impl MovePicker {
     pub fn next(&mut self, board: &Board, td: &ThreadData) -> Option<MoveListEntry> {
         if self.phase == MovePickerPhase::TTMove {
             self.phase = MovePickerPhase::CapturesInit;
-            // TODO: Skip quiet tt move if in QS
+            if board.is_quiet(self.tt_move) && self.skip_quiets {
+                return self.next(board, td);
+            }
             if board.is_pseudo_legal(self.tt_move) {
                 return Some(MoveListEntry { m: self.tt_move, score: TT_MOVE_SCORE });
             }
