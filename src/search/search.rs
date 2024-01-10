@@ -7,7 +7,7 @@ use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::movepicker::{MovePicker, BAD_CAPTURE};
 use crate::moves::moves::Move;
-use crate::search::SearchStack;
+use crate::search::{AccumulatorStack, SearchStack};
 use crate::spsa::{
     ASP_DIVISOR, ASP_MIN_DEPTH, CAPT_SEE, DBL_EXT_MARGIN, DELTA_EXPANSION, EXT_DEPTH,
     EXT_TT_DEPTH_MARGIN, INIT_ASP, LMP_DEPTH, LMP_IMP_BASE, LMP_IMP_FACTOR, LMP_NOT_IMP_BASE,
@@ -27,11 +27,18 @@ pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 30000;
 pub const MAX_SEARCH_DEPTH: i32 = 100;
 
-pub fn search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &TranspositionTable) -> Move {
+pub fn search(
+    td: &mut ThreadData,
+    print_uci: bool,
+    mut board: Board,
+    tt: &TranspositionTable,
+) -> Move {
     td.game_time.search_start = Instant::now();
     td.root_color = board.to_move;
     td.nodes_searched = 0;
     td.stack = SearchStack::default();
+    assert_eq!(board.accumulator, board.clone().refresh_accumulators());
+    td.accumulators = AccumulatorStack::new(board.refresh_accumulators());
 
     let best_move = iterative_deepening(td, &board, print_uci, tt);
 
@@ -54,6 +61,8 @@ pub(crate) fn iterative_deepening(
         td.iter_max_depth = depth;
         td.ply = 0;
         td.sel_depth = 0;
+        assert_eq!(1, td.accumulators.stack.len());
+        assert_eq!(td.accumulators.stack[0], board.accumulator);
 
         prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt);
 
@@ -161,7 +170,7 @@ fn alpha_beta<const IS_PV: bool>(
         }
 
         if td.ply >= MAX_SEARCH_DEPTH - 1 {
-            return if in_check { 0 } else { board.evaluate() };
+            return if in_check { 0 } else { board.evaluate(td.accumulators.top()) };
         }
 
         // Determines if there is a faster path to checkmate than evaluating the current node, and
@@ -218,7 +227,7 @@ fn alpha_beta<const IS_PV: bool>(
         // Get static eval from transposition table if possible
         entry.static_eval()
     } else {
-        board.evaluate()
+        board.evaluate(td.accumulators.top())
     };
     td.stack[td.ply].static_eval = static_eval;
     let improving = !in_check && td.ply > 1 && static_eval > td.stack[td.ply - 2].static_eval;
@@ -330,7 +339,8 @@ fn alpha_beta<const IS_PV: bool>(
 
         let mut new_b = *board;
         // Make move filters out illegal moves by returning false if a move was illegal
-        if !new_b.make_move::<true>(m) {
+        if !new_b.make_move::<true>(m, td.accumulators.next()) {
+            td.accumulators.pop();
             continue;
         }
         tt.prefetch(new_b.zobrist_hash);
@@ -354,6 +364,7 @@ fn alpha_beta<const IS_PV: bool>(
             let mut node_pv = PV::default();
 
             td.stack[td.ply].singular = m;
+            let prev = td.accumulators.pop();
             let ext_score = alpha_beta::<false>(
                 ext_depth,
                 ext_beta - 1,
@@ -365,6 +376,8 @@ fn alpha_beta<const IS_PV: bool>(
                 cut_node,
             );
             td.stack[td.ply].singular = Move::NULL;
+            td.accumulators.push(prev);
+            assert_eq!(new_b.accumulator, *td.accumulators.top());
 
             if ext_score < ext_beta {
                 if td.stack[td.ply].dbl_extns <= MAX_DBL_EXT.val()
@@ -471,6 +484,7 @@ fn alpha_beta<const IS_PV: bool>(
 
         legal_moves_searched += 1;
         td.hash_history.pop();
+        td.accumulators.pop();
         td.ply -= 1;
 
         if eval > best_score {

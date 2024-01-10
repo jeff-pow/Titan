@@ -331,6 +331,7 @@ impl Board {
     /// Returns true if a move was legal, and false if it was illegal.
     #[must_use]
     pub fn make_move<const NNUE: bool>(&mut self, m: Move, acc: &mut Accumulator) -> bool {
+        assert_eq!(*acc, self.accumulator);
         let piece_moving = m.piece_moving();
         assert_eq!(piece_moving, self.piece_at(m.origin_square()));
         let capture = self.capture(m);
@@ -407,6 +408,8 @@ impl Board {
 
         self.calculate_threats();
         self.in_check = self.threats_in_check();
+
+        assert_eq!(*acc, self.accumulator);
 
         // This move is valid, so we return true to denote this fact
         true

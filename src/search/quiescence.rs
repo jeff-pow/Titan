@@ -95,7 +95,8 @@ pub(super) fn quiescence<const IS_PV: bool>(
             continue;
         }
 
-        if !new_b.make_move::<true>(m) {
+        if !new_b.make_move::<true>(m, td.accumulators.next()) {
+            td.accumulators.pop();
             continue;
         }
         tt.prefetch(new_b.zobrist_hash);
@@ -111,6 +112,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
 
         td.ply -= 1;
         td.hash_history.pop();
+        td.accumulators.pop();
 
         if eval > best_score {
             best_score = eval;
