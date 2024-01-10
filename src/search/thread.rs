@@ -10,6 +10,7 @@ use std::{
 use crate::{
     board::board::Board,
     engine::{transposition::TranspositionTable, uci::parse_time},
+    eval::accumulator::Accumulator,
     search::search::{CHECKMATE, NEAR_CHECKMATE},
     types::pieces::Color,
 };
@@ -18,7 +19,7 @@ use super::{
     game_time::GameTime,
     history_table::HistoryTable,
     search::{search, MAX_SEARCH_DEPTH},
-    SearchStack, SearchType, PV,
+    AccumulatorStack, SearchStack, SearchType, PV,
 };
 
 #[derive(Clone)]
@@ -33,6 +34,7 @@ pub(crate) struct ThreadData<'a> {
     pub stack: SearchStack,
     pub history: HistoryTable,
     pub hash_history: Vec<u64>,
+    pub accumulators: AccumulatorStack,
 
     pub root_color: Color,
     pub game_time: GameTime,
@@ -50,6 +52,7 @@ impl<'a> ThreadData<'a> {
             stack: SearchStack::default(),
             sel_depth: 0,
             history: HistoryTable::default(),
+            accumulators: AccumulatorStack::new(Accumulator::default()),
             root_color,
             game_time: GameTime::default(),
             halt,
