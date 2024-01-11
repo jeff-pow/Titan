@@ -117,9 +117,10 @@ pub struct ThreadPool<'a> {
 
 impl<'a> ThreadPool<'a> {
     pub fn new(halt: &'a AtomicBool, hash_history: Vec<u64>) -> Self {
+        let workers = vec![ThreadData::new(halt, hash_history.clone())];
         Self {
             main_thread: ThreadData::new(halt, hash_history),
-            workers: Vec::new(),
+            workers,
             halt,
             searching: AtomicBool::new(false),
             total_nodes: Arc::new(AtomicU64::new(0)),
@@ -141,6 +142,7 @@ impl<'a> ThreadPool<'a> {
     /// This thread creates a number of workers equal to threads - 1. If 4 threads are requested,
     /// the main thread counts as one and then the remaining three are placed in the worker queue.
     pub fn add_workers(&mut self, threads: usize, hash_history: Vec<u64>) {
+        return;
         self.workers.clear();
         for _ in 0..threads - 1 {
             self.workers.push(ThreadData::new(self.halt, hash_history.clone()));
