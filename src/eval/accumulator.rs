@@ -1,9 +1,17 @@
+use arrayvec::ArrayVec;
+
 use crate::types::{
     pieces::{Color, PieceName, NUM_PIECES},
     square::{Square, NUM_SQUARES},
 };
 
 use super::{Block, NET};
+
+pub(crate) struct Delta {
+    // Only 32 pieces to add, so that's the cap
+    add: ArrayVec<(usize, usize), 32>,
+    sub: ArrayVec<(usize, usize), 32>,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C, align(64))]
