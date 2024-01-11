@@ -33,18 +33,14 @@ pub fn search(
     mut board: Board,
     tt: &TranspositionTable,
 ) -> Move {
+
     td.game_time.search_start = Instant::now();
-    td.root_color = board.to_move;
     td.nodes_searched = 0;
     td.stack = SearchStack::default();
     assert_eq!(board.accumulator, board.clone().refresh_accumulators());
     td.accumulators = AccumulatorStack::new(board.refresh_accumulators());
 
-    let best_move = iterative_deepening(td, &board, print_uci, tt);
-
-    assert_ne!(best_move, Move::NULL);
-
-    best_move
+    iterative_deepening(td, &board, print_uci, tt);
 }
 
 pub(crate) fn iterative_deepening(
@@ -54,19 +50,26 @@ pub(crate) fn iterative_deepening(
     tt: &TranspositionTable,
 ) -> Move {
     let mut pv = PV::default();
-    let mut best_move = Move::NULL;
     let mut prev_score = -INFINITY;
 
     for depth in 1..=td.max_depth {
         td.iter_max_depth = depth;
         td.ply = 0;
         td.sel_depth = 0;
+
+        let last_nodes = td.nodes_searched;
+
         assert_eq!(1, td.accumulators.stack.len());
         assert_eq!(td.accumulators.stack[0], board.accumulator);
 
+
         prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt);
 
-        best_move = pv.line[0];
+        if depth >= 7 {
+            td.global_nodes.fetch_add(td.nodes_searched - last_nodes, Ordering::Relaxed);
+        }
+
+        td.best_move = pv.line[0];
 
         if print_uci {
             td.print_search_stats(prev_score, &pv, tt);
@@ -76,12 +79,12 @@ pub(crate) fn iterative_deepening(
             break;
         }
 
-        if td.halt.load(Ordering::SeqCst) {
+        if td.halt.load(Ordering::Relaxed) {
             break;
         }
     }
 
-    assert_ne!(best_move, Move::NULL);
+    assert_ne!(td.best_move, Move::NULL);
     best_move
 }
 
@@ -143,7 +146,6 @@ fn alpha_beta<const IS_PV: bool>(
     let in_check = board.in_check;
 
     // Prevent overflows of the search stack
-
     let singular_move = td.stack[td.ply].singular;
     let singular_search = singular_move != Move::NULL;
 
@@ -153,7 +155,7 @@ fn alpha_beta<const IS_PV: bool>(
 
     // Stop if we have reached hard time limit or decided else where it is time to stop
     if td.halt.load(Ordering::Relaxed) || td.game_time.hard_termination() {
-        td.halt.store(true, Ordering::SeqCst);
+        td.halt.store(true, Ordering::Relaxed);
         // return board.evaluate();
         return 0;
     }
