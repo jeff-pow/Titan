@@ -14,10 +14,11 @@ pub(crate) mod avx2 {
         {
             let mut sum = _mm256_setzero_si256();
             for i in 0..REQUIRED_ITERS {
-                let us_vector = _mm256_loadu_epi16(&acc[i * CHUNK_SIZE]);
+                let us_vector = _mm256_load_si256(acc.as_ptr().add(i * CHUNK_SIZE).cast());
                 let crelu_result = squared_crelu(us_vector);
-                let weights = _mm256_loadu_epi16(&weights[i * CHUNK_SIZE]);
-                sum = _mm256_dpwssd_epi32(sum, crelu_result, weights);
+                let weights = _mm256_load_si256(weights.as_ptr().add(i * CHUNK_SIZE).cast());
+                let mul = _mm256_madd_epi16(crelu_result, weights);
+                sum = _mm256_add_epi32(sum, mul);
             }
             hadd_i32(sum)
         }
