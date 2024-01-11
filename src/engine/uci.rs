@@ -30,7 +30,7 @@ pub fn main_loop() -> ! {
     let mut msg: Option<String> = None;
     let mut hash_history = Vec::new();
     let halt = AtomicBool::new(false);
-    let mut thread_pool = ThreadPool::new(&board, &halt, Vec::new());
+    let mut thread_pool = ThreadPool::new(&halt, Vec::new());
     lmr_reductions();
     println!("{ENGINE_NAME} by {}", env!("CARGO_PKG_AUTHORS"));
 
@@ -51,7 +51,7 @@ pub fn main_loop() -> ! {
             "ucinewgame" => {
                 transpos_table.clear();
                 halt.store(false, Ordering::Relaxed);
-                thread_pool = ThreadPool::new(&board, &halt, Vec::new());
+                thread_pool = ThreadPool::new(&halt, Vec::new());
             }
             "eval" => println!("{} cp", board.evaluate()),
             "position" => position_command(&input, &mut board, &mut hash_history),
@@ -64,6 +64,7 @@ pub fn main_loop() -> ! {
             }
             "bench" => bench(),
             "clear" => {
+                println!("Engine state cleared");
                 thread_pool.reset();
                 transpos_table.clear();
             }
@@ -92,7 +93,9 @@ pub fn main_loop() -> ! {
                     transpos_table = TranspositionTable::new(x.parse().unwrap())
                 }
                 ["setoption", "name", "Clear", "Hash"] => transpos_table.clear(),
-                ["setoption", "name", "Threads", "value", _] => (),
+                ["setoption", "name", "Threads", "value", x] => {
+                    thread_pool.add_workers(x.parse().unwrap(), hash_history.clone())
+                }
                 _ => {
                     if SPSA_TUNE {
                         parse_param(&input)
@@ -107,7 +110,7 @@ pub fn main_loop() -> ! {
 fn uci_opts() {
     println!("id name {ENGINE_NAME}");
     println!("id author {}", env!("CARGO_PKG_AUTHORS"));
-    println!("option name Threads type spin default 1 min 1 max 1");
+    println!("option name Threads type spin default 1 min 1 max 64");
     println!("option name Hash type spin default 16 min 1 max 8388608");
     if SPSA_TUNE {
         uci_print_tunable_params();
