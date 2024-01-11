@@ -79,7 +79,7 @@ pub fn main_loop() -> ! {
                 transpos_table.age_up();
             }
             "perft" => {
-                perft(&board, input[1].parse().unwrap());
+                perft(&mut board, input[1].parse().unwrap());
             }
             "quit" => {
                 exit(0);

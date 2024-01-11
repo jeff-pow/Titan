@@ -27,13 +27,18 @@ pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 30000;
 pub const MAX_SEARCH_DEPTH: i32 = 100;
 
-pub fn search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &TranspositionTable) -> Move {
+pub fn search(
+    td: &mut ThreadData,
+    print_uci: bool,
+    mut board: Board,
+    tt: &TranspositionTable,
+) -> Move {
     td.game_time.search_start = Instant::now();
     td.root_color = board.to_move;
     td.nodes_searched = 0;
     td.stack = SearchStack::default();
 
-    let best_move = iterative_deepening(td, &board, print_uci, tt);
+    let best_move = iterative_deepening(td, &mut board, print_uci, tt);
 
     assert_ne!(best_move, Move::NULL);
 
@@ -42,7 +47,7 @@ pub fn search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &Transposi
 
 pub(crate) fn iterative_deepening(
     td: &mut ThreadData,
-    board: &Board,
+    board: &mut Board,
     print_uci: bool,
     tt: &TranspositionTable,
 ) -> Move {
@@ -80,7 +85,7 @@ fn aspiration_windows(
     td: &mut ThreadData,
     pv: &mut PV,
     prev_score: i32,
-    board: &Board,
+    board: &mut Board,
     tt: &TranspositionTable,
 ) -> i32 {
     let mut alpha = -INFINITY;
@@ -127,7 +132,7 @@ fn alpha_beta<const IS_PV: bool>(
     pv: &mut PV,
     td: &mut ThreadData,
     tt: &TranspositionTable,
-    board: &Board,
+    board: &mut Board,
     cut_node: bool,
 ) -> i32 {
     let is_root = td.ply == 0;
@@ -254,11 +259,10 @@ fn alpha_beta<const IS_PV: bool>(
             && td.stack[td.ply - 1].played_move != Move::NULL
         {
             let mut node_pv = PV::default();
-            let mut new_b = *board;
 
-            new_b.make_null_move();
+            board.make_null_move();
             td.stack[td.ply].played_move = Move::NULL;
-            td.hash_history.push(new_b.zobrist_hash);
+            td.hash_history.push(board.zobrist_hash);
             td.ply += 1;
 
             // Reduction
@@ -272,11 +276,12 @@ fn alpha_beta<const IS_PV: bool>(
                 &mut node_pv,
                 td,
                 tt,
-                &new_b,
+                board,
                 !cut_node,
             );
 
             td.hash_history.pop();
+            board.undo_null_move();
             td.ply -= 1;
 
             if null_eval >= beta {
@@ -328,12 +333,11 @@ fn alpha_beta<const IS_PV: bool>(
             }
         }
 
-        let mut new_b = *board;
         // Make move filters out illegal moves by returning false if a move was illegal
-        if !new_b.make_move::<true>(m) {
+        if !board.make_move::<true>(m) {
             continue;
         }
-        tt.prefetch(new_b.zobrist_hash);
+        tt.prefetch(board.zobrist_hash);
 
         if is_quiet {
             quiets_tried.push(m)
@@ -389,13 +393,13 @@ fn alpha_beta<const IS_PV: bool>(
 
         td.nodes_searched += 1;
         td.stack[td.ply].played_move = m;
-        td.hash_history.push(new_b.zobrist_hash);
+        td.hash_history.push(board.zobrist_hash);
         td.ply += 1;
         let mut node_pv = PV::default();
 
         let eval = if legal_moves_searched == 0 {
             // On the first move, just do a full depth search
-            -alpha_beta::<IS_PV>(new_depth - 1, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
+            -alpha_beta::<IS_PV>(new_depth - 1, -beta, -alpha, &mut node_pv, td, tt, board, false)
         } else {
             // Late Move Reductions - Search moves after the first with reduced depth and window as
             // they are much less likely to be the best move than the first move selected by the
@@ -432,7 +436,7 @@ fn alpha_beta<const IS_PV: bool>(
                 &mut node_pv,
                 td,
                 tt,
-                &new_b,
+                board,
                 true,
             );
 
@@ -445,7 +449,7 @@ fn alpha_beta<const IS_PV: bool>(
                     &mut node_pv,
                     td,
                     tt,
-                    &new_b,
+                    board,
                     !cut_node,
                 )
             } else {
@@ -461,7 +465,7 @@ fn alpha_beta<const IS_PV: bool>(
                     &mut node_pv,
                     td,
                     tt,
-                    &new_b,
+                    board,
                     false,
                 )
             } else {
@@ -471,6 +475,7 @@ fn alpha_beta<const IS_PV: bool>(
 
         legal_moves_searched += 1;
         td.hash_history.pop();
+        board.undo_move::<true>();
         td.ply -= 1;
 
         if eval > best_score {

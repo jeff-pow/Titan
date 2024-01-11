@@ -1,5 +1,7 @@
 use core::fmt;
 
+use arrayvec::ArrayVec;
+
 use crate::{
     board::zobrist::ZOBRIST,
     eval::accumulator::Accumulator,
@@ -8,6 +10,7 @@ use crate::{
         magics::{bishop_attacks, queen_attacks, rook_attacks},
         moves::{Castle, Direction::*, Move, MoveType, CASTLING_RIGHTS},
     },
+    search::search::MAX_SEARCH_DEPTH,
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName, NUM_PIECES},
@@ -15,7 +18,9 @@ use crate::{
     },
 };
 
-#[derive(Copy, Clone, PartialEq)]
+use super::undo::Undo;
+
+#[derive(Clone, PartialEq)]
 pub struct Board {
     bitboards: [Bitboard; NUM_PIECES],
     color_occupancies: [Bitboard; 2],
@@ -29,6 +34,8 @@ pub struct Board {
     pub accumulator: Accumulator,
     pub in_check: bool,
     threats: Bitboard,
+
+    undo_hist: ArrayVec<Undo, { MAX_SEARCH_DEPTH as usize + 50 }>,
 }
 
 impl Default for Board {
@@ -46,6 +53,8 @@ impl Default for Board {
             accumulator: Accumulator::default(),
             in_check: false,
             threats: Bitboard::EMPTY,
+
+            undo_hist: ArrayVec::default(),
         }
     }
 }
@@ -327,6 +336,18 @@ impl Board {
         let piece_moving = m.piece_moving();
         assert_eq!(piece_moving, self.piece_at(m.origin_square()));
         let capture = self.capture(m);
+
+        self.undo_hist.push(Undo {
+            capture,
+            castling_rights: self.castling_rights,
+            en_passant_square: self.en_passant_square,
+            half_moves: self.half_moves,
+            in_check: self.in_check,
+            zobrist_hash: self.zobrist_hash,
+            m,
+            threats: self.threats(),
+        });
+
         self.remove_piece::<NNUE>(m.dest_square());
 
         self.place_piece::<NNUE>(piece_moving, m.dest_square());
@@ -350,12 +371,6 @@ impl Board {
                     self.remove_piece::<NNUE>(m.dest_square().shift(North));
                 }
             }
-        }
-
-        // If we are in check after all pieces have been moved, this move is illegal and we return
-        // false to denote so
-        if self.in_check(self.to_move) {
-            return false;
         }
 
         // Xor out the old en passant square hash
@@ -400,12 +415,74 @@ impl Board {
 
         self.calculate_threats();
         self.in_check = self.threats_in_check();
+        assert_eq!(self.zobrist_hash, self.generate_hash());
 
+        // If we are in check after all pieces have been moved, this move is illegal and we return
+        // false to denote so
+        if self.in_check(self.to_move) {
+            self.undo_move::<NNUE>();
+            return false;
+        }
         // This move is valid, so we return true to denote this fact
         true
     }
 
+    pub fn undo_move<const NNUE: bool>(&mut self) {
+        let undo = self.undo_hist.pop().unwrap();
+        let m = undo.m;
+        let capture = undo.capture;
+        let piece_moving = m.piece_moving();
+        debug_assert_eq!(piece_moving, self.piece_at(m.dest_square()));
+
+        self.remove_piece::<NNUE>(m.dest_square());
+        self.place_piece::<NNUE>(piece_moving, m.origin_square());
+        if capture != Piece::None {
+            self.place_piece::<NNUE>(capture, m.dest_square());
+        }
+
+        if m.is_castle() {
+            let rook = Piece::new(PieceName::Rook, self.to_move);
+            self.place_piece::<NNUE>(rook, m.castle_type().rook_src());
+            self.remove_piece::<NNUE>(m.castle_type().rook_dest());
+        } else if m.promotion().is_some() {
+            self.remove_piece::<NNUE>(m.origin_square());
+            self.place_piece::<NNUE>(Piece::new(PieceName::Pawn, self.to_move), m.origin_square());
+        } else if m.is_en_passant() {
+            match self.to_move {
+                Color::White => self.place_piece::<NNUE>(
+                    Piece::new(PieceName::Pawn, Color::Black),
+                    m.dest_square().shift(South),
+                ),
+                Color::Black => self.place_piece::<NNUE>(
+                    Piece::new(PieceName::Pawn, Color::White),
+                    m.dest_square().shift(North),
+                ),
+            }
+        }
+        self.num_moves -= 1;
+
+        self.to_move = !self.to_move;
+        self.half_moves = undo.half_moves;
+        self.in_check = undo.in_check;
+        self.en_passant_square = undo.en_passant_square;
+        self.castling_rights = undo.castling_rights;
+        self.threats = undo.threats;
+        self.zobrist_hash = undo.zobrist_hash;
+
+        assert_eq!(self.zobrist_hash, self.generate_hash());
+    }
+
     pub fn make_null_move(&mut self) {
+        self.undo_hist.push(Undo {
+            capture: Piece::None,
+            castling_rights: self.castling_rights,
+            en_passant_square: self.en_passant_square,
+            half_moves: self.half_moves,
+            in_check: self.in_check,
+            zobrist_hash: self.zobrist_hash,
+            m: Move::NULL,
+            threats: self.threats,
+        });
         self.to_move = !self.to_move;
         self.zobrist_hash ^= ZOBRIST.turn_hash;
         self.num_moves += 1;
@@ -417,6 +494,18 @@ impl Board {
         let q = self.threats();
         self.calculate_threats();
         assert_eq!(q, self.threats());
+    }
+
+    pub fn undo_null_move(&mut self) {
+        let undo = self.undo_hist.pop().unwrap();
+        self.to_move = !self.to_move;
+        self.half_moves = undo.half_moves;
+        self.in_check = undo.in_check;
+        self.zobrist_hash = undo.zobrist_hash;
+        self.en_passant_square = undo.en_passant_square;
+        self.castling_rights = undo.castling_rights;
+        self.threats = undo.threats;
+        self.num_moves -= 1;
     }
 
     pub fn debug_bitboards(&self) {
@@ -522,13 +611,13 @@ mod board_tests {
     fn test_remove_piece() {
         let board = fen::build_board(fen::STARTING_FEN);
 
-        let mut c = board;
+        let mut c = board.clone();
         c.remove_piece::<false>(Square(0));
         assert!(c.bitboard(Color::White, PieceName::Rook).empty(Square(0)));
         assert!(c.occupancies().empty(Square(0)));
         assert_ne!(c, board);
 
-        let mut c = board;
+        let mut c = board.clone();
         c.remove_piece::<false>(Square(27));
         assert_eq!(board, c);
     }

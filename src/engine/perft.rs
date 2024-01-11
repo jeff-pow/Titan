@@ -5,7 +5,7 @@ use crate::{
     moves::{movegenerator::MGT, movelist::MoveList},
 };
 
-pub fn perft(board: &Board, depth: i32) -> usize {
+pub fn perft(board: &mut Board, depth: i32) -> usize {
     let start = Instant::now();
     let count = non_bulk_perft::<true>(board, depth);
     let elapsed = start.elapsed().as_secs_f64();
@@ -13,7 +13,7 @@ pub fn perft(board: &Board, depth: i32) -> usize {
     count
 }
 
-fn non_bulk_perft<const ROOT: bool>(board: &Board, depth: i32) -> usize {
+fn non_bulk_perft<const ROOT: bool>(board: &mut Board, depth: i32) -> usize {
     if depth == 0 {
         return 1;
     }
@@ -22,11 +22,14 @@ fn non_bulk_perft<const ROOT: bool>(board: &Board, depth: i32) -> usize {
     board.generate_moves(MGT::All, &mut moves);
     for i in 0..moves.len() {
         let m = moves[i];
-        let mut new_b = *board;
-        if !new_b.make_move::<false>(m) {
+        let new_b = board.clone();
+        if !board.make_move::<false>(m) {
             continue;
         }
-        let count = non_bulk_perft::<false>(&new_b, depth - 1);
+        let count = non_bulk_perft::<false>(board, depth - 1);
+
+        board.undo_move::<false>();
+        assert_eq!(new_b, *board);
         if ROOT {
             println!("{}: {count}", m.to_san());
         }
@@ -55,13 +58,13 @@ mod movegen_tests {
             let l = line.as_ref().unwrap().clone();
             let vec = l.split(" ;").collect::<Vec<&str>>();
             let mut iter = vec.iter();
-            let board = build_board(iter.next().unwrap());
+            let mut board = build_board(iter.next().unwrap());
             for entry in iter {
                 let (depth, nodes) = entry.split_once(' ').unwrap();
                 let depth = depth[1..].parse::<i32>().unwrap();
                 let nodes = nodes.parse::<usize>().unwrap();
                 eprintln!("test {test_num}: depth {depth} expected {nodes}");
-                assert_eq!(nodes, perft(&board, depth), "Test number {test_num} failed");
+                assert_eq!(nodes, perft(&mut board, depth), "Test number {test_num} failed");
             }
             eprintln!("{test_num} passed");
         });

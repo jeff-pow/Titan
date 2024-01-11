@@ -156,7 +156,10 @@ impl<'a> ThreadPool<'a> {
 
         thread::scope(|s| {
             s.spawn(move || {
-                println!("bestmove {}", search(&mut self.main_thread, true, *board, tt).to_san());
+                println!(
+                    "bestmove {}",
+                    search(&mut self.main_thread, true, board.clone(), tt).to_san()
+                );
             });
             let mut s = String::new();
             io::stdin().read_line(&mut s).unwrap();

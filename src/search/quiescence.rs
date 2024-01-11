@@ -16,7 +16,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
     pv: &mut PV,
     td: &mut ThreadData,
     tt: &TranspositionTable,
-    board: &Board,
+    board: &mut Board,
 ) -> i32 {
     if board.is_draw() || td.is_repetition(board) {
         return STALEMATE;
@@ -82,7 +82,6 @@ pub(super) fn quiescence<const IS_PV: bool>(
 
     while let Some(MoveListEntry { m, .. }) = picker.next(board, td) {
         let mut node_pv = PV::default();
-        let mut new_b = *board;
 
         // Static exchange pruning - If we fail to immediately recapture a depth dependent
         // threshold, don't bother searching the move. Ensure we either have a legal evasion or
@@ -91,11 +90,11 @@ pub(super) fn quiescence<const IS_PV: bool>(
             continue;
         }
 
-        if !new_b.make_move::<true>(m) {
+        if !board.make_move::<true>(m) {
             continue;
         }
-        tt.prefetch(new_b.zobrist_hash);
-        td.hash_history.push(new_b.zobrist_hash);
+        tt.prefetch(board.zobrist_hash);
+        td.hash_history.push(board.zobrist_hash);
         td.stack[td.ply].played_move = m;
         td.nodes_searched += 1;
         moves_searched += 1;
@@ -103,10 +102,11 @@ pub(super) fn quiescence<const IS_PV: bool>(
 
         // TODO: Implement delta pruning
 
-        let eval = -quiescence::<IS_PV>(-beta, -alpha, &mut node_pv, td, tt, &new_b);
+        let eval = -quiescence::<IS_PV>(-beta, -alpha, &mut node_pv, td, tt, board);
 
         td.ply -= 1;
         td.hash_history.pop();
+        board.undo_move::<true>();
 
         if eval > best_score {
             best_score = eval;
