@@ -3,6 +3,7 @@ use arrayvec::ArrayVec;
 use std::ops::{Index, IndexMut};
 use std::sync::atomic::{AtomicI32, Ordering};
 
+use crate::eval::accumulator::Accumulator;
 use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
 use crate::spsa::{LMR_BASE, LMR_DIVISOR};
@@ -96,4 +97,33 @@ pub fn lmr_reductions() {
 pub fn get_reduction(depth: i32, moves_played: i32) -> i32 {
     LMR_REDUCTIONS[depth.min(MAX_SEARCH_DEPTH) as usize][(moves_played as usize).min(MAX_LEN)]
         .load(Ordering::Relaxed)
+}
+#[derive(Clone)]
+pub struct AccumulatorStack {
+    pub(crate) stack: ArrayVec<Accumulator, { MAX_SEARCH_DEPTH as usize }>,
+}
+
+impl AccumulatorStack {
+    pub fn next(&mut self) -> &mut Accumulator {
+        self.stack.push(*self.stack.last().unwrap());
+        self.stack.last_mut().expect("Array has at least one element")
+    }
+
+    pub fn top(&self) -> &Accumulator {
+        self.stack.last().unwrap()
+    }
+
+    pub fn pop(&mut self) -> Accumulator {
+        self.stack.pop().unwrap()
+    }
+
+    pub fn push(&mut self, acc: Accumulator) {
+        self.stack.push(acc)
+    }
+
+    pub fn new(base_accumulator: Accumulator) -> Self {
+        let mut vec = ArrayVec::new();
+        vec.push(base_accumulator);
+        Self { stack: vec }
+    }
 }

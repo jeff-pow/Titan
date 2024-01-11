@@ -134,7 +134,12 @@ impl Board {
         }
     }
 
-    pub fn place_piece<const NNUE: bool>(&mut self, piece: Piece, sq: Square) {
+    pub fn place_piece<const NNUE: bool>(
+        &mut self,
+        piece: Piece,
+        sq: Square,
+        acc: &mut Accumulator,
+    ) {
         let color = piece.color();
         let name = piece.name();
         self.array_board[sq] = piece;
@@ -143,10 +148,11 @@ impl Board {
         self.zobrist_hash ^= ZOBRIST.piece_square_hashes[color][name][sq];
         if NNUE {
             self.accumulator.add_feature(name, color, sq);
+            acc.add_feature(name, color, sq);
         }
     }
 
-    fn remove_piece<const NNUE: bool>(&mut self, sq: Square) {
+    fn remove_piece<const NNUE: bool>(&mut self, sq: Square, acc: &mut Accumulator) {
         let piece = self.array_board[sq];
         if piece != Piece::None {
             self.array_board[sq] = Piece::None;
@@ -155,6 +161,7 @@ impl Board {
             self.zobrist_hash ^= ZOBRIST.piece_square_hashes[piece.color()][piece.name()][sq];
             if NNUE {
                 self.accumulator.remove_feature(piece.name(), piece.color(), sq);
+                acc.remove_feature(piece.name(), piece.color(), sq);
             }
         }
     }
@@ -323,31 +330,32 @@ impl Board {
     /// Function makes a move and modifies board state to reflect the move that just happened.
     /// Returns true if a move was legal, and false if it was illegal.
     #[must_use]
-    pub fn make_move<const NNUE: bool>(&mut self, m: Move) -> bool {
+    pub fn make_move<const NNUE: bool>(&mut self, m: Move, acc: &mut Accumulator) -> bool {
+        // assert_eq!(*acc, self.accumulator);
         let piece_moving = m.piece_moving();
         assert_eq!(piece_moving, self.piece_at(m.origin_square()));
         let capture = self.capture(m);
-        self.remove_piece::<NNUE>(m.dest_square());
+        self.remove_piece::<NNUE>(m.dest_square(), acc);
 
-        self.place_piece::<NNUE>(piece_moving, m.dest_square());
+        self.place_piece::<NNUE>(piece_moving, m.dest_square(), acc);
 
-        self.remove_piece::<NNUE>(m.origin_square());
+        self.remove_piece::<NNUE>(m.origin_square(), acc);
 
         // Move rooks if a castle move is applied
         if m.is_castle() {
             let rook = Piece::new(PieceName::Rook, self.to_move);
-            self.place_piece::<NNUE>(rook, m.castle_type().rook_dest());
-            self.remove_piece::<NNUE>(m.castle_type().rook_src());
+            self.place_piece::<NNUE>(rook, m.castle_type().rook_dest(), acc);
+            self.remove_piece::<NNUE>(m.castle_type().rook_src(), acc);
         } else if let Some(p) = m.promotion() {
-            self.remove_piece::<NNUE>(m.dest_square());
-            self.place_piece::<NNUE>(p, m.dest_square());
+            self.remove_piece::<NNUE>(m.dest_square(), acc);
+            self.place_piece::<NNUE>(p, m.dest_square(), acc);
         } else if m.is_en_passant() {
             match self.to_move {
                 Color::White => {
-                    self.remove_piece::<NNUE>(m.dest_square().shift(South));
+                    self.remove_piece::<NNUE>(m.dest_square().shift(South), acc);
                 }
                 Color::Black => {
-                    self.remove_piece::<NNUE>(m.dest_square().shift(North));
+                    self.remove_piece::<NNUE>(m.dest_square().shift(North), acc);
                 }
             }
         }
@@ -401,6 +409,8 @@ impl Board {
         self.calculate_threats();
         self.in_check = self.threats_in_check();
 
+        // assert_eq!(*acc, self.accumulator);
+
         // This move is valid, so we return true to denote this fact
         true
     }
@@ -429,15 +439,18 @@ impl Board {
         }
     }
 
-    pub fn refresh_accumulators(&mut self) {
+    pub fn refresh_accumulators(&mut self) -> Accumulator {
         self.accumulator = Accumulator::default();
+        let mut acc = Accumulator::default();
         for c in Color::iter() {
             for p in PieceName::iter() {
                 for sq in self.bitboard(c, p) {
-                    self.accumulator.add_feature(p, c, sq)
+                    self.accumulator.add_feature(p, c, sq);
+                    acc.add_feature(p, c, sq);
                 }
             }
         }
+        acc
     }
 }
 
@@ -514,7 +527,7 @@ mod board_tests {
     #[test]
     fn test_place_piece() {
         let mut board = Board::default();
-        board.place_piece::<false>(Piece::WhiteRook, Square(0));
+        board.place_piece::<false>(Piece::WhiteRook, Square(0), &mut Accumulator::default());
         assert!(board.bitboard(Color::White, PieceName::Rook).occupied(Square(0)));
     }
 
@@ -523,13 +536,13 @@ mod board_tests {
         let board = fen::build_board(fen::STARTING_FEN);
 
         let mut c = board;
-        c.remove_piece::<false>(Square(0));
+        c.remove_piece::<false>(Square(0), &mut Accumulator::default());
         assert!(c.bitboard(Color::White, PieceName::Rook).empty(Square(0)));
         assert!(c.occupancies().empty(Square(0)));
         assert_ne!(c, board);
 
         let mut c = board;
-        c.remove_piece::<false>(Square(27));
+        c.remove_piece::<false>(Square(27), &mut Accumulator::default());
         assert_eq!(board, c);
     }
 }

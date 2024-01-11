@@ -28,7 +28,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
 
     // Halt search if we are going to overflow the search stack
     if td.ply >= MAX_SEARCH_DEPTH {
-        return board.evaluate();
+        return board.evaluate(td.accumulators.top());
     }
 
     // Probe transposition table for best move and eval
@@ -50,7 +50,11 @@ pub(super) fn quiescence<const IS_PV: bool>(
     }
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
-    let stand_pat = if let Some(entry) = entry { entry.static_eval() } else { board.evaluate() };
+    let stand_pat = if let Some(entry) = entry {
+        entry.static_eval()
+    } else {
+        board.evaluate(td.accumulators.top())
+    };
     td.stack[td.ply].static_eval = stand_pat;
     // Store eval in tt if it wasn't previously found in tt
     if entry.is_none() && !board.in_check {
@@ -91,7 +95,8 @@ pub(super) fn quiescence<const IS_PV: bool>(
             continue;
         }
 
-        if !new_b.make_move::<true>(m) {
+        if !new_b.make_move::<true>(m, td.accumulators.next()) {
+            td.accumulators.pop();
             continue;
         }
         tt.prefetch(new_b.zobrist_hash);
@@ -107,6 +112,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
 
         td.ply -= 1;
         td.hash_history.pop();
+        td.accumulators.pop();
 
         if eval > best_score {
             best_score = eval;
