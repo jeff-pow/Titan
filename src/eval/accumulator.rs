@@ -1,16 +1,16 @@
 use arrayvec::ArrayVec;
 
 use crate::types::{
-    pieces::{Color, PieceName, NUM_PIECES},
+    pieces::{Color, Piece, PieceName, NUM_PIECES},
     square::{Square, NUM_SQUARES},
 };
 
-use super::{Block, NET};
+use super::{Block, HIDDEN_SIZE, NET};
 
 pub(crate) struct Delta {
     // Only 32 pieces to add, so that's the cap
-    add: ArrayVec<(usize, usize), 32>,
-    sub: ArrayVec<(usize, usize), 32>,
+    add: ArrayVec<(Piece, Square), 32>,
+    sub: ArrayVec<(Piece, Square), 32>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -24,6 +24,14 @@ impl Default for Accumulator {
 }
 
 impl Accumulator {
+    pub(self) fn apply_update(&mut self, delta: &mut Delta) {
+        let weights = &NET.feature_weights;
+        for i in 0..HIDDEN_SIZE {
+            let white_inp = &mut self.0[Color::White];
+            let black_inp = &mut self.0[Color::Black];
+        }
+    }
+
     pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
         let white_idx = feature_idx(color, piece, sq);
         let black_idx = feature_idx(!color, piece, sq.flip_vertical());
