@@ -100,7 +100,7 @@ pub fn get_reduction(depth: i32, moves_played: i32) -> i32 {
 }
 #[derive(Clone)]
 pub struct AccumulatorStack {
-    pub(crate) stack: ArrayVec<Accumulator, { MAX_SEARCH_DEPTH as usize }>,
+    pub(crate) stack: Vec<Accumulator>,
 }
 
 impl AccumulatorStack {
@@ -122,7 +122,7 @@ impl AccumulatorStack {
     }
 
     pub fn new(base_accumulator: Accumulator) -> Self {
-        let mut vec = ArrayVec::new();
+        let mut vec = Vec::with_capacity(MAX_SEARCH_DEPTH as usize + 50);
         vec.push(base_accumulator);
         Self { stack: vec }
     }
