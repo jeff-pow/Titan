@@ -120,10 +120,9 @@ pub struct ThreadPool<'a> {
 
 impl<'a> ThreadPool<'a> {
     pub fn new(halt: &'a AtomicBool, hash_history: Vec<u64>) -> Self {
-        let workers = vec![ThreadData::new(halt, hash_history.clone())];
         Self {
             main_thread: ThreadData::new(halt, hash_history),
-            workers,
+            workers: Vec::new(),
             halt,
             searching: AtomicBool::new(false),
             total_nodes: Arc::new(AtomicU64::new(0)),
