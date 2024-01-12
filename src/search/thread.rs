@@ -202,7 +202,6 @@ impl<'a> ThreadPool<'a> {
                 self.halt.store(true, Ordering::Relaxed);
                 println!("bestmove {}", self.main_thread.best_move.to_san());
             });
-            dbg!(self.workers.len());
             for t in &mut self.workers {
                 s.spawn(|| {
                     search(t, false, *board, tt);
