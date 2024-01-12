@@ -317,11 +317,6 @@ impl Board {
         }
     }
 
-    /// Returns true if a move does not capture a piece, and false if a piece is captured
-    pub fn is_quiet(&self, m: Move) -> bool {
-        self.occupancies().empty(m.dest_square())
-    }
-
     /// Function makes a move and modifies board state to reflect the move that just happened.
     /// Returns true if a move was legal, and false if it was illegal.
     #[must_use]
