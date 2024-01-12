@@ -56,11 +56,12 @@ pub(crate) mod avx2 {
 
 #[cfg(feature = "avx512")]
 pub(crate) mod avx512 {
+
     use std::arch::x86_64::*;
 
     use crate::eval::accumulator::Accumulator;
     use crate::eval::nnue::{RELU_MAX, RELU_MIN};
-    use crate::eval::{Block, HIDDEN_SIZE};
+    use crate::eval::{Block, HIDDEN_SIZE, NET};
     use crate::types::pieces::Color;
 
     const CHUNK_SIZE: usize = 32;
@@ -108,6 +109,106 @@ pub(crate) mod avx512 {
                 let acc = _mm512_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
                 let updated_acc = _mm512_sub_epi16(acc, weights);
                 _mm512_storeu_epi16(&mut self.0[color][i * CHUNK_SIZE], updated_acc);
+            }
+        }
+
+        pub(crate) unsafe fn avx512_add_sub(
+            &mut self,
+            white_add: usize,
+            black_add: usize,
+            white_sub: usize,
+            black_sub: usize,
+        ) {
+            let weights = &NET.feature_weights;
+            for i in 0..REQUIRED_ITERS {
+                let w_acc = _mm512_loadu_epi16(&self.0[Color::White][i * CHUNK_SIZE]);
+                let w_add = _mm512_loadu_epi16(&weights[white_add][i * CHUNK_SIZE]);
+                let w_sub = _mm512_loadu_epi16(&weights[white_sub][i * CHUNK_SIZE]);
+
+                let b_acc = _mm512_loadu_epi16(&self.0[Color::Black][i * CHUNK_SIZE]);
+                let b_add = _mm512_loadu_epi16(&weights[black_add][i * CHUNK_SIZE]);
+                let b_sub = _mm512_loadu_epi16(&weights[black_sub][i * CHUNK_SIZE]);
+
+                let w_updated = _mm512_add_epi16(w_acc, w_add);
+                let w_updated = _mm512_sub_epi16(w_updated, w_sub);
+                _mm512_storeu_epi16(&mut self.0[Color::White][i * CHUNK_SIZE], w_updated);
+
+                let b_updated = _mm512_add_epi16(b_acc, b_add);
+                let b_updated = _mm512_sub_epi16(b_updated, b_sub);
+                _mm512_storeu_epi16(&mut self.0[Color::Black][i * CHUNK_SIZE], b_updated);
+            }
+        }
+
+        pub(crate) unsafe fn avx512_add_sub_sub(
+            &mut self,
+            white_add: usize,
+            black_add: usize,
+            white_sub_1: usize,
+            black_sub_1: usize,
+            white_sub_2: usize,
+            black_sub_2: usize,
+        ) {
+            let weights = &NET.feature_weights;
+            for i in 0..REQUIRED_ITERS {
+                let w_acc = _mm512_loadu_epi16(&self.0[Color::White][i * CHUNK_SIZE]);
+                let w_add = _mm512_loadu_epi16(&weights[white_add][i * CHUNK_SIZE]);
+                let w_sub1 = _mm512_loadu_epi16(&weights[white_sub_1][i * CHUNK_SIZE]);
+                let w_sub2 = _mm512_loadu_epi16(&weights[white_sub_2][i * CHUNK_SIZE]);
+
+                let b_acc = _mm512_loadu_epi16(&self.0[Color::Black][i * CHUNK_SIZE]);
+                let b_add = _mm512_loadu_epi16(&weights[black_add][i * CHUNK_SIZE]);
+                let b_sub1 = _mm512_loadu_epi16(&weights[black_sub_1][i * CHUNK_SIZE]);
+                let b_sub2 = _mm512_loadu_epi16(&weights[black_sub_2][i * CHUNK_SIZE]);
+
+                let w_updated = _mm512_add_epi16(w_acc, w_add);
+                let w_updated = _mm512_sub_epi16(w_updated, w_sub1);
+                let w_updated = _mm512_sub_epi16(w_updated, w_sub2);
+                _mm512_storeu_epi16(&mut self.0[Color::White][i * CHUNK_SIZE], w_updated);
+
+                let b_updated = _mm512_add_epi16(b_acc, b_add);
+                let b_updated = _mm512_sub_epi16(b_updated, b_sub1);
+                let b_updated = _mm512_sub_epi16(b_updated, b_sub2);
+                _mm512_storeu_epi16(&mut self.0[Color::Black][i * CHUNK_SIZE], b_updated);
+            }
+        }
+
+        #[allow(clippy::too_many_arguments)]
+        pub(crate) unsafe fn avx512_add_add_sub_sub(
+            &mut self,
+            white_add_1: usize,
+            black_add_1: usize,
+            white_add_2: usize,
+            black_add_2: usize,
+            white_sub_1: usize,
+            black_sub_1: usize,
+            white_sub_2: usize,
+            black_sub_2: usize,
+        ) {
+            let weights = &NET.feature_weights;
+            for i in 0..REQUIRED_ITERS {
+                let w_acc = _mm512_loadu_epi16(&self.0[Color::White][i * CHUNK_SIZE]);
+                let w_add1 = _mm512_loadu_epi16(&weights[white_add_1][i * CHUNK_SIZE]);
+                let w_add2 = _mm512_loadu_epi16(&weights[white_add_2][i * CHUNK_SIZE]);
+                let w_sub1 = _mm512_loadu_epi16(&weights[white_sub_1][i * CHUNK_SIZE]);
+                let w_sub2 = _mm512_loadu_epi16(&weights[white_sub_2][i * CHUNK_SIZE]);
+
+                let b_acc = _mm512_loadu_epi16(&self.0[Color::Black][i * CHUNK_SIZE]);
+                let b_add1 = _mm512_loadu_epi16(&weights[black_add_1][i * CHUNK_SIZE]);
+                let b_add2 = _mm512_loadu_epi16(&weights[black_add_2][i * CHUNK_SIZE]);
+                let b_sub1 = _mm512_loadu_epi16(&weights[black_sub_1][i * CHUNK_SIZE]);
+                let b_sub2 = _mm512_loadu_epi16(&weights[black_sub_2][i * CHUNK_SIZE]);
+
+                let w_updated = _mm512_add_epi16(w_acc, w_add1);
+                let w_updated = _mm512_add_epi16(w_updated, w_add2);
+                let w_updated = _mm512_sub_epi16(w_updated, w_sub1);
+                let w_updated = _mm512_sub_epi16(w_updated, w_sub2);
+                _mm512_storeu_epi16(&mut self.0[Color::White][i * CHUNK_SIZE], w_updated);
+
+                let b_updated = _mm512_add_epi16(b_acc, b_add1);
+                let b_updated = _mm512_add_epi16(b_updated, b_add2);
+                let b_updated = _mm512_sub_epi16(b_updated, b_sub1);
+                let b_updated = _mm512_sub_epi16(b_updated, b_sub2);
+                _mm512_storeu_epi16(&mut self.0[Color::Black][i * CHUNK_SIZE], b_updated);
             }
         }
     }
