@@ -33,14 +33,14 @@ pub fn search(
     mut board: Board,
     tt: &TranspositionTable,
 ) -> Move {
-
     td.game_time.search_start = Instant::now();
     td.nodes_searched = 0;
     td.stack = SearchStack::default();
-    assert_eq!(board.accumulator, board.clone().refresh_accumulators());
-    td.accumulators = AccumulatorStack::new(board.refresh_accumulators());
+    td.accumulators = AccumulatorStack::new(board.new_accumulator());
 
-    iterative_deepening(td, &board, print_uci, tt);
+    let best_move = iterative_deepening(td, &board, print_uci, tt);
+    assert_ne!(best_move, Move::NULL);
+    best_move
 }
 
 pub(crate) fn iterative_deepening(
@@ -60,8 +60,6 @@ pub(crate) fn iterative_deepening(
         let last_nodes = td.nodes_searched;
 
         assert_eq!(1, td.accumulators.stack.len());
-        assert_eq!(td.accumulators.stack[0], board.accumulator);
-
 
         prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt);
 
@@ -85,7 +83,7 @@ pub(crate) fn iterative_deepening(
     }
 
     assert_ne!(td.best_move, Move::NULL);
-    best_move
+    td.best_move
 }
 
 fn aspiration_windows(
@@ -379,7 +377,6 @@ fn alpha_beta<const IS_PV: bool>(
             );
             td.stack[td.ply].singular = Move::NULL;
             td.accumulators.push(prev);
-            assert_eq!(new_b.accumulator, *td.accumulators.top());
 
             if ext_score < ext_beta {
                 if td.stack[td.ply].dbl_extns <= MAX_DBL_EXT.val()

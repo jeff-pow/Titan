@@ -1,17 +1,33 @@
 use arrayvec::ArrayVec;
 
-use crate::types::{
-    pieces::{Color, Piece, PieceName, NUM_PIECES},
-    square::{Square, NUM_SQUARES},
+use crate::{
+    board::board::Board,
+    types::{
+        pieces::{Color, Piece, PieceName, NUM_PIECES},
+        square::{Square, NUM_SQUARES},
+    },
 };
 
-use super::{Block, HIDDEN_SIZE, NET};
+use super::{Block, NET};
 
 #[derive(Clone, Default, Debug)]
 pub(crate) struct Delta {
     // Only 32 pieces to add, so that's the cap
-    add: ArrayVec<(Piece, Square), 32>,
-    sub: ArrayVec<(Piece, Square), 32>,
+    add: ArrayVec<(usize, usize), 32>,
+    sub: ArrayVec<(usize, usize), 32>,
+}
+
+impl Delta {
+    pub(crate) fn add(&mut self, p: Piece, sq: Square) {
+        let w_idx = feature_idx(p.color(), p.name(), sq);
+        let b_idx = feature_idx(!p.color(), p.name(), sq.flip_vertical());
+        self.add.push((w_idx, b_idx));
+    }
+    pub(crate) fn remove(&mut self, p: Piece, sq: Square) {
+        let w_idx = feature_idx(p.color(), p.name(), sq);
+        let b_idx = feature_idx(!p.color(), p.name(), sq.flip_vertical());
+        self.sub.push((w_idx, b_idx));
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -25,27 +41,8 @@ impl Default for Accumulator {
 }
 
 impl Accumulator {
-    pub(self) fn apply_update(&mut self, delta: &mut Delta) {
-        let weights = &NET.feature_weights;
-        for i in 0..HIDDEN_SIZE {
-            let [white, black] = &mut self.0;
-            for (p, sq) in &delta.add {
-                let white_idx = feature_idx(p.color(), p.name(), *sq);
-                let black_idx = feature_idx(!p.color(), p.name(), sq.flip_vertical());
-                white[i] += weights[white_idx][i];
-                black[i] += weights[black_idx][i];
-            }
-            for (p, sq) in &delta.sub {
-                let white_idx = feature_idx(p.color(), p.name(), *sq);
-                let black_idx = feature_idx(!p.color(), p.name(), sq.flip_vertical());
-                white[i] -= weights[white_idx][i];
-                black[i] -= weights[black_idx][i];
-            }
-        }
-    }
-
     fn add_sub(&mut self, white_add: usize, black_add: usize, white_sub: usize, black_sub: usize) {
-        let weights = &NET.output_weights;
+        let weights = &NET.feature_weights;
         self.0[Color::White].iter_mut().zip(&weights[white_add]).zip(&weights[white_sub]).for_each(
             |((i, &a), &s)| {
                 *i += a - s;
@@ -58,10 +55,90 @@ impl Accumulator {
         )
     }
 
-    pub(crate) fn lazy_update(&mut self, delta: &Delta) {
+    fn add_sub_sub(
+        &mut self,
+        white_add: usize,
+        black_add: usize,
+        white_sub_1: usize,
+        black_sub_1: usize,
+        white_sub_2: usize,
+        black_sub_2: usize,
+    ) {
+        let weights = &NET.feature_weights;
+        self.0[Color::White]
+            .iter_mut()
+            .zip(&weights[white_add])
+            .zip(&weights[white_sub_1])
+            .zip(&weights[white_sub_2])
+            .for_each(|(((i, &a), &s1), &s2)| {
+                *i += a - s1 - s2;
+            });
+        self.0[Color::Black]
+            .iter_mut()
+            .zip(&weights[black_add])
+            .zip(&weights[black_sub_1])
+            .zip(&weights[black_sub_2])
+            .for_each(|(((i, &a), &s1), &s2)| {
+                *i += a - s1 - s2;
+            });
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn add_add_sub_sub(
+        &mut self,
+
+        white_add_1: usize,
+        black_add_1: usize,
+        white_add_2: usize,
+        black_add_2: usize,
+        white_sub_1: usize,
+        black_sub_1: usize,
+        white_sub_2: usize,
+        black_sub_2: usize,
+    ) {
+        let weights = &NET.feature_weights;
+        self.0[Color::White]
+            .iter_mut()
+            .zip(&weights[white_add_1])
+            .zip(&weights[white_add_2])
+            .zip(&weights[white_sub_1])
+            .zip(&weights[white_sub_2])
+            .for_each(|((((i, &a1), &a2), &s1), &s2)| {
+                *i += a1 + a2 - s1 - s2;
+            });
+        self.0[Color::Black]
+            .iter_mut()
+            .zip(&weights[black_add_1])
+            .zip(&weights[black_add_2])
+            .zip(&weights[black_sub_1])
+            .zip(&weights[black_sub_2])
+            .for_each(|((((i, &a1), &a2), &s1), &s2)| {
+                *i += a1 + a2 - s1 - s2;
+            });
+    }
+
+    pub(crate) fn lazy_update(&mut self, delta: &mut Delta) {
+        assert_eq!(delta.add.len(), 3);
+        assert_eq!(delta.sub.len(), 3);
         if delta.add.len() == 1 && delta.sub.len() == 1 {
-            let [white, black] = &mut self.0;
+            let (w_add, b_add) = delta.add[0];
+            let (w_sub, b_sub) = delta.sub[0];
+            self.add_sub(w_add, b_add, w_sub, b_sub);
+        } else if delta.add.len() == 1 && delta.sub.len() == 2 {
+            let (w_add, b_add) = delta.add[0];
+            let (w_sub1, b_sub1) = delta.sub[0];
+            let (w_sub2, b_sub2) = delta.sub[1];
+            self.add_sub_sub(w_add, b_add, w_sub1, b_sub1, w_sub2, b_sub2);
+        } else {
+            // Castling
+            let (w_add1, b_add1) = delta.add[0];
+            let (w_add2, b_add2) = delta.add[1];
+            let (w_sub1, b_sub1) = delta.sub[0];
+            let (w_sub2, b_sub2) = delta.sub[1];
+            self.add_add_sub_sub(w_add1, b_add1, w_add2, b_add2, w_sub1, b_sub1, w_sub2, b_sub2);
         }
+        delta.add.clear();
+        delta.sub.clear();
     }
 
     pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
@@ -110,38 +187,23 @@ fn feature_idx(color: Color, piece: PieceName, sq: Square) -> usize {
     color.idx() * COLOR_OFFSET + piece.idx() * PIECE_OFFSET + sq.idx()
 }
 
+impl Board {
+    pub fn new_accumulator(&mut self) -> Accumulator {
+        let mut acc = Accumulator::default();
+        for c in Color::iter() {
+            for p in PieceName::iter() {
+                for sq in self.bitboard(c, p) {
+                    acc.add_feature(p, c, sq);
+                }
+            }
+        }
+        acc
+    }
+}
+
 #[cfg(test)]
 mod accumulator_tests {
-    use crate::{
-        board::fen::{build_board, STARTING_FEN},
-        moves::moves::from_san,
-    };
-    use std::time::Instant;
-
-    use super::*;
 
     #[test]
-    fn delta() {
-        let mut d = Delta::default();
-        let mut board = build_board(STARTING_FEN);
-        let m = from_san("e2e4", &board);
-        let mut acc = board.accumulator;
-        let mut asdf = acc;
-        let start = Instant::now();
-        asdf.add_feature(m.piece_moving().name(), m.piece_moving().color(), m.dest_square());
-        asdf.remove_feature(m.piece_moving().name(), m.piece_moving().color(), m.origin_square());
-        dbg!(start.elapsed());
-
-        let mut make_move_acc = board.refresh_accumulators();
-        assert!(board.make_move::<true>(m, &mut make_move_acc));
-
-        d.add.push((m.piece_moving(), m.dest_square()));
-        d.sub.push((m.piece_moving(), m.origin_square()));
-        let delta = Instant::now();
-        acc.apply_update(&mut d);
-        dbg!(delta.elapsed());
-        assert_eq!(asdf, acc);
-        assert_eq!(make_move_acc, acc);
-        assert_eq!(make_move_acc, board.refresh_accumulators());
-    }
+    fn delta() {}
 }

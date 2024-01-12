@@ -26,7 +26,6 @@ pub struct Board {
     pub num_moves: usize,
     pub half_moves: usize,
     pub zobrist_hash: u64,
-    pub accumulator: Accumulator,
     pub in_check: bool,
     threats: Bitboard,
 }
@@ -43,7 +42,6 @@ impl Default for Board {
             num_moves: 0,
             half_moves: 0,
             zobrist_hash: 0,
-            accumulator: Accumulator::default(),
             in_check: false,
             threats: Bitboard::EMPTY,
         }
@@ -147,7 +145,6 @@ impl Board {
         self.color_occupancies[color] ^= sq.bitboard();
         self.zobrist_hash ^= ZOBRIST.piece_square_hashes[color][name][sq];
         if NNUE {
-            self.accumulator.add_feature(name, color, sq);
             acc.add_feature(name, color, sq);
         }
     }
@@ -160,7 +157,6 @@ impl Board {
             self.color_occupancies[piece.color()] ^= sq.bitboard();
             self.zobrist_hash ^= ZOBRIST.piece_square_hashes[piece.color()][piece.name()][sq];
             if NNUE {
-                self.accumulator.remove_feature(piece.name(), piece.color(), sq);
                 acc.remove_feature(piece.name(), piece.color(), sq);
             }
         }
@@ -331,7 +327,6 @@ impl Board {
     /// Returns true if a move was legal, and false if it was illegal.
     #[must_use]
     pub fn make_move<const NNUE: bool>(&mut self, m: Move, acc: &mut Accumulator) -> bool {
-        // assert_eq!(*acc, self.accumulator);
         let piece_moving = m.piece_moving();
         assert_eq!(piece_moving, self.piece_at(m.origin_square()));
         let capture = self.capture(m);
@@ -409,8 +404,6 @@ impl Board {
         self.calculate_threats();
         self.in_check = self.threats_in_check();
 
-        // assert_eq!(*acc, self.accumulator);
-
         // This move is valid, so we return true to denote this fact
         true
     }
@@ -437,20 +430,6 @@ impl Board {
                 dbg!("\n");
             }
         }
-    }
-
-    pub fn refresh_accumulators(&mut self) -> Accumulator {
-        self.accumulator = Accumulator::default();
-        let mut acc = Accumulator::default();
-        for c in Color::iter() {
-            for p in PieceName::iter() {
-                for sq in self.bitboard(c, p) {
-                    self.accumulator.add_feature(p, c, sq);
-                    acc.add_feature(p, c, sq);
-                }
-            }
-        }
-        acc
     }
 }
 

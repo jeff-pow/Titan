@@ -26,8 +26,7 @@ pub(super) struct Network {
 impl Board {
     #[allow(clippy::assertions_on_constants)]
     pub fn evaluate(&self, acc: &Accumulator) -> i32 {
-        let (us, them) = (&self.accumulator.0[self.to_move], &self.accumulator.0[!self.to_move]);
-        assert_eq!(&self.accumulator, acc);
+        let (us, them) = (&acc.0[self.to_move], &acc.0[!self.to_move]);
         let weights = &NET.output_weights;
         let output = flatten(us, &weights[0]) + flatten(them, &weights[1]);
         let a = (i32::from(NET.output_bias) + output / NORMALIZATION_FACTOR) * SCALE / QAB;
@@ -76,7 +75,7 @@ mod nnue_tests {
     #[test]
     fn inference_benchmark() {
         let mut board = build_board(STARTING_FEN);
-        let acc = board.refresh_accumulators();
+        let acc = board.new_accumulator();
         let start = Instant::now();
         let iters = 10_000_000_u128;
         for _ in 0..iters {
