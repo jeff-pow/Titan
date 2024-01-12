@@ -1,5 +1,4 @@
 use crate::{
-    eval::accumulator::Accumulator,
     moves::moves::Castle,
     types::{
         pieces::{Color, Piece},
@@ -33,43 +32,42 @@ pub fn build_board(fen_string: &str) -> Board {
             }
             let square = row * 8 + idx;
             let square = Square(square as u32);
-            let mut acc = Accumulator::default();
             match c {
                 'K' => {
-                    board.place_piece::<true>(Piece::WhiteKing, square, &mut acc);
+                    board.place_piece::<false>(Piece::WhiteKing, square);
                 }
                 'Q' => {
-                    board.place_piece::<true>(Piece::WhiteQueen, square, &mut acc);
+                    board.place_piece::<false>(Piece::WhiteQueen, square);
                 }
                 'R' => {
-                    board.place_piece::<true>(Piece::WhiteRook, square, &mut acc);
+                    board.place_piece::<false>(Piece::WhiteRook, square);
                 }
                 'N' => {
-                    board.place_piece::<true>(Piece::WhiteKnight, square, &mut acc);
+                    board.place_piece::<false>(Piece::WhiteKnight, square);
                 }
                 'B' => {
-                    board.place_piece::<true>(Piece::WhiteBishop, square, &mut acc);
+                    board.place_piece::<false>(Piece::WhiteBishop, square);
                 }
                 'P' => {
-                    board.place_piece::<true>(Piece::WhitePawn, square, &mut acc);
+                    board.place_piece::<false>(Piece::WhitePawn, square);
                 }
                 'k' => {
-                    board.place_piece::<true>(Piece::BlackKing, square, &mut acc);
+                    board.place_piece::<false>(Piece::BlackKing, square);
                 }
                 'q' => {
-                    board.place_piece::<true>(Piece::BlackQueen, square, &mut acc);
+                    board.place_piece::<false>(Piece::BlackQueen, square);
                 }
                 'r' => {
-                    board.place_piece::<true>(Piece::BlackRook, square, &mut acc);
+                    board.place_piece::<false>(Piece::BlackRook, square);
                 }
                 'b' => {
-                    board.place_piece::<true>(Piece::BlackBishop, square, &mut acc);
+                    board.place_piece::<false>(Piece::BlackBishop, square);
                 }
                 'n' => {
-                    board.place_piece::<true>(Piece::BlackKnight, square, &mut acc);
+                    board.place_piece::<false>(Piece::BlackKnight, square);
                 }
                 'p' => {
-                    board.place_piece::<true>(Piece::BlackPawn, square, &mut acc);
+                    board.place_piece::<false>(Piece::BlackPawn, square);
                 }
                 _ => panic!("Unrecognized char {}, board could not be made", c),
             }

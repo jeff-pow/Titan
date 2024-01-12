@@ -339,10 +339,10 @@ fn alpha_beta<const IS_PV: bool>(
 
         let mut new_b = *board;
         // Make move filters out illegal moves by returning false if a move was illegal
-        if !new_b.make_move::<true>(m, td.accumulators.next()) {
-            td.accumulators.pop();
+        if !new_b.make_move::<true>(m) {
             continue;
         }
+        td.accumulators.next().lazy_update(&mut new_b.delta);
         tt.prefetch(new_b.zobrist_hash);
 
         if is_quiet {

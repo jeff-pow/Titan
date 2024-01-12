@@ -2,7 +2,6 @@ use std::time::Instant;
 
 use crate::{
     board::board::Board,
-    eval::accumulator::Accumulator,
     moves::{movegenerator::MGT, movelist::MoveList},
 };
 
@@ -24,7 +23,7 @@ fn non_bulk_perft<const ROOT: bool>(board: &Board, depth: i32) -> usize {
     for i in 0..moves.len() {
         let m = moves[i];
         let mut new_b = *board;
-        if !new_b.make_move::<false>(m, &mut Accumulator::default()) {
+        if !new_b.make_move::<false>(m) {
             continue;
         }
         let count = non_bulk_perft::<false>(&new_b, depth - 1);

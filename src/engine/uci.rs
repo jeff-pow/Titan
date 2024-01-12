@@ -8,7 +8,6 @@ use crate::bench::bench;
 use crate::board::fen::{parse_fen_from_buffer, STARTING_FEN};
 use crate::engine::perft::perft;
 use crate::engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
-use crate::eval::accumulator::Accumulator;
 use crate::search::lmr_reductions;
 use crate::search::thread::ThreadPool;
 use crate::spsa::{parse_param, uci_print_tunable_params, SPSA_TUNE};
@@ -140,7 +139,7 @@ fn position_command(input: &[&str], board: &mut Board, hash_history: &mut Vec<u6
 fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, hash_history: &mut Vec<u64>) {
     for str in moves.iter().skip(skip) {
         let m = from_san(str, board);
-        let _ = board.make_move::<true>(m, &mut Accumulator::default());
+        let _ = board.make_move::<true>(m);
         hash_history.push(board.zobrist_hash);
     }
 }

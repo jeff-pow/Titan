@@ -1,5 +1,3 @@
-use arrayvec::ArrayVec;
-
 use crate::{
     board::board::Board,
     types::{
@@ -10,23 +8,30 @@ use crate::{
 
 use super::{Block, NET};
 
-#[derive(Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub(crate) struct Delta {
-    // Only 32 pieces to add, so that's the cap
-    add: ArrayVec<(usize, usize), 32>,
-    sub: ArrayVec<(usize, usize), 32>,
+    pub add: [(u16, u16); 2],
+    pub num_add: usize,
+    pub sub: [(u16, u16); 2],
+    pub num_sub: usize,
 }
 
 impl Delta {
+    fn clear(&mut self) {
+        *self = Self::default();
+    }
+
     pub(crate) fn add(&mut self, p: Piece, sq: Square) {
         let w_idx = feature_idx(p.color(), p.name(), sq);
         let b_idx = feature_idx(!p.color(), p.name(), sq.flip_vertical());
-        self.add.push((w_idx, b_idx));
+        self.add[self.num_add] = (w_idx as u16, b_idx as u16);
+        self.num_add += 1;
     }
     pub(crate) fn remove(&mut self, p: Piece, sq: Square) {
         let w_idx = feature_idx(p.color(), p.name(), sq);
         let b_idx = feature_idx(!p.color(), p.name(), sq.flip_vertical());
-        self.sub.push((w_idx, b_idx));
+        self.sub[self.num_sub] = (w_idx as u16, b_idx as u16);
+        self.num_sub += 1;
     }
 }
 
@@ -118,27 +123,45 @@ impl Accumulator {
     }
 
     pub(crate) fn lazy_update(&mut self, delta: &mut Delta) {
-        assert_eq!(delta.add.len(), 3);
-        assert_eq!(delta.sub.len(), 3);
         if delta.add.len() == 1 && delta.sub.len() == 1 {
             let (w_add, b_add) = delta.add[0];
             let (w_sub, b_sub) = delta.sub[0];
-            self.add_sub(w_add, b_add, w_sub, b_sub);
+            self.add_sub(
+                usize::from(w_add),
+                usize::from(b_add),
+                usize::from(w_sub),
+                usize::from(b_sub),
+            );
         } else if delta.add.len() == 1 && delta.sub.len() == 2 {
             let (w_add, b_add) = delta.add[0];
             let (w_sub1, b_sub1) = delta.sub[0];
             let (w_sub2, b_sub2) = delta.sub[1];
-            self.add_sub_sub(w_add, b_add, w_sub1, b_sub1, w_sub2, b_sub2);
+            self.add_sub_sub(
+                usize::from(w_add),
+                usize::from(b_add),
+                usize::from(w_sub1),
+                usize::from(b_sub1),
+                usize::from(w_sub2),
+                usize::from(b_sub2),
+            );
         } else {
             // Castling
             let (w_add1, b_add1) = delta.add[0];
             let (w_add2, b_add2) = delta.add[1];
             let (w_sub1, b_sub1) = delta.sub[0];
             let (w_sub2, b_sub2) = delta.sub[1];
-            self.add_add_sub_sub(w_add1, b_add1, w_add2, b_add2, w_sub1, b_sub1, w_sub2, b_sub2);
+            self.add_add_sub_sub(
+                usize::from(w_add1),
+                usize::from(b_add1),
+                usize::from(w_add2),
+                usize::from(b_add2),
+                usize::from(w_sub1),
+                usize::from(b_sub1),
+                usize::from(w_sub2),
+                usize::from(b_sub2),
+            );
         }
-        delta.add.clear();
-        delta.sub.clear();
+        delta.clear();
     }
 
     pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
