@@ -117,10 +117,9 @@ pub struct ThreadPool<'a> {
 
 impl<'a> ThreadPool<'a> {
     pub fn new(halt: &'a AtomicBool, hash_history: Vec<u64>) -> Self {
-        let workers = vec![ThreadData::new(halt, hash_history.clone())];
         Self {
             main_thread: ThreadData::new(halt, hash_history),
-            workers,
+            workers: Vec::new(),
             halt,
             searching: AtomicBool::new(false),
             total_nodes: Arc::new(AtomicU64::new(0)),
@@ -203,6 +202,7 @@ impl<'a> ThreadPool<'a> {
                 self.halt.store(true, Ordering::Relaxed);
                 println!("bestmove {}", self.main_thread.best_move.to_san());
             });
+            dbg!(self.workers.len());
             for t in &mut self.workers {
                 s.spawn(|| {
                     search(t, false, *board, tt);
