@@ -63,6 +63,9 @@ pub(crate) fn iterative_deepening(
 
         prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt);
 
+        assert_eq!(1, td.accumulators.stack.len());
+        assert!(!pv.line.is_empty());
+
         if depth >= 7 {
             td.global_nodes.fetch_add(td.nodes_searched - last_nodes, Ordering::Relaxed);
         }
