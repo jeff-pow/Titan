@@ -63,7 +63,8 @@ impl MovePicker {
     pub fn next(&mut self, board: &Board, td: &ThreadData) -> Option<MoveListEntry> {
         if self.phase == MovePickerPhase::TTMove {
             self.phase = MovePickerPhase::CapturesInit;
-            if board.is_quiet(self.tt_move) && self.skip_quiets {
+            // TODO: Try !tactical instead of dest empty for qs moves
+            if board.occupancies().empty(self.tt_move.dest_square()) && self.skip_quiets {
                 return self.next(board, td);
             }
             if board.is_pseudo_legal(self.tt_move) {

@@ -34,40 +34,40 @@ pub fn build_board(fen_string: &str) -> Board {
             let square = Square(square as u32);
             match c {
                 'K' => {
-                    board.place_piece::<true>(Piece::WhiteKing, square);
+                    board.place_piece::<false>(Piece::WhiteKing, square);
                 }
                 'Q' => {
-                    board.place_piece::<true>(Piece::WhiteQueen, square);
+                    board.place_piece::<false>(Piece::WhiteQueen, square);
                 }
                 'R' => {
-                    board.place_piece::<true>(Piece::WhiteRook, square);
+                    board.place_piece::<false>(Piece::WhiteRook, square);
                 }
                 'N' => {
-                    board.place_piece::<true>(Piece::WhiteKnight, square);
+                    board.place_piece::<false>(Piece::WhiteKnight, square);
                 }
                 'B' => {
-                    board.place_piece::<true>(Piece::WhiteBishop, square);
+                    board.place_piece::<false>(Piece::WhiteBishop, square);
                 }
                 'P' => {
-                    board.place_piece::<true>(Piece::WhitePawn, square);
+                    board.place_piece::<false>(Piece::WhitePawn, square);
                 }
                 'k' => {
-                    board.place_piece::<true>(Piece::BlackKing, square);
+                    board.place_piece::<false>(Piece::BlackKing, square);
                 }
                 'q' => {
-                    board.place_piece::<true>(Piece::BlackQueen, square);
+                    board.place_piece::<false>(Piece::BlackQueen, square);
                 }
                 'r' => {
-                    board.place_piece::<true>(Piece::BlackRook, square);
+                    board.place_piece::<false>(Piece::BlackRook, square);
                 }
                 'b' => {
-                    board.place_piece::<true>(Piece::BlackBishop, square);
+                    board.place_piece::<false>(Piece::BlackBishop, square);
                 }
                 'n' => {
-                    board.place_piece::<true>(Piece::BlackKnight, square);
+                    board.place_piece::<false>(Piece::BlackKnight, square);
                 }
                 'p' => {
-                    board.place_piece::<true>(Piece::BlackPawn, square);
+                    board.place_piece::<false>(Piece::BlackPawn, square);
                 }
                 _ => panic!("Unrecognized char {}, board could not be made", c),
             }
@@ -110,7 +110,7 @@ pub fn build_board(fen_string: &str) -> Board {
     assert_eq!(iter.next(), None);
     board.zobrist_hash = board.generate_hash();
     board.calculate_threats();
-    board.refresh_accumulators();
+    board.new_accumulator();
     board
 }
 

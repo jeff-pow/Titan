@@ -10,6 +10,8 @@ use std::{
 use crate::{
     board::board::Board,
     engine::{transposition::TranspositionTable, uci::parse_time},
+    eval::accumulator::Accumulator,
+
     moves::moves::Move,
     search::search::{CHECKMATE, NEAR_CHECKMATE},
 };
@@ -18,7 +20,7 @@ use super::{
     game_time::GameTime,
     history_table::HistoryTable,
     search::{search, MAX_SEARCH_DEPTH},
-    SearchStack, SearchType, PV,
+    AccumulatorStack, SearchStack, SearchType, PV,
 };
 
 #[derive(Clone)]
@@ -35,6 +37,7 @@ pub(crate) struct ThreadData<'a> {
     pub stack: SearchStack,
     pub history: HistoryTable,
     pub hash_history: Vec<u64>,
+    pub accumulators: AccumulatorStack,
 
     pub game_time: GameTime,
     pub search_type: SearchType,
@@ -53,6 +56,9 @@ impl<'a> ThreadData<'a> {
             best_move: Move::NULL,
             global_nodes: Arc::new(AtomicU64::new(0)),
             history: HistoryTable::default(),
+
+            accumulators: AccumulatorStack::new(Accumulator::default()),
+
             game_time: GameTime::default(),
             halt,
             search_type: SearchType::default(),

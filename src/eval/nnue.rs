@@ -1,4 +1,4 @@
-use super::{Block, INPUT_SIZE, NET};
+use super::{accumulator::Accumulator, Block, INPUT_SIZE, NET};
 
 use crate::board::board::Board;
 /**
@@ -25,8 +25,8 @@ pub(super) struct Network {
 
 impl Board {
     #[allow(clippy::assertions_on_constants)]
-    pub fn evaluate(&self) -> i32 {
-        let (us, them) = (&self.accumulator.0[self.to_move], &self.accumulator.0[!self.to_move]);
+    pub fn evaluate(&self, acc: &Accumulator) -> i32 {
+        let (us, them) = (&acc.0[self.to_move], &acc.0[!self.to_move]);
         let weights = &NET.output_weights;
         let output = flatten(us, &weights[0]) + flatten(them, &weights[1]);
         let a = (i32::from(NET.output_bias) + output / NORMALIZATION_FACTOR) * SCALE / QAB;
@@ -74,11 +74,12 @@ mod nnue_tests {
 
     #[test]
     fn inference_benchmark() {
-        let board = build_board(STARTING_FEN);
+        let mut board = build_board(STARTING_FEN);
+        let acc = board.new_accumulator();
         let start = Instant::now();
         let iters = 10_000_000_u128;
         for _ in 0..iters {
-            black_box(board.evaluate());
+            black_box(board.evaluate(&acc));
         }
         let duration = start.elapsed().as_nanos();
         println!("{} ns per iter", duration / iters);

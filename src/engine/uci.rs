@@ -53,7 +53,7 @@ pub fn main_loop() -> ! {
                 halt.store(false, Ordering::Relaxed);
                 thread_pool = ThreadPool::new(&halt, Vec::new());
             }
-            "eval" => println!("{} cp", board.evaluate()),
+            "eval" => println!("{} cp", board.evaluate(&board.clone().new_accumulator())),
             "position" => position_command(&input, &mut board, &mut hash_history),
             "d" => {
                 dbg!(&board);
@@ -139,7 +139,7 @@ fn position_command(input: &[&str], board: &mut Board, hash_history: &mut Vec<u6
 fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, hash_history: &mut Vec<u64>) {
     for str in moves.iter().skip(skip) {
         let m = from_san(str, board);
-        let _ = board.make_move::<true>(m);
+        let _ = board.make_move::<false>(m);
         hash_history.push(board.zobrist_hash);
     }
 }

@@ -2,7 +2,7 @@ use core::fmt;
 
 use crate::{
     board::zobrist::ZOBRIST,
-    eval::accumulator::Accumulator,
+    eval::accumulator::Delta,
     moves::{
         attack_boards::{king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, RANKS},
         magics::{bishop_attacks, queen_attacks, rook_attacks},
@@ -26,8 +26,8 @@ pub struct Board {
     pub num_moves: usize,
     pub half_moves: usize,
     pub zobrist_hash: u64,
-    pub accumulator: Accumulator,
     pub in_check: bool,
+    pub(crate) delta: Delta,
     threats: Bitboard,
 }
 
@@ -43,9 +43,9 @@ impl Default for Board {
             num_moves: 0,
             half_moves: 0,
             zobrist_hash: 0,
-            accumulator: Accumulator::default(),
             in_check: false,
             threats: Bitboard::EMPTY,
+            delta: Delta::default(),
         }
     }
 }
@@ -142,7 +142,8 @@ impl Board {
         self.color_occupancies[color] ^= sq.bitboard();
         self.zobrist_hash ^= ZOBRIST.piece_square_hashes[color][name][sq];
         if NNUE {
-            self.accumulator.add_feature(name, color, sq);
+            // acc.add_feature(name, color, sq);
+            self.delta.add(piece, sq);
         }
     }
 
@@ -154,7 +155,8 @@ impl Board {
             self.color_occupancies[piece.color()] ^= sq.bitboard();
             self.zobrist_hash ^= ZOBRIST.piece_square_hashes[piece.color()][piece.name()][sq];
             if NNUE {
-                self.accumulator.remove_feature(piece.name(), piece.color(), sq);
+                // acc.remove_feature(piece.name(), piece.color(), sq);
+                self.delta.remove(piece, sq);
             }
         }
     }
@@ -315,21 +317,20 @@ impl Board {
         }
     }
 
-    /// Returns true if a move does not capture a piece, and false if a piece is captured
-    pub fn is_quiet(&self, m: Move) -> bool {
-        self.occupancies().empty(m.dest_square())
-    }
-
     /// Function makes a move and modifies board state to reflect the move that just happened.
     /// Returns true if a move was legal, and false if it was illegal.
     #[must_use]
     pub fn make_move<const NNUE: bool>(&mut self, m: Move) -> bool {
+        assert_eq!(self.delta.num_add, 0);
+        assert_eq!(self.delta.num_sub, 0);
         let piece_moving = m.piece_moving();
         assert_eq!(piece_moving, self.piece_at(m.origin_square()));
         let capture = self.capture(m);
         self.remove_piece::<NNUE>(m.dest_square());
 
-        self.place_piece::<NNUE>(piece_moving, m.dest_square());
+        if m.promotion().is_none() {
+            self.place_piece::<NNUE>(piece_moving, m.dest_square());
+        }
 
         self.remove_piece::<NNUE>(m.origin_square());
 
@@ -339,7 +340,6 @@ impl Board {
             self.place_piece::<NNUE>(rook, m.castle_type().rook_dest());
             self.remove_piece::<NNUE>(m.castle_type().rook_src());
         } else if let Some(p) = m.promotion() {
-            self.remove_piece::<NNUE>(m.dest_square());
             self.place_piece::<NNUE>(p, m.dest_square());
         } else if m.is_en_passant() {
             match self.to_move {
@@ -425,17 +425,6 @@ impl Board {
                 dbg!("{:?} {:?}", color, piece);
                 dbg!(self.bitboard(color, piece));
                 dbg!("\n");
-            }
-        }
-    }
-
-    pub fn refresh_accumulators(&mut self) {
-        self.accumulator = Accumulator::default();
-        for c in Color::iter() {
-            for p in PieceName::iter() {
-                for sq in self.bitboard(c, p) {
-                    self.accumulator.add_feature(p, c, sq)
-                }
             }
         }
     }
