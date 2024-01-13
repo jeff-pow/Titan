@@ -399,7 +399,7 @@ fn alpha_beta<const IS_PV: bool>(
             0
         };
 
-        let new_depth = depth + extension;
+        let new_depth = depth + extension - 1;
 
         td.nodes_searched += 1;
         td.stack[td.ply].played_move = m;
@@ -409,7 +409,7 @@ fn alpha_beta<const IS_PV: bool>(
 
         let eval = if legal_moves_searched == 0 {
             // On the first move, just do a full depth search
-            -alpha_beta::<IS_PV>(new_depth - 1, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
+            -alpha_beta::<IS_PV>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
         } else {
             // Late Move Reductions - Search moves after the first with reduced depth and window as
             // they are much less likely to be the best move than the first move selected by the
@@ -421,12 +421,12 @@ fn alpha_beta<const IS_PV: bool>(
                 0
             } else {
                 let r = get_reduction(depth, legal_moves_searched);
-                min(new_depth, max(r, 1))
+                min(new_depth - 1, max(r, 1))
             };
 
             // Start with a zero window reduced search
             let zero_window_reduced_depth = -alpha_beta::<false>(
-                new_depth - r - 1,
+                new_depth - r,
                 -alpha - 1,
                 -alpha,
                 &mut node_pv,
@@ -437,9 +437,9 @@ fn alpha_beta<const IS_PV: bool>(
             );
 
             // If that search raises alpha and a reduction was applied, re-search at a zero window with full depth
-            let zero_window_full_depth = if zero_window_reduced_depth > alpha && r > 1 {
+            let zero_window_full_depth = if zero_window_reduced_depth > alpha && r > 0 {
                 -alpha_beta::<false>(
-                    new_depth - 1,
+                    new_depth,
                     -alpha - 1,
                     -alpha,
                     &mut node_pv,
@@ -454,16 +454,7 @@ fn alpha_beta<const IS_PV: bool>(
 
             // If the verification score falls between alpha and beta, full window full depth search
             if zero_window_full_depth > alpha && zero_window_full_depth < beta {
-                -alpha_beta::<IS_PV>(
-                    new_depth - 1,
-                    -beta,
-                    -alpha,
-                    &mut node_pv,
-                    td,
-                    tt,
-                    &new_b,
-                    false,
-                )
+                -alpha_beta::<IS_PV>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
             } else {
                 zero_window_full_depth
             }
