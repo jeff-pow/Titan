@@ -11,6 +11,7 @@ use crate::{
     board::board::Board,
     engine::{transposition::TranspositionTable, uci::parse_time},
     eval::accumulator::Accumulator,
+
     moves::moves::Move,
     search::search::{CHECKMATE, NEAR_CHECKMATE},
 };
@@ -55,7 +56,9 @@ impl<'a> ThreadData<'a> {
             best_move: Move::NULL,
             global_nodes: Arc::new(AtomicU64::new(0)),
             history: HistoryTable::default(),
+
             accumulators: AccumulatorStack::new(Accumulator::default()),
+
             game_time: GameTime::default(),
             halt,
             search_type: SearchType::default(),
