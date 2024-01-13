@@ -59,6 +59,7 @@ static ARR: &[&TunableParam]= &[
     &LMR_MIN_MOVES,
     &LMR_BASE,
     &LMR_DIVISOR,
+    &LMR_DEPTH,
 
     &INIT_ASP,
     &ASP_DIVISOR,
@@ -92,9 +93,10 @@ static ARR: &[&TunableParam]= &[
     &MAX_DBL_EXT,
 ];
 
-tunable_param!(LMR_MIN_MOVES, 2);
+tunable_param!(LMR_MIN_MOVES, 1);
 tunable_param!(LMR_BASE, 98, &lmr_reductions);
 tunable_param!(LMR_DIVISOR, 198, &lmr_reductions);
+tunable_param!(LMR_DEPTH, 2);
 
 tunable_param!(INIT_ASP, 11);
 tunable_param!(ASP_DIVISOR, 9901);

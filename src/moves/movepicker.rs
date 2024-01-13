@@ -16,7 +16,7 @@ pub const FIRST_KILLER_SCORE: i32 = 1_000_000;
 pub const COUNTER_MOVE_SCORE: i32 = 800_000;
 pub const BAD_CAPTURE: i32 = -10000;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, PartialOrd)]
 pub enum MovePickerPhase {
     TTMove,
 

@@ -5,18 +5,17 @@ use std::time::Instant;
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movelist::MoveListEntry;
-use crate::moves::movepicker::{MovePicker, BAD_CAPTURE};
+use crate::moves::movepicker::{MovePicker, MovePickerPhase};
 use crate::moves::moves::Move;
 use crate::search::{AccumulatorStack, SearchStack};
 use crate::spsa::{
     ASP_DIVISOR, ASP_MIN_DEPTH, CAPT_SEE, DBL_EXT_MARGIN, DELTA_EXPANSION, EXT_DEPTH,
     EXT_TT_DEPTH_MARGIN, INIT_ASP, LMP_DEPTH, LMP_IMP_BASE, LMP_IMP_FACTOR, LMP_NOT_IMP_BASE,
-    LMP_NOT_IMP_FACTOR, LMR_MIN_MOVES, MAX_DBL_EXT, NMP_BASE_R, NMP_DEPTH, NMP_DEPTH_DIVISOR,
-    NMP_EVAL_DIVISOR, NMP_EVAL_MIN, QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH, RFP_IMPROVING_FACTOR,
-    SEE_DEPTH,
+    LMP_NOT_IMP_FACTOR, LMR_DEPTH, LMR_MIN_MOVES, MAX_DBL_EXT, NMP_BASE_R, NMP_DEPTH,
+    NMP_DEPTH_DIVISOR, NMP_EVAL_DIVISOR, NMP_EVAL_MIN, QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH,
+    RFP_IMPROVING_FACTOR, SEE_DEPTH,
 };
 
-use super::history_table::MAX_HIST_VAL;
 use super::quiescence::quiescence;
 use super::thread::ThreadData;
 use super::{get_reduction, SearchType, PV};
@@ -308,7 +307,7 @@ fn alpha_beta<const IS_PV: bool>(
     let mut tacticals_tried = Vec::new();
 
     // Start of search
-    while let Some(MoveListEntry { m, score: hist_score }) = picker.next(board, td) {
+    while let Some(MoveListEntry { m, score: _hist_score }) = picker.next(board, td) {
         if m == singular_move {
             continue;
         }
@@ -415,33 +414,19 @@ fn alpha_beta<const IS_PV: bool>(
             // Late Move Reductions - Search moves after the first with reduced depth and window as
             // they are much less likely to be the best move than the first move selected by the
             // move picker.
-            let r = {
-                if legal_moves_searched < LMR_MIN_MOVES.val() || depth < 2 {
-                    1
-                } else {
-                    let mut r = get_reduction(depth, legal_moves_searched);
-                    r += i32::from(!IS_PV);
-                    r += i32::from(!improving);
-                    if is_quiet && cut_node {
-                        r += 2;
-                    }
-                    if is_quiet {
-                        if hist_score > MAX_HIST_VAL / 2 {
-                            r -= 1;
-                        } else if hist_score < -MAX_HIST_VAL / 2 {
-                            r += 1;
-                        }
-                    }
-                    if m.is_capture(board) && hist_score < BAD_CAPTURE + 100 {
-                        r += 1;
-                    }
-                    min(new_depth, max(r, 1))
-                }
+            let r = if depth <= LMR_DEPTH.val()
+                || legal_moves_searched < LMR_MIN_MOVES.val()
+                || picker.phase < MovePickerPhase::Killer
+            {
+                0
+            } else {
+                let r = get_reduction(depth, legal_moves_searched);
+                min(new_depth, max(r, 1))
             };
 
             // Start with a zero window reduced search
             let zero_window_reduced_depth = -alpha_beta::<false>(
-                new_depth - r,
+                new_depth - r - 1,
                 -alpha - 1,
                 -alpha,
                 &mut node_pv,

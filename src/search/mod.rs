@@ -92,6 +92,9 @@ pub fn lmr_reductions() {
             LMR_REDUCTIONS[depth as usize][moves_played].store(reduction, Ordering::Relaxed);
         }
     }
+    LMR_REDUCTIONS[0][0].store(0, Ordering::Relaxed);
+    LMR_REDUCTIONS[1][0].store(0, Ordering::Relaxed);
+    LMR_REDUCTIONS[0][1].store(0, Ordering::Relaxed);
 }
 
 pub fn get_reduction(depth: i32, moves_played: i32) -> i32 {
