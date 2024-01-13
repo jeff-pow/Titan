@@ -421,7 +421,7 @@ fn alpha_beta<const IS_PV: bool>(
                 0
             } else {
                 let r = get_reduction(depth, legal_moves_searched);
-                min(new_depth - 1, max(r, 0))
+                min(new_depth + 1, max(r, 1))
             };
 
             // Start with a zero window reduced search
@@ -437,7 +437,7 @@ fn alpha_beta<const IS_PV: bool>(
             );
 
             // If that search raises alpha and a reduction was applied, re-search at a zero window with full depth
-            let zero_window_full_depth = if zero_window_reduced_depth > alpha && r > 0 {
+            let zero_window_full_depth = if zero_window_reduced_depth > alpha && r > 1 {
                 -alpha_beta::<false>(
                     new_depth,
                     -alpha - 1,
