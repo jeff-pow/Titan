@@ -422,6 +422,7 @@ fn alpha_beta<const IS_PV: bool>(
             } else {
                 let r = get_reduction(depth, legal_moves_searched);
                 // TODO: Adjust max clamping depth here
+                //
                 min(new_depth + 1, max(r, 1))
             };
 
