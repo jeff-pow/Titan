@@ -421,7 +421,7 @@ fn alpha_beta<const IS_PV: bool>(
                 0
             } else {
                 let r = get_reduction(depth, legal_moves_searched);
-                min(new_depth - 1, max(r, 1))
+                min(new_depth - 1, max(r, 0))
             };
 
             // Start with a zero window reduced search
