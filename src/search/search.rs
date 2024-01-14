@@ -27,24 +27,20 @@ pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 30000;
 pub const MAX_SEARCH_DEPTH: i32 = 100;
 
-
 pub fn search(
     td: &mut ThreadData,
     print_uci: bool,
     mut board: Board,
     tt: &TranspositionTable,
 ) -> Move {
-
     td.game_time.search_start = Instant::now();
     td.nodes_searched = 0;
     td.stack = SearchStack::default();
     td.accumulators = AccumulatorStack::new(board.new_accumulator());
 
-
     let best_move = iterative_deepening(td, &board, print_uci, tt);
     assert_ne!(best_move, Move::NULL);
     best_move
-
 }
 
 pub(crate) fn iterative_deepening(
@@ -52,7 +48,7 @@ pub(crate) fn iterative_deepening(
     board: &Board,
     print_uci: bool,
     tt: &TranspositionTable,
-) {
+) -> Move {
     let mut pv = PV::default();
     let mut prev_score = -INFINITY;
 
@@ -62,16 +58,12 @@ pub(crate) fn iterative_deepening(
         td.sel_depth = 0;
         let last_nodes = td.nodes_searched;
 
-        let last_nodes = td.nodes_searched;
-
         assert_eq!(1, td.accumulators.stack.len());
 
         prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt);
 
-
         assert_eq!(1, td.accumulators.stack.len());
         assert!(!pv.line.is_empty());
-
 
         if depth >= 7 {
             td.global_nodes.fetch_add(td.nodes_searched - last_nodes, Ordering::Relaxed);
@@ -95,7 +87,6 @@ pub(crate) fn iterative_deepening(
     assert_ne!(td.best_move, Move::NULL);
 
     td.best_move
-
 }
 
 fn aspiration_windows(

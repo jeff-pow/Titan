@@ -11,7 +11,6 @@ use crate::{
     board::board::Board,
     engine::{transposition::TranspositionTable, uci::parse_time},
     eval::accumulator::Accumulator,
-
     moves::moves::Move,
     search::search::{CHECKMATE, NEAR_CHECKMATE},
 };
