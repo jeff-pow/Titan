@@ -420,23 +420,13 @@ fn alpha_beta<const IS_PV: bool>(
             {
                 0
             } else {
-                let r = get_reduction(depth, legal_moves_searched);
-                // TODO: Adjust max clamping depth here
-                //
-                min(new_depth + 1, max(r, 1))
+                get_reduction(depth, legal_moves_searched)
             };
+            let d = max(1, min(new_depth - r, new_depth + 1));
 
             // Start with a zero window reduced search
-            let zero_window_reduced_depth = -alpha_beta::<false>(
-                new_depth - r,
-                -alpha - 1,
-                -alpha,
-                &mut node_pv,
-                td,
-                tt,
-                &new_b,
-                true,
-            );
+            let zero_window_reduced_depth =
+                -alpha_beta::<false>(d, -alpha - 1, -alpha, &mut node_pv, td, tt, &new_b, true);
 
             // If that search raises alpha and a reduction was applied, re-search at a zero window with full depth
             let zero_window_full_depth = if zero_window_reduced_depth > alpha && r > 1 {
