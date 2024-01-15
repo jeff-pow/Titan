@@ -98,7 +98,8 @@ pub(super) fn quiescence<const IS_PV: bool>(
         if !new_b.make_move::<true>(m) {
             continue;
         }
-        td.accumulators.next().lazy_update(&mut new_b.delta);
+        td.accumulators.increment();
+        td.accumulators.top().lazy_update(&mut new_b.delta);
         tt.prefetch(new_b.zobrist_hash);
         td.hash_history.push(new_b.zobrist_hash);
         td.stack[td.ply].played_move = m;

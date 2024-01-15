@@ -344,7 +344,8 @@ fn alpha_beta<const IS_PV: bool>(
         if !new_b.make_move::<true>(m) {
             continue;
         }
-        td.accumulators.next().lazy_update(&mut new_b.delta);
+        td.accumulators.increment();
+        td.accumulators.top().lazy_update(&mut new_b.delta);
         tt.prefetch(new_b.zobrist_hash);
 
         if is_quiet {
