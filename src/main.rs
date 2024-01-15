@@ -14,7 +14,6 @@ mod spsa;
 mod types;
 
 use search::lmr_reductions;
-use spsa::print_ob_tunable_params;
 
 use crate::bench::bench;
 use crate::engine::uci::main_loop;
