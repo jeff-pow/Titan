@@ -1,4 +1,9 @@
-use crate::{board::board::Board, moves::moves::Move, types::pieces::PieceName};
+use crate::{
+    board::board::Board,
+    moves::moves::Move,
+    spsa::{HIST_DEPTH_MOD, HIST_MIN},
+    types::pieces::PieceName,
+};
 
 use super::SearchStack;
 
@@ -30,7 +35,7 @@ pub struct HistoryTable {
 }
 
 fn calc_bonus(depth: i32) -> i32 {
-    (155 * depth).min(2000)
+    (HIST_DEPTH_MOD.val() * depth).min(HIST_MIN.val())
 }
 
 fn update_history(score: &mut i32, depth: i32, is_good: bool) {

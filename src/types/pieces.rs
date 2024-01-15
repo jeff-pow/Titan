@@ -1,4 +1,7 @@
-use crate::impl_index;
+use crate::{
+    impl_index,
+    spsa::{BISHOP, KNIGHT, QUEEN, ROOK},
+};
 use std::{
     mem::transmute,
     ops::{self, Index, IndexMut},
@@ -71,7 +74,6 @@ impl From<usize> for Color {
     }
 }
 
-const PIECE_VALUES: [i32; 6] = [100, 350, 350, 525, 1000, 0];
 pub const NUM_PIECES: usize = 6;
 
 impl_index!(PieceName);
@@ -89,7 +91,15 @@ pub enum PieceName {
 
 impl PieceName {
     pub fn value(self) -> i32 {
-        PIECE_VALUES[self]
+        match self {
+            PieceName::Pawn => 100,
+            PieceName::Knight => KNIGHT.val(),
+            PieceName::Bishop => BISHOP.val(),
+            PieceName::Rook => ROOK.val(),
+            PieceName::Queen => QUEEN.val(),
+            PieceName::King => 0,
+            PieceName::None => panic!("Invalid piece"),
+        }
     }
 
     pub(crate) fn idx(self) -> usize {

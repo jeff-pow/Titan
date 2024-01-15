@@ -91,6 +91,14 @@ static ARR: &[&TunableParam]= &[
     &EXT_BETA_MOD,
     &DBL_EXT_MARGIN,
     &MAX_DBL_EXT,
+
+    &HIST_DEPTH_MOD,
+    &HIST_MIN,
+
+    &KNIGHT,
+    &BISHOP,
+    &ROOK,
+    &QUEEN,
 ];
 
 tunable_param!(LMR_MIN_MOVES, 1);
@@ -128,6 +136,14 @@ tunable_param!(EXT_TT_DEPTH_MARGIN, 2);
 tunable_param!(EXT_BETA_MOD, 100);
 tunable_param!(DBL_EXT_MARGIN, 18);
 tunable_param!(MAX_DBL_EXT, 8);
+
+tunable_param!(HIST_DEPTH_MOD, 155);
+tunable_param!(HIST_MIN, 2000);
+
+tunable_param!(KNIGHT, 350);
+tunable_param!(BISHOP, 350);
+tunable_param!(ROOK, 525);
+tunable_param!(QUEEN, 1000);
 
 #[macro_export]
 macro_rules! tunable_param {
