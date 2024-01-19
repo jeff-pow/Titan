@@ -1,5 +1,6 @@
 use std::{
     io,
+    process::exit,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
@@ -212,7 +213,11 @@ impl<'a> ThreadPool<'a> {
             }
 
             let mut s = String::new();
-            io::stdin().read_line(&mut s).unwrap();
+            let len_read = io::stdin().read_line(&mut s).unwrap();
+            if len_read == 0 {
+                // Stdin closed, exit for openbench
+                exit(0);
+            }
             match s.as_str().trim() {
                 "isready" => println!("readyok"),
                 "quit" => std::process::exit(0),
