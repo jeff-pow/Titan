@@ -81,7 +81,6 @@ pub fn main_loop() -> ! {
                     hash_history.clone(),
                     &transpos_table,
                 );
-                transpos_table.age_up();
             }
             "perft" => {
                 perft(&board, input[1].parse().unwrap());
