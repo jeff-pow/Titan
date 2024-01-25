@@ -4,6 +4,7 @@ pub(crate) mod accumulator;
 pub mod nnue;
 mod simd;
 
+// TODO: perf list and align 64
 type Block = [i16; HIDDEN_SIZE];
 
 pub const INPUT_SIZE: usize = 768;
