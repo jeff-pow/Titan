@@ -416,6 +416,7 @@ fn alpha_beta<const IS_PV: bool>(
             // they are much less likely to be the best move than the first move selected by the
             // move picker.
             let r = if depth <= LMR_DEPTH.val()
+            // TODO: Something along the lines of moves_searched < 2 + 2 * PV
                 || legal_moves_searched < LMR_MIN_MOVES.val()
                 || picker.phase < MovePickerPhase::Killer
             {
