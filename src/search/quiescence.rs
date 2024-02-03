@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movelist::MoveListEntry;
@@ -18,6 +20,12 @@ pub(super) fn quiescence<const IS_PV: bool>(
     tt: &TranspositionTable,
     board: &Board,
 ) -> i32 {
+    if td.halt.load(Ordering::Relaxed) || (td.thread_idx == 0 && td.game_time.hard_termination()) {
+        td.halt.store(true, Ordering::Relaxed);
+        // return board.evaluate();
+        return 0;
+    }
+
     if board.is_draw() || td.is_repetition(board) {
         return STALEMATE;
     }

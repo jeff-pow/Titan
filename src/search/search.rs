@@ -75,7 +75,10 @@ pub(crate) fn iterative_deepening(
             td.print_search_stats(prev_score, &pv, tt);
         }
 
-        if td.search_type == SearchType::Time && td.game_time.soft_termination() {
+        if td.thread_idx == 0
+            && td.search_type == SearchType::Time
+            && td.game_time.soft_termination()
+        {
             break;
         }
 
@@ -154,7 +157,7 @@ fn alpha_beta<const IS_PV: bool>(
     }
 
     // Stop if we have reached hard time limit or decided else where it is time to stop
-    if td.halt.load(Ordering::Relaxed) || td.game_time.hard_termination() {
+    if td.halt.load(Ordering::Relaxed) || (td.thread_idx == 0 && td.game_time.hard_termination()) {
         td.halt.store(true, Ordering::Relaxed);
         // return board.evaluate();
         return 0;
