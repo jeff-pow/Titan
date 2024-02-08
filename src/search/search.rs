@@ -357,7 +357,7 @@ fn alpha_beta<const IS_PV: bool>(
             tacticals_tried.push(m)
         };
 
-        let extension = if tt_depth >= depth - EXT_TT_DEPTH_MARGIN.val()
+        let extension = if tt_depth >= depth - 3
             && tt_flag != EntryFlag::AlphaUnchanged
             && tt_flag != EntryFlag::None
             && m == tt_move
