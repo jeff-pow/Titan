@@ -46,7 +46,9 @@ pub(crate) struct ThreadData<'a> {
 }
 
 impl<'a> ThreadData<'a> {
+
     pub(crate) fn new(halt: &'a AtomicBool, hash_history: Vec<u64>, thread_idx: usize) -> Self {
+
         Self {
             ply: 0,
             max_depth: MAX_SEARCH_DEPTH,
@@ -124,6 +126,7 @@ pub struct ThreadPool<'a> {
 impl<'a> ThreadPool<'a> {
     pub fn new(halt: &'a AtomicBool, hash_history: Vec<u64>) -> Self {
         Self {
+
             main_thread: ThreadData::new(halt, hash_history, 0),
             workers: Vec::new(),
             halt,
@@ -148,6 +151,7 @@ impl<'a> ThreadPool<'a> {
     /// the main thread counts as one and then the remaining three are placed in the worker queue.
     pub fn add_workers(&mut self, threads: usize, hash_history: Vec<u64>) {
         self.workers.clear();
+
         for i in 0..threads - 1 {
             self.workers.push(ThreadData::new(self.halt, hash_history.clone(), i + 1));
         }
@@ -175,15 +179,25 @@ impl<'a> ThreadPool<'a> {
             let mut iter = buffer.iter().skip(2);
             let depth = iter.next().unwrap().parse::<i32>().unwrap();
             self.main_thread.max_depth = depth;
+            for t in self.workers.iter_mut() {
+                t.max_depth = depth;
+            }
             self.main_thread.search_type = SearchType::Depth;
+            for t in self.workers.iter_mut() {
+                t.search_type = SearchType::Depth;
+            }
         } else if buffer.contains(&"wtime") {
             self.main_thread.search_type = SearchType::Time;
+
             let mut clock = parse_time(buffer);
             clock.recommended_time(board.to_move);
 
             self.main_thread.game_time = clock;
         } else {
             self.main_thread.search_type = SearchType::Infinite;
+            for t in self.workers.iter_mut() {
+                t.search_type = SearchType::Infinite;
+            }
         }
 
         thread::scope(|s| {
@@ -192,11 +206,13 @@ impl<'a> ThreadPool<'a> {
                     search(t, false, *board, tt);
                 });
             }
+
             s.spawn(|| {
                 search(&mut self.main_thread, true, *board, tt);
                 self.halt.store(true, Ordering::Relaxed);
                 println!("bestmove {}", self.main_thread.best_move.to_san());
             });
+
 
             let mut s = String::new();
             let len_read = io::stdin().read_line(&mut s).unwrap();

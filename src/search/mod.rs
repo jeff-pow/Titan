@@ -107,12 +107,14 @@ pub struct AccumulatorStack {
 }
 
 impl AccumulatorStack {
+
     pub fn increment(&mut self) {
         self.stack.push(*self.stack.last().unwrap());
     }
 
     pub fn top(&mut self) -> &mut Accumulator {
         self.stack.last_mut().unwrap()
+
     }
 
     pub fn pop(&mut self) -> Accumulator {
