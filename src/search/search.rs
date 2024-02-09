@@ -55,9 +55,6 @@ pub(crate) fn iterative_deepening(
         td.iter_max_depth = depth;
         td.ply = 0;
         td.sel_depth = 0;
-        let last_nodes = td.nodes_searched;
-
-        assert_eq!(1, td.accumulators.stack.len());
 
         let last_nodes = td.nodes_searched;
 
@@ -208,7 +205,6 @@ fn alpha_beta<const IS_PV: bool>(
         // Don't do TT cutoffs in verification search for singular moves
         if !singular_search
             && !IS_PV
-            && !is_root
             && depth <= entry.depth()
             && match tt_flag {
                 EntryFlag::None => false,
