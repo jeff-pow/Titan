@@ -10,7 +10,7 @@ use crate::{
 
 use super::{
     attack_boards::{king_attacks, knight_attacks, RANKS},
-    magics::{bishop_attacks, queen_attacks, rook_attacks},
+    magics::{bishop_attacks, rook_attacks},
     movelist::MoveList,
     moves::{Castle, Move, MoveType},
 };
@@ -34,23 +34,23 @@ impl Board {
         };
 
         let knights = self.bitboard(self.to_move, PieceName::Knight);
-        let bishops = self.bitboard(self.to_move, PieceName::Bishop);
-        let rooks = self.bitboard(self.to_move, PieceName::Rook);
-        let queens = self.bitboard(self.to_move, PieceName::Queen);
         let kings = self.bitboard(self.to_move, PieceName::King);
+        let bishops = self.bitboard(self.to_move, PieceName::Bishop)
+            | self.bitboard(self.to_move, PieceName::Queen);
+        let rooks = self.bitboard(self.to_move, PieceName::Rook)
+            | self.bitboard(self.to_move, PieceName::Queen);
 
         self.jumper_moves(knights, destinations, moves, knight_attacks);
         self.jumper_moves(kings, destinations & !self.threats(), moves, king_attacks);
-        self.slider_moves(queens, destinations, self.occupancies(), moves, queen_attacks);
-        self.slider_moves(rooks, destinations, self.occupancies(), moves, rook_attacks);
-        self.slider_moves(bishops, destinations, self.occupancies(), moves, bishop_attacks);
-        self.generate_pawn_moves(gen_type, moves);
+        self.magic_moves(rooks, destinations, moves, rook_attacks);
+        self.magic_moves(bishops, destinations, moves, bishop_attacks);
+        self.pawn_moves(gen_type, moves);
         if gen_type == MGT::QuietsOnly || gen_type == MGT::All {
-            self.generate_castling_moves(moves);
+            self.castling_moves(moves);
         }
     }
 
-    fn generate_castling_moves(&self, moves: &mut MoveList) {
+    fn castling_moves(&self, moves: &mut MoveList) {
         if self.to_move == Color::White {
             if self.can_castle(Castle::WhiteKing)
                 && self.threats() & Castle::WhiteKing.check_squares() == Bitboard::EMPTY
@@ -90,7 +90,7 @@ impl Board {
         }
     }
 
-    fn generate_pawn_moves(&self, gen_type: MGT, moves: &mut MoveList) {
+    fn pawn_moves(&self, gen_type: MGT, moves: &mut MoveList) {
         let piece = Piece::new(PieceName::Pawn, self.to_move);
         let pawns = self.bitboard(self.to_move, PieceName::Pawn);
         let vacancies = !self.occupancies();
@@ -175,40 +175,15 @@ impl Board {
         None
     }
 
-    fn generate_bitboard_moves(&self, piece_name: PieceName, gen_type: MGT, moves: &mut MoveList) {
-        // Don't calculate any moves if no pieces of that type exist for the given color
-        let occ_bitself = self.bitboard(self.to_move, piece_name);
-        let piece_moving = Piece::new(piece_name, self.to_move);
-        for sq in occ_bitself {
-            let occupancies = self.occupancies();
-            let attack_bitself = match piece_name {
-                PieceName::King => king_attacks(sq) & !self.threats(),
-                PieceName::Queen => queen_attacks(sq, occupancies),
-                PieceName::Rook => rook_attacks(sq, occupancies),
-                PieceName::Bishop => bishop_attacks(sq, occupancies),
-                PieceName::Knight => knight_attacks(sq),
-                _ => panic!(),
-            };
-            let attacks = match gen_type {
-                MoveGenerationType::CapturesOnly => attack_bitself & self.color(!self.to_move),
-                MoveGenerationType::QuietsOnly => attack_bitself & !self.occupancies(),
-                MoveGenerationType::All => attack_bitself & (!self.color(self.to_move)),
-            };
-            for dest in attacks {
-                moves.push(Move::new(sq, dest, MoveType::Normal, piece_moving));
-            }
-        }
-    }
-    fn slider_moves(
+    fn magic_moves(
         &self,
         pieces: Bitboard,
         destinations: Bitboard,
-        occupancies: Bitboard,
         moves: &mut MoveList,
         attack_fn: impl Fn(Square, Bitboard) -> Bitboard,
     ) {
         for src in pieces {
-            for dest in attack_fn(src, occupancies) & destinations {
+            for dest in attack_fn(src, self.occupancies()) & destinations {
                 moves.push(Move::new(src, dest, MoveType::Normal, self.piece_at(src)));
             }
         }
