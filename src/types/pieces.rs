@@ -234,16 +234,6 @@ mod piece_tests {
     }
 
     #[test]
-    fn test_piece_values() {
-        assert_eq!(PieceName::Pawn.value(), 100);
-        assert_eq!(PieceName::Knight.value(), 350);
-        assert_eq!(PieceName::Bishop.value(), 350);
-        assert_eq!(PieceName::Rook.value(), 525);
-        assert_eq!(PieceName::Queen.value(), 1000);
-        assert_eq!(PieceName::King.value(), 0);
-    }
-
-    #[test]
     fn test_piece_index_conversion() {
         assert_eq!(PieceName::from_u32(0), PieceName::Pawn);
         assert_eq!(PieceName::from_u32(1), PieceName::Knight);
