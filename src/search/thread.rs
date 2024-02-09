@@ -1,5 +1,6 @@
 use std::{
     io,
+    process::exit,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
@@ -39,12 +40,15 @@ pub(crate) struct ThreadData<'a> {
     pub accumulators: AccumulatorStack,
 
     pub game_time: GameTime,
+    pub thread_idx: usize,
     pub search_type: SearchType,
     pub halt: &'a AtomicBool,
 }
 
 impl<'a> ThreadData<'a> {
-    pub(crate) fn new(halt: &'a AtomicBool, hash_history: Vec<u64>) -> Self {
+
+    pub(crate) fn new(halt: &'a AtomicBool, hash_history: Vec<u64>, thread_idx: usize) -> Self {
+
         Self {
             ply: 0,
             max_depth: MAX_SEARCH_DEPTH,
@@ -55,13 +59,12 @@ impl<'a> ThreadData<'a> {
             best_move: Move::NULL,
             global_nodes: Arc::new(AtomicU64::new(0)),
             history: HistoryTable::default(),
-
             accumulators: AccumulatorStack::new(Accumulator::default()),
-
             game_time: GameTime::default(),
             halt,
             search_type: SearchType::default(),
             hash_history,
+            thread_idx,
         }
     }
 
@@ -123,7 +126,8 @@ pub struct ThreadPool<'a> {
 impl<'a> ThreadPool<'a> {
     pub fn new(halt: &'a AtomicBool, hash_history: Vec<u64>) -> Self {
         Self {
-            main_thread: ThreadData::new(halt, hash_history),
+
+            main_thread: ThreadData::new(halt, hash_history, 0),
             workers: Vec::new(),
             halt,
             searching: AtomicBool::new(false),
@@ -147,8 +151,9 @@ impl<'a> ThreadPool<'a> {
     /// the main thread counts as one and then the remaining three are placed in the worker queue.
     pub fn add_workers(&mut self, threads: usize, hash_history: Vec<u64>) {
         self.workers.clear();
-        for _ in 0..threads - 1 {
-            self.workers.push(ThreadData::new(self.halt, hash_history.clone()));
+
+        for i in 0..threads - 1 {
+            self.workers.push(ThreadData::new(self.halt, hash_history.clone(), i + 1));
         }
     }
 
@@ -183,17 +188,11 @@ impl<'a> ThreadPool<'a> {
             }
         } else if buffer.contains(&"wtime") {
             self.main_thread.search_type = SearchType::Time;
-            for t in self.workers.iter_mut() {
-                t.search_type = SearchType::Time;
-            }
 
             let mut clock = parse_time(buffer);
             clock.recommended_time(board.to_move);
 
             self.main_thread.game_time = clock;
-            for t in self.workers.iter_mut() {
-                t.game_time = clock;
-            }
         } else {
             self.main_thread.search_type = SearchType::Infinite;
             for t in self.workers.iter_mut() {
@@ -202,19 +201,25 @@ impl<'a> ThreadPool<'a> {
         }
 
         thread::scope(|s| {
-            s.spawn(|| {
-                search(&mut self.main_thread, true, *board, tt);
-                self.halt.store(true, Ordering::Relaxed);
-                println!("bestmove {}", self.main_thread.best_move.to_san());
-            });
             for t in &mut self.workers {
                 s.spawn(|| {
                     search(t, false, *board, tt);
                 });
             }
 
+            s.spawn(|| {
+                search(&mut self.main_thread, true, *board, tt);
+                self.halt.store(true, Ordering::Relaxed);
+                println!("bestmove {}", self.main_thread.best_move.to_san());
+            });
+
+
             let mut s = String::new();
-            io::stdin().read_line(&mut s).unwrap();
+            let len_read = io::stdin().read_line(&mut s).unwrap();
+            if len_read == 0 {
+                // Stdin closed, exit for openbench
+                exit(0);
+            }
             match s.as_str().trim() {
                 "isready" => println!("readyok"),
                 "quit" => std::process::exit(0),
@@ -224,5 +229,6 @@ impl<'a> ThreadPool<'a> {
                 }
             }
         });
+        tt.age_up();
     }
 }

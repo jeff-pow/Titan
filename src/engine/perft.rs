@@ -37,11 +37,8 @@ fn non_bulk_perft<const ROOT: bool>(board: &Board, depth: i32) -> usize {
 
 #[cfg(test)]
 mod movegen_tests {
+    use std::thread;
     use std::{fs::File, io::BufRead, io::BufReader};
-
-    use rayon::iter::IndexedParallelIterator;
-    use rayon::iter::ParallelIterator;
-    use rayon::prelude::IntoParallelRefIterator;
 
     use crate::board::fen::build_board;
     use crate::engine::perft::perft;
@@ -51,19 +48,23 @@ mod movegen_tests {
         let file =
             BufReader::new(File::open("./src/engine/ethereal_perft.epd").expect("File not found"));
         let vec = file.lines().collect::<Vec<_>>();
-        vec.par_iter().enumerate().for_each(|(test_num, line)| {
-            let l = line.as_ref().unwrap().clone();
-            let vec = l.split(" ;").collect::<Vec<&str>>();
-            let mut iter = vec.iter();
-            let board = build_board(iter.next().unwrap());
-            for entry in iter {
-                let (depth, nodes) = entry.split_once(' ').unwrap();
-                let depth = depth[1..].parse::<i32>().unwrap();
-                let nodes = nodes.parse::<usize>().unwrap();
-                eprintln!("test {test_num}: depth {depth} expected {nodes}");
-                assert_eq!(nodes, perft(&board, depth), "Test number {test_num} failed");
-            }
-            eprintln!("{test_num} passed");
+        thread::scope(|s| {
+            vec.iter().enumerate().for_each(|(test_num, line)| {
+                s.spawn(move || {
+                    let l = line.as_ref().unwrap().clone();
+                    let vec = l.split(" ;").collect::<Vec<&str>>();
+                    let mut iter = vec.iter();
+                    let board = build_board(iter.next().unwrap());
+                    for entry in iter {
+                        let (depth, nodes) = entry.split_once(' ').unwrap();
+                        let depth = depth[1..].parse::<i32>().unwrap();
+                        let nodes = nodes.parse::<usize>().unwrap();
+                        eprintln!("test {test_num}: depth {depth} expected {nodes}");
+                        assert_eq!(nodes, perft(&board, depth), "Test number {test_num} failed");
+                    }
+                    eprintln!("{test_num} passed");
+                });
+            });
         });
     }
 }

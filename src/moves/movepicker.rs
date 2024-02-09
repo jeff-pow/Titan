@@ -16,7 +16,7 @@ pub const FIRST_KILLER_SCORE: i32 = 1_000_000;
 pub const COUNTER_MOVE_SCORE: i32 = 800_000;
 pub const BAD_CAPTURE: i32 = -10000;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, PartialOrd)]
 pub enum MovePickerPhase {
     TTMove,
 
@@ -168,6 +168,7 @@ fn score_quiets(td: &ThreadData, moves: &mut [MoveListEntry]) {
 fn score_captures(td: &ThreadData, board: &Board, moves: &mut [MoveListEntry]) {
     const MVV: [i32; 5] = [0, 2400, 2400, 4800, 9600];
 
+    // TODO: On the fly see testing and simplify removing MVV
     for MoveListEntry { m, score } in moves {
         *score = (if board.see(*m, -PieceName::Pawn.value()) { GOOD_CAPTURE } else { BAD_CAPTURE })
             + MVV[capthist_capture(board, *m)]

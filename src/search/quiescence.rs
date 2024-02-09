@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use crate::board::board::Board;
 use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movelist::MoveListEntry;
@@ -18,6 +20,12 @@ pub(super) fn quiescence<const IS_PV: bool>(
     tt: &TranspositionTable,
     board: &Board,
 ) -> i32 {
+    if td.halt.load(Ordering::Relaxed) || (td.thread_idx == 0 && td.game_time.hard_termination()) {
+        td.halt.store(true, Ordering::Relaxed);
+        // return board.evaluate();
+        return 0;
+    }
+
     if board.is_draw() || td.is_repetition(board) {
         return STALEMATE;
     }
@@ -100,6 +108,8 @@ pub(super) fn quiescence<const IS_PV: bool>(
         }
         td.accumulators.next().lazy_update(&mut new_b.delta);
         tt.prefetch(new_b.zobrist_hash);
+        td.accumulators.increment();
+        td.accumulators.top().lazy_update(&mut new_b.delta);
         td.hash_history.push(new_b.zobrist_hash);
         td.stack[td.ply].played_move = m;
         td.nodes_searched += 1;

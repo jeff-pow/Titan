@@ -39,7 +39,11 @@ pub fn main_loop() -> ! {
             m.clone()
         } else {
             let mut buffer = String::new();
-            io::stdin().read_line(&mut buffer).unwrap();
+            let len_read = io::stdin().read_line(&mut buffer).unwrap();
+            if len_read == 0 {
+                // Stdin closed, exit for openbench
+                exit(0);
+            }
             buffer
         };
 
@@ -77,7 +81,6 @@ pub fn main_loop() -> ! {
                     hash_history.clone(),
                     &transpos_table,
                 );
-                transpos_table.age_up();
             }
             "perft" => {
                 perft(&board, input[1].parse().unwrap());

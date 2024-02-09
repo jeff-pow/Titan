@@ -92,6 +92,9 @@ pub fn lmr_reductions() {
             LMR_REDUCTIONS[depth as usize][moves_played].store(reduction, Ordering::Relaxed);
         }
     }
+    LMR_REDUCTIONS[0][0].store(0, Ordering::Relaxed);
+    LMR_REDUCTIONS[1][0].store(0, Ordering::Relaxed);
+    LMR_REDUCTIONS[0][1].store(0, Ordering::Relaxed);
 }
 
 pub fn get_reduction(depth: i32, moves_played: i32) -> i32 {
@@ -104,13 +107,14 @@ pub struct AccumulatorStack {
 }
 
 impl AccumulatorStack {
-    pub fn next(&mut self) -> &mut Accumulator {
+
+    pub fn increment(&mut self) {
         self.stack.push(*self.stack.last().unwrap());
-        self.stack.last_mut().expect("Array has at least one element")
     }
 
-    pub fn top(&self) -> &Accumulator {
-        self.stack.last().unwrap()
+    pub fn top(&mut self) -> &mut Accumulator {
+        self.stack.last_mut().unwrap()
+
     }
 
     pub fn pop(&mut self) -> Accumulator {

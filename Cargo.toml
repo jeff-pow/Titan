@@ -16,10 +16,6 @@ itertools = "0.11.0"
 arr_macro = "0.2.1"
 arrayvec = "0.7.4"
 
-[dev-dependencies]
-rayon = "1.7.0"
-
-
 [profile.release]
 codegen-units = 1
 opt-level = 3

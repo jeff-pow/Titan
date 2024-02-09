@@ -11,7 +11,9 @@ pub fn bench() {
 
     let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
     let halt = AtomicBool::new(false);
-    let mut thread = ThreadData::new(&halt, Vec::new());
+
+    let mut thread = ThreadData::new(&halt, Vec::new(), 0);
+
     thread.max_depth = 14;
     thread.search_type = SearchType::Depth;
 

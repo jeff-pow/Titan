@@ -59,6 +59,7 @@ static ARR: &[&TunableParam]= &[
     &LMR_MIN_MOVES,
     &LMR_BASE,
     &LMR_DIVISOR,
+    &LMR_DEPTH,
 
     &INIT_ASP,
     &ASP_DIVISOR,
@@ -90,42 +91,60 @@ static ARR: &[&TunableParam]= &[
     &EXT_BETA_MOD,
     &DBL_EXT_MARGIN,
     &MAX_DBL_EXT,
+
+    &HIST_DEPTH_MOD,
+    &HIST_MIN,
+
+    &KNIGHT,
+    &BISHOP,
+    &ROOK,
+    &QUEEN,
 ];
 
 tunable_param!(LMR_MIN_MOVES, 2);
-tunable_param!(LMR_BASE, 98, &lmr_reductions);
-tunable_param!(LMR_DIVISOR, 198, &lmr_reductions);
+tunable_param!(LMR_BASE, 88, &lmr_reductions);
+tunable_param!(LMR_DIVISOR, 188, &lmr_reductions);
+tunable_param!(LMR_DEPTH, 2);
 
-tunable_param!(INIT_ASP, 11);
-tunable_param!(ASP_DIVISOR, 9901);
+tunable_param!(INIT_ASP, 10);
+tunable_param!(ASP_DIVISOR, 9534);
 tunable_param!(ASP_MIN_DEPTH, 4);
 tunable_param!(DELTA_EXPANSION, 1);
 
-tunable_param!(RFP_BETA_FACTOR, 70);
-tunable_param!(RFP_IMPROVING_FACTOR, 35);
-tunable_param!(RFP_DEPTH, 9);
+tunable_param!(RFP_BETA_FACTOR, 87);
+tunable_param!(RFP_IMPROVING_FACTOR, 27);
+tunable_param!(RFP_DEPTH, 7);
 
-tunable_param!(NMP_DEPTH, 3);
-tunable_param!(NMP_BASE_R, 3);
-tunable_param!(NMP_DEPTH_DIVISOR, 3);
-tunable_param!(NMP_EVAL_DIVISOR, 201);
+// TODO: Maybe this has to be 3?
+tunable_param!(NMP_DEPTH, 2);
+tunable_param!(NMP_BASE_R, 4);
+tunable_param!(NMP_DEPTH_DIVISOR, 4);
+tunable_param!(NMP_EVAL_DIVISOR, 175);
 tunable_param!(NMP_EVAL_MIN, 3);
 
-tunable_param!(LMP_DEPTH, 6);
-tunable_param!(LMP_NOT_IMP_BASE, 97);
-tunable_param!(LMP_NOT_IMP_FACTOR, 49);
-tunable_param!(LMP_IMP_BASE, 252);
-tunable_param!(LMP_IMP_FACTOR, 99);
+tunable_param!(LMP_DEPTH, 8);
+tunable_param!(LMP_NOT_IMP_BASE, 100);
+tunable_param!(LMP_NOT_IMP_FACTOR, 32);
+tunable_param!(LMP_IMP_BASE, 244);
+tunable_param!(LMP_IMP_FACTOR, 96);
 
-tunable_param!(QUIET_SEE, 48);
-tunable_param!(CAPT_SEE, 89);
-tunable_param!(SEE_DEPTH, 7);
+tunable_param!(QUIET_SEE, 46);
+tunable_param!(CAPT_SEE, 100);
+tunable_param!(SEE_DEPTH, 9);
 
-tunable_param!(EXT_DEPTH, 8);
+tunable_param!(EXT_DEPTH, 7);
 tunable_param!(EXT_TT_DEPTH_MARGIN, 2);
-tunable_param!(EXT_BETA_MOD, 100);
+tunable_param!(EXT_BETA_MOD, 108);
 tunable_param!(DBL_EXT_MARGIN, 18);
-tunable_param!(MAX_DBL_EXT, 8);
+tunable_param!(MAX_DBL_EXT, 9);
+
+tunable_param!(HIST_DEPTH_MOD, 180);
+tunable_param!(HIST_MIN, 2282);
+
+tunable_param!(KNIGHT, 302);
+tunable_param!(BISHOP, 286);
+tunable_param!(ROOK, 511);
+tunable_param!(QUEEN, 991);
 
 #[macro_export]
 macro_rules! tunable_param {

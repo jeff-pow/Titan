@@ -19,5 +19,5 @@ avx512:
 	cargo rustc --release --features avx512 -- -C target-cpu=native --emit link=$(NAME)
 
 bench:
-	cargo rustc --release --features avx512 -- -C target-cpu=native --emit link=$(NAME)
+	cargo rustc --release --features avx2 -- -C target-cpu=native --emit link=$(NAME)
 	./$(NAME) bench
