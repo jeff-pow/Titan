@@ -1,6 +1,6 @@
 #![allow(clippy::module_inception)]
 #![allow(long_running_const_eval)]
-#![cfg_attr(any(feature = "avx512"), feature(stdsimd))]
+#![cfg_attr(feature = "avx512", feature(stdsimd))]
 #[cfg(all(feature = "avx2", feature = "avx512"))]
 compile_error!("Cannot enable both avx2 and avx512 simultaneously.");
 
