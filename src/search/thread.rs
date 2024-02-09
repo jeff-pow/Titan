@@ -46,9 +46,7 @@ pub(crate) struct ThreadData<'a> {
 }
 
 impl<'a> ThreadData<'a> {
-
     pub(crate) fn new(halt: &'a AtomicBool, hash_history: Vec<u64>, thread_idx: usize) -> Self {
-
         Self {
             ply: 0,
             max_depth: MAX_SEARCH_DEPTH,
@@ -126,7 +124,6 @@ pub struct ThreadPool<'a> {
 impl<'a> ThreadPool<'a> {
     pub fn new(halt: &'a AtomicBool, hash_history: Vec<u64>) -> Self {
         Self {
-
             main_thread: ThreadData::new(halt, hash_history, 0),
             workers: Vec::new(),
             halt,
@@ -212,7 +209,6 @@ impl<'a> ThreadPool<'a> {
                 self.halt.store(true, Ordering::Relaxed);
                 println!("bestmove {}", self.main_thread.best_move.to_san());
             });
-
 
             let mut s = String::new();
             let len_read = io::stdin().read_line(&mut s).unwrap();

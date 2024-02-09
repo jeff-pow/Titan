@@ -162,7 +162,6 @@ fn alpha_beta<const IS_PV: bool>(
 
     // Stop if we have reached hard time limit or decided else where it is time to stop
     if td.halt.load(Ordering::Relaxed) || (td.thread_idx == 0 && td.game_time.hard_termination()) {
-
         td.halt.store(true, Ordering::Relaxed);
         // return board.evaluate();
         return 0;
@@ -352,7 +351,6 @@ fn alpha_beta<const IS_PV: bool>(
         if !new_b.make_move::<true>(m) {
             continue;
         }
-        td.accumulators.next().lazy_update(&mut new_b.delta);
         tt.prefetch(new_b.zobrist_hash);
         td.accumulators.increment();
         td.accumulators.top().lazy_update(&mut new_b.delta);
