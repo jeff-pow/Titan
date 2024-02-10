@@ -166,12 +166,8 @@ fn score_quiets(td: &ThreadData, moves: &mut [MoveListEntry]) {
 }
 
 fn score_captures(td: &ThreadData, board: &Board, moves: &mut [MoveListEntry]) {
-    const MVV: [i32; 5] = [0, 2400, 2400, 4800, 9600];
-
-    // TODO: On the fly see testing and simplify removing MVV
     for MoveListEntry { m, score } in moves {
         *score = (if board.see(*m, -PieceName::Pawn.value()) { GOOD_CAPTURE } else { BAD_CAPTURE })
-            + MVV[capthist_capture(board, *m)]
             + td.history.capt_hist(*m, board)
     }
 }
