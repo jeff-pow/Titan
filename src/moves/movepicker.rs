@@ -1,7 +1,5 @@
 use crate::{
-    board::board::Board,
-    moves::movegenerator::MGT,
-    search::{history_table::capthist_capture, thread::ThreadData},
+    board::board::Board, moves::movegenerator::MGT, search::thread::ThreadData,
     types::pieces::PieceName,
 };
 

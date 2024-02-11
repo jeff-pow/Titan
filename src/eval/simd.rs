@@ -72,9 +72,11 @@ pub(crate) mod avx512 {
         {
             let mut sum = _mm512_setzero_si512();
             for i in 0..REQUIRED_ITERS {
-                let us_vector = _mm512_loadu_epi16(&acc[i * CHUNK_SIZE]);
+                // let us_vector = _mm512_loadu_epi16(&acc[i * CHUNK_SIZE]);
+                let us_vector = _mm512_load_si512(acc.as_ptr().add(i * CHUNK_SIZE).cast());
                 let crelu_result = squared_crelu(us_vector);
-                let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
+                // let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
+                let weights = _mm512_load_si512(weights.as_ptr().add(i * CHUNK_SIZE).cast());
                 sum = _mm512_dpwssd_epi32(sum, crelu_result, weights);
             }
             _mm512_reduce_add_epi32(sum)
@@ -96,19 +98,25 @@ pub(crate) mod avx512 {
     impl Accumulator {
         pub(crate) unsafe fn avx512_activate(&mut self, weights: &Block, color: Color) {
             for i in 0..REQUIRED_ITERS {
-                let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
-                let acc = _mm512_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
+                // let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
+                let weights = _mm512_load_si512(weights.as_ptr().add(i * CHUNK_SIZE).cast());
+                // let acc = _mm512_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
+                let acc = _mm512_load_si512(self.0[color].as_ptr().add(i * CHUNK_SIZE).cast());
                 let updated_acc = _mm512_add_epi16(acc, weights);
-                _mm512_storeu_epi16(&mut self.0[color][i * CHUNK_SIZE], updated_acc);
+                // _mm512_storeu_epi16(&mut self.0[color][i * CHUNK_SIZE], updated_acc);
+                _mm512_store_si512(self.0[color].as_mut_ptr().add(i * CHUNK_SIZE).cast(), updated_acc);
             }
         }
 
         pub(crate) unsafe fn avx512_deactivate(&mut self, weights: &Block, color: Color) {
             for i in 0..REQUIRED_ITERS {
-                let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
-                let acc = _mm512_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
+                // let weights = _mm512_loadu_epi16(&weights[i * CHUNK_SIZE]);
+                let weights = _mm512_load_si512(weights.as_ptr().add(i * CHUNK_SIZE).cast());
+                // let acc = _mm512_loadu_epi16(&self.0[color][i * CHUNK_SIZE]);
+                let acc = _mm512_load_si512(self.0[color].as_ptr().add(i * CHUNK_SIZE).cast());
                 let updated_acc = _mm512_sub_epi16(acc, weights);
-                _mm512_storeu_epi16(&mut self.0[color][i * CHUNK_SIZE], updated_acc);
+                // _mm512_storeu_epi16(&mut self.0[color][i * CHUNK_SIZE], updated_acc);
+                _mm512_store_si512(self.0[color].as_mut_ptr().add(i * CHUNK_SIZE).cast(), updated_acc);
             }
         }
 
@@ -121,21 +129,23 @@ pub(crate) mod avx512 {
         ) {
             let weights = &NET.feature_weights;
             for i in 0..REQUIRED_ITERS {
-                let w_acc = _mm512_loadu_epi16(&self.0[Color::White][i * CHUNK_SIZE]);
-                let w_add = _mm512_loadu_epi16(&weights[white_add][i * CHUNK_SIZE]);
-                let w_sub = _mm512_loadu_epi16(&weights[white_sub][i * CHUNK_SIZE]);
+                let w_acc = _mm512_load_si512(self.0[Color::White].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_add = _mm512_load_si512(weights[white_add].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_sub = _mm512_load_si512(weights[white_sub].as_ptr().add(i * CHUNK_SIZE).cast());
 
-                let b_acc = _mm512_loadu_epi16(&self.0[Color::Black][i * CHUNK_SIZE]);
-                let b_add = _mm512_loadu_epi16(&weights[black_add][i * CHUNK_SIZE]);
-                let b_sub = _mm512_loadu_epi16(&weights[black_sub][i * CHUNK_SIZE]);
+                let b_acc = _mm512_load_si512(self.0[Color::Black].as_ptr().add(i * CHUNK_SIZE).cast());
+                let b_add = _mm512_load_si512(weights[black_add].as_ptr().add(i * CHUNK_SIZE).cast());
+                let b_sub = _mm512_load_si512(weights[black_sub].as_ptr().add(i * CHUNK_SIZE).cast());
 
                 let w_updated = _mm512_add_epi16(w_acc, w_add);
                 let w_updated = _mm512_sub_epi16(w_updated, w_sub);
-                _mm512_storeu_epi16(&mut self.0[Color::White][i * CHUNK_SIZE], w_updated);
+                // _mm512_storeu_epi16(&mut self.0[Color::White][i * CHUNK_SIZE], w_updated);
+                _mm512_store_si512(self.0[Color::White].as_mut_ptr().add(i * CHUNK_SIZE).cast(), w_updated);
 
                 let b_updated = _mm512_add_epi16(b_acc, b_add);
                 let b_updated = _mm512_sub_epi16(b_updated, b_sub);
-                _mm512_storeu_epi16(&mut self.0[Color::Black][i * CHUNK_SIZE], b_updated);
+                // _mm512_storeu_epi16(&mut self.0[Color::Black][i * CHUNK_SIZE], b_updated);
+                _mm512_store_si512(self.0[Color::Black].as_mut_ptr().add(i * CHUNK_SIZE).cast(), b_updated);
             }
         }
 
@@ -150,25 +160,27 @@ pub(crate) mod avx512 {
         ) {
             let weights = &NET.feature_weights;
             for i in 0..REQUIRED_ITERS {
-                let w_acc = _mm512_loadu_epi16(&self.0[Color::White][i * CHUNK_SIZE]);
-                let w_add = _mm512_loadu_epi16(&weights[white_add][i * CHUNK_SIZE]);
-                let w_sub1 = _mm512_loadu_epi16(&weights[white_sub_1][i * CHUNK_SIZE]);
-                let w_sub2 = _mm512_loadu_epi16(&weights[white_sub_2][i * CHUNK_SIZE]);
+                let w_acc = _mm512_load_si512(self.0[Color::White].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_add = _mm512_load_si512(weights[white_add].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_sub1 = _mm512_load_si512(weights[white_sub_1].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_sub2 = _mm512_load_si512(weights[white_sub_2].as_ptr().add(i * CHUNK_SIZE).cast());
 
-                let b_acc = _mm512_loadu_epi16(&self.0[Color::Black][i * CHUNK_SIZE]);
-                let b_add = _mm512_loadu_epi16(&weights[black_add][i * CHUNK_SIZE]);
-                let b_sub1 = _mm512_loadu_epi16(&weights[black_sub_1][i * CHUNK_SIZE]);
-                let b_sub2 = _mm512_loadu_epi16(&weights[black_sub_2][i * CHUNK_SIZE]);
+                let b_acc = _mm512_load_si512(self.0[Color::Black].as_ptr().add(i * CHUNK_SIZE).cast());
+                let b_add = _mm512_load_si512(weights[black_add].as_ptr().add(i * CHUNK_SIZE).cast());
+                let b_sub1 = _mm512_load_si512(weights[black_sub_1].as_ptr().add(i * CHUNK_SIZE).cast());
+                let b_sub2 = _mm512_load_si512(weights[black_sub_2].as_ptr().add(i * CHUNK_SIZE).cast());
 
                 let w_updated = _mm512_add_epi16(w_acc, w_add);
                 let w_updated = _mm512_sub_epi16(w_updated, w_sub1);
                 let w_updated = _mm512_sub_epi16(w_updated, w_sub2);
-                _mm512_storeu_epi16(&mut self.0[Color::White][i * CHUNK_SIZE], w_updated);
+                // _mm512_storeu_epi16(&mut self.0[Color::White][i * CHUNK_SIZE], w_updated);
+                _mm512_store_si512(self.0[Color::White].as_mut_ptr().add(i * CHUNK_SIZE).cast(), w_updated);
 
                 let b_updated = _mm512_add_epi16(b_acc, b_add);
                 let b_updated = _mm512_sub_epi16(b_updated, b_sub1);
                 let b_updated = _mm512_sub_epi16(b_updated, b_sub2);
-                _mm512_storeu_epi16(&mut self.0[Color::Black][i * CHUNK_SIZE], b_updated);
+                // _mm512_storeu_epi16(&mut self.0[Color::Black][i * CHUNK_SIZE], b_updated);
+                _mm512_store_si512(self.0[Color::Black].as_mut_ptr().add(i * CHUNK_SIZE).cast(), b_updated);
             }
         }
 
@@ -186,29 +198,31 @@ pub(crate) mod avx512 {
         ) {
             let weights = &NET.feature_weights;
             for i in 0..REQUIRED_ITERS {
-                let w_acc = _mm512_loadu_epi16(&self.0[Color::White][i * CHUNK_SIZE]);
-                let w_add1 = _mm512_loadu_epi16(&weights[white_add_1][i * CHUNK_SIZE]);
-                let w_add2 = _mm512_loadu_epi16(&weights[white_add_2][i * CHUNK_SIZE]);
-                let w_sub1 = _mm512_loadu_epi16(&weights[white_sub_1][i * CHUNK_SIZE]);
-                let w_sub2 = _mm512_loadu_epi16(&weights[white_sub_2][i * CHUNK_SIZE]);
+                let w_acc = _mm512_load_si512(self.0[Color::White].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_add1 = _mm512_load_si512(weights[white_add_1].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_add2 = _mm512_load_si512(weights[white_add_2].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_sub1 = _mm512_load_si512(weights[white_sub_1].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_sub2 = _mm512_load_si512(weights[white_sub_2].as_ptr().add(i * CHUNK_SIZE).cast());
 
-                let b_acc = _mm512_loadu_epi16(&self.0[Color::Black][i * CHUNK_SIZE]);
-                let b_add1 = _mm512_loadu_epi16(&weights[black_add_1][i * CHUNK_SIZE]);
-                let b_add2 = _mm512_loadu_epi16(&weights[black_add_2][i * CHUNK_SIZE]);
-                let b_sub1 = _mm512_loadu_epi16(&weights[black_sub_1][i * CHUNK_SIZE]);
-                let b_sub2 = _mm512_loadu_epi16(&weights[black_sub_2][i * CHUNK_SIZE]);
+                let b_acc = _mm512_load_si512(self.0[Color::Black].as_ptr().add(i * CHUNK_SIZE).cast());
+                let b_add1 = _mm512_load_si512(weights[black_add_1].as_ptr().add(i * CHUNK_SIZE).cast());
+                let b_add2 = _mm512_load_si512(weights[black_add_2].as_ptr().add(i * CHUNK_SIZE).cast());
+                let b_sub1 = _mm512_load_si512(weights[black_sub_1].as_ptr().add(i * CHUNK_SIZE).cast());
+                let b_sub2 = _mm512_load_si512(weights[black_sub_2].as_ptr().add(i * CHUNK_SIZE).cast());
 
                 let w_updated = _mm512_add_epi16(w_acc, w_add1);
                 let w_updated = _mm512_add_epi16(w_updated, w_add2);
                 let w_updated = _mm512_sub_epi16(w_updated, w_sub1);
                 let w_updated = _mm512_sub_epi16(w_updated, w_sub2);
-                _mm512_storeu_epi16(&mut self.0[Color::White][i * CHUNK_SIZE], w_updated);
+                // _mm512_storeu_epi16(&mut self.0[Color::White][i * CHUNK_SIZE], w_updated);
+                _mm512_store_si512(self.0[Color::White].as_mut_ptr().add(i * CHUNK_SIZE).cast(), w_updated);
 
                 let b_updated = _mm512_add_epi16(b_acc, b_add1);
                 let b_updated = _mm512_add_epi16(b_updated, b_add2);
                 let b_updated = _mm512_sub_epi16(b_updated, b_sub1);
                 let b_updated = _mm512_sub_epi16(b_updated, b_sub2);
-                _mm512_storeu_epi16(&mut self.0[Color::Black][i * CHUNK_SIZE], b_updated);
+                // _mm512_storeu_epi16(&mut self.0[Color::Black][i * CHUNK_SIZE], b_updated);
+                _mm512_store_si512(self.0[Color::Black].as_mut_ptr().add(i * CHUNK_SIZE).cast(), b_updated);
             }
         }
     }
