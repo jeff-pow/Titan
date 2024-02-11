@@ -6,7 +6,7 @@ use crate::{
     },
 };
 
-use super::{Block, NET};
+use super::{Align64, Block, NET};
 
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub(crate) struct Delta {
@@ -38,11 +38,11 @@ impl Delta {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C, align(64))]
-pub struct Accumulator(pub(super) [Block; 2]);
+pub struct Accumulator(pub(super) [Align64<Block>; 2]);
 
 impl Default for Accumulator {
     fn default() -> Self {
-        Self([*NET.feature_bias; 2])
+        Self([NET.feature_bias; 2])
     }
 }
 
