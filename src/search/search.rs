@@ -8,17 +8,10 @@ use crate::moves::movelist::MoveListEntry;
 use crate::moves::movepicker::{MovePicker, MovePickerPhase};
 use crate::moves::moves::Move;
 use crate::search::{AccumulatorStack, SearchStack};
-use crate::spsa::{
-    ASP_DIVISOR, ASP_MIN_DEPTH, CAPT_SEE, DBL_EXT_MARGIN, DELTA_EXPANSION, EXT_DEPTH,
-    EXT_TT_DEPTH_MARGIN, INIT_ASP, LMP_DEPTH, LMP_IMP_BASE, LMP_IMP_FACTOR, LMP_NOT_IMP_BASE,
-    LMP_NOT_IMP_FACTOR, LMR_DEPTH, LMR_MIN_MOVES, MAX_DBL_EXT, NMP_BASE_R, NMP_DEPTH,
-    NMP_DEPTH_DIVISOR, NMP_EVAL_DIVISOR, NMP_EVAL_MIN, QUIET_SEE, RFP_BETA_FACTOR, RFP_DEPTH,
-    RFP_IMPROVING_FACTOR, SEE_DEPTH,
-};
 
 use super::quiescence::quiescence;
 use super::thread::ThreadData;
-use super::{get_reduction, SearchType, PV};
+use super::{SearchType, PV};
 
 pub const CHECKMATE: i32 = 25000;
 pub const STALEMATE: i32 = 0;
@@ -102,11 +95,13 @@ fn aspiration_windows(
     let mut alpha = -INFINITY;
     let mut beta = INFINITY;
     // Asp window should start wider if score is more extreme
-    let mut delta = INIT_ASP.val() + prev_score * prev_score / ASP_DIVISOR.val();
+    // let mut delta = INIT_ASP.val() + prev_score * prev_score / ASP_DIVISOR.val();
+    let mut delta = td.consts.init_asp + prev_score * prev_score / td.consts.asp_divisor;
 
     let mut depth = td.iter_max_depth;
 
-    if td.iter_max_depth >= ASP_MIN_DEPTH.val() {
+    // if td.iter_max_depth >= ASP_MIN_DEPTH.val() {
+    if td.iter_max_depth >= td.consts.asp_min_depth {
         alpha = alpha.max(prev_score - delta);
         beta = beta.min(prev_score + delta);
     }
@@ -129,7 +124,7 @@ fn aspiration_windows(
         } else {
             return score;
         }
-        delta += delta * DELTA_EXPANSION.val() / 3;
+        delta += delta * td.consts.delta_expansion / 3;
     }
 }
 
@@ -250,10 +245,10 @@ fn alpha_beta<const IS_PV: bool>(
     if !is_root && !IS_PV && !in_check && !singular_search {
         // Reverse futility pruning - If we are below beta by a certain amount, we are unlikely to
         // raise it, so we can prune the nodes that would have followed
-        if static_eval - RFP_BETA_FACTOR.val() * depth
-            + i32::from(improving) * RFP_IMPROVING_FACTOR.val() * depth
+        if static_eval - td.consts.rfp_beta_factor * depth
+            + i32::from(improving) * td.consts.rfp_improving_factor * depth
             >= beta
-            && depth < RFP_DEPTH.val()
+            && depth < td.consts.rfp_depth
             && static_eval.abs() < NEAR_CHECKMATE
         {
             return static_eval;
@@ -263,7 +258,7 @@ fn alpha_beta<const IS_PV: bool>(
         // raise beta, they likely won't be able to, so we can prune the nodes that would have
         // followed
         if board.has_non_pawns(board.to_move)
-            && depth >= NMP_DEPTH.val()
+            && depth >= td.consts.nmp_depth
             && static_eval >= beta
             && td.stack[td.ply - 1].played_move != Move::NULL
         {
@@ -276,9 +271,9 @@ fn alpha_beta<const IS_PV: bool>(
             td.ply += 1;
 
             // Reduction
-            let r = NMP_BASE_R.val()
-                + depth / NMP_DEPTH_DIVISOR.val()
-                + min((static_eval - beta) / NMP_EVAL_DIVISOR.val(), NMP_EVAL_MIN.val());
+            let r = td.consts.nmp_base_r
+                + depth / td.consts.nmp_depth_divisor
+                + min((static_eval - beta) / td.consts.nmp_eval_divisor, td.consts.nmp_eval_min);
             let mut null_eval = -alpha_beta::<false>(
                 depth - r,
                 -beta,
@@ -322,13 +317,17 @@ fn alpha_beta<const IS_PV: bool>(
                 // By now all good tactical moves have been searched, so we can prune
                 // If eval is improving, we want to search more
                 let moves_required = if improving {
-                    LMP_IMP_BASE.val() as f32 / 100.
-                        + LMP_IMP_FACTOR.val() as f32 / 100. * depth as f32 * depth as f32
+                    // LMP_IMP_BASE.val() as f32 / 100.
+                    td.consts.lmp_imp_base as f32 / 100.
+                        // + LMP_IMP_FACTOR.val() as f32 / 100. * depth as f32 * depth as f32
+                        + td.consts.lmp_imp_factor as f32 / 100. * depth as f32 * depth as f32
                 } else {
-                    LMP_NOT_IMP_BASE.val() as f32 / 100.
-                        + LMP_NOT_IMP_FACTOR.val() as f32 / 100. * depth as f32 * depth as f32
+                    // LMP_NOT_IMP_BASE.val() as f32 / 100.
+                    td.consts.lmp_not_imp_base as f32 / 100.
+                        // + LMP_NOT_IMP_FACTOR.val() as f32 / 100. * depth as f32 * depth as f32
+                        + td.consts.lmp_not_imp_factor as f32 / 100. * depth as f32 * depth as f32
                 } as i32;
-                if depth < LMP_DEPTH.val() && legal_moves_searched > moves_required {
+                if depth < td.consts.lmp_depth && legal_moves_searched > moves_required {
                     break;
                 }
             }
@@ -336,8 +335,9 @@ fn alpha_beta<const IS_PV: bool>(
             // threshold, don't bother searching the move
             // TODO: Try a depth * depth dependent capture threshold
             let margin =
-                if m.is_capture(board) { -CAPT_SEE.val() } else { -QUIET_SEE.val() } * depth;
-            if depth < SEE_DEPTH.val() && !board.see(m, margin) {
+                if m.is_capture(board) { -td.consts.capt_see } else { -td.consts.quiet_see }
+                    * depth;
+            if depth < td.consts.see_depth && !board.see(m, margin) {
                 continue;
             }
         }
@@ -362,10 +362,10 @@ fn alpha_beta<const IS_PV: bool>(
             && tt_flag != EntryFlag::None
             && m == tt_move
             && !singular_search
-            && depth >= EXT_DEPTH.val()
+            && depth >= td.consts.ext_depth
             && !is_root
         {
-            let ext_beta = (tt_score - EXT_TT_DEPTH_MARGIN.val() * depth).max(-CHECKMATE);
+            let ext_beta = (tt_score - td.consts.ext_tt_depth_margin * depth).max(-CHECKMATE);
             let ext_depth = (depth - 1) / 2;
             let mut node_pv = PV::default();
 
@@ -385,9 +385,9 @@ fn alpha_beta<const IS_PV: bool>(
             td.accumulators.push(prev);
 
             if ext_score < ext_beta {
-                if td.stack[td.ply].dbl_extns <= MAX_DBL_EXT.val()
+                if td.stack[td.ply].dbl_extns <= td.consts.max_dbl_ext
                     && !IS_PV
-                    && ext_score < ext_beta - DBL_EXT_MARGIN.val()
+                    && ext_score < ext_beta - td.consts.dbl_ext_margin
                 {
                     td.stack[td.ply].dbl_extns = td.stack[td.ply - 1].dbl_extns + 1;
                     2
@@ -418,14 +418,15 @@ fn alpha_beta<const IS_PV: bool>(
             // Late Move Reductions - Search moves after the first with reduced depth and window as
             // they are much less likely to be the best move than the first move selected by the
             // move picker.
-            let r = if depth <= LMR_DEPTH.val()
+            let r = if depth <= td.consts.lmr_depth
             // TODO: Something along the lines of moves_searched < 2 + 2 * PV
-                || legal_moves_searched < LMR_MIN_MOVES.val()
+                || legal_moves_searched < td.consts.lmr_min_moves
                 || picker.phase < MovePickerPhase::Killer
             {
                 0
             } else {
-                get_reduction(depth, legal_moves_searched)
+                // get_reduction(depth, legal_moves_searched)
+                td.consts.base_reduction(depth, legal_moves_searched)
             };
             let d = max(1, min(new_depth - r, new_depth + 1));
 
@@ -495,6 +496,7 @@ fn alpha_beta<const IS_PV: bool>(
                     depth,
                     &td.stack,
                     td.ply,
+                    td.consts,
                 );
                 break;
             }

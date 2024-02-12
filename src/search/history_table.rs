@@ -1,9 +1,4 @@
-use crate::{
-    board::board::Board,
-    moves::moves::Move,
-    spsa::{HIST_DEPTH_MOD, HIST_MIN},
-    types::pieces::PieceName,
-};
+use crate::{board::board::Board, consts::Consts, moves::moves::Move, types::pieces::PieceName};
 
 use super::SearchStack;
 
@@ -34,12 +29,7 @@ pub struct HistoryTable {
     search_history: Box<[[HistoryEntry; 64]; 12]>,
 }
 
-fn calc_bonus(depth: i32) -> i32 {
-    (HIST_DEPTH_MOD.val() * depth).min(HIST_MIN.val())
-}
-
-fn update_history(score: &mut i32, depth: i32, is_good: bool) {
-    let bonus = if is_good { 1 } else { -1 } * calc_bonus(depth);
+fn update_history(score: &mut i32, bonus: i32) {
     *score += bonus - *score * bonus.abs() / MAX_HIST_VAL;
 }
 
@@ -65,26 +55,28 @@ impl HistoryTable {
         depth: i32,
         stack: &SearchStack,
         ply: i32,
+        consts: &Consts,
     ) {
+        let bonus = (consts.hist_depth_mod * depth).min(consts.hist_min);
         assert_ne!(best_move, Move::NULL);
         if best_move.is_tactical(board) {
             let cap = capthist_capture(board, best_move);
-            self.update_capt_hist(best_move, cap, depth, true);
+            self.update_capt_hist(best_move, cap, bonus);
         } else {
             if stack.prev_move(ply - 1) != Move::NULL {
                 self.set_counter(stack.prev_move(ply - 1), best_move);
             }
             if depth > 3 || quiets_tried.len() > 1 {
-                self.update_quiet_history(best_move, true, depth);
-                self.update_cont_hist(best_move, stack, ply, true, depth);
+                self.update_quiet_history(best_move, bonus);
+                self.update_cont_hist(best_move, stack, ply, bonus);
             }
             // Only penalize quiets if best_move was quiet
             for m in quiets_tried {
                 if *m == best_move {
                     continue;
                 }
-                self.update_quiet_history(*m, false, depth);
-                self.update_cont_hist(*m, stack, ply, false, depth)
+                self.update_quiet_history(*m, -bonus);
+                self.update_cont_hist(*m, stack, ply, -bonus)
             }
         }
 
@@ -95,13 +87,13 @@ impl HistoryTable {
             }
             assert_ne!(m, &Move::NULL);
             let cap = capthist_capture(board, *m);
-            self.update_capt_hist(*m, cap, depth, false);
+            self.update_capt_hist(*m, cap, -bonus);
         }
     }
 
-    fn update_quiet_history(&mut self, m: Move, is_good: bool, depth: i32) {
+    fn update_quiet_history(&mut self, m: Move, bonus: i32) {
         let i = &mut self.search_history[m.piece_moving()][m.dest_square()].score;
-        update_history(i, depth, is_good);
+        update_history(i, bonus);
     }
 
     pub(crate) fn quiet_history(&self, m: Move, stack: &SearchStack, ply: i32) -> i32 {
@@ -120,9 +112,9 @@ impl HistoryTable {
         }
     }
 
-    fn update_capt_hist(&mut self, m: Move, capture: PieceName, depth: i32, is_good: bool) {
+    fn update_capt_hist(&mut self, m: Move, capture: PieceName, bonus: i32) {
         let i = &mut self.search_history[m.piece_moving()][m.dest_square()].capt_hist[capture];
-        update_history(i, depth, is_good);
+        update_history(i, bonus);
     }
 
     pub fn capt_hist(&self, m: Move, board: &Board) -> i32 {
@@ -130,20 +122,13 @@ impl HistoryTable {
         self.search_history[m.piece_moving()][m.dest_square()].capt_hist[cap]
     }
 
-    fn update_cont_hist(
-        &mut self,
-        m: Move,
-        stack: &SearchStack,
-        ply: i32,
-        is_good: bool,
-        depth: i32,
-    ) {
+    fn update_cont_hist(&mut self, m: Move, stack: &SearchStack, ply: i32, bonus: i32) {
         let prevs = [stack.prev_move(ply - 1), stack.prev_move(ply - 2), stack.prev_move(ply - 4)];
         let entry = &mut self.search_history[m.piece_moving()][m.dest_square()].cont_hist;
         for prev in prevs {
             if prev != Move::NULL {
                 let i = &mut entry[prev.piece_moving().name()][prev.dest_square()];
-                update_history(i, depth, is_good);
+                update_history(i, bonus);
             }
         }
     }
