@@ -74,8 +74,10 @@ impl HistoryTable {
             if stack.prev_move(ply - 1) != Move::NULL {
                 self.set_counter(stack.prev_move(ply - 1), best_move);
             }
-            self.update_quiet_history(best_move, true, depth);
-            self.update_cont_hist(best_move, stack, ply, true, depth);
+            if depth > 3 || quiets_tried.len() > 1 {
+                self.update_quiet_history(best_move, true, depth);
+                self.update_cont_hist(best_move, stack, ply, true, depth);
+            }
             // Only penalize quiets if best_move was quiet
             for m in quiets_tried {
                 if *m == best_move {
