@@ -2,6 +2,7 @@ use std::{sync::atomic::AtomicBool, time::Instant};
 
 use crate::{
     board::fen::build_board,
+    consts::Consts,
     engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB},
     search::{search::search, thread::ThreadData, SearchType},
 };
@@ -11,8 +12,9 @@ pub fn bench() {
 
     let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
     let halt = AtomicBool::new(false);
+    let consts = Consts::new();
 
-    let mut thread = ThreadData::new(&halt, Vec::new(), 0);
+    let mut thread = ThreadData::new(&halt, Vec::new(), 0, &consts);
 
     thread.max_depth = 14;
     thread.search_type = SearchType::Depth;
