@@ -95,12 +95,10 @@ fn aspiration_windows(
     let mut alpha = -INFINITY;
     let mut beta = INFINITY;
     // Asp window should start wider if score is more extreme
-    // let mut delta = INIT_ASP.val() + prev_score * prev_score / ASP_DIVISOR.val();
     let mut delta = td.consts.init_asp + prev_score * prev_score / td.consts.asp_divisor;
 
     let mut depth = td.iter_max_depth;
 
-    // if td.iter_max_depth >= ASP_MIN_DEPTH.val() {
     if td.iter_max_depth >= td.consts.asp_min_depth {
         alpha = alpha.max(prev_score - delta);
         beta = beta.min(prev_score + delta);
@@ -317,14 +315,10 @@ fn alpha_beta<const IS_PV: bool>(
                 // By now all good tactical moves have been searched, so we can prune
                 // If eval is improving, we want to search more
                 let moves_required = if improving {
-                    // LMP_IMP_BASE.val() as f32 / 100.
                     td.consts.lmp_imp_base as f32 / 100.
-                        // + LMP_IMP_FACTOR.val() as f32 / 100. * depth as f32 * depth as f32
                         + td.consts.lmp_imp_factor as f32 / 100. * depth as f32 * depth as f32
                 } else {
-                    // LMP_NOT_IMP_BASE.val() as f32 / 100.
                     td.consts.lmp_not_imp_base as f32 / 100.
-                        // + LMP_NOT_IMP_FACTOR.val() as f32 / 100. * depth as f32 * depth as f32
                         + td.consts.lmp_not_imp_factor as f32 / 100. * depth as f32 * depth as f32
                 } as i32;
                 if depth < td.consts.lmp_depth && legal_moves_searched > moves_required {
@@ -425,7 +419,6 @@ fn alpha_beta<const IS_PV: bool>(
             {
                 0
             } else {
-                // get_reduction(depth, legal_moves_searched)
                 td.consts.base_reduction(depth, legal_moves_searched)
             };
             let d = max(1, min(new_depth - r, new_depth + 1));
