@@ -1,4 +1,4 @@
-use super::{accumulator::Accumulator, Block, INPUT_SIZE, NET};
+use super::{accumulator::Accumulator, Align64, Block, INPUT_SIZE, NET};
 
 use crate::board::board::Board;
 /**
@@ -17,9 +17,9 @@ const SCALE: i32 = 400;
 #[derive(Clone, Debug)]
 #[repr(C, align(64))]
 pub(super) struct Network {
-    pub feature_weights: [Block; INPUT_SIZE],
-    pub feature_bias: Block,
-    pub output_weights: [Block; 2],
+    pub feature_weights: [Align64<Block>; INPUT_SIZE],
+    pub feature_bias: Align64<Block>,
+    pub output_weights: [Align64<Block>; 2],
     pub output_bias: i16,
 }
 

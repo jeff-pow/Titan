@@ -6,7 +6,7 @@ use crate::{
     },
 };
 
-use super::{Block, NET};
+use super::{Align64, Block, NET};
 
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub(crate) struct Delta {
@@ -38,7 +38,7 @@ impl Delta {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C, align(64))]
-pub struct Accumulator(pub(super) [Block; 2]);
+pub struct Accumulator(pub(super) [Align64<Block>; 2]);
 
 impl Default for Accumulator {
     fn default() -> Self {
@@ -57,15 +57,15 @@ impl Accumulator {
             let weights = &NET.feature_weights;
             self.0[Color::White]
                 .iter_mut()
-                .zip(&weights[white_add])
-                .zip(&weights[white_sub])
+                .zip(&weights[white_add].0)
+                .zip(&weights[white_sub].0)
                 .for_each(|((i, &a), &s)| {
                     *i += a - s;
                 });
             self.0[Color::Black]
                 .iter_mut()
-                .zip(&weights[black_add])
-                .zip(&weights[black_sub])
+                .zip(&weights[black_add].0)
+                .zip(&weights[black_sub].0)
                 .for_each(|((i, &a), &s)| {
                     *i += a - s;
                 })
@@ -97,17 +97,17 @@ impl Accumulator {
             let weights = &NET.feature_weights;
             self.0[Color::White]
                 .iter_mut()
-                .zip(&weights[white_add])
-                .zip(&weights[white_sub_1])
-                .zip(&weights[white_sub_2])
+                .zip(&weights[white_add].0)
+                .zip(&weights[white_sub_1].0)
+                .zip(&weights[white_sub_2].0)
                 .for_each(|(((i, &a), &s1), &s2)| {
                     *i += a - s1 - s2;
                 });
             self.0[Color::Black]
                 .iter_mut()
-                .zip(&weights[black_add])
-                .zip(&weights[black_sub_1])
-                .zip(&weights[black_sub_2])
+                .zip(&weights[black_add].0)
+                .zip(&weights[black_sub_1].0)
+                .zip(&weights[black_sub_2].0)
                 .for_each(|(((i, &a), &s1), &s2)| {
                     *i += a - s1 - s2;
                 });
@@ -144,19 +144,19 @@ impl Accumulator {
             let weights = &NET.feature_weights;
             self.0[Color::White]
                 .iter_mut()
-                .zip(&weights[white_add_1])
-                .zip(&weights[white_add_2])
-                .zip(&weights[white_sub_1])
-                .zip(&weights[white_sub_2])
+                .zip(&weights[white_add_1].0)
+                .zip(&weights[white_add_2].0)
+                .zip(&weights[white_sub_1].0)
+                .zip(&weights[white_sub_2].0)
                 .for_each(|((((i, &a1), &a2), &s1), &s2)| {
                     *i += a1 + a2 - s1 - s2;
                 });
             self.0[Color::Black]
                 .iter_mut()
-                .zip(&weights[black_add_1])
-                .zip(&weights[black_add_2])
-                .zip(&weights[black_sub_1])
-                .zip(&weights[black_sub_2])
+                .zip(&weights[black_add_1].0)
+                .zip(&weights[black_add_2].0)
+                .zip(&weights[black_sub_1].0)
+                .zip(&weights[black_sub_2].0)
                 .for_each(|((((i, &a1), &a2), &s1), &s2)| {
                     *i += a1 + a2 - s1 - s2;
                 });
