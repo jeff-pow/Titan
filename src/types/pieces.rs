@@ -1,7 +1,4 @@
-use crate::{
-    impl_index,
-    spsa::{BISHOP, KNIGHT, QUEEN, ROOK},
-};
+use crate::impl_index;
 use std::{
     mem::transmute,
     ops::{self, Index, IndexMut},
@@ -93,10 +90,10 @@ impl PieceName {
     pub fn value(self) -> i32 {
         match self {
             PieceName::Pawn => 100,
-            PieceName::Knight => KNIGHT.val(),
-            PieceName::Bishop => BISHOP.val(),
-            PieceName::Rook => ROOK.val(),
-            PieceName::Queen => QUEEN.val(),
+            PieceName::Knight => 302,
+            PieceName::Bishop => 286,
+            PieceName::Rook => 511,
+            PieceName::Queen => 991,
             PieceName::King => 0,
             PieceName::None => panic!("Invalid piece"),
         }

@@ -1,12 +1,8 @@
-use arr_macro::arr;
 use arrayvec::ArrayVec;
 use std::ops::{Index, IndexMut};
-use std::sync::atomic::{AtomicI32, Ordering};
 
 use crate::eval::accumulator::Accumulator;
-use crate::moves::movelist::MAX_LEN;
 use crate::moves::moves::Move;
-use crate::spsa::{LMR_BASE, LMR_DIVISOR};
 
 use self::search::MAX_SEARCH_DEPTH;
 
@@ -73,34 +69,15 @@ impl IndexMut<i32> for SearchStack {
 
 #[derive(Clone, Copy, Default, PartialEq)]
 pub enum SearchType {
-    Depth, // User has requested a search until a particular depth
-    Time,  // Search determines how much time to allow itself
+    /// User has requested a search until a particular depth
+    Depth,
+    /// Search determines how much time to allow itself
+    Time,
     #[default]
-    Infinite, // Search forever
+    /// Search forever
+    Infinite,
 }
 
-type LmrReductions = [[AtomicI32; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
-
-pub static LMR_REDUCTIONS: LmrReductions = arr![arr![AtomicI32::new(0); 219]; 101];
-
-pub fn lmr_reductions() {
-    for depth in 0..MAX_SEARCH_DEPTH + 1 {
-        for moves_played in 0..MAX_LEN + 1 {
-            let reduction = (LMR_BASE.val() as f32 / 100.
-                + (depth as f32).ln() * (moves_played as f32).ln()
-                    / (LMR_DIVISOR.val() as f32 / 100.)) as i32;
-            LMR_REDUCTIONS[depth as usize][moves_played].store(reduction, Ordering::Relaxed);
-        }
-    }
-    LMR_REDUCTIONS[0][0].store(0, Ordering::Relaxed);
-    LMR_REDUCTIONS[1][0].store(0, Ordering::Relaxed);
-    LMR_REDUCTIONS[0][1].store(0, Ordering::Relaxed);
-}
-
-pub fn get_reduction(depth: i32, moves_played: i32) -> i32 {
-    LMR_REDUCTIONS[depth.min(MAX_SEARCH_DEPTH) as usize][(moves_played as usize).min(MAX_LEN)]
-        .load(Ordering::Relaxed)
-}
 #[derive(Clone)]
 pub struct AccumulatorStack {
     pub(crate) stack: Vec<Accumulator>,

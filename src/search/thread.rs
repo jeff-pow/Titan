@@ -10,6 +10,7 @@ use std::{
 
 use crate::{
     board::board::Board,
+    consts::Consts,
     engine::{transposition::TranspositionTable, uci::parse_time},
     eval::accumulator::Accumulator,
     moves::moves::Move,
@@ -43,10 +44,16 @@ pub(crate) struct ThreadData<'a> {
     pub thread_idx: usize,
     pub search_type: SearchType,
     pub halt: &'a AtomicBool,
+    pub consts: &'a Consts,
 }
 
 impl<'a> ThreadData<'a> {
-    pub(crate) fn new(halt: &'a AtomicBool, hash_history: Vec<u64>, thread_idx: usize) -> Self {
+    pub(crate) fn new(
+        halt: &'a AtomicBool,
+        hash_history: Vec<u64>,
+        thread_idx: usize,
+        consts: &'a Consts,
+    ) -> Self {
         Self {
             ply: 0,
             max_depth: MAX_SEARCH_DEPTH,
@@ -63,6 +70,7 @@ impl<'a> ThreadData<'a> {
             search_type: SearchType::default(),
             hash_history,
             thread_idx,
+            consts,
         }
     }
 
@@ -122,9 +130,9 @@ pub struct ThreadPool<'a> {
 }
 
 impl<'a> ThreadPool<'a> {
-    pub fn new(halt: &'a AtomicBool, hash_history: Vec<u64>) -> Self {
+    pub fn new(halt: &'a AtomicBool, hash_history: Vec<u64>, consts: &'a Consts) -> Self {
         Self {
-            main_thread: ThreadData::new(halt, hash_history, 0),
+            main_thread: ThreadData::new(halt, hash_history, 0, consts),
             workers: Vec::new(),
             halt,
             searching: AtomicBool::new(false),
@@ -146,11 +154,11 @@ impl<'a> ThreadPool<'a> {
 
     /// This thread creates a number of workers equal to threads - 1. If 4 threads are requested,
     /// the main thread counts as one and then the remaining three are placed in the worker queue.
-    pub fn add_workers(&mut self, threads: usize, hash_history: Vec<u64>) {
+    pub fn add_workers(&mut self, threads: usize, hash_history: Vec<u64>, consts: &'a Consts) {
         self.workers.clear();
 
         for i in 0..threads - 1 {
-            self.workers.push(ThreadData::new(self.halt, hash_history.clone(), i + 1));
+            self.workers.push(ThreadData::new(self.halt, hash_history.clone(), i + 1, consts));
         }
     }
 

@@ -6,9 +6,9 @@ use itertools::Itertools;
 
 use crate::bench::bench;
 use crate::board::fen::{parse_fen_from_buffer, STARTING_FEN};
+use crate::consts::Consts;
 use crate::engine::perft::perft;
 use crate::engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
-use crate::search::lmr_reductions;
 use crate::search::thread::ThreadPool;
 use crate::spsa::{parse_param, uci_print_tunable_params, SPSA_TUNE};
 use crate::{
@@ -27,11 +27,11 @@ pub const ENGINE_NAME: &str = "Titan";
 pub fn main_loop() -> ! {
     let mut transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
     let mut board = build_board(STARTING_FEN);
+    let consts = Consts::new();
     let mut msg: Option<String> = None;
     let mut hash_history = Vec::new();
     let halt = AtomicBool::new(false);
-    let mut thread_pool = ThreadPool::new(&halt, Vec::new());
-    lmr_reductions();
+    let mut thread_pool = ThreadPool::new(&halt, Vec::new(), &consts);
     println!("{ENGINE_NAME} by {}", env!("CARGO_PKG_AUTHORS"));
 
     loop {
@@ -55,7 +55,7 @@ pub fn main_loop() -> ! {
             "ucinewgame" => {
                 transpos_table.clear();
                 halt.store(false, Ordering::Relaxed);
-                thread_pool = ThreadPool::new(&halt, Vec::new());
+                thread_pool = ThreadPool::new(&halt, Vec::new(), &consts);
             }
             "eval" => println!("{} cp", board.evaluate(&board.clone().new_accumulator())),
             "position" => position_command(&input, &mut board, &mut hash_history),
@@ -97,7 +97,7 @@ pub fn main_loop() -> ! {
                 }
                 ["setoption", "name", "Clear", "Hash"] => transpos_table.clear(),
                 ["setoption", "name", "Threads", "value", x] => {
-                    thread_pool.add_workers(x.parse().unwrap(), hash_history.clone())
+                    thread_pool.add_workers(x.parse().unwrap(), hash_history.clone(), &consts)
                 }
                 _ => {
                     if SPSA_TUNE {
