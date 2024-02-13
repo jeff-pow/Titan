@@ -428,7 +428,7 @@ fn alpha_beta<const IS_PV: bool>(
                 -alpha_beta::<false>(d, -alpha - 1, -alpha, &mut node_pv, td, tt, &new_b, true);
 
             // If that search raises alpha and a reduction was applied, re-search at a zero window with full depth
-            if score > alpha && r > 1 {
+            if score > alpha && d < new_depth {
                 score = -alpha_beta::<false>(
                     new_depth,
                     -alpha - 1,
