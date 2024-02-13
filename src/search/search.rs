@@ -424,12 +424,12 @@ fn alpha_beta<const IS_PV: bool>(
             let d = max(1, min(new_depth - r, new_depth + 1));
 
             // Start with a zero window reduced search
-            let zero_window_reduced_depth =
+            let mut score =
                 -alpha_beta::<false>(d, -alpha - 1, -alpha, &mut node_pv, td, tt, &new_b, true);
 
             // If that search raises alpha and a reduction was applied, re-search at a zero window with full depth
-            let zero_window_full_depth = if zero_window_reduced_depth > alpha && r > 1 {
-                -alpha_beta::<false>(
+            if score > alpha && r > 1 {
+                score = -alpha_beta::<false>(
                     new_depth,
                     -alpha - 1,
                     -alpha,
@@ -439,16 +439,22 @@ fn alpha_beta<const IS_PV: bool>(
                     &new_b,
                     !cut_node,
                 )
-            } else {
-                zero_window_reduced_depth
-            };
+            }
 
             // If the verification score falls between alpha and beta, full window full depth search
-            if zero_window_full_depth > alpha && zero_window_full_depth < beta {
-                -alpha_beta::<IS_PV>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
-            } else {
-                zero_window_full_depth
+            if score > alpha && score < beta {
+                score = -alpha_beta::<IS_PV>(
+                    new_depth,
+                    -beta,
+                    -alpha,
+                    &mut node_pv,
+                    td,
+                    tt,
+                    &new_b,
+                    false,
+                )
             }
+            score
         };
 
         legal_moves_searched += 1;
