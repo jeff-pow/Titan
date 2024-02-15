@@ -156,9 +156,8 @@ impl<'a> ThreadPool<'a> {
     /// the main thread counts as one and then the remaining three are placed in the worker queue.
     pub fn add_workers(&mut self, threads: usize, hash_history: Vec<u64>, consts: &'a Consts) {
         self.workers.clear();
-
-        for i in 0..threads - 1 {
-            self.workers.push(ThreadData::new(self.halt, hash_history.clone(), i + 1, consts));
+        for i in 1..threads {
+            self.workers.push(ThreadData::new(self.halt, hash_history.clone(), i, consts));
         }
     }
 
