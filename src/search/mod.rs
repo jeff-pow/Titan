@@ -100,6 +100,11 @@ impl AccumulatorStack {
         self.stack.push(acc)
     }
 
+    pub fn clear(&mut self, base_accumulator: Accumulator) {
+        self.stack.clear();
+        self.push(base_accumulator);
+    }
+
     pub fn new(base_accumulator: Accumulator) -> Self {
         let mut vec = Vec::with_capacity(MAX_SEARCH_DEPTH as usize + 50);
         vec.push(base_accumulator);

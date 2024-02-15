@@ -28,7 +28,7 @@ pub fn search(
     td.game_time.search_start = Instant::now();
     td.nodes_searched = 0;
     td.stack = SearchStack::default();
-    td.accumulators = AccumulatorStack::new(board.new_accumulator());
+    td.accumulators.clear(board.new_accumulator());
 
     let best_move = iterative_deepening(td, &board, print_uci, tt);
     assert_ne!(best_move, Move::NULL);
