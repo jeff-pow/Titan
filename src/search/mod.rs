@@ -101,8 +101,8 @@ impl AccumulatorStack {
     }
 
     pub fn clear(&mut self, base_accumulator: Accumulator) {
-        self.stack.clear();
-        self.push(base_accumulator);
+        assert!(self.stack.len() == 1);
+        self.stack[0] = base_accumulator;
     }
 
     pub fn new(base_accumulator: Accumulator) -> Self {
