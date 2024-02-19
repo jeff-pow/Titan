@@ -409,6 +409,7 @@ impl Board {
         self.to_move = !self.to_move;
         self.zobrist_hash ^= ZOBRIST.turn_hash;
         self.num_moves += 1;
+        self.half_moves += 1;
         self.calculate_threats();
         if let Some(sq) = self.en_passant_square {
             self.zobrist_hash ^= ZOBRIST.en_passant[sq];
