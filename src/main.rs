@@ -20,7 +20,6 @@ use std::env;
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
-
     if args.contains(&"bench".to_string()) {
         bench();
     } else {

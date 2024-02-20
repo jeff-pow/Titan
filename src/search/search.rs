@@ -469,7 +469,8 @@ fn alpha_beta<const IS_PV: bool>(
         };
 
         if is_root {
-            td.nodes_table[m.origin_square()][m.dest_square()] += td.nodes_searched - pre_search_nodes;
+            td.nodes_table[m.origin_square()][m.dest_square()] +=
+                td.nodes_searched - pre_search_nodes;
         }
         legal_moves_searched += 1;
         td.hash_history.pop();
