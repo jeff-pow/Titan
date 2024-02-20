@@ -20,9 +20,15 @@ pub(super) fn quiescence<const IS_PV: bool>(
     tt: &TranspositionTable,
     board: &Board,
 ) -> i32 {
-    if td.halt.load(Ordering::Relaxed) || (td.thread_idx == 0 && td.game_time.hard_termination()) {
+    // Stop if we have reached hard time limit or decided else where it is time to stop
+    if td.halt.load(Ordering::Relaxed) {
         td.halt.store(true, Ordering::Relaxed);
         // return board.evaluate();
+        return 0;
+    }
+
+    if td.nodes_searched % 1024 == 0 && td.thread_idx == 0 && td.game_time.hard_termination() {
+        td.halt.store(true, Ordering::Relaxed);
         return 0;
     }
 
