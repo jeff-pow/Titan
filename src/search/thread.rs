@@ -34,6 +34,7 @@ pub(crate) struct ThreadData<'a> {
     pub best_move: Move,
 
     pub nodes_searched: u64,
+    pub nodes_table: [[u64; 64]; 64],
     pub global_nodes: Arc<AtomicU64>,
     pub stack: SearchStack,
     pub history: HistoryTable,
@@ -64,6 +65,7 @@ impl<'a> ThreadData<'a> {
             best_move: Move::NULL,
             global_nodes: Arc::new(AtomicU64::new(0)),
             history: HistoryTable::default(),
+            nodes_table: [[0; 64]; 64],
             accumulators: AccumulatorStack::new(Accumulator::default()),
             game_time: GameTime::default(),
             halt,
@@ -72,6 +74,21 @@ impl<'a> ThreadData<'a> {
             thread_idx,
             consts,
         }
+    }
+
+    pub(super) fn node_tm_stop(&mut self, depth: i32) -> bool {
+        assert_eq!(0, self.thread_idx);
+        let m = self.best_move;
+        let frac = self.nodes_table[m.origin_square()][m.dest_square()] as f64
+            / self.nodes_searched as f64;
+        let time_scale = if depth > 8 { (1.5 - frac) * 1.4 } else { 0.9 };
+        if self.game_time.search_start.elapsed().as_millis() as f64
+            >= self.game_time.rec_time.as_millis() as f64 * time_scale
+        {
+            self.halt.store(true, Ordering::Relaxed);
+            return true;
+        }
+        false
     }
 
     pub(super) fn print_search_stats(&self, eval: i32, pv: &PV, tt: &TranspositionTable) {
