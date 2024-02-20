@@ -156,9 +156,14 @@ fn alpha_beta<const IS_PV: bool>(
     }
 
     // Stop if we have reached hard time limit or decided else where it is time to stop
-    if td.halt.load(Ordering::Relaxed) || (td.thread_idx == 0 && td.game_time.hard_termination()) {
+    if td.halt.load(Ordering::Relaxed) {
         td.halt.store(true, Ordering::Relaxed);
         // return board.evaluate();
+        return 0;
+    }
+
+    if td.nodes_searched % 1024 == 0 && td.thread_idx == 0 && td.game_time.hard_termination() {
+        td.halt.store(true, Ordering::Relaxed);
         return 0;
     }
 
