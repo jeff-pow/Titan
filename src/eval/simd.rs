@@ -15,9 +15,10 @@ pub(crate) mod avx2 {
             let mut sum = _mm256_setzero_si256();
             for i in 0..REQUIRED_ITERS {
                 let us_vector = _mm256_load_si256(acc.as_ptr().add(i * CHUNK_SIZE).cast());
-                let crelu_result = squared_crelu(us_vector);
                 let weights = _mm256_load_si256(weights.as_ptr().add(i * CHUNK_SIZE).cast());
-                let mul = _mm256_madd_epi16(crelu_result, weights);
+                let crelu_result = clipped_relu(us_vector);
+                let v = _mm256_mullo_epi16(crelu_result, weights);
+                let mul = _mm256_madd_epi16(v, crelu_result);
                 sum = _mm256_add_epi32(sum, mul);
             }
             hadd_i32(sum)
@@ -73,9 +74,10 @@ pub(crate) mod avx512 {
             let mut sum = _mm512_setzero_si512();
             for i in 0..REQUIRED_ITERS {
                 let us_vector = _mm512_load_si512(acc.as_ptr().add(i * CHUNK_SIZE).cast());
-                let crelu_result = squared_crelu(us_vector);
                 let weights = _mm512_load_si512(weights.as_ptr().add(i * CHUNK_SIZE).cast());
-                sum = _mm512_dpwssd_epi32(sum, crelu_result, weights);
+                let crelu = clipped_relu(us_vector);
+                let v = _mm512_mullo_epi16(crelu, weights);
+                sum = _mm512_dpwssd_epi32(sum, v, crelu);
             }
             _mm512_reduce_add_epi32(sum)
         }
