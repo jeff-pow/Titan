@@ -5,7 +5,7 @@ use crate::board::board::Board;
 * When changing activation functions, both the normalization factor and QA may need to change
 * alongside changing the crelu calls to screlu in simd and serial code.
 */
-const QA: i32 = 181; // CHANGES WITH NET QUANZIZATION
+const QA: i32 = 255; // CHANGES WITH NET QUANZIZATION
 const QB: i32 = 64;
 const QAB: i32 = QA * QB;
 const NORMALIZATION_FACTOR: i32 = QA; // CHANGES WITH SCRELU/CRELU ACTIVATION
