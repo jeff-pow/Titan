@@ -7,7 +7,7 @@ use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::movepicker::{MovePicker, MovePickerPhase};
 use crate::moves::moves::Move;
-use crate::search::{AccumulatorStack, SearchStack};
+use crate::search::SearchStack;
 
 use super::quiescence::quiescence;
 use super::thread::ThreadData;
@@ -26,6 +26,7 @@ pub fn search(
     tt: &TranspositionTable,
 ) -> Move {
     td.game_time.search_start = Instant::now();
+    td.nodes_table = [[0; 64]; 64];
     td.nodes_searched = 0;
     td.stack = SearchStack::default();
     td.accumulators.clear(board.new_accumulator());
@@ -66,6 +67,10 @@ pub(crate) fn iterative_deepening(
 
         if print_uci {
             td.print_search_stats(prev_score, &pv, tt);
+        }
+
+        if td.thread_idx == 0 && td.node_tm_stop(depth) {
+            break;
         }
 
         if td.thread_idx == 0
@@ -405,6 +410,7 @@ fn alpha_beta<const IS_PV: bool>(
         let new_depth = depth + extension - 1;
 
         td.nodes_searched += 1;
+        let pre_search_nodes = td.nodes_searched;
         td.stack[td.ply].played_move = m;
         td.hash_history.push(new_b.zobrist_hash);
         td.ply += 1;
@@ -462,6 +468,9 @@ fn alpha_beta<const IS_PV: bool>(
             score
         };
 
+        if is_root {
+            td.nodes_table[m.origin_square()][m.dest_square()] += td.nodes_searched - pre_search_nodes;
+        }
         legal_moves_searched += 1;
         td.hash_history.pop();
         td.accumulators.pop();
