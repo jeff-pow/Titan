@@ -47,12 +47,6 @@ pub(crate) mod avx2 {
 
         _mm256_min_epi16(_mm256_max_epi16(i, min), max)
     }
-
-    #[inline]
-    unsafe fn squared_crelu(i: __m256i) -> __m256i {
-        let clamp = clipped_relu(i);
-        _mm256_mullo_epi16(clamp, clamp)
-    }
 }
 
 #[cfg(feature = "avx512")]
@@ -88,11 +82,6 @@ pub(crate) mod avx512 {
         let max = _mm512_set1_epi16(RELU_MAX);
 
         _mm512_min_epi16(_mm512_max_epi16(i, min), max)
-    }
-
-    unsafe fn squared_crelu(i: __m512i) -> __m512i {
-        let clamp = clipped_relu(i);
-        _mm512_mullo_epi16(clamp, clamp)
     }
 
     impl Accumulator {
