@@ -27,7 +27,7 @@ pub fn search(
 ) -> Move {
     td.game_time.search_start = Instant::now();
     td.nodes_table = [[0; 64]; 64];
-    td.nodes_searched = 0;
+    td.nodes.reset();
     td.stack = SearchStack::default();
     td.accumulators.clear(board.new_accumulator());
 
@@ -50,18 +50,12 @@ pub(crate) fn iterative_deepening(
         td.ply = 0;
         td.sel_depth = 0;
 
-        let last_nodes = td.nodes_searched;
-
         assert_eq!(1, td.accumulators.stack.len());
 
         prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt);
 
         assert_eq!(1, td.accumulators.stack.len());
         assert!(!pv.line.is_empty());
-
-        if depth >= 7 {
-            td.global_nodes.fetch_add(td.nodes_searched - last_nodes, Ordering::Relaxed);
-        }
 
         td.best_move = pv.line[0];
 
@@ -162,7 +156,7 @@ fn alpha_beta<const IS_PV: bool>(
         return 0;
     }
 
-    if td.nodes_searched % 1024 == 0 && td.thread_idx == 0 && td.game_time.hard_termination() {
+    if td.nodes.check_time() && td.thread_idx == 0 && td.game_time.hard_termination() {
         td.halt.store(true, Ordering::Relaxed);
         return 0;
     }
@@ -409,8 +403,8 @@ fn alpha_beta<const IS_PV: bool>(
 
         let new_depth = depth + extension - 1;
 
-        td.nodes_searched += 1;
-        let pre_search_nodes = td.nodes_searched;
+        td.nodes.increment();
+        let pre_search_nodes = td.nodes.local_count();
         td.stack[td.ply].played_move = m;
         td.hash_history.push(new_b.zobrist_hash);
         td.ply += 1;
@@ -470,7 +464,7 @@ fn alpha_beta<const IS_PV: bool>(
 
         if is_root {
             td.nodes_table[m.origin_square()][m.dest_square()] +=
-                td.nodes_searched - pre_search_nodes;
+                td.nodes.local_count() - pre_search_nodes;
         }
         legal_moves_searched += 1;
         td.hash_history.pop();

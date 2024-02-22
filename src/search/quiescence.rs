@@ -27,7 +27,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
         return 0;
     }
 
-    if td.nodes_searched % 1024 == 0 && td.thread_idx == 0 && td.game_time.hard_termination() {
+    if td.nodes.check_time() && td.thread_idx == 0 && td.game_time.hard_termination() {
         td.halt.store(true, Ordering::Relaxed);
         return 0;
     }
@@ -117,7 +117,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
         td.accumulators.top().lazy_update(&mut new_b.delta);
         td.hash_history.push(new_b.zobrist_hash);
         td.stack[td.ply].played_move = m;
-        td.nodes_searched += 1;
+        td.nodes.increment();
         moves_searched += 1;
         td.ply += 1;
 

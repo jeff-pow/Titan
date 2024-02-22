@@ -1,10 +1,7 @@
 use std::{
     io,
     process::exit,
-    sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
-        Arc,
-    },
+    sync::atomic::{AtomicBool, AtomicU64, Ordering},
     thread::{self},
 };
 
@@ -33,9 +30,8 @@ pub(crate) struct ThreadData<'a> {
     pub sel_depth: i32,
     pub best_move: Move,
 
-    pub nodes_searched: u64,
     pub nodes_table: [[u64; 64]; 64],
-    pub global_nodes: Arc<AtomicU64>,
+    pub nodes: AtomicCounter<'a>,
     pub stack: SearchStack,
     pub history: HistoryTable,
     pub hash_history: Vec<u64>,
@@ -54,16 +50,16 @@ impl<'a> ThreadData<'a> {
         hash_history: Vec<u64>,
         thread_idx: usize,
         consts: &'a Consts,
+        global_nodes: &'a AtomicU64,
     ) -> Self {
         Self {
             ply: 0,
             max_depth: MAX_SEARCH_DEPTH,
             iter_max_depth: 0,
-            nodes_searched: 0,
             stack: SearchStack::default(),
             sel_depth: 0,
             best_move: Move::NULL,
-            global_nodes: Arc::new(AtomicU64::new(0)),
+            nodes: AtomicCounter::new(global_nodes),
             history: HistoryTable::default(),
             nodes_table: [[0; 64]; 64],
             accumulators: AccumulatorStack::new(Accumulator::default()),
@@ -80,7 +76,7 @@ impl<'a> ThreadData<'a> {
         assert_eq!(0, self.thread_idx);
         let m = self.best_move;
         let frac = self.nodes_table[m.origin_square()][m.dest_square()] as f64
-            / self.nodes_searched as f64;
+            / self.nodes.global_count() as f64;
         let time_scale = if depth > 8 { (1.5 - frac) * 1.4 } else { 0.9 };
         if self.game_time.search_start.elapsed().as_millis() as f64
             >= self.game_time.rec_time.as_millis() as f64 * time_scale
@@ -92,7 +88,7 @@ impl<'a> ThreadData<'a> {
     }
 
     pub(super) fn print_search_stats(&self, eval: i32, pv: &PV, tt: &TranspositionTable) {
-        let nodes = self.global_nodes.load(Ordering::Relaxed);
+        let nodes = self.nodes.global_count();
         print!(
             "info time {} depth {} seldepth {} nodes {} nps {} score ",
             self.game_time.search_start.elapsed().as_millis(),
@@ -143,38 +139,52 @@ pub struct ThreadPool<'a> {
     pub workers: Vec<ThreadData<'a>>,
     pub halt: &'a AtomicBool,
     pub searching: AtomicBool,
-    pub total_nodes: Arc<AtomicU64>,
 }
 
 impl<'a> ThreadPool<'a> {
-    pub fn new(halt: &'a AtomicBool, hash_history: Vec<u64>, consts: &'a Consts) -> Self {
+    pub fn new(
+        halt: &'a AtomicBool,
+        hash_history: Vec<u64>,
+        consts: &'a Consts,
+        global_nodes: &'a AtomicU64,
+    ) -> Self {
         Self {
-            main_thread: ThreadData::new(halt, hash_history, 0, consts),
+            main_thread: ThreadData::new(halt, hash_history, 0, consts, global_nodes),
             workers: Vec::new(),
             halt,
             searching: AtomicBool::new(false),
-            total_nodes: Arc::new(AtomicU64::new(0)),
         }
     }
 
     pub fn reset(&mut self) {
         self.main_thread.history = HistoryTable::default();
-        self.main_thread.nodes_searched = 0;
+        self.main_thread.nodes.reset();
         for t in self.workers.iter_mut() {
             t.history = HistoryTable::default();
-            t.nodes_searched = 0;
+            t.nodes.reset();
         }
         self.halt.store(false, Ordering::Relaxed);
         self.searching.store(false, Ordering::Relaxed);
-        self.total_nodes.store(0, Ordering::Relaxed);
     }
 
     /// This thread creates a number of workers equal to threads - 1. If 4 threads are requested,
     /// the main thread counts as one and then the remaining three are placed in the worker queue.
-    pub fn add_workers(&mut self, threads: usize, hash_history: Vec<u64>, consts: &'a Consts) {
+    pub fn add_workers(
+        &mut self,
+        threads: usize,
+        hash_history: Vec<u64>,
+        consts: &'a Consts,
+        global_nodes: &'a AtomicU64,
+    ) {
         self.workers.clear();
         for i in 1..threads {
-            self.workers.push(ThreadData::new(self.halt, hash_history.clone(), i, consts));
+            self.workers.push(ThreadData::new(
+                self.halt,
+                hash_history.clone(),
+                i,
+                consts,
+                global_nodes,
+            ));
         }
     }
 
@@ -188,12 +198,9 @@ impl<'a> ThreadPool<'a> {
         tt: &TranspositionTable,
     ) {
         self.halt.store(false, Ordering::Relaxed);
-        self.total_nodes.store(0, Ordering::Relaxed);
-        self.main_thread.global_nodes = self.total_nodes.clone();
         self.main_thread.hash_history = hash_history.clone();
         for t in self.workers.iter_mut() {
             t.hash_history = hash_history.clone();
-            t.global_nodes = self.total_nodes.clone();
         }
 
         if buffer.contains(&"depth") {
@@ -250,5 +257,47 @@ impl<'a> ThreadPool<'a> {
             }
         });
         tt.age_up();
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct AtomicCounter<'a> {
+    global_nodes: &'a AtomicU64,
+    local_nodes: u64,
+    batch: u64,
+}
+
+const UPDATE_FREQ: u64 = 1024;
+
+impl<'a> AtomicCounter<'a> {
+    fn new(global_nodes: &'a AtomicU64) -> Self {
+        Self { global_nodes, local_nodes: 0, batch: 0 }
+    }
+
+    pub(crate) fn global_count(&self) -> u64 {
+        self.global_nodes.load(Ordering::Relaxed) + self.batch
+    }
+
+    pub(crate) fn local_count(&self) -> u64 {
+        self.local_nodes + self.batch
+    }
+
+    pub(crate) fn increment(&mut self) {
+        self.batch += 1;
+        if self.batch > UPDATE_FREQ {
+            self.local_nodes += self.batch;
+            self.global_nodes.fetch_add(self.batch, Ordering::Relaxed);
+            self.batch = 0;
+        }
+    }
+
+    pub(crate) fn reset(&mut self) {
+        self.batch = 0;
+        self.local_nodes = 0;
+        self.global_nodes.store(0, Ordering::Relaxed);
+    }
+
+    pub(crate) fn check_time(&self) -> bool {
+        self.batch == 0
     }
 }
