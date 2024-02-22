@@ -230,7 +230,7 @@ fn alpha_beta<const IS_PV: bool>(
     let original_alpha = alpha;
 
     let static_eval = if in_check {
-        -CHECKMATE
+        -INFINITY
     } else if let Some(entry) = entry {
         // Get static eval from transposition table if possible
         entry.static_eval()
@@ -238,7 +238,18 @@ fn alpha_beta<const IS_PV: bool>(
         board.evaluate(td.accumulators.top())
     };
     td.stack[td.ply].static_eval = static_eval;
-    let improving = !in_check && td.ply > 1 && static_eval > td.stack[td.ply - 2].static_eval;
+    let improving = {
+        if in_check {
+            false
+        } else if td.ply > 1 && td.stack[td.ply - 2].static_eval != -INFINITY {
+            static_eval > td.stack[td.ply - 2].static_eval
+        } else if td.ply > 3 && td.stack[td.ply - 4].static_eval != -INFINITY {
+            static_eval > td.stack[td.ply - 4].static_eval
+        } else {
+            // This could be true or false, could experiment with it in the future
+            false
+        }
+    };
 
     // TODO: Killers should probably be reset here
     // td.stack[td.ply + 1].killers = [Move::NULL; 2];
