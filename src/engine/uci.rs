@@ -1,5 +1,5 @@
 use std::process::exit;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::{io, time::Duration};
 
 use itertools::Itertools;
@@ -31,7 +31,8 @@ pub fn main_loop() -> ! {
     let mut msg: Option<String> = None;
     let mut hash_history = Vec::new();
     let halt = AtomicBool::new(false);
-    let mut thread_pool = ThreadPool::new(&halt, Vec::new(), &consts);
+    let global_nodes = AtomicU64::new(0);
+    let mut thread_pool = ThreadPool::new(&halt, Vec::new(), &consts, &global_nodes);
     println!("{ENGINE_NAME} by {}", env!("CARGO_PKG_AUTHORS"));
 
     loop {
@@ -55,7 +56,7 @@ pub fn main_loop() -> ! {
             "ucinewgame" => {
                 transpos_table.clear();
                 halt.store(false, Ordering::Relaxed);
-                thread_pool = ThreadPool::new(&halt, Vec::new(), &consts);
+                thread_pool = ThreadPool::new(&halt, Vec::new(), &consts, &global_nodes);
             }
             "eval" => println!("{} cp", board.evaluate(&board.clone().new_accumulator())),
             "position" => position_command(&input, &mut board, &mut hash_history),
@@ -96,9 +97,12 @@ pub fn main_loop() -> ! {
                     transpos_table = TranspositionTable::new(x.parse().unwrap())
                 }
                 ["setoption", "name", "Clear", "Hash"] => transpos_table.clear(),
-                ["setoption", "name", "Threads", "value", x] => {
-                    thread_pool.add_workers(x.parse().unwrap(), hash_history.clone(), &consts)
-                }
+                ["setoption", "name", "Threads", "value", x] => thread_pool.add_workers(
+                    x.parse().unwrap(),
+                    hash_history.clone(),
+                    &consts,
+                    &global_nodes,
+                ),
                 _ => {
                     if SPSA_TUNE {
                         parse_param(&input)

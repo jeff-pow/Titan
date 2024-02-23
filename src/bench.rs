@@ -1,4 +1,7 @@
-use std::{sync::atomic::AtomicBool, time::Instant};
+use std::{
+    sync::atomic::{AtomicBool, AtomicU64},
+    time::Instant,
+};
 
 use crate::{
     board::fen::build_board,
@@ -13,8 +16,9 @@ pub fn bench() {
     let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
     let halt = AtomicBool::new(false);
     let consts = Consts::new();
+    let global_nodes = AtomicU64::new(0);
 
-    let mut thread = ThreadData::new(&halt, Vec::new(), 0, &consts);
+    let mut thread = ThreadData::new(&halt, Vec::new(), 0, &consts, &global_nodes);
 
     thread.max_depth = 14;
     thread.search_type = SearchType::Depth;
@@ -24,7 +28,8 @@ pub fn bench() {
     BENCH_POSITIONS.iter().for_each(|fen| {
         let board = build_board(fen);
         search(&mut thread, false, board, &transpos_table);
-        nodes += thread.nodes_searched;
+        nodes += thread.nodes.local_count();
+        thread.nodes.reset();
     });
 
     let time = start.elapsed().as_secs_f64();
