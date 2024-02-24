@@ -14,7 +14,7 @@ impl Bitboard {
     /// that bit
     pub fn pop_lsb(&mut self) -> Square {
         let lsb = self.get_lsb();
-        *self ^= lsb.bitboard();
+        self.0 &= self.0 - 1;
         lsb
     }
 
