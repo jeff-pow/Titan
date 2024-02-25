@@ -32,6 +32,7 @@ impl Board {
             / 32
     }
 
+    /// Credit to viridithas for these values and concepts
     pub fn evaluate(&self, acc: &Accumulator) -> i32 {
         let raw = self.raw_evaluate(acc);
         let eval = raw * self.mat_scale() / 1024;
