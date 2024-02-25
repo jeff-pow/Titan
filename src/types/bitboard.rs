@@ -30,8 +30,8 @@ impl Bitboard {
         !self.occupied(sq)
     }
 
-    pub fn count_bits(self) -> u32 {
-        self.0.count_ones()
+    pub fn count_bits(self) -> i32 {
+        self.0.count_ones() as i32
     }
 
     /// Executes a shift without checking to ensure no information is lost. Only to be used when a

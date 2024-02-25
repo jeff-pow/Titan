@@ -54,7 +54,7 @@ const B_DELTAS: [Direction; 4] = [SouthEast, SouthWest, NorthEast, NorthWest];
 struct MagicEntry {
     mask: Bitboard,
     magic: u64,
-    shift: u32,
+    shift: i32,
     offset: usize,
 }
 
