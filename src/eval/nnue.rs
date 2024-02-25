@@ -25,18 +25,18 @@ pub(super) struct Network {
 
 impl Board {
     pub fn mat_scale(&self) -> i32 {
-        700 + (PieceName::Knight.value() * self.piece(PieceName::Knight).count_bits()
-            + PieceName::Bishop.value() * self.piece(PieceName::Bishop).count_bits()
-            + PieceName::Rook.value() * self.piece(PieceName::Rook).count_bits()
-            + PieceName::Queen.value() * self.piece(PieceName::Queen).count_bits())
+        700 + ((PieceName::Knight.value() * self.piece(PieceName::Knight).count_bits())
+            + (PieceName::Bishop.value() * self.piece(PieceName::Bishop).count_bits())
+            + (PieceName::Rook.value() * self.piece(PieceName::Rook).count_bits())
+            + (PieceName::Queen.value() * self.piece(PieceName::Queen).count_bits()))
             / 32
     }
 
     pub fn evaluate(&self, acc: &Accumulator) -> i32 {
         let raw = self.raw_evaluate(acc);
-        let mat_bal = self.mat_scale();
-        let draw_scale = (200 - self.half_moves as i32) / 200;
-        (raw * mat_bal * draw_scale).clamp(-NEAR_CHECKMATE, NEAR_CHECKMATE)
+        let eval = raw * self.mat_scale() / 1024;
+        let eval = eval * (200 - self.half_moves as i32) / 200;
+        (eval).clamp(-NEAR_CHECKMATE, NEAR_CHECKMATE)
     }
 
     #[allow(clippy::assertions_on_constants)]

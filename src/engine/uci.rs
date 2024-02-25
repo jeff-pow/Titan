@@ -58,7 +58,11 @@ pub fn main_loop() -> ! {
                 halt.store(false, Ordering::Relaxed);
                 thread_pool = ThreadPool::new(&halt, Vec::new(), &consts, &global_nodes);
             }
-            "eval" => println!("{} cp", board.evaluate(&board.clone().new_accumulator())),
+            "eval" => println!(
+                "raw: {} cp, adjusted: {} cp",
+                board.raw_evaluate(&board.clone().new_accumulator()),
+                board.evaluate(&board.clone().new_accumulator()),
+            ),
             "position" => position_command(&input, &mut board, &mut hash_history),
             "d" => {
                 dbg!(&board);
