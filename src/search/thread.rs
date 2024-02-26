@@ -2,7 +2,8 @@ use std::{
     io,
     process::exit,
     sync::atomic::{AtomicBool, AtomicU64, Ordering},
-    thread::{self},
+    thread,
+    time::Instant,
 };
 
 use crate::{
@@ -15,16 +16,14 @@ use crate::{
 };
 
 use super::{
-    game_time::GameTime,
-    history_table::HistoryTable,
-    search::{search, MAX_SEARCH_DEPTH},
-    AccumulatorStack, SearchStack, SearchType, PV,
+    game_time::GameTime, history_table::HistoryTable, search::search, AccumulatorStack,
+    SearchStack, SearchType, PV,
 };
 
 #[derive(Clone)]
 pub(crate) struct ThreadData<'a> {
     pub ply: i32,
-    pub max_depth: i32,
+    // pub max_depth: i32,
     pub iter_max_depth: i32,
     /// Max depth reached by a pv node
     pub sel_depth: i32,
@@ -37,7 +36,8 @@ pub(crate) struct ThreadData<'a> {
     pub hash_history: Vec<u64>,
     pub accumulators: AccumulatorStack,
 
-    pub game_time: GameTime,
+    // pub game_time: GameTime,
+    pub search_start: Instant,
     pub thread_idx: usize,
     pub search_type: SearchType,
     pub halt: &'a AtomicBool,
@@ -54,7 +54,6 @@ impl<'a> ThreadData<'a> {
     ) -> Self {
         Self {
             ply: 0,
-            max_depth: MAX_SEARCH_DEPTH,
             iter_max_depth: 0,
             stack: SearchStack::default(),
             sel_depth: 0,
@@ -63,23 +62,23 @@ impl<'a> ThreadData<'a> {
             history: HistoryTable::default(),
             nodes_table: [[0; 64]; 64],
             accumulators: AccumulatorStack::new(Accumulator::default()),
-            game_time: GameTime::default(),
             halt,
             search_type: SearchType::default(),
             hash_history,
             thread_idx,
             consts,
+            search_start: Instant::now(),
         }
     }
 
-    pub(super) fn node_tm_stop(&mut self, depth: i32) -> bool {
+    pub(super) fn node_tm_stop(&mut self, game_time: GameTime, depth: i32) -> bool {
         assert_eq!(0, self.thread_idx);
         let m = self.best_move;
         let frac = self.nodes_table[m.origin_square()][m.dest_square()] as f64
             / self.nodes.global_count() as f64;
         let time_scale = if depth > 8 { (1.5 - frac) * 1.4 } else { 0.9 };
-        if self.game_time.search_start.elapsed().as_millis() as f64
-            >= self.game_time.rec_time.as_millis() as f64 * time_scale
+        if game_time.search_start.elapsed().as_millis() as f64
+            >= game_time.rec_time.as_millis() as f64 * time_scale
         {
             self.halt.store(true, Ordering::Relaxed);
             return true;
@@ -87,15 +86,32 @@ impl<'a> ThreadData<'a> {
         false
     }
 
+    pub(super) fn soft_stop(&mut self, depth: i32) -> bool {
+        match self.search_type {
+            SearchType::Depth(d) => depth > d,
+            SearchType::Time(time) => self.node_tm_stop(time, depth) || time.soft_termination(),
+            SearchType::Nodes(n) => self.nodes.global_count() >= n,
+            SearchType::Infinite => self.halt.load(Ordering::Relaxed),
+        }
+    }
+
+    pub(super) fn hard_stop(&mut self) -> bool {
+        match self.search_type {
+            SearchType::Depth(_) | SearchType::Infinite => self.halt.load(Ordering::Relaxed),
+            SearchType::Time(time) => time.hard_termination(),
+            SearchType::Nodes(n) => self.nodes.global_count() >= n,
+        }
+    }
+
     pub(super) fn print_search_stats(&self, eval: i32, pv: &PV, tt: &TranspositionTable) {
         let nodes = self.nodes.global_count();
         print!(
             "info time {} depth {} seldepth {} nodes {} nps {} score ",
-            self.game_time.search_start.elapsed().as_millis(),
+            self.search_start.elapsed().as_millis(),
             self.iter_max_depth,
             self.sel_depth,
             nodes,
-            (nodes as f64 / self.game_time.search_start.elapsed().as_secs_f64()) as i64,
+            (nodes as f64 / self.search_start.elapsed().as_secs_f64()) as i64,
         );
 
         let score = eval;
@@ -206,21 +222,22 @@ impl<'a> ThreadPool<'a> {
         if buffer.contains(&"depth") {
             let mut iter = buffer.iter().skip(2);
             let depth = iter.next().unwrap().parse::<i32>().unwrap();
-            self.main_thread.max_depth = depth;
+            self.main_thread.search_type = SearchType::Depth(depth);
             for t in self.workers.iter_mut() {
-                t.max_depth = depth;
+                t.search_type = SearchType::Depth(depth);
             }
-            self.main_thread.search_type = SearchType::Depth;
+        } else if buffer.contains(&"nodes") {
+            let mut iter = buffer.iter().skip(2);
+            let nodes = iter.next().unwrap().parse::<u64>().unwrap();
+            self.main_thread.search_type = SearchType::Nodes(nodes);
             for t in self.workers.iter_mut() {
-                t.search_type = SearchType::Depth;
+                t.search_type = SearchType::Nodes(nodes);
             }
         } else if buffer.contains(&"wtime") {
-            self.main_thread.search_type = SearchType::Time;
-
             let mut clock = parse_time(buffer);
             clock.recommended_time(board.to_move);
 
-            self.main_thread.game_time = clock;
+            self.main_thread.search_type = SearchType::Time(clock);
         } else {
             self.main_thread.search_type = SearchType::Infinite;
             for t in self.workers.iter_mut() {
