@@ -7,7 +7,7 @@ use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::movepicker::{MovePicker, MovePickerPhase};
 use crate::moves::moves::Move;
-use crate::search::SearchStack;
+use crate::search::{SearchStack, SearchType};
 
 use super::quiescence::quiescence;
 use super::thread::ThreadData;
@@ -26,6 +26,9 @@ pub fn search(
     tt: &TranspositionTable,
 ) -> Move {
     td.search_start = Instant::now();
+    if let SearchType::Time(t) = &mut td.search_type {
+        t.search_start = Instant::now()
+    }
     td.nodes_table = [[0; 64]; 64];
     td.nodes.reset();
     td.stack = SearchStack::default();
@@ -44,7 +47,7 @@ pub(crate) fn iterative_deepening(
 ) -> Move {
     let mut pv = PV::default();
     let mut prev_score = -INFINITY;
-    let mut depth = 0;
+    let mut depth = 1;
 
     loop {
         td.iter_max_depth = depth;
@@ -250,7 +253,7 @@ fn alpha_beta<const IS_PV: bool>(
     }
 
     // Pre-move loop pruning
-    if !is_root && !IS_PV && !in_check && !singular_search {
+    if !IS_PV && !in_check && !singular_search {
         // Reverse futility pruning - If we are below beta by a certain amount, we are unlikely to
         // raise it, so we can prune the nodes that would have followed
         if static_eval - td.consts.rfp_beta_factor * depth

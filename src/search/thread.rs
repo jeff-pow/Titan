@@ -88,7 +88,7 @@ impl<'a> ThreadData<'a> {
 
     pub(super) fn soft_stop(&mut self, depth: i32) -> bool {
         match self.search_type {
-            SearchType::Depth(d) => depth > d,
+            SearchType::Depth(d) => depth >= d,
             SearchType::Time(time) => self.node_tm_stop(time, depth) || time.soft_termination(),
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
             SearchType::Infinite => self.halt.load(Ordering::Relaxed),
@@ -252,11 +252,10 @@ impl<'a> ThreadPool<'a> {
                 });
             }
 
-            s.spawn(|| {
-                search(&mut self.main_thread, true, *board, tt);
-                self.halt.store(true, Ordering::Relaxed);
-                println!("bestmove {}", self.main_thread.best_move.to_san());
-            });
+            s.spawn(|| {});
+            search(&mut self.main_thread, true, *board, tt);
+            self.halt.store(true, Ordering::Relaxed);
+            println!("bestmove {}", self.main_thread.best_move.to_san());
 
             let mut s = String::new();
             let len_read = io::stdin().read_line(&mut s).unwrap();
