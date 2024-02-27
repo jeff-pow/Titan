@@ -7,11 +7,11 @@ use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::movepicker::{MovePicker, MovePickerPhase};
 use crate::moves::moves::Move;
-use crate::search::SearchStack;
+use crate::search::{SearchStack, SearchType};
 
 use super::quiescence::quiescence;
 use super::thread::ThreadData;
-use super::{SearchType, PV};
+use super::PV;
 
 pub const CHECKMATE: i32 = 25000;
 pub const STALEMATE: i32 = 0;
@@ -25,7 +25,10 @@ pub fn search(
     mut board: Board,
     tt: &TranspositionTable,
 ) -> Move {
-    td.game_time.search_start = Instant::now();
+    td.search_start = Instant::now();
+    if let SearchType::Time(t) = &mut td.search_type {
+        t.search_start = Instant::now()
+    }
     td.nodes_table = [[0; 64]; 64];
     td.nodes.reset();
     td.stack = SearchStack::default();
@@ -44,8 +47,9 @@ pub(crate) fn iterative_deepening(
 ) -> Move {
     let mut pv = PV::default();
     let mut prev_score = -INFINITY;
+    let mut depth = 1;
 
-    for depth in 1..=td.max_depth {
+    loop {
         td.iter_max_depth = depth;
         td.ply = 0;
         td.sel_depth = 0;
@@ -63,20 +67,14 @@ pub(crate) fn iterative_deepening(
             td.print_search_stats(prev_score, &pv, tt);
         }
 
-        if td.thread_idx == 0 && td.node_tm_stop(depth) {
-            break;
-        }
-
-        if td.thread_idx == 0
-            && td.search_type == SearchType::Time
-            && td.game_time.soft_termination()
-        {
+        if td.thread_idx == 0 && td.soft_stop(depth) {
             break;
         }
 
         if td.halt.load(Ordering::Relaxed) {
             break;
         }
+        depth += 1;
     }
 
     assert_ne!(td.best_move, Move::NULL);
@@ -156,7 +154,7 @@ fn alpha_beta<const IS_PV: bool>(
         return 0;
     }
 
-    if td.nodes.check_time() && td.thread_idx == 0 && td.game_time.hard_termination() {
+    if td.nodes.check_time() && td.thread_idx == 0 && td.hard_stop() {
         td.halt.store(true, Ordering::Relaxed);
         return 0;
     }
@@ -255,7 +253,7 @@ fn alpha_beta<const IS_PV: bool>(
     }
 
     // Pre-move loop pruning
-    if !is_root && !IS_PV && !in_check && !singular_search {
+    if !IS_PV && !in_check && !singular_search {
         // Reverse futility pruning - If we are below beta by a certain amount, we are unlikely to
         // raise it, so we can prune the nodes that would have followed
         if static_eval - td.consts.rfp_beta_factor * depth

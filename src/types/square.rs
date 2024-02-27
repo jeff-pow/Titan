@@ -1,4 +1,5 @@
 use core::ops::{Index, IndexMut};
+use std::fmt::Display;
 
 use crate::moves::{
     attack_boards::{FILES, RANKS},
@@ -93,9 +94,9 @@ impl<T, const N: usize> IndexMut<Square> for [T; N] {
     }
 }
 
-impl ToString for Square {
-    fn to_string(&self) -> String {
-        self.0.to_string()
+impl Display for Square {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
