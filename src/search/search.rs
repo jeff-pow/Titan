@@ -403,6 +403,8 @@ fn alpha_beta<const IS_PV: bool>(
                 }
             } else if tt_score >= beta {
                 -2 + i32::from(IS_PV)
+            } else if tt_score <= alpha {
+                -1
             } else {
                 0
             }
