@@ -17,7 +17,7 @@ use crate::{
         fen::{self, build_board},
     },
     moves::moves::from_san,
-    search::game_time::GameTime,
+    search::game_time::Clock,
     types::pieces::Color,
 };
 
@@ -155,8 +155,8 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, hash_history: &mu
     }
 }
 
-pub(crate) fn parse_time(buff: &[&str]) -> GameTime {
-    let mut game_time = GameTime::default();
+pub(crate) fn parse_time(buff: &[&str]) -> Clock {
+    let mut game_time = Clock::default();
     let vec = buff.iter().skip(1).tuples::<(_, _)>();
     for entry in vec {
         match entry {

@@ -4,7 +4,7 @@ use std::ops::{Index, IndexMut};
 use crate::eval::accumulator::Accumulator;
 use crate::moves::moves::Move;
 
-use self::game_time::GameTime;
+use self::game_time::Clock;
 use self::search::MAX_SEARCH_DEPTH;
 
 pub mod game_time;
@@ -73,7 +73,7 @@ pub enum SearchType {
     /// User has requested a search until a particular depth
     Depth(i32),
     /// Search determines how much time to allow itself
-    Time(GameTime),
+    Time(Clock),
     /// Only search for N nodes
     Nodes(u64),
     #[default]

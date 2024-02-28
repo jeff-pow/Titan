@@ -16,8 +16,8 @@ use crate::{
 };
 
 use super::{
-    game_time::GameTime, history_table::HistoryTable, search::search, AccumulatorStack,
-    SearchStack, SearchType, PV,
+    game_time::Clock, history_table::HistoryTable, search::search, AccumulatorStack, SearchStack,
+    SearchType, PV,
 };
 
 #[derive(Clone)]
@@ -71,13 +71,13 @@ impl<'a> ThreadData<'a> {
         }
     }
 
-    pub(super) fn node_tm_stop(&mut self, game_time: GameTime, depth: i32) -> bool {
+    pub(super) fn node_tm_stop(&mut self, game_time: Clock, depth: i32) -> bool {
         assert_eq!(0, self.thread_idx);
         let m = self.best_move;
         let frac = self.nodes_table[m.origin_square()][m.dest_square()] as f64
             / self.nodes.global_count() as f64;
         let time_scale = if depth > 8 { (1.5 - frac) * 1.4 } else { 0.9 };
-        if game_time.search_start.elapsed().as_millis() as f64
+        if self.search_start.elapsed().as_millis() as f64
             >= game_time.rec_time.as_millis() as f64 * time_scale
         {
             self.halt.store(true, Ordering::Relaxed);
@@ -89,7 +89,9 @@ impl<'a> ThreadData<'a> {
     pub(super) fn soft_stop(&mut self, depth: i32) -> bool {
         match self.search_type {
             SearchType::Depth(d) => depth >= d,
-            SearchType::Time(time) => self.node_tm_stop(time, depth) || time.soft_termination(),
+            SearchType::Time(time) => {
+                self.node_tm_stop(time, depth) || time.soft_termination(self.search_start)
+            }
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
             SearchType::Infinite => self.halt.load(Ordering::Relaxed),
         }
@@ -98,7 +100,7 @@ impl<'a> ThreadData<'a> {
     pub(super) fn hard_stop(&mut self) -> bool {
         match self.search_type {
             SearchType::Depth(_) | SearchType::Infinite => self.halt.load(Ordering::Relaxed),
-            SearchType::Time(time) => time.hard_termination(),
+            SearchType::Time(time) => time.hard_termination(self.search_start),
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
         }
     }
