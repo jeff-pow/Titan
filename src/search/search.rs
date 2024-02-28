@@ -163,7 +163,6 @@ fn alpha_beta<const IS_PV: bool>(
     // Don't prune at root to ensure we have a best move
     if !is_root {
         if board.is_draw() || td.is_repetition(board) {
-            // TODO: Try returning 2 - nodes & 3 to avoid 3x rep blindness
             return STALEMATE;
         }
 
@@ -337,7 +336,6 @@ fn alpha_beta<const IS_PV: bool>(
             }
             // Static exchange pruning - If we fail to immediately recapture a depth dependent
             // threshold, don't bother searching the move
-            // TODO: Try a depth * depth dependent capture threshold
             let margin =
                 if m.is_capture(board) { -td.consts.capt_see } else { -td.consts.quiet_see }
                     * depth;
@@ -372,6 +370,7 @@ fn alpha_beta<const IS_PV: bool>(
             let ext_beta = (tt_score - td.consts.ext_tt_depth_margin * depth).max(-CHECKMATE);
             let ext_depth = (depth - 1) / 2;
             let mut node_pv = PV::default();
+            let npv = &mut node_pv;
 
             td.stack[td.ply].singular = m;
             let prev = td.accumulators.pop();
@@ -379,7 +378,7 @@ fn alpha_beta<const IS_PV: bool>(
                 ext_depth,
                 ext_beta - 1,
                 ext_beta,
-                &mut node_pv,
+                npv,
                 td,
                 tt,
                 board,
@@ -426,7 +425,6 @@ fn alpha_beta<const IS_PV: bool>(
             // they are much less likely to be the best move than the first move selected by the
             // move picker.
             let r = if depth <= td.consts.lmr_depth
-            // TODO: Something along the lines of moves_searched < 2 + 2 * PV
                 || legal_moves_searched < td.consts.lmr_min_moves
                 || picker.phase < MovePickerPhase::Killer
             {
@@ -524,7 +522,8 @@ fn alpha_beta<const IS_PV: bool>(
     }
 
     if legal_moves_searched == 0 {
-        // TODO: Return alpha if singular verification search
+        // You're supposed to return alpha here if its a verification search, but that failed
+        // nonregr, so... ¯\_(ツ)_/¯
         if board.in_check {
             // Distance from root is returned in order for other recursive calls to determine
             // shortest viable checkmate path
@@ -543,7 +542,6 @@ fn alpha_beta<const IS_PV: bool>(
 
     // Don't save to TT while in a singular extension verification search
     if !singular_search {
-        // TODO: Don't update best move if upper bound
         tt.store(
             board.zobrist_hash,
             best_move,
