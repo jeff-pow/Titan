@@ -7,7 +7,7 @@ const TIME_FRACTION: f64 = 0.60;
 const GUI_DELAY: Duration = Duration::from_millis(25);
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct GameTime {
+pub struct Clock {
     /// Time increase for each side
     pub time_inc: [Duration; 2],
     /// Time remaining for each side
@@ -18,19 +18,18 @@ pub struct GameTime {
     pub rec_time: Duration,
     /// Max time allowable for this search
     pub max_time: Duration,
-    pub search_start: Instant,
 }
 
-impl GameTime {
+impl Clock {
     /// Returns true if engine is unlikely to finish another depth of iterative deepening before
     /// time runs out for this search
-    pub fn soft_termination(&self) -> bool {
-        self.search_start.elapsed() > self.rec_time
+    pub fn soft_termination(&self, search_start: Instant) -> bool {
+        search_start.elapsed() > self.rec_time
     }
 
     /// Returns true if engine has used the max time allotted to this search
-    pub fn hard_termination(&self) -> bool {
-        self.search_start.elapsed() > self.max_time
+    pub fn hard_termination(&self, search_start: Instant) -> bool {
+        search_start.elapsed() > self.max_time
     }
 
     /// Calculates a recommended amount of time to spend on a given search.
@@ -42,7 +41,7 @@ impl GameTime {
     }
 }
 
-impl Default for GameTime {
+impl Default for Clock {
     fn default() -> Self {
         Self {
             time_inc: Default::default(),
@@ -50,7 +49,6 @@ impl Default for GameTime {
             movestogo: Default::default(),
             rec_time: Duration::MAX,
             max_time: Duration::MAX,
-            search_start: Instant::now(),
         }
     }
 }

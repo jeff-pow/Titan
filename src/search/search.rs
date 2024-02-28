@@ -7,7 +7,7 @@ use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::movepicker::{MovePicker, MovePickerPhase};
 use crate::moves::moves::Move;
-use crate::search::{SearchStack, SearchType};
+use crate::search::SearchStack;
 
 use super::quiescence::quiescence;
 use super::thread::ThreadData;
@@ -26,9 +26,6 @@ pub fn search(
     tt: &TranspositionTable,
 ) -> Move {
     td.search_start = Instant::now();
-    if let SearchType::Time(t) = &mut td.search_type {
-        t.search_start = Instant::now()
-    }
     td.nodes_table = [[0; 64]; 64];
     td.nodes.reset();
     td.stack = SearchStack::default();
