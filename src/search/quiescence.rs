@@ -121,8 +121,6 @@ pub(super) fn quiescence<const IS_PV: bool>(
         moves_searched += 1;
         td.ply += 1;
 
-        // TODO: Implement delta pruning
-
         let eval = -quiescence::<IS_PV>(-beta, -alpha, &mut node_pv, td, tt, &new_b);
 
         td.ply -= 1;
