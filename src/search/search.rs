@@ -100,7 +100,7 @@ fn aspiration_windows(
 
     loop {
         assert_eq!(0, td.ply);
-        let score = alpha_beta::<true>(depth, alpha, beta, pv, td, tt, board, false);
+        let score = negamax::<true>(depth, alpha, beta, pv, td, tt, board, false);
 
         if score <= alpha {
             beta = (alpha + beta) / 2;
@@ -123,7 +123,7 @@ fn aspiration_windows(
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
 /// to refute other variations
 #[allow(clippy::too_many_arguments)]
-fn alpha_beta<const IS_PV: bool>(
+fn negamax<const IS_PV: bool>(
     mut depth: i32,
     mut alpha: i32,
     beta: i32,
@@ -140,9 +140,7 @@ fn alpha_beta<const IS_PV: bool>(
     let singular_move = td.stack[td.ply].singular;
     let singular_search = singular_move != Move::NULL;
 
-    if IS_PV {
-        td.sel_depth = td.sel_depth.max(td.ply);
-    }
+    td.sel_depth = td.sel_depth.max(td.ply);
 
     // Stop if we have reached hard time limit or decided else where it is time to stop
     if td.halt.load(Ordering::Relaxed) {
@@ -282,7 +280,7 @@ fn alpha_beta<const IS_PV: bool>(
             let r = td.consts.nmp_base_r
                 + depth / td.consts.nmp_depth_divisor
                 + min((static_eval - beta) / td.consts.nmp_eval_divisor, td.consts.nmp_eval_min);
-            let mut null_eval = -alpha_beta::<false>(
+            let mut null_eval = -negamax::<false>(
                 depth - r,
                 -beta,
                 -beta + 1,
@@ -375,16 +373,8 @@ fn alpha_beta<const IS_PV: bool>(
 
             td.stack[td.ply].singular = m;
             let prev = td.accumulators.pop();
-            let ext_score = alpha_beta::<false>(
-                ext_depth,
-                ext_beta - 1,
-                ext_beta,
-                npv,
-                td,
-                tt,
-                board,
-                cut_node,
-            );
+            let ext_score =
+                negamax::<false>(ext_depth, ext_beta - 1, ext_beta, npv, td, tt, board, cut_node);
             td.stack[td.ply].singular = Move::NULL;
             td.accumulators.push(prev);
 
@@ -420,7 +410,7 @@ fn alpha_beta<const IS_PV: bool>(
 
         let eval = if legal_moves_searched == 0 {
             // On the first move, just do a full depth search
-            -alpha_beta::<IS_PV>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
+            -negamax::<IS_PV>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
         } else {
             // Late Move Reductions - Search moves after the first with reduced depth and window as
             // they are much less likely to be the best move than the first move selected by the
@@ -441,11 +431,11 @@ fn alpha_beta<const IS_PV: bool>(
 
             // Start with a zero window reduced search
             let mut score =
-                -alpha_beta::<false>(d, -alpha - 1, -alpha, &mut node_pv, td, tt, &new_b, true);
+                -negamax::<false>(d, -alpha - 1, -alpha, &mut node_pv, td, tt, &new_b, true);
 
             // If that search raises alpha and a reduction was applied, re-search at a zero window with full depth
             if score > alpha && d < new_depth {
-                score = -alpha_beta::<false>(
+                score = -negamax::<false>(
                     new_depth,
                     -alpha - 1,
                     -alpha,
@@ -459,16 +449,8 @@ fn alpha_beta<const IS_PV: bool>(
 
             // If the verification score falls between alpha and beta, full window full depth search
             if score > alpha && score < beta {
-                score = -alpha_beta::<IS_PV>(
-                    new_depth,
-                    -beta,
-                    -alpha,
-                    &mut node_pv,
-                    td,
-                    tt,
-                    &new_b,
-                    false,
-                )
+                score =
+                    -negamax::<IS_PV>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
             }
             score
         };
@@ -488,9 +470,7 @@ fn alpha_beta<const IS_PV: bool>(
             if eval > alpha {
                 alpha = eval;
                 best_move = m;
-                if IS_PV {
-                    pv.update(best_move, node_pv);
-                }
+                pv.update(best_move, node_pv);
             }
 
             if alpha >= beta {

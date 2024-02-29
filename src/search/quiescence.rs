@@ -23,7 +23,6 @@ pub(super) fn quiescence<const IS_PV: bool>(
     // Stop if we have reached hard time limit or decided else where it is time to stop
     if td.halt.load(Ordering::Relaxed) {
         td.halt.store(true, Ordering::Relaxed);
-        // return board.evaluate();
         return 0;
     }
 
@@ -36,9 +35,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
         return STALEMATE;
     }
 
-    if IS_PV {
-        td.sel_depth = td.sel_depth.max(td.ply);
-    }
+    td.sel_depth = td.sel_depth.max(td.ply);
 
     // Halt search if we are going to overflow the search stack
     if td.ply >= MAX_SEARCH_DEPTH {
@@ -50,7 +47,6 @@ pub(super) fn quiescence<const IS_PV: bool>(
     let entry = tt.get(board.zobrist_hash, td.ply);
     if let Some(e) = entry {
         if !IS_PV
-            && e.flag() != EntryFlag::None
             && match e.flag() {
                 EntryFlag::None => false,
                 EntryFlag::AlphaUnchanged => e.search_score() <= alpha,
@@ -133,9 +129,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
             if eval > alpha {
                 best_move = m;
                 alpha = eval;
-                if IS_PV {
-                    pv.update(best_move, node_pv);
-                }
+                pv.update(best_move, node_pv);
             }
 
             if alpha >= beta {
