@@ -490,7 +490,8 @@ fn alpha_beta<const IS_PV: bool>(
 
             if alpha >= beta {
                 // Prefetch here since we're going to want to write to the tt for this board in a
-                // few lines anyway
+                // few lines anyway. Probably pretty pointless but I assume that history updates
+                // will take enough time to do something. Not empirically tested, but fight me :)
                 tt.prefetch(board.zobrist_hash);
 
                 if is_quiet {

@@ -410,14 +410,11 @@ impl Board {
         self.zobrist_hash ^= ZOBRIST.turn_hash;
         self.num_moves += 1;
         self.half_moves += 1;
-        self.calculate_threats();
         if let Some(sq) = self.en_passant_square {
             self.zobrist_hash ^= ZOBRIST.en_passant[sq];
         }
         self.en_passant_square = None;
-        let q = self.threats();
         self.calculate_threats();
-        assert_eq!(q, self.threats());
     }
 
     pub fn debug_bitboards(&self) {
