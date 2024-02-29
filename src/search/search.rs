@@ -272,6 +272,7 @@ fn alpha_beta<const IS_PV: bool>(
             let mut node_pv = PV::default();
             let mut new_b = *board;
 
+            // TODO: Add a prefetch here in the future
             new_b.make_null_move();
             td.stack[td.ply].played_move = Move::NULL;
             td.hash_history.push(new_b.zobrist_hash);
