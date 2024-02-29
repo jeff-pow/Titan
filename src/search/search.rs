@@ -431,7 +431,11 @@ fn alpha_beta<const IS_PV: bool>(
             {
                 0
             } else {
-                td.consts.base_reduction(depth, legal_moves_searched)
+                let mut r = td.consts.base_reduction(depth, legal_moves_searched);
+                if cut_node {
+                    r += 1 + i32::from(!m.is_tactical(board));
+                }
+                r
             };
             let d = max(1, min(new_depth - r, new_depth + 1));
 
