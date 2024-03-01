@@ -6,7 +6,7 @@ const TIME_FRACTION: f64 = 0.60;
 
 const GUI_DELAY: Duration = Duration::from_millis(25);
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Clock {
     /// Time increase for each side
     pub time_inc: [Duration; 2],

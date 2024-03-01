@@ -102,8 +102,8 @@ impl Consts {
     }
 
     fn init_lmr(&mut self) {
-        for depth in 0..MAX_SEARCH_DEPTH + 1 {
-            for moves_played in 0..MAX_LEN + 1 {
+        for depth in 0..=MAX_SEARCH_DEPTH {
+            for moves_played in 0..=MAX_LEN {
                 let reduction = (self.lmr_base as f32 / 100.
                     + (depth as f32).ln() * (moves_played as f32).ln()
                         / (self.lmr_divisor as f32 / 100.)) as i32;

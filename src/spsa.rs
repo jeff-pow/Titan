@@ -38,7 +38,7 @@ pub fn parse_param(a: &[&str]) {
     (param.callback)();
 }
 
-pub(crate) struct TunableParam {
+pub struct TunableParam {
     name: &'static str,
     value: AtomicI32,
     range: RangeInclusive<i32>,

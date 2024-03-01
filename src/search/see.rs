@@ -16,7 +16,7 @@ impl Board {
             return PieceName::Pawn.value();
         }
         let capture = self.piece_at(m.dest_square());
-        let mut score = if capture != Piece::None { capture.value() } else { 0 };
+        let mut score = if capture == Piece::None { 0 } else { capture.value() };
 
         if let Some(p) = m.promotion() {
             score += p.value() - PieceName::Pawn.value();
@@ -54,7 +54,7 @@ impl Board {
 
         let piece_moving = self.piece_at(src);
         assert!(piece_moving != Piece::None);
-        let next = if let Some(promo) = m.promotion() { promo } else { piece_moving };
+        let next = m.promotion().map_or(piece_moving, |promo| promo);
 
         score -= next.value();
 

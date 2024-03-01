@@ -8,8 +8,8 @@ use crate::{
 
 use super::{Align64, Block, NET};
 
-#[derive(Copy, Clone, Default, Debug, PartialEq)]
-pub(crate) struct Delta {
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
+pub struct Delta {
     pub add: [(u16, u16); 2],
     pub num_add: usize,
     pub sub: [(u16, u16); 2],
@@ -68,7 +68,7 @@ impl Accumulator {
                 .zip(&weights[black_sub].0)
                 .for_each(|((i, &a), &s)| {
                     *i += a - s;
-                })
+                });
         }
     }
 
@@ -247,7 +247,7 @@ impl Accumulator {
 const COLOR_OFFSET: usize = NUM_SQUARES * NUM_PIECES;
 const PIECE_OFFSET: usize = NUM_SQUARES;
 
-fn feature_idx(color: Color, piece: PieceName, sq: Square) -> usize {
+const fn feature_idx(color: Color, piece: PieceName, sq: Square) -> usize {
     color.idx() * COLOR_OFFSET + piece.idx() * PIECE_OFFSET + sq.idx()
 }
 
@@ -263,11 +263,4 @@ impl Board {
         }
         acc
     }
-}
-
-#[cfg(test)]
-mod accumulator_tests {
-
-    #[test]
-    fn delta() {}
 }

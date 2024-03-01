@@ -6,7 +6,11 @@ use crate::{
     moves::{
         attack_boards::{king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, RANKS},
         magics::{bishop_attacks, queen_attacks, rook_attacks},
-        moves::{Castle, Direction::*, Move, MoveType, CASTLING_RIGHTS},
+        moves::{
+            Castle,
+            Direction::{North, South},
+            Move, MoveType, CASTLING_RIGHTS,
+        },
     },
     types::{
         bitboard::Bitboard,
@@ -15,11 +19,11 @@ use crate::{
     },
 };
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Board {
     bitboards: [Bitboard; NUM_PIECES],
     color_occupancies: [Bitboard; 2],
-    array_board: [Piece; 64],
+    mailbox: [Piece; 64],
     pub to_move: Color,
     pub castling_rights: u32,
     pub en_passant_square: Option<Square>,
@@ -36,7 +40,7 @@ impl Default for Board {
         Self {
             bitboards: [Bitboard::EMPTY; 6],
             color_occupancies: [Bitboard::EMPTY; 2],
-            array_board: [Piece::None; 64],
+            mailbox: [Piece::None; 64],
             castling_rights: 0,
             to_move: Color::White,
             en_passant_square: None,
@@ -68,7 +72,7 @@ impl Board {
     }
 
     pub fn piece_at(&self, sq: Square) -> Piece {
-        self.array_board[sq]
+        self.mailbox[sq]
     }
 
     fn is_material_draw(&self) -> bool {
@@ -84,7 +88,8 @@ impl Board {
             || (self.piece(PieceName::Bishop).count_bits() == 1)))
         {
             return true;
-        } else if piece_count == 4 {
+        }
+        if piece_count == 4 {
             // No combination of two knights and a king can checkmate
             if self.piece(PieceName::Knight).count_bits() == 2 {
                 return true;
@@ -120,24 +125,24 @@ impl Board {
             != Bitboard::EMPTY
     }
 
-    pub fn can_en_passant(&self) -> bool {
+    pub const fn can_en_passant(&self) -> bool {
         self.en_passant_square.is_some()
     }
 
-    pub fn can_castle(&self, c: Castle) -> bool {
+    pub const fn can_castle(&self, c: Castle) -> bool {
         match c {
             Castle::WhiteKing => self.castling_rights & Castle::WhiteKing as u32 != 0,
             Castle::WhiteQueen => self.castling_rights & Castle::WhiteQueen as u32 != 0,
             Castle::BlackKing => self.castling_rights & Castle::BlackKing as u32 != 0,
             Castle::BlackQueen => self.castling_rights & Castle::BlackQueen as u32 != 0,
-            _ => panic!(),
+            Castle::None => panic!(),
         }
     }
 
     pub fn place_piece<const NNUE: bool>(&mut self, piece: Piece, sq: Square) {
         let color = piece.color();
         let name = piece.name();
-        self.array_board[sq] = piece;
+        self.mailbox[sq] = piece;
         self.bitboards[piece.name()] ^= sq.bitboard();
         self.color_occupancies[color] ^= sq.bitboard();
         self.zobrist_hash ^= ZOBRIST.piece_square_hashes[color][name][sq];
@@ -148,9 +153,9 @@ impl Board {
     }
 
     fn remove_piece<const NNUE: bool>(&mut self, sq: Square) {
-        let piece = self.array_board[sq];
+        let piece = self.mailbox[sq];
         if piece != Piece::None {
-            self.array_board[sq] = Piece::None;
+            self.mailbox[sq] = Piece::None;
             self.bitboards[piece.name()] ^= sq.bitboard();
             self.color_occupancies[piece.color()] ^= sq.bitboard();
             self.zobrist_hash ^= ZOBRIST.piece_square_hashes[piece.color()][piece.name()][sq];
@@ -198,7 +203,7 @@ impl Board {
         self.king_square(self.to_move).bitboard() & self.threats != Bitboard::EMPTY
     }
 
-    pub(crate) fn threats(&self) -> Bitboard {
+    pub(crate) const fn threats(&self) -> Bitboard {
         self.threats
     }
 
@@ -222,7 +227,7 @@ impl Board {
 
         threats |= king_attacks(self.king_square(attacker));
 
-        self.threats = threats
+        self.threats = threats;
     }
 
     pub(crate) fn is_pseudo_legal(&self, m: Move) -> bool {
@@ -292,11 +297,13 @@ impl Board {
                 };
                 if m.is_en_passant() {
                     return Some(to) == self.en_passant_square;
-                } else if is_pawn_double_push {
+                }
+                if is_pawn_double_push {
                     let one_forward = from.shift(up);
                     return self.piece_at(one_forward) == Piece::None
                         && to == one_forward.shift(up);
-                } else if !is_capture {
+                }
+                if !is_capture {
                     return to == from.shift(up) && captured_piece == Piece::None;
                 }
                 // Captures
@@ -453,7 +460,7 @@ impl fmt::Display for Board {
 
         str.push_str("    a   b   c   d   e   f   g   h\n");
 
-        write!(f, "{}", str)
+        write!(f, "{str}")
     }
 }
 
@@ -467,16 +474,16 @@ impl fmt::Debug for Board {
         str += &self.to_string();
         str += "Castles available: ";
         if self.can_castle(Castle::WhiteKing) {
-            str += "K"
+            str += "K";
         };
         if self.can_castle(Castle::WhiteQueen) {
-            str += "Q"
+            str += "Q";
         };
         if self.can_castle(Castle::BlackKing) {
-            str += "k"
+            str += "k";
         };
         if self.can_castle(Castle::BlackQueen) {
-            str += "q"
+            str += "q";
         };
         str += "\n";
         str += "En Passant Square: ";
@@ -490,7 +497,7 @@ impl fmt::Debug for Board {
         str += &self.num_moves.to_string();
         str += "\n";
 
-        write!(f, "{}", str)
+        write!(f, "{str}")
     }
 }
 

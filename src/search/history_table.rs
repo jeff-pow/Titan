@@ -17,7 +17,7 @@ impl Default for HistoryEntry {
     fn default() -> Self {
         Self {
             score: Default::default(),
-            counter: Default::default(),
+            counter: Move::default(),
             capt_hist: Default::default(),
             cont_hist: [[0; 64]; 6],
         }
@@ -33,7 +33,7 @@ fn update_history(score: &mut i32, bonus: i32) {
     *score += bonus - *score * bonus.abs() / MAX_HIST_VAL;
 }
 
-pub(crate) fn capthist_capture(board: &Board, m: Move) -> PieceName {
+pub fn capthist_capture(board: &Board, m: Move) -> PieceName {
     if m.is_en_passant() || m.promotion().is_some() {
         // Use Pawn for promotions here because pawns can't be in the back ranks anyways, so these
         // spaces can't be occupied anyway
@@ -76,7 +76,7 @@ impl HistoryTable {
                     continue;
                 }
                 self.update_quiet_history(*m, -bonus);
-                self.update_cont_hist(*m, stack, ply, -bonus)
+                self.update_cont_hist(*m, stack, ply, -bonus);
             }
         }
 

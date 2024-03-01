@@ -1,6 +1,6 @@
-pub(crate) mod attack_boards;
-pub(crate) mod magics;
-pub(crate) mod movegenerator;
+pub mod attack_boards;
+pub mod magics;
+pub mod movegenerator;
 pub mod movelist;
-pub(crate) mod movepicker;
-pub(crate) mod moves;
+pub mod movepicker;
+pub mod moves;

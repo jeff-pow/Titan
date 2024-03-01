@@ -1,3 +1,3 @@
 pub mod board;
-pub(crate) mod fen;
-pub(crate) mod zobrist;
+pub mod fen;
+pub mod zobrist;

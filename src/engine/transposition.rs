@@ -1,5 +1,6 @@
 use std::{
     mem::{size_of, transmute},
+    ptr::from_ref,
     sync::atomic::{AtomicU64, Ordering},
 };
 
@@ -26,15 +27,15 @@ pub struct TableEntry {
 impl TableEntry {
     /// There's not a *huge* point to storing eval since neural network is currently
     /// fairly small, but there's not much else to store in the extra space here.
-    pub fn static_eval(self) -> i32 {
+    pub const fn static_eval(self) -> i32 {
         self.static_eval as i32
     }
 
-    pub fn key(self) -> u64 {
+    pub const fn key(self) -> u64 {
         self.key
     }
 
-    pub fn depth(self) -> i32 {
+    pub const fn depth(self) -> i32 {
         self.depth as i32
     }
 
@@ -49,25 +50,25 @@ impl TableEntry {
     }
 
     fn age(self) -> u64 {
-        self.other as u64 >> 2
+        u64::from(self.other) >> 2
     }
 
     pub fn search_score(self) -> i32 {
-        self.search_score as i32
+        i32::from(self.search_score)
     }
 
     pub fn best_move(self, b: &Board) -> Move {
-        let m = Move(self.best_move as u32);
+        let m = Move(u32::from(self.best_move));
         if b.piece_at(m.origin_square()) == Piece::None {
             Move::NULL
         } else {
             let p = b.piece_at(m.origin_square()) as u32;
-            Move(self.best_move as u32 | p << 16)
+            Move(u32::from(self.best_move) | p << 16)
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum EntryFlag {
     #[default]
     None,
@@ -134,7 +135,7 @@ impl TranspositionTable {
         unsafe {
             let index = index(hash, self.vec.len());
             let entry = self.vec.get_unchecked(index);
-            _mm_prefetch((entry as *const InternalEntry).cast::<i8>(), _MM_HINT_T0);
+            _mm_prefetch(from_ref::<InternalEntry>(entry).cast::<i8>(), _MM_HINT_T0);
         }
     }
 

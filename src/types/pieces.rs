@@ -33,30 +33,30 @@ macro_rules! impl_index {
 impl Color {
     pub const fn idx(self) -> usize {
         match self {
-            Color::White => 0,
-            Color::Black => 1,
+            Self::White => 0,
+            Self::Black => 1,
         }
     }
 
     fn from_u32(val: u32) -> Self {
         match val {
-            0 => Color::White,
-            1 => Color::Black,
+            0 => Self::White,
+            1 => Self::Black,
             _ => panic!("Unexpected value"),
         }
     }
 
     pub fn iter() -> impl Iterator<Item = Self> {
-        [Color::White, Color::Black].into_iter()
+        [Self::White, Self::Black].into_iter()
     }
 }
 
 impl ops::Not for Color {
-    type Output = Color;
+    type Output = Self;
     fn not(self) -> Self::Output {
         match self {
-            Color::White => Color::Black,
-            Color::Black => Color::White,
+            Self::White => Self::Black,
+            Self::Black => Self::White,
         }
     }
 }
@@ -64,8 +64,8 @@ impl ops::Not for Color {
 impl From<usize> for Color {
     fn from(value: usize) -> Self {
         match value {
-            0 => Color::White,
-            1 => Color::Black,
+            0 => Self::White,
+            1 => Self::Black,
             _ => panic!("Invalid color index"),
         }
     }
@@ -89,17 +89,17 @@ pub enum PieceName {
 impl PieceName {
     pub fn value(self) -> i32 {
         match self {
-            PieceName::Pawn => 100,
-            PieceName::Knight => 302,
-            PieceName::Bishop => 286,
-            PieceName::Rook => 511,
-            PieceName::Queen => 991,
-            PieceName::King => 0,
-            PieceName::None => panic!("Invalid piece"),
+            Self::Pawn => 100,
+            Self::Knight => 302,
+            Self::Bishop => 286,
+            Self::Rook => 511,
+            Self::Queen => 991,
+            Self::King => 0,
+            Self::None => panic!("Invalid piece"),
         }
     }
 
-    pub(crate) fn idx(self) -> usize {
+    pub(crate) const fn idx(self) -> usize {
         self as usize
     }
 
@@ -109,15 +109,7 @@ impl PieceName {
     }
 
     pub fn iter() -> impl Iterator<Item = Self> {
-        [
-            PieceName::Pawn,
-            PieceName::Knight,
-            PieceName::Bishop,
-            PieceName::Rook,
-            PieceName::Queen,
-            PieceName::King,
-        ]
-        .into_iter()
+        [Self::Pawn, Self::Knight, Self::Bishop, Self::Rook, Self::Queen, Self::King].into_iter()
     }
 }
 

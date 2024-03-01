@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use self::nnue::Network;
 
-pub(crate) mod accumulator;
+pub mod accumulator;
 pub mod nnue;
 mod simd;
 

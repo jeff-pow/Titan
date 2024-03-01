@@ -1,6 +1,9 @@
 use crate::{
     board::board::Board,
-    moves::{moves::Direction, moves::Direction::*},
+    moves::{
+        moves::Direction,
+        moves::Direction::{North, NorthEast, NorthWest, South, SouthEast, SouthWest},
+    },
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName},
@@ -17,7 +20,7 @@ use super::{
 
 #[allow(clippy::upper_case_acronyms)]
 pub type MGT = MoveGenerationType;
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum MoveGenerationType {
     CapturesOnly,
     QuietsOnly,
@@ -155,10 +158,10 @@ impl Board {
             // En Passant
             if self.can_en_passant() {
                 if let Some(x) = self.get_en_passant(left.opp(), piece) {
-                    moves.push(x)
+                    moves.push(x);
                 }
                 if let Some(x) = self.get_en_passant(right.opp(), piece) {
-                    moves.push(x)
+                    moves.push(x);
                 }
             }
         }

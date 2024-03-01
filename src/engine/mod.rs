@@ -1,3 +1,3 @@
 pub mod perft;
-pub(crate) mod transposition;
-pub(crate) mod uci;
+pub mod transposition;
+pub mod uci;

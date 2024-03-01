@@ -3,7 +3,9 @@ use std::fmt::Display;
 
 use crate::{
     board::board::Board,
-    moves::moves::Direction::*,
+    moves::moves::Direction::{
+        East, North, NorthEast, NorthWest, South, SouthEast, SouthWest, West,
+    },
     types::{
         bitboard::Bitboard,
         pieces::{Piece, PieceName},
@@ -11,8 +13,11 @@ use crate::{
     },
 };
 
-use MoveType::*;
-#[derive(Clone, Copy, Debug, PartialEq)]
+use MoveType::{
+    BishopPromotion, CastleMove, DoublePush, EnPassant, KnightPromotion, Normal, QueenPromotion,
+    RookPromotion,
+};
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MoveType {
     Normal = 0,
 
@@ -35,12 +40,11 @@ pub enum MoveType {
 /// bit 12-15: special move flag: normal move(0), promotion (1), en passant (2), castling (3)
 /// bit 16-19: piece moving - useful in continuation history
 /// NOTE: en passant bit is set only when a pawn can be captured
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Move(pub u32);
 
 impl Move {
-    // pub const NULL: Move = Move(0b1111 << 16);
-    pub const NULL: Move = Move(0);
+    pub const NULL: Self = Self(0);
 
     pub const fn new(
         origin: Square,
@@ -52,7 +56,7 @@ impl Move {
             | (destination.0 << 6)
             | ((move_type as u32) << 12)
             | ((piece_moving as u32) << 16);
-        Move(m)
+        Self(m)
     }
 
     pub fn is_capture(self, board: &Board) -> bool {
@@ -86,12 +90,12 @@ impl Move {
         }
     }
 
-    pub fn origin_square(self) -> Square {
-        Square(self.0 & 0b111111)
+    pub const fn origin_square(self) -> Square {
+        Square(self.0 & 0b11_1111)
     }
 
-    pub fn dest_square(self) -> Square {
-        Square(self.0 >> 6 & 0b111111)
+    pub const fn dest_square(self) -> Square {
+        Square(self.0 >> 6 & 0b11_1111)
     }
 
     pub fn is_tactical(self, board: &Board) -> bool {
@@ -100,7 +104,7 @@ impl Move {
             || board.occupancies().occupied(self.dest_square())
     }
 
-    pub fn as_u16(self) -> u16 {
+    pub const fn as_u16(self) -> u16 {
         self.0 as u16
     }
 
@@ -205,16 +209,13 @@ pub fn from_san(str: &str, board: &Board) -> Move {
         } else if en_passant {
             EnPassant
         } else if promotion.is_some() {
-            match promotion {
-                Some(p) => match p {
-                    PieceName::Knight => KnightPromotion,
-                    PieceName::Bishop => BishopPromotion,
-                    PieceName::Rook => RookPromotion,
-                    PieceName::Queen => QueenPromotion,
-                    _ => Normal,
-                },
-                None => Normal,
-            }
+            promotion.map_or(Normal, |p| match p {
+                PieceName::Knight => KnightPromotion,
+                PieceName::Bishop => BishopPromotion,
+                PieceName::Rook => RookPromotion,
+                PieceName::Queen => QueenPromotion,
+                _ => Normal,
+            })
         } else if double_push {
             DoublePush
         } else {
@@ -234,7 +235,7 @@ impl Display for Move {
         str += " Castle: ";
         str += &self.is_castle().to_string();
         str += " Promotion: ";
-        match self.promotion().map_or(PieceName::Pawn, |p| p.name()) {
+        match self.promotion().map_or(PieceName::Pawn, Piece::name) {
             PieceName::Queen => str += "Queen ",
             PieceName::Rook => str += "Rook ",
             PieceName::Bishop => str += "Bishop ",
@@ -245,11 +246,11 @@ impl Display for Move {
         str += &self.is_en_passant().to_string();
         str += "  ";
         str += &self.to_san();
-        write!(f, "{}", str)
+        write!(f, "{str}")
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Castle {
     WhiteKing = 1,
     WhiteQueen = 2,
@@ -262,42 +263,42 @@ impl Castle {
     /// These squares may not be under attack for a castle to be valid
     pub(crate) const fn check_squares(self) -> Bitboard {
         match self {
-            Castle::WhiteKing => Bitboard(112),
-            Castle::WhiteQueen => Bitboard(28),
-            Castle::BlackKing => Bitboard(0x7000000000000000),
-            Castle::BlackQueen => Bitboard(0x1C00000000000000),
-            Castle::None => panic!("Invalid castle"),
+            Self::WhiteKing => Bitboard(112),
+            Self::WhiteQueen => Bitboard(28),
+            Self::BlackKing => Bitboard(0x7000_0000_0000_0000),
+            Self::BlackQueen => Bitboard(0x1C00_0000_0000_0000),
+            Self::None => panic!("Invalid castle"),
         }
     }
 
     /// These squares must be unoccupied for a castle to be valid
     pub(crate) const fn empty_squares(self) -> Bitboard {
         match self {
-            Castle::WhiteKing => Bitboard(96),
-            Castle::WhiteQueen => Bitboard(14),
-            Castle::BlackKing => Bitboard(0x6000000000000000),
-            Castle::BlackQueen => Bitboard(0xE00000000000000),
-            Castle::None => panic!("Invalid castle"),
+            Self::WhiteKing => Bitboard(96),
+            Self::WhiteQueen => Bitboard(14),
+            Self::BlackKing => Bitboard(0x6000_0000_0000_0000),
+            Self::BlackQueen => Bitboard(0xE00_0000_0000_0000),
+            Self::None => panic!("Invalid castle"),
         }
     }
 
     pub(crate) const fn rook_dest(self) -> Square {
         match self {
-            Castle::WhiteKing => Square(5),
-            Castle::WhiteQueen => Square(3),
-            Castle::BlackKing => Square(61),
-            Castle::BlackQueen => Square(59),
-            Castle::None => panic!("Invalid castle"),
+            Self::WhiteKing => Square(5),
+            Self::WhiteQueen => Square(3),
+            Self::BlackKing => Square(61),
+            Self::BlackQueen => Square(59),
+            Self::None => panic!("Invalid castle"),
         }
     }
 
     pub(crate) const fn rook_src(self) -> Square {
         match self {
-            Castle::WhiteKing => Square(7),
-            Castle::WhiteQueen => Square(0),
-            Castle::BlackKing => Square(63),
-            Castle::BlackQueen => Square(56),
-            Castle::None => panic!("Invalid castle"),
+            Self::WhiteKing => Square(7),
+            Self::WhiteQueen => Square(0),
+            Self::BlackKing => Square(63),
+            Self::BlackQueen => Square(56),
+            Self::None => panic!("Invalid castle"),
         }
     }
 }

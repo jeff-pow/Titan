@@ -24,15 +24,15 @@ pub fn bench() {
 
     let mut nodes = 0;
 
-    BENCH_POSITIONS.iter().for_each(|fen| {
+    for fen in &BENCH_POSITIONS {
         let board = build_board(fen);
         search(&mut thread, false, board, &transpos_table);
         nodes += thread.nodes.local_count();
         thread.nodes.reset();
-    });
+    }
 
     let time = start.elapsed().as_secs_f64();
-    println!("{:.2} seconds", time);
+    println!("{time:.2} seconds");
     println!("{} nodes {} nps", nodes, (nodes as f64 / time) as u64);
 }
 

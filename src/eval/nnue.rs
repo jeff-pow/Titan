@@ -14,7 +14,7 @@ pub(super) const RELU_MAX: i16 = QA as i16;
 
 const SCALE: i32 = 400;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 #[repr(C, align(64))]
 pub(super) struct Network {
     pub feature_weights: [Align64<Block>; INPUT_SIZE],
@@ -46,7 +46,7 @@ impl Board {
         let weights = &NET.output_weights;
         let output = flatten(us, &weights[0]) + flatten(them, &weights[1]);
         let a = (i32::from(NET.output_bias) + output / NORMALIZATION_FACTOR) * SCALE / QAB;
-        assert!(i16::MIN as i32 <= a && a <= i16::MAX as i32);
+        assert!(i16::try_from(a).is_ok());
         a
     }
 }

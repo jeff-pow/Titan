@@ -4,15 +4,15 @@ use crate::types::bitboard::Bitboard;
 use crate::types::pieces::Color;
 use crate::types::square::Square;
 
-const FILE_A_U64: u64 = 0x101010101010101;
-const FILE_H_U64: u64 = 0x101010101010101 << 7;
+const FILE_A_U64: u64 = 0x0101_0101_0101_0101;
+const FILE_H_U64: u64 = 0x0101_0101_0101_0101 << 7;
 
-const RANK1_U64: u64 = 0b11111111;
+const RANK1_U64: u64 = 0b1111_1111;
 
 /// Vertical
-pub(crate) const FILES: [Bitboard; 8] = const_array!(|f, 8| Bitboard(FILE_A_U64 << f));
+pub const FILES: [Bitboard; 8] = const_array!(|f, 8| Bitboard(FILE_A_U64 << f));
 /// Horizontal
-pub(crate) const RANKS: [Bitboard; 8] = const_array!(|r, 8| Bitboard(RANK1_U64 << (8 * r)));
+pub const RANKS: [Bitboard; 8] = const_array!(|r, 8| Bitboard(RANK1_U64 << (8 * r)));
 
 pub fn knight_attacks(sq: Square) -> Bitboard {
     KNIGHT_ATTACKS[sq]
@@ -57,7 +57,7 @@ pub const KNIGHT_ATTACKS: [Bitboard; 64] = const_array!(|sq, 64| {
     bb |= (vert & !FILE_A_U64) >> 1 | (vert & !FILE_H_U64) << 1;
     // Get squares two columns to the left and right of current occupied square. Constants ensure you
     // won't go to a different row
-    let horizontal = (sq_bb & 0x3f3f3f3f3f3f3f3f) << 2 | (sq_bb & 0xfcfcfcfcfcfcfcfc) >> 2;
+    let horizontal = (sq_bb & 0x3f3f_3f3f_3f3f_3f3f) << 2 | (sq_bb & 0xfcfc_fcfc_fcfc_fcfc) >> 2;
     // Shake those bits back and forth - can't go out of bounds vertically
     bb |= horizontal << 8 | horizontal >> 8;
     // Remove current occupied square from final attack board

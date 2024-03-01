@@ -12,15 +12,15 @@ pub struct MoveList {
     pub arr: ArrayVec<MoveListEntry, MAX_LEN>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct MoveListEntry {
     pub m: Move,
     pub score: i32,
 }
 
 impl MoveListEntry {
-    fn new(m: Move, score: i32) -> Self {
-        MoveListEntry { m, score }
+    const fn new(m: Move, score: i32) -> Self {
+        Self { m, score }
     }
 }
 
@@ -29,7 +29,7 @@ impl MoveList {
         self.arr.push(MoveListEntry::new(m, 0));
     }
 
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.arr.len()
     }
 

@@ -24,14 +24,14 @@ pub fn build_board(fen_string: &str) -> Board {
     while start >= end {
         // Loop handles reading board part of fen string
         let entry = iter.next().unwrap();
-        let mut idx: usize = 0;
+        let mut idx = 0;
         for c in entry.chars() {
             if c.is_ascii_digit() {
-                idx += c.to_digit(10).unwrap() as usize;
+                idx += c.to_digit(10).unwrap();
                 continue;
             }
             let square = row * 8 + idx;
-            let square = Square(square as u32);
+            let square = Square(square);
             match c {
                 'K' => {
                     board.place_piece::<false>(Piece::WhiteKing, square);
@@ -69,7 +69,7 @@ pub fn build_board(fen_string: &str) -> Board {
                 'p' => {
                     board.place_piece::<false>(Piece::BlackPawn, square);
                 }
-                _ => panic!("Unrecognized char {}, board could not be made", c),
+                _ => panic!("Unrecognized char {c}, board could not be made"),
             }
             idx += 1;
         }
@@ -88,9 +88,9 @@ pub fn build_board(fen_string: &str) -> Board {
     board.castling_rights = parse_castling(iter.next().unwrap());
 
     let en_passant_letters: Vec<char> = iter.next().unwrap().chars().collect();
-    let en_passant_idx = find_en_passant_square(en_passant_letters);
+    let en_passant_idx = find_en_passant_square(&en_passant_letters);
     if let Some(idx) = en_passant_idx {
-        board.en_passant_square = Some(Square(idx))
+        board.en_passant_square = Some(Square(idx));
     }
 
     let half_moves = iter.next();
@@ -127,7 +127,7 @@ fn parse_castling(buf: &&str) -> u32 {
     rights
 }
 
-fn find_en_passant_square(vec: Vec<char>) -> Option<u32> {
+fn find_en_passant_square(vec: &[char]) -> Option<u32> {
     if vec[0] == '-' {
         return None;
     }
@@ -157,15 +157,15 @@ mod fen_tests {
 
     #[test]
     fn test_en_passant_square() {
-        assert_eq!(Some(0), find_en_passant_square(vec!['a', '1']));
-        assert_eq!(Some(9), find_en_passant_square(vec!['b', '2']));
-        assert_eq!(Some(18), find_en_passant_square(vec!['c', '3']));
-        assert_eq!(Some(27), find_en_passant_square(vec!['d', '4']));
-        assert_eq!(Some(36), find_en_passant_square(vec!['e', '5']));
-        assert_eq!(Some(45), find_en_passant_square(vec!['f', '6']));
-        assert_eq!(Some(54), find_en_passant_square(vec!['g', '7']));
-        assert_eq!(Some(63), find_en_passant_square(vec!['h', '8']));
-        assert_eq!(Some(62), find_en_passant_square(vec!['g', '8']));
+        assert_eq!(Some(0), find_en_passant_square(&['a', '1']));
+        assert_eq!(Some(9), find_en_passant_square(&['b', '2']));
+        assert_eq!(Some(18), find_en_passant_square(&['c', '3']));
+        assert_eq!(Some(27), find_en_passant_square(&['d', '4']));
+        assert_eq!(Some(36), find_en_passant_square(&['e', '5']));
+        assert_eq!(Some(45), find_en_passant_square(&['f', '6']));
+        assert_eq!(Some(54), find_en_passant_square(&['g', '7']));
+        assert_eq!(Some(63), find_en_passant_square(&['h', '8']));
+        assert_eq!(Some(62), find_en_passant_square(&['g', '8']));
     }
 
     #[test]

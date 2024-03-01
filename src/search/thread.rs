@@ -21,7 +21,7 @@ use super::{
 };
 
 #[derive(Clone)]
-pub(crate) struct ThreadData<'a> {
+pub struct ThreadData<'a> {
     pub ply: i32,
     // pub max_depth: i32,
     pub iter_max_depth: i32,
@@ -125,7 +125,7 @@ impl<'a> ThreadData<'a> {
                 print!("mate {}", (-(CHECKMATE + score) / 2));
             }
         } else {
-            print!("cp {}", score);
+            print!("cp {score}");
         }
 
         print!(" hashfull {} pv ", tt.permille_usage());
@@ -177,7 +177,7 @@ impl<'a> ThreadPool<'a> {
     pub fn reset(&mut self) {
         self.main_thread.history = HistoryTable::default();
         self.main_thread.nodes.reset();
-        for t in self.workers.iter_mut() {
+        for t in &mut self.workers {
             t.history = HistoryTable::default();
             t.nodes.reset();
         }
@@ -190,7 +190,7 @@ impl<'a> ThreadPool<'a> {
     pub fn add_workers(
         &mut self,
         threads: usize,
-        hash_history: Vec<u64>,
+        hash_history: &[u64],
         consts: &'a Consts,
         global_nodes: &'a AtomicU64,
     ) {
@@ -198,7 +198,7 @@ impl<'a> ThreadPool<'a> {
         for i in 1..threads {
             self.workers.push(ThreadData::new(
                 self.halt,
-                hash_history.clone(),
+                hash_history.to_owned(),
                 i,
                 consts,
                 global_nodes,
@@ -212,27 +212,27 @@ impl<'a> ThreadPool<'a> {
         board: &Board,
         halt: &AtomicBool,
         msg: &mut Option<String>,
-        hash_history: Vec<u64>,
+        hash_history: &[u64],
         tt: &TranspositionTable,
     ) {
         self.halt.store(false, Ordering::Relaxed);
-        self.main_thread.hash_history = hash_history.clone();
-        for t in self.workers.iter_mut() {
-            t.hash_history = hash_history.clone();
+        self.main_thread.hash_history = hash_history.to_vec();
+        for t in &mut self.workers {
+            t.hash_history = hash_history.to_owned();
         }
 
         if buffer.contains(&"depth") {
             let mut iter = buffer.iter().skip(2);
             let depth = iter.next().unwrap().parse::<i32>().unwrap();
             self.main_thread.search_type = SearchType::Depth(depth);
-            for t in self.workers.iter_mut() {
+            for t in &mut self.workers {
                 t.search_type = SearchType::Depth(depth);
             }
         } else if buffer.contains(&"nodes") {
             let mut iter = buffer.iter().skip(2);
             let nodes = iter.next().unwrap().parse::<u64>().unwrap();
             self.main_thread.search_type = SearchType::Nodes(nodes);
-            for t in self.workers.iter_mut() {
+            for t in &mut self.workers {
                 t.search_type = SearchType::Nodes(nodes);
             }
         } else if buffer.contains(&"wtime") {
@@ -242,7 +242,7 @@ impl<'a> ThreadPool<'a> {
             self.main_thread.search_type = SearchType::Time(clock);
         } else {
             self.main_thread.search_type = SearchType::Infinite;
-            for t in self.workers.iter_mut() {
+            for t in &mut self.workers {
                 t.search_type = SearchType::Infinite;
             }
         }
@@ -279,7 +279,7 @@ impl<'a> ThreadPool<'a> {
 }
 
 #[derive(Clone)]
-pub(crate) struct AtomicCounter<'a> {
+pub struct AtomicCounter<'a> {
     global_nodes: &'a AtomicU64,
     local_nodes: u64,
     batch: u64,
@@ -288,7 +288,7 @@ pub(crate) struct AtomicCounter<'a> {
 const UPDATE_FREQ: u64 = 1024;
 
 impl<'a> AtomicCounter<'a> {
-    fn new(global_nodes: &'a AtomicU64) -> Self {
+    const fn new(global_nodes: &'a AtomicU64) -> Self {
         Self { global_nodes, local_nodes: 0, batch: 0 }
     }
 
@@ -296,7 +296,7 @@ impl<'a> AtomicCounter<'a> {
         self.global_nodes.load(Ordering::Relaxed) + self.batch
     }
 
-    pub(crate) fn local_count(&self) -> u64 {
+    pub(crate) const fn local_count(&self) -> u64 {
         self.local_nodes + self.batch
     }
 
@@ -315,7 +315,7 @@ impl<'a> AtomicCounter<'a> {
         self.global_nodes.store(0, Ordering::Relaxed);
     }
 
-    pub(crate) fn check_time(&self) -> bool {
+    pub(crate) const fn check_time(&self) -> bool {
         self.batch == 0
     }
 }

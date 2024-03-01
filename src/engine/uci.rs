@@ -36,17 +36,18 @@ pub fn main_loop() -> ! {
     println!("{ENGINE_NAME} by {}", env!("CARGO_PKG_AUTHORS"));
 
     loop {
-        let input = if let Some(ref m) = msg {
-            m.clone()
-        } else {
-            let mut buffer = String::new();
-            let len_read = io::stdin().read_line(&mut buffer).unwrap();
-            if len_read == 0 {
-                // Stdin closed, exit for openbench
-                exit(0);
-            }
-            buffer
-        };
+        let input = msg.as_ref().map_or_else(
+            || {
+                let mut buffer = String::new();
+                let len_read = io::stdin().read_line(&mut buffer).unwrap();
+                if len_read == 0 {
+                    // Stdin closed, exit for openbench
+                    exit(0);
+                }
+                buffer
+            },
+            std::clone::Clone::clone,
+        );
 
         msg = None;
         let input = input.split_whitespace().collect::<Vec<_>>();
@@ -83,7 +84,7 @@ pub fn main_loop() -> ! {
                     &board,
                     &halt,
                     &mut msg,
-                    hash_history.clone(),
+                    &hash_history,
                     &transpos_table,
                 );
             }
@@ -98,18 +99,18 @@ pub fn main_loop() -> ! {
             }
             "setoption" => match input[..] {
                 ["setoption", "name", "Hash", "value", x] => {
-                    transpos_table = TranspositionTable::new(x.parse().unwrap())
+                    transpos_table = TranspositionTable::new(x.parse().unwrap());
                 }
                 ["setoption", "name", "Clear", "Hash"] => transpos_table.clear(),
                 ["setoption", "name", "Threads", "value", x] => thread_pool.add_workers(
                     x.parse().unwrap(),
-                    hash_history.clone(),
+                    &hash_history,
                     &consts,
                     &global_nodes,
                 ),
                 _ => {
                     if SPSA_TUNE {
-                        parse_param(&input)
+                        parse_param(&input);
                     }
                 }
             },
@@ -155,26 +156,26 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, hash_history: &mu
     }
 }
 
-pub(crate) fn parse_time(buff: &[&str]) -> Clock {
+pub fn parse_time(buff: &[&str]) -> Clock {
     let mut game_time = Clock::default();
     let vec = buff.iter().skip(1).tuples::<(_, _)>();
     for entry in vec {
         match entry {
             (&"wtime", wtime) => {
                 game_time.time_remaining[Color::White] =
-                    Duration::from_millis(wtime.parse::<u64>().expect("Valid u64"))
+                    Duration::from_millis(wtime.parse::<u64>().expect("Valid u64"));
             }
             (&"btime", btime) => {
                 game_time.time_remaining[Color::Black] =
-                    Duration::from_millis(btime.parse::<u64>().expect("Valid u64"))
+                    Duration::from_millis(btime.parse::<u64>().expect("Valid u64"));
             }
             (&"winc", winc) => {
                 game_time.time_inc[Color::White] =
-                    Duration::from_millis(winc.parse::<u64>().expect("Valid u64"))
+                    Duration::from_millis(winc.parse::<u64>().expect("Valid u64"));
             }
             (&"binc", binc) => {
                 game_time.time_inc[Color::Black] =
-                    Duration::from_millis(binc.parse::<u64>().expect("Valid u64"))
+                    Duration::from_millis(binc.parse::<u64>().expect("Valid u64"));
             }
             (&"movestogo", moves) => game_time.movestogo = moves.parse::<i32>().expect("Valid i32"),
             _ => return game_time,

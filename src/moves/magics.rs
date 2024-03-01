@@ -9,7 +9,10 @@ use crate::{
     types::{bitboard::Bitboard, square::Square},
 };
 
-use super::moves::{Direction, Direction::*};
+use super::moves::{
+    Direction,
+    Direction::{East, North, NorthEast, NorthWest, South, SouthEast, SouthWest, West},
+};
 
 pub const fn rand_u64(mut prev: u64) -> u64 {
     prev ^= prev << 13;
@@ -18,13 +21,13 @@ pub const fn rand_u64(mut prev: u64) -> u64 {
     prev
 }
 
-/// Xorshift64 https://en.wikipedia.org/wiki/Xorshift
+/// Xorshift64 <https://en.wikipedia.org/wiki/Xorshift>
 #[derive(Copy, Clone)]
 pub struct Rng(u64);
 
 impl Default for Rng {
     fn default() -> Self {
-        Self(0xE926E6210D9E3487)
+        Self(0xE926_E621_0D9E_3487)
     }
 }
 
@@ -102,7 +105,7 @@ pub fn queen_attacks(sq: Square, occupied: Bitboard) -> Bitboard {
     bishop_attacks(sq, occupied) | rook_attacks(sq, occupied)
 }
 
-/// https://analog-hors.github.io/site/magic-bitboards/
+/// <https://analog-hors.github.io/site/magic-bitboards/>
 // impl Magics {
 //     pub fn bishop_attacks(&self, occupied: Bitboard, sq: Square) -> Bitboard {
 //         let magic = &self.bishop_magics[sq];

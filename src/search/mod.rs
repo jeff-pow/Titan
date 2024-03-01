@@ -15,7 +15,7 @@ pub mod see;
 pub mod thread;
 
 #[derive(Clone, Copy, Default)]
-pub(super) struct PlyEntry {
+pub struct PlyEntry {
     pub killer_move: Move,
     pub played_move: Move,
     pub static_eval: i32,
@@ -30,7 +30,7 @@ struct PV {
 }
 
 impl PV {
-    fn update(&mut self, m: Move, other: PV) {
+    fn update(&mut self, m: Move, other: Self) {
         self.line.clear();
         self.line.push(m);
         self.line.extend(other.line);
@@ -38,7 +38,7 @@ impl PV {
 }
 
 #[derive(Clone)]
-pub(crate) struct SearchStack {
+pub struct SearchStack {
     stack: [PlyEntry; MAX_SEARCH_DEPTH as usize],
 }
 
@@ -68,7 +68,7 @@ impl IndexMut<i32> for SearchStack {
     }
 }
 
-#[derive(Clone, Copy, Default, PartialEq)]
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub enum SearchType {
     /// User has requested a search until a particular depth
     Depth(i32),
@@ -100,7 +100,7 @@ impl AccumulatorStack {
     }
 
     pub fn push(&mut self, acc: Accumulator) {
-        self.stack.push(acc)
+        self.stack.push(acc);
     }
 
     pub fn clear(&mut self, base_accumulator: Accumulator) {

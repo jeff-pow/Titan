@@ -8,7 +8,7 @@ use super::square::Square;
 pub struct Bitboard(pub u64);
 
 impl Bitboard {
-    pub const EMPTY: Bitboard = Bitboard(0);
+    pub const EMPTY: Self = Self(0);
 
     /// Returns the index of the lowest bit of a bitboard, and modifies the bitboard to exclude
     /// that bit
@@ -23,29 +23,29 @@ impl Bitboard {
     }
 
     pub fn occupied(self, sq: Square) -> bool {
-        self & sq.bitboard() != Bitboard::EMPTY
+        self & sq.bitboard() != Self::EMPTY
     }
 
     pub fn empty(self, sq: Square) -> bool {
         !self.occupied(sq)
     }
 
-    pub fn count_bits(self) -> i32 {
+    pub const fn count_bits(self) -> i32 {
         self.0.count_ones() as i32
     }
 
     /// Executes a shift without checking to ensure no information is lost. Only to be used when a
     /// shift has already been proven to be safe
-    pub const fn shift(self, dir: Direction) -> Bitboard {
+    pub const fn shift(self, dir: Direction) -> Self {
         match dir {
-            Direction::North => Bitboard(self.0 << 8),
-            Direction::NorthWest => Bitboard((self.0 << 7) & !FILES[7].0),
-            Direction::West => Bitboard((self.0 >> 1) & !FILES[7].0),
-            Direction::SouthWest => Bitboard((self.0 >> 9) & !FILES[7].0),
-            Direction::South => Bitboard(self.0 >> 8),
-            Direction::SouthEast => Bitboard((self.0 >> 7) & !FILES[0].0),
-            Direction::East => Bitboard((self.0 << 1) & !FILES[0].0),
-            Direction::NorthEast => Bitboard((self.0 << 9) & !FILES[0].0),
+            Direction::North => Self(self.0 << 8),
+            Direction::NorthWest => Self((self.0 << 7) & !FILES[7].0),
+            Direction::West => Self((self.0 >> 1) & !FILES[7].0),
+            Direction::SouthWest => Self((self.0 >> 9) & !FILES[7].0),
+            Direction::South => Self(self.0 >> 8),
+            Direction::SouthEast => Self((self.0 >> 7) & !FILES[0].0),
+            Direction::East => Self((self.0 << 1) & !FILES[0].0),
+            Direction::NorthEast => Self((self.0 << 9) & !FILES[0].0),
         }
     }
 }
@@ -54,14 +54,10 @@ impl Iterator for Bitboard {
     type Item = Square;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if *self == Bitboard::EMPTY {
+        if *self == Self::EMPTY {
             None
         } else {
-            Some({
-                let lsb = self.get_lsb();
-                *self ^= lsb.bitboard();
-                lsb
-            })
+            Some(self.pop_lsb())
         }
     }
 }
@@ -98,7 +94,7 @@ impl ops::Not for Bitboard {
     type Output = Self;
 
     fn not(self) -> Self::Output {
-        Bitboard(!self.0)
+        Self(!self.0)
     }
 }
 

@@ -17,11 +17,7 @@ impl Square {
     /// Function checks whether a shift is valid before executing it
     pub fn checked_shift(self, dir: Direction) -> Option<Self> {
         let s = self.bitboard().shift(dir);
-        if s != Bitboard::EMPTY {
-            Some(s.get_lsb())
-        } else {
-            None
-        }
+        (s != Bitboard::EMPTY).then(|| s.get_lsb())
         // (s != Bitboard::EMPTY).then_some(s.get_lsb())
     }
 
@@ -33,7 +29,7 @@ impl Square {
 
     /// Returns the max dist of file or rank between two squares
     #[rustfmt::skip]
-    pub const fn dist(self, other: Square) -> u32 {
+    pub const fn dist(self, other: Self) -> u32 {
         let this = self.file().abs_diff(other.file());
         let other = self.rank().abs_diff(other.rank());
         if this > other { this } else { other }
@@ -44,7 +40,7 @@ impl Square {
         self.0 >> 3
     }
 
-    pub fn flip_vertical(self) -> Self {
+    pub const fn flip_vertical(self) -> Self {
         Self(self.0 ^ 56)
     }
 
@@ -57,12 +53,12 @@ impl Square {
         self.0 as usize
     }
 
-    pub fn get_rank_bitboard(self) -> Bitboard {
+    pub const fn get_rank_bitboard(self) -> Bitboard {
         let x = self.rank();
         RANKS[x as usize]
     }
 
-    pub fn get_file_bitboard(self) -> Bitboard {
+    pub const fn get_file_bitboard(self) -> Bitboard {
         let y = self.file();
         FILES[y as usize]
     }

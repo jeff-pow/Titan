@@ -5,7 +5,7 @@ use crate::{
     types::pieces::{Color, PieceName},
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Zobrist {
     pub piece_square_hashes: [[[u64; 64]; 6]; 2],
     pub turn_hash: u64,
@@ -16,7 +16,7 @@ pub struct Zobrist {
 }
 
 pub const ZOBRIST: Zobrist = {
-    let mut prev = 0xE926E6210D9E3487u64;
+    let mut prev = 0xE926_E621_0D9E_3487u64;
 
     let turn_hash = rand_u64(prev);
 
@@ -45,7 +45,7 @@ impl Default for Zobrist {
         castling.iter_mut().for_each(|x| *x = rng.next_u64());
         let mut en_passant = [0; 64];
         en_passant.iter_mut().for_each(|x| *x = rng.next_u64());
-        Self { turn_hash, piece_square_hashes, castling, en_passant }
+        Self { piece_square_hashes, turn_hash, castling, en_passant }
     }
 }
 
@@ -58,13 +58,13 @@ impl Board {
             for piece in PieceName::iter() {
                 let occupancies = self.bitboard(color, piece);
                 for sq in occupancies {
-                    hash ^= ZOBRIST.piece_square_hashes[color][piece][sq]
+                    hash ^= ZOBRIST.piece_square_hashes[color][piece][sq];
                 }
             }
         }
 
         if let Some(x) = self.en_passant_square {
-            hash ^= ZOBRIST.en_passant[x]
+            hash ^= ZOBRIST.en_passant[x];
         }
 
         hash ^= ZOBRIST.castling[self.castling_rights as usize];

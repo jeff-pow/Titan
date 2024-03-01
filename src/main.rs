@@ -1,4 +1,5 @@
 #![allow(clippy::module_inception)]
+#![allow(clippy::cast_possible_truncation)]
 #![allow(long_running_const_eval)]
 #![cfg_attr(feature = "avx512", feature(stdarch_x86_avx512))]
 #[cfg(all(feature = "avx2", feature = "avx512"))]
@@ -19,9 +20,7 @@ use crate::engine::uci::main_loop;
 use std::env;
 
 fn main() {
-    let args = env::args().collect::<Vec<_>>();
-
-    if args.contains(&"bench".to_string()) {
+    if env::args().any(|x| x == *"bench") {
         bench();
     } else {
         main_loop();

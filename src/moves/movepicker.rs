@@ -14,7 +14,7 @@ pub const FIRST_KILLER_SCORE: i32 = 1_000_000;
 pub const COUNTER_MOVE_SCORE: i32 = 800_000;
 pub const BAD_CAPTURE: i32 = -10000;
 
-#[derive(PartialEq, PartialOrd)]
+#[derive(PartialEq, PartialOrd, Eq)]
 pub enum MovePickerPhase {
     TTMove,
 
@@ -158,13 +158,13 @@ impl MovePicker {
 
 fn score_quiets(td: &ThreadData, moves: &mut [MoveListEntry]) {
     for MoveListEntry { m, score } in moves {
-        *score = td.history.quiet_history(*m, &td.stack, td.ply)
+        *score = td.history.quiet_history(*m, &td.stack, td.ply);
     }
 }
 
 fn score_captures(td: &ThreadData, board: &Board, moves: &mut [MoveListEntry]) {
     for MoveListEntry { m, score } in moves {
         *score = (if board.see(*m, -PieceName::Pawn.value()) { GOOD_CAPTURE } else { BAD_CAPTURE })
-            + td.history.capt_hist(*m, board)
+            + td.history.capt_hist(*m, board);
     }
 }

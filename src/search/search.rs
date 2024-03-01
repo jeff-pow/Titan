@@ -36,7 +36,7 @@ pub fn search(
     best_move
 }
 
-pub(crate) fn iterative_deepening(
+pub fn iterative_deepening(
     td: &mut ThreadData,
     board: &Board,
     print_uci: bool,
@@ -122,7 +122,7 @@ fn aspiration_windows(
 
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
 /// to refute other variations
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 fn negamax<const IS_PV: bool>(
     mut depth: i32,
     mut alpha: i32,
@@ -240,7 +240,7 @@ fn negamax<const IS_PV: bool>(
     // TODO: Killers should probably be reset here
     // td.stack[td.ply + 1].killers = [Move::NULL; 2];
     if td.ply < MAX_SEARCH_DEPTH - 1 {
-        td.stack[td.ply + 1].singular = Move::NULL
+        td.stack[td.ply + 1].singular = Move::NULL;
     }
     if !is_root {
         td.stack[td.ply].dbl_extns = td.stack[td.ply - 1].dbl_extns;
@@ -353,9 +353,9 @@ fn negamax<const IS_PV: bool>(
         td.accumulators.top().lazy_update(&mut new_b.delta);
 
         if is_quiet {
-            quiets_tried.push(m)
+            quiets_tried.push(m);
         } else {
-            tacticals_tried.push(m)
+            tacticals_tried.push(m);
         };
 
         let extension = if tt_depth >= depth - 3
@@ -444,13 +444,21 @@ fn negamax<const IS_PV: bool>(
                     tt,
                     &new_b,
                     !cut_node,
-                )
+                );
             }
 
             // If the verification score falls between alpha and beta, full window full depth search
             if score > alpha && score < beta {
-                score =
-                    -negamax::<IS_PV>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
+                score = -negamax::<IS_PV>(
+                    new_depth,
+                    -beta,
+                    -alpha,
+                    &mut node_pv,
+                    td,
+                    tt,
+                    &new_b,
+                    false,
+                );
             }
             score
         };
