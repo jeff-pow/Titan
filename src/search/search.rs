@@ -472,43 +472,45 @@ fn negamax<const IS_PV: bool>(
         td.accumulators.pop();
         td.ply -= 1;
 
-        if eval > best_score {
-            best_score = eval;
+        best_score = eval.max(best_score);
 
-            if eval > alpha {
-                alpha = eval;
-                best_move = m;
-                pv.update(best_move, node_pv);
-            }
+        if eval <= alpha {
+            continue;
+        }
 
-            if alpha >= beta {
-                // Prefetch here since we're going to want to write to the tt for this board in a
-                // few lines anyway. Probably pretty pointless but I assume that history updates
-                // will take enough time to do something. Not empirically tested, but fight me :)
-                tt.prefetch(board.zobrist_hash);
+        alpha = eval;
+        best_move = m;
+        pv.update(best_move, node_pv);
 
-                if is_quiet {
-                    // We don't want to store tactical moves in our killer moves, because they are obviously already
-                    // good.
-                    // Also don't store killers that we have already stored
-                    if td.stack[td.ply].killer_move != m {
-                        td.stack[td.ply].killer_move = m;
-                    }
-                }
-                // Update history tables on a beta cutoff
-                td.history.update_histories(
-                    m,
-                    &quiets_tried,
-                    &tacticals_tried,
-                    board,
-                    depth,
-                    &td.stack,
-                    td.ply,
-                    td.consts,
-                );
-                break;
+        if eval < beta {
+            continue;
+        }
+
+        // Prefetch here since we're going to want to write to the tt for this board in a
+        // few lines anyway. Probably pretty pointless but I assume that history updates
+        // will take enough time to do something. Not empirically tested, but fight me :)
+        tt.prefetch(board.zobrist_hash);
+
+        if is_quiet {
+            // We don't want to store tactical moves in our killer moves, because they are obviously already
+            // good.
+            // Also don't store killers that we have already stored
+            if td.stack[td.ply].killer_move != m {
+                td.stack[td.ply].killer_move = m;
             }
         }
+        // Update history tables on a beta cutoff
+        td.history.update_histories(
+            m,
+            &quiets_tried,
+            &tacticals_tried,
+            board,
+            depth,
+            &td.stack,
+            td.ply,
+            td.consts,
+        );
+        break;
     }
 
     if legal_moves_searched == 0 {
