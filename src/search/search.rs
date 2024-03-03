@@ -3,6 +3,7 @@ use std::sync::atomic::Ordering;
 use std::time::Instant;
 
 use crate::board::board::Board;
+use crate::board::zobrist::ZOBRIST;
 use crate::engine::transposition::{EntryFlag, TranspositionTable};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::movepicker::{MovePicker, MovePickerPhase};
@@ -270,7 +271,7 @@ fn negamax<const IS_PV: bool>(
             let mut node_pv = PV::default();
             let mut new_b = *board;
 
-            // TODO: Add a prefetch here in the future
+            tt.prefetch(board.zobrist_hash ^ ZOBRIST.turn_hash);
             new_b.make_null_move();
             td.stack[td.ply].played_move = Move::NULL;
             td.hash_history.push(new_b.zobrist_hash);
