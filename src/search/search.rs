@@ -305,7 +305,7 @@ fn negamax<const IS_PV: bool>(
         }
     }
 
-    let mut legal_moves_searched = 0;
+    let mut moves_searched = 0;
     let mut picker = MovePicker::new(tt_move, td, false);
 
     let mut quiets_tried = Vec::new();
@@ -330,7 +330,7 @@ fn negamax<const IS_PV: bool>(
                     td.consts.lmp_not_imp_base as f32 / 100.
                         + td.consts.lmp_not_imp_factor as f32 / 100. * depth as f32 * depth as f32
                 } as i32;
-                if depth < td.consts.lmp_depth && legal_moves_searched > moves_required {
+                if depth < td.consts.lmp_depth && moves_searched > moves_required {
                     break;
                 }
             }
@@ -408,35 +408,22 @@ fn negamax<const IS_PV: bool>(
         td.hash_history.push(new_b.zobrist_hash);
         td.ply += 1;
         let mut node_pv = PV::default();
+        let mut eval = -INFINITY;
 
-        let eval = if legal_moves_searched == 0 {
-            // On the first move, just do a full depth search
-            -negamax::<IS_PV>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
-        } else {
-            // Late Move Reductions - Search moves after the first with reduced depth and window as
-            // they are much less likely to be the best move than the first move selected by the
-            // move picker.
-            let r = if depth <= td.consts.lmr_depth
-                || legal_moves_searched < td.consts.lmr_min_moves
-                || picker.phase < MovePickerPhase::Killer
-            {
-                0
-            } else {
-                let mut r = td.consts.base_reduction(depth, legal_moves_searched);
-                if cut_node {
-                    r += 1 + i32::from(!m.is_tactical(board));
-                }
-                r
-            };
+        // Late Move Reductions - Search moves after the first with reduced depth and window as
+        // they are much less likely to be the best move than the first move selected by the
+        // move picker.
+        if depth > 2 && moves_searched >= 2 && picker.phase >= MovePickerPhase::Killer {
+            let mut r = td.consts.base_reduction(depth, moves_searched);
+            if cut_node {
+                r += 1 + i32::from(!m.is_tactical(board));
+            }
+
             let d = max(1, min(new_depth - r, new_depth + 1));
+            eval = -negamax::<false>(d, -alpha - 1, -alpha, &mut node_pv, td, tt, &new_b, true);
 
-            // Start with a zero window reduced search
-            let mut score =
-                -negamax::<false>(d, -alpha - 1, -alpha, &mut node_pv, td, tt, &new_b, true);
-
-            // If that search raises alpha and a reduction was applied, re-search at a zero window with full depth
-            if score > alpha && d < new_depth {
-                score = -negamax::<false>(
+            if eval > alpha && d < new_depth {
+                eval = -negamax::<false>(
                     new_depth,
                     -alpha - 1,
                     -alpha,
@@ -447,28 +434,28 @@ fn negamax<const IS_PV: bool>(
                     !cut_node,
                 );
             }
+        } else if moves_searched > 0 || !IS_PV {
+            eval = -negamax::<false>(
+                new_depth,
+                -alpha - 1,
+                -alpha,
+                &mut node_pv,
+                td,
+                tt,
+                &new_b,
+                !cut_node,
+            );
+        }
 
-            // If the verification score falls between alpha and beta, full window full depth search
-            if score > alpha && score < beta {
-                score = -negamax::<IS_PV>(
-                    new_depth,
-                    -beta,
-                    -alpha,
-                    &mut node_pv,
-                    td,
-                    tt,
-                    &new_b,
-                    false,
-                );
-            }
-            score
-        };
+        if IS_PV && (moves_searched == 0 || (eval > alpha && eval < beta)) {
+            eval = -negamax::<true>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false);
+        }
 
         if is_root {
             td.nodes_table[m.origin_square()][m.dest_square()] +=
                 td.nodes.local_count() - pre_search_nodes;
         }
-        legal_moves_searched += 1;
+        moves_searched += 1;
         td.hash_history.pop();
         td.accumulators.pop();
         td.ply -= 1;
@@ -514,7 +501,7 @@ fn negamax<const IS_PV: bool>(
         break;
     }
 
-    if legal_moves_searched == 0 {
+    if moves_searched == 0 {
         // You're supposed to return alpha here if its a verification search, but that failed
         // nonregr, so... ¯\_(ツ)_/¯
         if board.in_check {
