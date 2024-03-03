@@ -407,68 +407,12 @@ fn negamax<const IS_PV: bool>(
         td.hash_history.push(new_b.zobrist_hash);
         td.ply += 1;
         let mut node_pv = PV::default();
+        let mut eval = -INFINITY;
 
-        // let eval = if moves_searched == 0 {
-        //     // On the first move, just do a full depth search
-        //     -negamax::<IS_PV>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false)
-        // } else {
         // Late Move Reductions - Search moves after the first with reduced depth and window as
         // they are much less likely to be the best move than the first move selected by the
         // move picker.
-        //     let r = if depth <= td.consts.lmr_depth
-        //         || moves_searched < td.consts.lmr_min_moves
-        //         || picker.phase < MovePickerPhase::Killer
-        //     {
-        //         0
-        //     } else {
-        //         let mut r = td.consts.base_reduction(depth, moves_searched);
-        //         if cut_node {
-        //             r += 1 + i32::from(!m.is_tactical(board));
-        //         }
-        //         r
-        //     };
-        //     let d = max(1, min(new_depth - r, new_depth + 1));
-        //
-        //     // Start with a zero window reduced search
-        //     let mut score =
-        //         -negamax::<false>(d, -alpha - 1, -alpha, &mut node_pv, td, tt, &new_b, true);
-        //
-        //     // If that search raises alpha and a reduction was applied, re-search at a zero window with full depth
-        //     if score > alpha && d < new_depth {
-        //         score = -negamax::<false>(
-        //             new_depth,
-        //             -alpha - 1,
-        //             -alpha,
-        //             &mut node_pv,
-        //             td,
-        //             tt,
-        //             &new_b,
-        //             !cut_node,
-        //         );
-        //     }
-        //
-        //     // If the verification score falls between alpha and beta, full window full depth search
-        //     if score > alpha && score < beta {
-        //         score = -negamax::<IS_PV>(
-        //             new_depth,
-        //             -beta,
-        //             -alpha,
-        //             &mut node_pv,
-        //             td,
-        //             tt,
-        //             &new_b,
-        //             false,
-        //         );
-        //     }
-        //     score
-        // };
-
-        let mut eval = -INFINITY;
-
-        if depth > td.consts.lmr_depth
-            && moves_searched >= td.consts.lmr_min_moves
-            && picker.phase >= MovePickerPhase::Killer
-        {
+        if depth > 2 && moves_searched >= 2 && picker.phase >= MovePickerPhase::Killer {
             let mut r = td.consts.base_reduction(depth, moves_searched);
             if cut_node {
                 r += 1 + i32::from(!m.is_tactical(board));
