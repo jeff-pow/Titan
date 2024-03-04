@@ -1,4 +1,4 @@
-use crate::{board::board::Board, consts::Consts, moves::moves::Move, types::pieces::PieceName};
+use crate::{board::board::Board, moves::moves::Move, types::pieces::PieceName};
 
 use super::SearchStack;
 
@@ -55,9 +55,8 @@ impl HistoryTable {
         depth: i32,
         stack: &SearchStack,
         ply: i32,
-        consts: &Consts,
     ) {
-        let bonus = (consts.hist_depth_mod * depth).min(consts.hist_min);
+        let bonus = (180 * depth).min(2282);
         assert_ne!(best_move, Move::NULL);
         if best_move.is_tactical(board) {
             let cap = capthist_capture(board, best_move);

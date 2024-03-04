@@ -7,12 +7,10 @@ compile_error!("Cannot enable both avx2 and avx512 simultaneously.");
 
 mod bench;
 mod board;
-mod consts;
 mod engine;
 mod eval;
 mod moves;
 mod search;
-mod spsa;
 mod types;
 
 use crate::bench::bench;

@@ -18,7 +18,6 @@ impl Square {
     pub fn checked_shift(self, dir: Direction) -> Option<Self> {
         let s = self.bitboard().shift(dir);
         (s != Bitboard::EMPTY).then(|| s.get_lsb())
-        // (s != Bitboard::EMPTY).then_some(s.get_lsb())
     }
 
     /// Function does not check a shift's validity before returning it. Only to be used when the

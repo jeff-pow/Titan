@@ -8,10 +8,10 @@ use std::{
 
 use crate::{
     board::board::Board,
-    consts::Consts,
     engine::{transposition::TranspositionTable, uci::parse_time},
     eval::accumulator::Accumulator,
     moves::moves::Move,
+    search::lmr_table::LmrTable,
     search::search::{CHECKMATE, NEAR_CHECKMATE},
 };
 
@@ -41,7 +41,7 @@ pub struct ThreadData<'a> {
     pub thread_idx: usize,
     pub search_type: SearchType,
     pub halt: &'a AtomicBool,
-    pub consts: &'a Consts,
+    pub lmr: &'a LmrTable,
 }
 
 impl<'a> ThreadData<'a> {
@@ -49,7 +49,7 @@ impl<'a> ThreadData<'a> {
         halt: &'a AtomicBool,
         hash_history: Vec<u64>,
         thread_idx: usize,
-        consts: &'a Consts,
+        consts: &'a LmrTable,
         global_nodes: &'a AtomicU64,
     ) -> Self {
         Self {
@@ -66,7 +66,7 @@ impl<'a> ThreadData<'a> {
             search_type: SearchType::default(),
             hash_history,
             thread_idx,
-            consts,
+            lmr: consts,
             search_start: Instant::now(),
         }
     }
@@ -163,7 +163,7 @@ impl<'a> ThreadPool<'a> {
     pub fn new(
         halt: &'a AtomicBool,
         hash_history: Vec<u64>,
-        consts: &'a Consts,
+        consts: &'a LmrTable,
         global_nodes: &'a AtomicU64,
     ) -> Self {
         Self {
@@ -191,7 +191,7 @@ impl<'a> ThreadPool<'a> {
         &mut self,
         threads: usize,
         hash_history: &[u64],
-        consts: &'a Consts,
+        consts: &'a LmrTable,
         global_nodes: &'a AtomicU64,
     ) {
         self.workers.clear();

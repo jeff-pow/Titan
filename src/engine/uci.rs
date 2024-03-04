@@ -6,11 +6,10 @@ use itertools::Itertools;
 
 use crate::bench::bench;
 use crate::board::fen::{parse_fen_from_buffer, STARTING_FEN};
-use crate::consts::Consts;
 use crate::engine::perft::perft;
 use crate::engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
+use crate::search::lmr_table::LmrTable;
 use crate::search::thread::ThreadPool;
-use crate::spsa::{parse_param, uci_print_tunable_params, SPSA_TUNE};
 use crate::{
     board::{
         board::Board,
@@ -27,7 +26,7 @@ pub const ENGINE_NAME: &str = "Titan";
 pub fn main_loop() -> ! {
     let mut transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
     let mut board = build_board(STARTING_FEN);
-    let consts = Consts::new();
+    let consts = LmrTable::new();
     let mut msg: Option<String> = None;
     let mut hash_history = Vec::new();
     let halt = AtomicBool::new(false);
@@ -108,11 +107,7 @@ pub fn main_loop() -> ! {
                     &consts,
                     &global_nodes,
                 ),
-                _ => {
-                    if SPSA_TUNE {
-                        parse_param(&input);
-                    }
-                }
+                _ => println!("Option not recognized"),
             },
             _ => (),
         };
@@ -124,9 +119,6 @@ fn uci_opts() {
     println!("id author {}", env!("CARGO_PKG_AUTHORS"));
     println!("option name Threads type spin default 1 min 1 max 64");
     println!("option name Hash type spin default 16 min 1 max 8388608");
-    if SPSA_TUNE {
-        uci_print_tunable_params();
-    }
     println!("uciok");
 }
 

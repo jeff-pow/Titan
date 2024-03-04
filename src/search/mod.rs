@@ -9,6 +9,7 @@ use self::search::MAX_SEARCH_DEPTH;
 
 pub mod game_time;
 pub mod history_table;
+pub mod lmr_table;
 pub mod quiescence;
 pub mod search;
 pub mod see;
