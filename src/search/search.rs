@@ -123,6 +123,9 @@ fn aspiration_windows(
 
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
 /// to refute other variations
+///
+/// cut_node is a parameter that predicts whether or not a node will fail high or not. If cut_node
+/// is true, we expect a beta cutoff or fail high to occur.
 #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 fn negamax<const IS_PV: bool>(
     mut depth: i32,
@@ -146,7 +149,6 @@ fn negamax<const IS_PV: bool>(
     // Stop if we have reached hard time limit or decided else where it is time to stop
     if td.halt.load(Ordering::Relaxed) {
         td.halt.store(true, Ordering::Relaxed);
-        // return board.evaluate();
         return 0;
     }
 
