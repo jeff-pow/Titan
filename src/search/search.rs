@@ -37,6 +37,10 @@ pub fn search(
     best_move
 }
 
+/// Instead of searching to a fixed depth, incrementing search depth by one level each time until
+/// we run out of time actually ends up saving us time because previous depth searches will finish
+/// very quickly, and populate lasting structures such as the transposition and history tables so
+/// we already have a good idea of what the best move is for future depths.
 pub fn iterative_deepening(
     td: &mut ThreadData,
     board: &Board,
@@ -80,6 +84,9 @@ pub fn iterative_deepening(
     td.best_move
 }
 
+/// Aspiration windows place a bound around the likely range the score for a search will fall
+/// within which means we run into cutoffs if the score exceeds either side of the range we
+/// predicted, leading to a faster search than a full alpha-beta window each search.
 fn aspiration_windows(
     td: &mut ThreadData,
     pv: &mut PV,
@@ -126,6 +133,10 @@ fn aspiration_windows(
 ///
 /// cut_node is a parameter that predicts whether or not a node will fail high or not. If cut_node
 /// is true, we expect a beta cutoff or fail high to occur.
+///
+/// IS_PV denotes a node's PV status. PV nodes (generally) have a difference between alpha and beta
+/// of > 1, while in non-PV nodes the window is always beta - alpha = 1. Once a node loses its PV
+/// status, it can never regain it, so the majority of nodes searched are non-PV.
 #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 fn negamax<const IS_PV: bool>(
     mut depth: i32,
@@ -140,7 +151,6 @@ fn negamax<const IS_PV: bool>(
     let is_root = td.ply == 0;
     let in_check = board.in_check;
 
-    // Prevent overflows of the search stack
     let singular_move = td.stack[td.ply].singular;
     let singular_search = singular_move != Move::NULL;
 
@@ -183,6 +193,7 @@ fn negamax<const IS_PV: bool>(
         depth += i32::from(in_check);
     }
 
+    // Attempt to look up information from previous searches in the same board state
     let mut tt_move = Move::NULL;
     let mut tt_flag = EntryFlag::None;
     let mut tt_score = -INFINITY;
@@ -251,7 +262,7 @@ fn negamax<const IS_PV: bool>(
 
     // Pre-move loop pruning
     if !IS_PV && !in_check && !singular_search {
-        // Reverse futility pruning - If we are below beta by a certain amount, we are unlikely to
+        // Reverse futility pruning (RFP) - If we are below beta by a certain amount, we are unlikely to
         // raise it, so we can prune the nodes that would have followed
         if static_eval - 87 * depth + i32::from(improving) * 27 * depth >= beta
             && depth < 7
@@ -261,8 +272,8 @@ fn negamax<const IS_PV: bool>(
         }
 
         // Null move pruning (NMP) - If we can give the opponent a free move and they still can't
-        // raise beta, they likely won't be able to, so we can prune the nodes that would have
-        // followed
+        // raise beta at a reduced depth search, they likely won't be able to if we move either,
+        // so we can prune the nodes that would have followed
         if board.has_non_pawns(board.to_move)
             && depth >= 2
             && static_eval >= beta
@@ -311,16 +322,18 @@ fn negamax<const IS_PV: bool>(
 
     // Start of search
     while let Some(MoveListEntry { m, score: _hist_score }) = picker.next(board, td) {
+        // Don't consider the singular move in a verification search
         if m == singular_move {
             continue;
         }
         let is_quiet = !m.is_tactical(board);
 
+        // Mid-move loop pruning
         if !is_root && best_score >= -NEAR_CHECKMATE {
             if is_quiet {
                 // Late move pruning (LMP)
-                // By now all good tactical moves have been searched, so we can prune
-                // If eval is improving, we want to search more
+                // Good moves are likely to be searched first due to tt move ordering and history
+                // table, so we can prune all the moves that follow as they are very unlikely to be good.
                 let moves_required = if improving {
                     2.44 + 0.96 * depth as f32 * depth as f32
                 } else {
@@ -353,6 +366,9 @@ fn negamax<const IS_PV: bool>(
             tacticals_tried.push(m);
         };
 
+        // Extensions are the counterpart to late move reductions. We want to explore promising
+        // moves more fully, though in some conditions we also reduce the depth to search at via
+        // negative extensions
         let extension = if tt_depth >= depth - 3
             && tt_flag != EntryFlag::AlphaUnchanged
             && tt_flag != EntryFlag::None
@@ -410,9 +426,14 @@ fn negamax<const IS_PV: bool>(
                 r += 1 + i32::from(!m.is_tactical(board));
             }
 
+            // Calculate a reduction and calculate a reduced depth, ensuring we won't drop to depth
+            // zero and thus straight into qsearch.
             let d = max(1, min(new_depth - r, new_depth + 1));
+            // Preform the zero window, reduced depth search
             eval = -negamax::<false>(d, -alpha - 1, -alpha, &mut node_pv, td, tt, &new_b, true);
 
+            // If eval would raise alpha and calculated reduced depth is actually less than our
+            // full depth search (including extensions), search again
             if eval > alpha && d < new_depth {
                 eval = -negamax::<false>(
                     new_depth,
@@ -425,7 +446,11 @@ fn negamax<const IS_PV: bool>(
                     !cut_node,
                 );
             }
-        } else if moves_searched > 0 || !IS_PV {
+        }
+        // If LMR was not performed, conduct a zero window full depth search on the first move of
+        // non-PV nodes (which already have a zero window b/t alpha and beta), or the moves
+        // following the first move for PV nodes
+        else if moves_searched > 0 || !IS_PV {
             eval = -negamax::<false>(
                 new_depth,
                 -alpha - 1,
@@ -438,6 +463,9 @@ fn negamax<const IS_PV: bool>(
             );
         }
 
+        // If the node is a PV node and the score calculated in a previous search fell between
+        // alpha and beta (an exact score) or no moves have been searched from the current
+        // position, execute a full window full depth search.
         if IS_PV && (moves_searched == 0 || (eval > alpha && eval < beta)) {
             eval = -negamax::<true>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false);
         }

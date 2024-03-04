@@ -25,7 +25,7 @@ pub struct ThreadData<'a> {
     pub ply: i32,
     // pub max_depth: i32,
     pub iter_max_depth: i32,
-    /// Max depth reached by a pv node
+    /// Max depth reached by search (include qsearch)
     pub sel_depth: i32,
     pub best_move: Move,
 
