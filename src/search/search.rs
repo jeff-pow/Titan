@@ -157,9 +157,11 @@ fn negamax<const IS_PV: bool>(
         return 0;
     }
 
-    if depth <= 0 {
+    if depth <= 0 && !in_check {
         return quiescence::<IS_PV>(alpha, beta, pv, td, tt, board);
     }
+
+    depth = depth.max(0);
 
     // Don't prune at root to ensure we have a best move
     if !is_root {
@@ -178,9 +180,6 @@ fn negamax<const IS_PV: bool>(
         if alpha >= beta {
             return alpha;
         }
-
-        // Extend depth by one if we are in check
-        depth += i32::from(in_check);
     }
 
     let mut tt_move = Move::NULL;
