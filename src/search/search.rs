@@ -324,7 +324,7 @@ fn negamax<const IS_PV: bool>(
                 let moves_required = if improving {
                     2.44 + 0.96 * depth as f32 * depth as f32
                 } else {
-                    1. + 0.32 * depth as f32 * depth as f32
+                    1.00 + 0.32 * depth as f32 * depth as f32
                 } as i32;
                 if depth < 8 && moves_searched > moves_required {
                     break;
