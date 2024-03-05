@@ -391,7 +391,7 @@ fn negamax<const IS_PV: bool>(
             if ext_score < ext_beta {
                 if td.stack[td.ply].dbl_extns <= 9 && !IS_PV && ext_score < ext_beta - 18 {
                     td.stack[td.ply].dbl_extns += 1;
-                    2 + i32::from(!tt_move.is_tactical(board) && ext_score < ext_beta - 200)
+                    2 + i32::from(!tt_move.is_tactical(board) && ext_score < ext_beta - 300)
                 } else {
                     1
                 }
