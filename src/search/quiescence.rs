@@ -89,7 +89,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
     // Try to find an evasion if we are in check, otherwise just generate captures
     let mut picker = MovePicker::new(table_move, td, !in_check);
 
-    let mut best_score = if in_check { -INFINITY } else { stand_pat };
+    let mut best_score = if in_check { -CHECKMATE } else { stand_pat };
 
     let mut best_move = Move::NULL;
     let mut moves_searched = 0;
@@ -133,13 +133,11 @@ pub(super) fn quiescence<const IS_PV: bool>(
             }
 
             if alpha >= beta {
-                tt.prefetch(board.zobrist_hash);
                 break;
             }
         }
     }
 
-    // TODO: Try only fail low or fail high flags
     let entry_flag = if best_score >= beta {
         EntryFlag::BetaCutOff
     } else if best_score > original_alpha {
