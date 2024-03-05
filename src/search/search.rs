@@ -390,7 +390,7 @@ fn negamax<const IS_PV: bool>(
 
             if ext_score < ext_beta {
                 if td.stack[td.ply].dbl_extns <= 9 && !IS_PV && ext_score < ext_beta - 18 {
-                    td.stack[td.ply].dbl_extns = td.stack[td.ply - 1].dbl_extns + 1;
+                    td.stack[td.ply].dbl_extns += 1;
                     2
                 } else {
                     1
