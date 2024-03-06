@@ -37,10 +37,11 @@ pub fn search(
     best_move
 }
 
-/// Instead of searching to a fixed depth, incrementing search depth by one level each time until
-/// we run out of time actually ends up saving us time because previous depth searches will finish
-/// very quickly, and populate lasting structures such as the transposition and history tables so
-/// we already have a good idea of what the best move is for future depths.
+/// Rather than sticking to a fixed depth for search, gradually ramping up the search depth by one
+/// level until time expires actually saves time. This method relies on earlier depth searches
+/// finishing quickly, building up important structures like transposition and history tables along
+/// the way. As a result, for more expensive depths, we already have a good idea of the best move
+/// and can maximize the efficacy of alpha beta pruning.
 pub fn iterative_deepening(
     td: &mut ThreadData,
     board: &Board,
