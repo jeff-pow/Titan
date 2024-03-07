@@ -268,7 +268,7 @@ fn negamax<const IS_PV: bool>(
             && depth < 7
             && static_eval.abs() < NEAR_CHECKMATE
         {
-            return static_eval;
+            return (static_eval + beta) / 2;
         }
 
         // Null move pruning (NMP) - If we can give the opponent a free move and they still can't
