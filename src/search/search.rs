@@ -520,14 +520,15 @@ fn negamax<const IS_PV: bool>(
     }
 
     if moves_searched == 0 {
-        // You're supposed to return alpha here if its a verification search, but that failed
-        // nonregr, so... ¯\_(ツ)_/¯
-        if board.in_check {
+        return if singular_search {
+            alpha
+        } else if in_check {
             // Distance from root is returned in order for other recursive calls to determine
             // shortest viable checkmate path
-            return -CHECKMATE + td.ply;
-        }
-        return STALEMATE;
+            -CHECKMATE + td.ply
+        } else {
+            STALEMATE
+        };
     }
 
     let entry_flag = if best_score >= beta {
