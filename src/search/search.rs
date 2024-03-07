@@ -502,6 +502,8 @@ fn negamax<const IS_PV: bool>(
         // will take enough time to do something. Not empirically tested, but fight me :)
         tt.prefetch(board.zobrist_hash);
 
+        td.stack[td.ply].cutoffs += 1;
+
         if is_quiet {
             // We don't want to store tactical moves in our killer moves, because they are obviously already
             // good.
