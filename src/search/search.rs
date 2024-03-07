@@ -428,7 +428,7 @@ fn negamax<const IS_PV: bool>(
             }
             // This technically looks one ply into the future since ply is incremented a few lines
             // prior.
-            r += i32::from(td.stack[td.ply].cutoffs > 3);
+            r -= i32::from(td.stack[td.ply].cutoffs < 4);
 
             // Calculate a reduction and calculate a reduced depth, ensuring we won't drop to depth
             // zero and thus straight into qsearch.
