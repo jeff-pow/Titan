@@ -430,6 +430,8 @@ fn negamax<const IS_PV: bool>(
             // prior.
             r -= i32::from(td.stack[td.ply].cutoffs < 4);
 
+            r += ((alpha - static_eval) / 300).clamp(0, 2);
+
             // Calculate a reduction and calculate a reduced depth, ensuring we won't drop to depth
             // zero and thus straight into qsearch.
             let d = max(1, min(new_depth - r, new_depth + 1));
