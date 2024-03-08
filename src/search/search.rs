@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use crate::board::board::Board;
 use crate::board::zobrist::ZOBRIST;
-use crate::engine::transposition::{EntryFlag, TranspositionTable};
+use crate::engine::transposition::{EntryFlag, TableEntry, TranspositionTable};
 use crate::moves::movelist::MoveListEntry;
 use crate::moves::movepicker::{MovePicker, MovePickerPhase};
 use crate::moves::moves::Move;
@@ -370,43 +370,7 @@ fn negamax<const IS_PV: bool>(
         // Extensions are the counterpart to late move reductions. We want to explore promising
         // moves more fully, though in some conditions we also reduce the depth to search at via
         // negative extensions
-        let extension = if tt_depth >= depth - 3
-            && tt_flag != EntryFlag::AlphaUnchanged
-            && tt_flag != EntryFlag::None
-            && m == tt_move
-            && !singular_search
-            && depth >= 7
-            && !is_root
-        {
-            let ext_beta = (tt_score - 2 * depth).max(-CHECKMATE);
-            let ext_depth = (depth - 1) / 2;
-            let mut node_pv = PV::default();
-            let npv = &mut node_pv;
-
-            td.stack[td.ply].singular = m;
-            let prev = td.accumulators.pop();
-            let ext_score =
-                negamax::<false>(ext_depth, ext_beta - 1, ext_beta, npv, td, tt, board, cut_node);
-            td.stack[td.ply].singular = Move::NULL;
-            td.accumulators.push(prev);
-
-            if ext_score < ext_beta {
-                if td.stack[td.ply].dbl_extns <= 9 && !IS_PV && ext_score < ext_beta - 18 {
-                    td.stack[td.ply].dbl_extns += 1;
-                    2 + i32::from(!tt_move.is_tactical(board) && ext_score < ext_beta - 200)
-                } else {
-                    1
-                }
-            } else if tt_score >= beta {
-                -2 + i32::from(IS_PV)
-            } else if tt_score <= alpha {
-                -1
-            } else {
-                0
-            }
-        } else {
-            0
-        };
+        let extension = extension::<IS_PV>(entry, alpha, beta, m, depth, board, td, tt, cut_node);
 
         let new_depth = depth + extension - 1;
 
@@ -560,4 +524,55 @@ fn negamax<const IS_PV: bool>(
     }
 
     best_score
+}
+
+fn extension<const IS_PV: bool>(
+    tt_entry: Option<TableEntry>,
+    alpha: i32,
+    beta: i32,
+    m: Move,
+    depth: i32,
+    board: &Board,
+    td: &mut ThreadData,
+    tt: &TranspositionTable,
+    cut_node: bool,
+) -> i32 {
+    let Some(entry) = tt_entry else { return 0 };
+    let tt_move = entry.best_move(board);
+    if entry.depth() < depth - 3
+        || entry.flag() == EntryFlag::AlphaUnchanged
+        || entry.flag() == EntryFlag::None
+        || m != tt_move
+        || depth < 7
+        || td.ply == 0
+    {
+        return 0;
+    }
+
+    let ext_beta = (entry.search_score() - 2 * depth).max(-CHECKMATE);
+    let ext_depth = (depth - 1) / 2;
+    let mut node_pv = PV::default();
+    let npv = &mut node_pv;
+
+    td.stack[td.ply].singular = m;
+    let prev = td.accumulators.pop();
+    let ext_score =
+        negamax::<false>(ext_depth, ext_beta - 1, ext_beta, npv, td, tt, board, cut_node);
+    td.stack[td.ply].singular = Move::NULL;
+    td.accumulators.push(prev);
+
+    if ext_score < ext_beta {
+        if td.stack[td.ply].dbl_extns <= 9 && !IS_PV && ext_score < ext_beta - 18 {
+            td.stack[td.ply].dbl_extns += 1;
+            2 + i32::from(!tt_move.is_tactical(board) && ext_score < ext_beta - 200)
+        } else {
+            1
+        }
+    } else if entry.search_score() >= beta {
+        -2 + i32::from(IS_PV)
+    } else if entry.search_score() <= alpha {
+        -1
+    } else {
+        0
+    }
 }
