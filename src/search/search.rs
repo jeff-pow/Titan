@@ -253,6 +253,7 @@ fn negamax<const IS_PV: bool>(
 
     // TODO: Killers should probably be reset here
     // td.stack[td.ply + 1].killers = [Move::NULL; 2];
+    td.stack[td.ply + 2].cutoffs = 0;
     if td.ply < MAX_SEARCH_DEPTH - 1 {
         td.stack[td.ply + 1].singular = Move::NULL;
     }
@@ -425,6 +426,9 @@ fn negamax<const IS_PV: bool>(
             if cut_node {
                 r += 1 + i32::from(!m.is_tactical(board));
             }
+            // This technically looks one ply into the future since ply is incremented a few lines
+            // prior.
+            r -= i32::from(td.stack[td.ply].cutoffs < 4);
 
             // Calculate a reduction and calculate a reduced depth, ensuring we won't drop to depth
             // zero and thus straight into qsearch.
@@ -497,6 +501,8 @@ fn negamax<const IS_PV: bool>(
         // few lines anyway. Probably pretty pointless but I assume that history updates
         // will take enough time to do something. Not empirically tested, but fight me :)
         tt.prefetch(board.zobrist_hash);
+
+        td.stack[td.ply].cutoffs += 1;
 
         if is_quiet {
             // We don't want to store tactical moves in our killer moves, because they are obviously already
