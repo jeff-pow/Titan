@@ -195,15 +195,11 @@ fn negamax<const IS_PV: bool>(
 
     // Attempt to look up information from previous searches in the same board state
     let mut tt_move = Move::NULL;
-    let mut tt_flag = EntryFlag::None;
-    let mut tt_score = -INFINITY;
-    let mut tt_depth = -1;
     let entry = tt.get(board.zobrist_hash, td.ply);
     if let Some(entry) = entry {
-        tt_flag = entry.flag();
-        tt_score = entry.search_score();
+        let tt_flag = entry.flag();
+        let tt_score = entry.search_score();
         tt_move = entry.best_move(board);
-        tt_depth = entry.depth();
 
         // Don't do TT cutoffs in verification search for singular moves
         if !singular_search
@@ -526,6 +522,7 @@ fn negamax<const IS_PV: bool>(
     best_score
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extension<const IS_PV: bool>(
     tt_entry: Option<TableEntry>,
     alpha: i32,
