@@ -61,7 +61,7 @@ impl<'a> ThreadData<'a> {
             nodes: AtomicCounter::new(global_nodes),
             history: HistoryTable::default(),
             nodes_table: [[0; 64]; 64],
-            accumulators: AccumulatorStack::new(Accumulator::default()),
+            accumulators: AccumulatorStack::new(&Accumulator::default()),
             halt,
             search_type: SearchType::default(),
             hash_history,
