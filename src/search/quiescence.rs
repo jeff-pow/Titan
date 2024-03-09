@@ -6,6 +6,7 @@ use crate::moves::movelist::MoveListEntry;
 use crate::moves::movepicker::MovePicker;
 use crate::moves::moves::Move;
 use crate::search::search::STALEMATE;
+use crate::types::pieces::PieceName;
 
 use super::search::MAX_SEARCH_DEPTH;
 use super::search::{CHECKMATE, INFINITY};
@@ -101,9 +102,9 @@ pub(super) fn quiescence<const IS_PV: bool>(
         // Static exchange pruning - If we fail to immediately recapture a depth dependent
         // threshold, don't bother searching the move. Ensure we either have a legal evasion or
         // aren't in check before pruning
-        if (!in_check || moves_searched > 1) && !board.see(m, 1) {
-            continue;
-        }
+        // if (!in_check || moves_searched > 1) && !board.see(m, 1) {
+        //     continue;
+        // }
 
         if !new_b.make_move::<true>(m) {
             continue;
