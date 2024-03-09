@@ -9,6 +9,7 @@ use crate::moves::movelist::MoveListEntry;
 use crate::moves::movepicker::{MovePicker, MovePickerPhase};
 use crate::moves::moves::Move;
 use crate::search::SearchStack;
+use crate::types::pieces::PieceName;
 
 use super::quiescence::quiescence;
 use super::thread::ThreadData;
@@ -312,7 +313,7 @@ fn negamax<const IS_PV: bool>(
     }
 
     let mut moves_searched = 0;
-    let mut picker = MovePicker::new(tt_move, td, false);
+    let mut picker = MovePicker::new(tt_move, td, -PieceName::Pawn.value(), false);
 
     let mut quiets_tried = Vec::new();
     let mut tacticals_tried = Vec::new();

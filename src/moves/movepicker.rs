@@ -1,12 +1,8 @@
-use crate::{
-    board::board::Board, moves::movegenerator::MGT, search::thread::ThreadData,
-    types::pieces::PieceName,
-};
-
 use super::{
     movelist::{MoveList, MoveListEntry},
     moves::Move,
 };
+use crate::{board::board::Board, moves::movegenerator::MGT, search::thread::ThreadData};
 
 pub const TT_MOVE_SCORE: i32 = i32::MAX - 1000;
 pub const GOOD_CAPTURE: i32 = 10_000_000;
@@ -33,6 +29,7 @@ pub enum MovePickerPhase {
 pub struct MovePicker {
     pub phase: MovePickerPhase,
     skip_quiets: bool,
+    margin: i32,
 
     moves: MoveList,
     index: usize,
@@ -43,13 +40,14 @@ pub struct MovePicker {
 }
 
 impl MovePicker {
-    pub fn new(tt_move: Move, td: &ThreadData, skip_quiets: bool) -> Self {
+    pub fn new(tt_move: Move, td: &ThreadData, margin: i32, skip_quiets: bool) -> Self {
         let prev = td.stack.prev_move(td.ply - 1);
         let counter_move = td.history.get_counter(prev);
         Self {
             moves: MoveList::default(),
             index: 0,
             phase: MovePickerPhase::TTMove,
+            margin,
             tt_move,
             killer_move: td.stack[td.ply].killer_move,
             counter_move,
@@ -72,7 +70,7 @@ impl MovePicker {
         if self.phase == MovePickerPhase::CapturesInit {
             self.phase = MovePickerPhase::GoodCaptures;
             board.generate_moves(MGT::CapturesOnly, &mut self.moves);
-            score_captures(td, board, &mut self.moves.arr);
+            score_captures(td, self.margin, board, &mut self.moves.arr);
         }
 
         if self.phase == MovePickerPhase::GoodCaptures {
@@ -162,9 +160,9 @@ fn score_quiets(td: &ThreadData, moves: &mut [MoveListEntry]) {
     }
 }
 
-fn score_captures(td: &ThreadData, board: &Board, moves: &mut [MoveListEntry]) {
+fn score_captures(td: &ThreadData, margin: i32, board: &Board, moves: &mut [MoveListEntry]) {
     for MoveListEntry { m, score } in moves {
-        *score = (if board.see(*m, -PieceName::Pawn.value()) { GOOD_CAPTURE } else { BAD_CAPTURE })
+        *score = (if board.see(*m, margin) { GOOD_CAPTURE } else { BAD_CAPTURE })
             + td.history.capt_hist(*m, board);
     }
 }

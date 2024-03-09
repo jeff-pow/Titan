@@ -87,7 +87,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
 
     let in_check = board.in_check;
     // Try to find an evasion if we are in check, otherwise just generate captures
-    let mut picker = MovePicker::new(table_move, td, !in_check);
+    let mut picker = MovePicker::new(table_move, td, 1, !in_check);
 
     let mut best_score = if in_check { -CHECKMATE } else { stand_pat };
 
