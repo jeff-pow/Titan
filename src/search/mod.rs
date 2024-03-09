@@ -105,14 +105,14 @@ impl AccumulatorStack {
         self.stack.push(acc);
     }
 
-    pub fn clear(&mut self, base_accumulator: Accumulator) {
+    pub fn clear(&mut self, base_accumulator: &Accumulator) {
         assert!(self.stack.len() == 1);
-        self.stack[0] = base_accumulator;
+        self.stack[0] = *base_accumulator;
     }
 
-    pub fn new(base_accumulator: Accumulator) -> Self {
+    pub fn new(base_accumulator: &Accumulator) -> Self {
         let mut vec = Vec::with_capacity(MAX_SEARCH_DEPTH as usize + 50);
-        vec.push(base_accumulator);
+        vec.push(*base_accumulator);
         Self { stack: vec }
     }
 }

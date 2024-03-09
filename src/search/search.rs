@@ -30,7 +30,7 @@ pub fn search(
     td.nodes_table = [[0; 64]; 64];
     td.nodes.reset();
     td.stack = SearchStack::default();
-    td.accumulators.clear(board.new_accumulator());
+    td.accumulators.clear(&board.new_accumulator());
 
     let best_move = iterative_deepening(td, &board, print_uci, tt);
     assert_ne!(best_move, Move::NULL);
@@ -537,8 +537,7 @@ fn extension<const IS_PV: bool>(
     let Some(entry) = tt_entry else { return 0 };
     let tt_move = entry.best_move(board);
     if entry.depth() < depth - 3
-        || entry.flag() == EntryFlag::AlphaUnchanged
-        || entry.flag() == EntryFlag::None
+        || matches!(entry.flag(), EntryFlag::AlphaUnchanged | EntryFlag::None)
         || m != tt_move
         || depth < 7
         || td.ply == 0
