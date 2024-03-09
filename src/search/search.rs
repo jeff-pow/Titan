@@ -249,9 +249,11 @@ fn negamax<const IS_PV: bool>(
 
     // TODO: Killers should probably be reset here
     // td.stack[td.ply + 1].killers = [Move::NULL; 2];
-    td.stack[td.ply + 2].cutoffs = 0;
     if td.ply < MAX_SEARCH_DEPTH - 1 {
         td.stack[td.ply + 1].singular = Move::NULL;
+    }
+    if td.ply < MAX_SEARCH_DEPTH - 2 {
+        td.stack[td.ply + 2].cutoffs = 0;
     }
     if !is_root {
         td.stack[td.ply].dbl_extns = td.stack[td.ply - 1].dbl_extns;
