@@ -6,6 +6,7 @@ use crate::moves::movelist::MoveListEntry;
 use crate::moves::movepicker::MovePicker;
 use crate::moves::moves::Move;
 use crate::search::search::STALEMATE;
+use crate::types::pieces::PieceName;
 
 use super::search::MAX_SEARCH_DEPTH;
 use super::search::{CHECKMATE, INFINITY};
@@ -87,7 +88,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
 
     let in_check = board.in_check;
     // Try to find an evasion if we are in check, otherwise just generate captures
-    let mut picker = MovePicker::new(table_move, td, !in_check);
+    let mut picker = MovePicker::new(table_move, td, 1, !in_check);
 
     let mut best_score = if in_check { -CHECKMATE } else { stand_pat };
 
@@ -101,9 +102,9 @@ pub(super) fn quiescence<const IS_PV: bool>(
         // Static exchange pruning - If we fail to immediately recapture a depth dependent
         // threshold, don't bother searching the move. Ensure we either have a legal evasion or
         // aren't in check before pruning
-        if (!in_check || moves_searched > 1) && !board.see(m, 1) {
-            continue;
-        }
+        // if (!in_check || moves_searched > 1) && !board.see(m, 1) {
+        //     continue;
+        // }
 
         if !new_b.make_move::<true>(m) {
             continue;
