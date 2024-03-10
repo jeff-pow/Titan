@@ -63,7 +63,6 @@ pub fn iterative_deepening(
 
         assert_eq!(1, td.accumulators.stack.len());
         assert!(!pv.line.is_empty());
-
         td.best_move = pv.line[0];
 
         if print_uci {
