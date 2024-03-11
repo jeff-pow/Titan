@@ -32,45 +32,11 @@ pub fn build_board(fen_string: &str) -> Board {
             }
             let square = row * 8 + idx;
             let square = Square(square);
-            match c {
-                'K' => {
-                    board.place_piece::<false>(Piece::WhiteKing, square);
-                }
-                'Q' => {
-                    board.place_piece::<false>(Piece::WhiteQueen, square);
-                }
-                'R' => {
-                    board.place_piece::<false>(Piece::WhiteRook, square);
-                }
-                'N' => {
-                    board.place_piece::<false>(Piece::WhiteKnight, square);
-                }
-                'B' => {
-                    board.place_piece::<false>(Piece::WhiteBishop, square);
-                }
-                'P' => {
-                    board.place_piece::<false>(Piece::WhitePawn, square);
-                }
-                'k' => {
-                    board.place_piece::<false>(Piece::BlackKing, square);
-                }
-                'q' => {
-                    board.place_piece::<false>(Piece::BlackQueen, square);
-                }
-                'r' => {
-                    board.place_piece::<false>(Piece::BlackRook, square);
-                }
-                'b' => {
-                    board.place_piece::<false>(Piece::BlackBishop, square);
-                }
-                'n' => {
-                    board.place_piece::<false>(Piece::BlackKnight, square);
-                }
-                'p' => {
-                    board.place_piece::<false>(Piece::BlackPawn, square);
-                }
-                _ => panic!("Unrecognized char {c}, board could not be made"),
-            }
+            const PIECES: &str = "PpNnBbRrQqKk";
+            let Some(i) = PIECES.chars().position(|x| x == c) else {
+                panic!("Unrecognized char {c}, board could not be made");
+            };
+            board.place_piece::<false>(Piece::from_u32(i as u32), square);
             idx += 1;
         }
         start += step;
@@ -80,18 +46,23 @@ pub fn build_board(fen_string: &str) -> Board {
     board.to_move = match iter.next().unwrap().chars().next().unwrap() {
         'w' => Color::White,
         'b' => Color::Black,
-        _ => panic!("invalid turn"),
+        _ => panic!("Invalid turn"),
     };
+    board.zobrist_hash = board.generate_hash();
+    board.calculate_threats();
 
     // 10th bucket find who can still castle
     // Order of array is white king castle, white queen castle, black king castle, black queen castle
-    board.castling_rights = parse_castling(iter.next().unwrap());
+    let Some(next) = iter.next() else { return board };
+    board.castling_rights = parse_castling(next);
 
-    let en_passant_letters: Vec<char> = iter.next().unwrap().chars().collect();
+    let Some(next) = iter.next() else { return board };
+    let en_passant_letters: Vec<char> = next.chars().collect();
     let en_passant_idx = find_en_passant_square(&en_passant_letters);
     if let Some(idx) = en_passant_idx {
         board.en_passant_square = Some(Square(idx));
     }
+    board.zobrist_hash = board.generate_hash();
 
     let half_moves = iter.next();
     if let Some(half_moves) = half_moves {
@@ -108,9 +79,6 @@ pub fn build_board(fen_string: &str) -> Board {
         }
     }
     assert_eq!(iter.next(), None);
-    board.zobrist_hash = board.generate_hash();
-    board.calculate_threats();
-    board.new_accumulator();
     board
 }
 
