@@ -6,7 +6,7 @@ use crate::board::board::Board;
 use crate::board::zobrist::ZOBRIST;
 use crate::engine::transposition::{EntryFlag, TableEntry, TranspositionTable};
 use crate::moves::movelist::MoveListEntry;
-use crate::moves::movepicker::{MovePicker, MovePickerPhase};
+use crate::moves::movepicker::MovePicker;
 use crate::moves::moves::Move;
 use crate::search::SearchStack;
 use crate::types::pieces::PieceName;
