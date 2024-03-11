@@ -379,7 +379,6 @@ fn negamax<const IS_PV: bool>(
         // Late Move Reductions (LMR) - Search moves after the first with reduced depth and
         // window as they are much less likely to be the best move than the first move
         // selected by the move picker.
-        // TODO: Remove the phase requirement here
         if depth > 2 && moves_searched > 1 + i32::from(is_root) {
             let mut r = td.lmr.base_reduction(depth, moves_searched);
             if cut_node {
