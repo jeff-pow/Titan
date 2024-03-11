@@ -6,7 +6,6 @@ use crate::moves::movelist::MoveListEntry;
 use crate::moves::movepicker::MovePicker;
 use crate::moves::moves::Move;
 use crate::search::search::STALEMATE;
-use crate::types::pieces::PieceName;
 
 use super::search::MAX_SEARCH_DEPTH;
 use super::search::{CHECKMATE, INFINITY};
