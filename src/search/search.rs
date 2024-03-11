@@ -338,6 +338,15 @@ fn negamax<const IS_PV: bool>(
                     break;
                 }
             }
+
+            let lmr_depth = depth - td.lmr.base_reduction(depth, moves_searched);
+            if !singular_search
+                && lmr_depth < 9
+                && static_eval + 160 + 100 * lmr_depth <= alpha
+                && alpha < CHECKMATE
+            {
+                break;
+            }
             // Static exchange pruning - If we fail to immediately recapture a depth dependent
             // threshold, don't bother searching the move
             let margin = if m.is_capture(board) { -100 } else { -46 } * depth;
