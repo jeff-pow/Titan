@@ -554,6 +554,7 @@ fn extension<const IS_PV: bool>(
     {
         return 0;
     }
+    assert_ne!(tt_move, Move::NULL);
 
     let ext_beta = (entry.search_score() - 2 * depth).max(-CHECKMATE);
     let ext_depth = (depth - 1) / 2;
