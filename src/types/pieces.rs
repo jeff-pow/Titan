@@ -144,7 +144,6 @@ impl Piece {
     }
 
     pub(crate) fn name(self) -> PieceName {
-        // PieceName::from_u32(self as u32 >> 1)
         PieceName::from_u32(self as u32 >> 1)
     }
 

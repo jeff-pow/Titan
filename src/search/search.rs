@@ -261,56 +261,51 @@ fn negamax<const IS_PV: bool>(
     }
 
     // Pre-move loop pruning
-    if !IS_PV && !in_check && !singular_search {
-        // Reverse futility pruning (RFP) - If we are below beta by a certain amount, we are unlikely to
-        // raise it, so we can prune the nodes that would have followed
-        if static_eval - 87 * depth + i32::from(improving) * 27 * depth >= beta
-            && depth < 7
-            && static_eval.abs() < NEAR_CHECKMATE
-        {
-            return (static_eval + beta) / 2;
-        }
+    let can_prune = !IS_PV && !in_check && !singular_search;
 
-        // Null move pruning (NMP) - If we can give the opponent a free move and they still can't
-        // raise beta at a reduced depth search, they likely won't be able to if we move either,
-        // so we can prune the nodes that would have followed
-        if board.has_non_pawns(board.to_move)
-            && depth >= 2
-            && static_eval >= beta
-            && td.stack[td.ply - 1].played_move != Move::NULL
-        {
-            let mut node_pv = PV::default();
-            let mut new_b = *board;
+    // Reverse futility pruning (RFP) - If we are below beta by a certain amount, we are unlikely to
+    // raise it, so we can prune the nodes that would have followed
+    if can_prune
+        && static_eval - 87 * depth + i32::from(improving) * 27 * depth >= beta
+        && static_eval >= beta
+        && depth < 7
+        && static_eval.abs() < NEAR_CHECKMATE
+    {
+        return (static_eval + beta) / 2;
+    }
 
-            tt.prefetch(board.zobrist_hash ^ ZOBRIST.turn_hash);
-            new_b.make_null_move();
-            td.stack[td.ply].played_move = Move::NULL;
-            td.hash_history.push(new_b.zobrist_hash);
-            td.ply += 1;
+    // Null move pruning (NMP) - If we can give the opponent a free move and they still can't
+    // raise beta at a reduced depth search, they likely won't be able to if we move either,
+    // so we can prune the nodes that would have followed
+    if can_prune
+        && board.has_non_pawns(board.to_move)
+        && depth >= 2
+        && static_eval >= beta
+        && td.stack[td.ply - 1].played_move != Move::NULL
+    {
+        let mut node_pv = PV::default();
+        let mut new_b = *board;
 
-            // Reduction
-            let r = 4 + depth / 4 + min((static_eval - beta) / 175, 3);
-            let mut null_eval = -negamax::<false>(
-                depth - r,
-                -beta,
-                -beta + 1,
-                &mut node_pv,
-                td,
-                tt,
-                &new_b,
-                !cut_node,
-            );
+        tt.prefetch(board.zobrist_hash ^ ZOBRIST.turn_hash);
+        new_b.make_null_move();
+        td.stack[td.ply].played_move = Move::NULL;
+        td.hash_history.push(new_b.zobrist_hash);
+        td.ply += 1;
 
-            td.hash_history.pop();
-            td.ply -= 1;
+        // Reduction
+        let r = 4 + depth / 4 + min((static_eval - beta) / 175, 3);
+        let mut null_eval =
+            -negamax::<false>(depth - r, -beta, -beta + 1, &mut node_pv, td, tt, &new_b, !cut_node);
 
-            if null_eval >= beta {
-                // Ensure we don't return a checkmate score
-                if null_eval > NEAR_CHECKMATE {
-                    null_eval = beta;
-                }
-                return null_eval;
+        td.hash_history.pop();
+        td.ply -= 1;
+
+        if null_eval >= beta {
+            // Ensure we don't return a checkmate score
+            if null_eval > NEAR_CHECKMATE {
+                null_eval = beta;
             }
+            return null_eval;
         }
     }
 
