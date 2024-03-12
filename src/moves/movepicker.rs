@@ -59,7 +59,7 @@ impl MovePicker {
     pub fn next(&mut self, board: &Board, td: &ThreadData) -> Option<MoveListEntry> {
         if self.phase == MovePickerPhase::TTMove {
             self.phase = MovePickerPhase::CapturesInit;
-            if board.occupancies().empty(self.tt_move.dest_square()) && self.skip_quiets {
+            if board.occupancies().empty(self.tt_move.to()) && self.skip_quiets {
                 return self.next(board, td);
             }
             if board.is_pseudo_legal(self.tt_move) {

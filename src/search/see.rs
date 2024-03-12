@@ -15,7 +15,7 @@ impl Board {
         if m.is_en_passant() {
             return PieceName::Pawn.value();
         }
-        let capture = self.piece_at(m.dest_square());
+        let capture = self.piece_at(m.to());
         let mut score = if capture == Piece::None { 0 } else { capture.value() };
 
         if let Some(p) = m.promotion() {
@@ -44,15 +44,15 @@ impl Board {
     /// trading pieces, and false if they would come out behind in piece value
     // Based off implementation in Stormphrax, which got its implementation from Weiss
     pub fn see(&self, m: Move, threshold: i32) -> bool {
-        let src = m.origin_square();
-        let dest = m.dest_square();
+        let from = m.from();
+        let to = m.to();
 
         let mut score = self.gain(m) - threshold;
         if score < 0 {
             return false;
         }
 
-        let piece_moving = self.piece_at(src);
+        let piece_moving = self.piece_at(from);
         assert!(piece_moving != Piece::None);
         let next = m.promotion().map_or(piece_moving, |promo| promo);
 
@@ -62,12 +62,12 @@ impl Board {
             return true;
         }
 
-        let mut occupied = self.occupancies() ^ src.bitboard() ^ dest.bitboard();
+        let mut occupied = self.occupancies() ^ from.bitboard() ^ to.bitboard();
         if m.is_en_passant() {
             occupied ^= self.en_passant_square.unwrap().bitboard();
         }
 
-        let mut attackers = self.attackers(dest, occupied) & occupied;
+        let mut attackers = self.attackers(to, occupied) & occupied;
 
         let bishops = self.piece(PieceName::Bishop) | self.piece(PieceName::Queen);
         let rooks = self.piece(PieceName::Rook) | self.piece(PieceName::Queen);
@@ -84,10 +84,10 @@ impl Board {
             let next_piece = self.next_attacker(&mut occupied, my_attackers, to_move);
 
             if matches!(next_piece, PieceName::Pawn | PieceName::Bishop | PieceName::Queen) {
-                attackers |= bishop_attacks(dest, occupied) & bishops;
+                attackers |= bishop_attacks(to, occupied) & bishops;
             }
             if matches!(next_piece, PieceName::Rook | PieceName::Queen) {
-                attackers |= rook_attacks(dest, occupied) & rooks;
+                attackers |= rook_attacks(to, occupied) & rooks;
             }
 
             attackers &= occupied;
