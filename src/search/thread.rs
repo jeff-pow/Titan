@@ -85,7 +85,7 @@ impl<'a> ThreadData<'a> {
         false
     }
 
-    pub(super) fn soft_stop(&mut self, depth: i32) -> bool {
+    pub(super) fn soft_stop(&mut self, depth: i32, prev_score: i32) -> bool {
         match self.search_type {
             SearchType::Depth(d) => depth >= d,
             SearchType::Time(time) => {
@@ -93,12 +93,18 @@ impl<'a> ThreadData<'a> {
             }
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
             SearchType::Infinite => self.halt.load(Ordering::Relaxed),
+            SearchType::Mate(d) => {
+                let dist = CHECKMATE - prev_score;
+                dist <= d
+            }
         }
     }
 
     pub(super) fn hard_stop(&mut self) -> bool {
         match self.search_type {
-            SearchType::Depth(_) | SearchType::Infinite => self.halt.load(Ordering::Relaxed),
+            SearchType::Mate(_) | SearchType::Depth(_) | SearchType::Infinite => {
+                self.halt.load(Ordering::Relaxed)
+            }
             SearchType::Time(time) => time.hard_termination(self.search_start),
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
         }
@@ -239,6 +245,13 @@ impl<'a> ThreadPool<'a> {
             clock.recommended_time(board.to_move);
 
             self.main_thread.search_type = SearchType::Time(clock);
+        } else if buffer.contains(&"mate") {
+            let mut iter = buffer.iter().skip(2);
+            let ply = iter.next().unwrap().parse::<i32>().unwrap();
+            self.main_thread.search_type = SearchType::Mate(ply);
+            for t in &mut self.workers {
+                t.search_type = SearchType::Mate(ply);
+            }
         } else {
             self.main_thread.search_type = SearchType::Infinite;
             for t in &mut self.workers {
