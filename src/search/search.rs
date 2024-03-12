@@ -338,6 +338,7 @@ fn negamax<const IS_PV: bool>(
                     break;
                 }
 
+                // Futility pruning
                 let lmr_depth = depth - td.lmr.base_reduction(depth, moves_searched);
                 if !singular_search
                     && lmr_depth < 9
