@@ -78,6 +78,8 @@ pub enum SearchType {
     Time(Clock),
     /// Only search for N nodes
     Nodes(u64),
+    /// Search for a mate at the provided depth
+    Mate(i32),
     #[default]
     /// Search forever
     Infinite,

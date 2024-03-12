@@ -70,7 +70,7 @@ pub fn iterative_deepening(
             td.print_search_stats(prev_score, &pv, tt);
         }
 
-        if td.thread_idx == 0 && td.soft_stop(depth) {
+        if td.thread_idx == 0 && td.soft_stop(depth, prev_score) {
             break;
         }
 
