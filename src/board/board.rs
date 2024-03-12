@@ -110,7 +110,7 @@ impl Board {
         if m.is_en_passant() {
             Piece::new(PieceName::Pawn, !self.to_move)
         } else {
-            self.piece_at(m.dest_square())
+            self.piece_at(m.to())
         }
     }
 
@@ -235,8 +235,8 @@ impl Board {
             return false;
         }
 
-        let from = m.origin_square();
-        let to = m.dest_square();
+        let from = m.from();
+        let to = m.to();
 
         let moved_piece = self.piece_at(from);
         let captured_piece = self.piece_at(to);
@@ -331,15 +331,15 @@ impl Board {
         assert_eq!(self.delta.num_add, 0);
         assert_eq!(self.delta.num_sub, 0);
         let piece_moving = m.piece_moving();
-        assert_eq!(piece_moving, self.piece_at(m.origin_square()));
+        assert_eq!(piece_moving, self.piece_at(m.from()));
         let capture = self.capture(m);
-        self.remove_piece::<NNUE>(m.dest_square());
+        self.remove_piece::<NNUE>(m.to());
 
         if m.promotion().is_none() {
-            self.place_piece::<NNUE>(piece_moving, m.dest_square());
+            self.place_piece::<NNUE>(piece_moving, m.to());
         }
 
-        self.remove_piece::<NNUE>(m.origin_square());
+        self.remove_piece::<NNUE>(m.from());
 
         // Move rooks if a castle move is applied
         if m.is_castle() {
@@ -347,14 +347,14 @@ impl Board {
             self.place_piece::<NNUE>(rook, m.castle_type().rook_dest());
             self.remove_piece::<NNUE>(m.castle_type().rook_src());
         } else if let Some(p) = m.promotion() {
-            self.place_piece::<NNUE>(p, m.dest_square());
+            self.place_piece::<NNUE>(p, m.to());
         } else if m.is_en_passant() {
             match self.to_move {
                 Color::White => {
-                    self.remove_piece::<NNUE>(m.dest_square().shift(South));
+                    self.remove_piece::<NNUE>(m.to().shift(South));
                 }
                 Color::Black => {
-                    self.remove_piece::<NNUE>(m.dest_square().shift(North));
+                    self.remove_piece::<NNUE>(m.to().shift(North));
                 }
             }
         }
@@ -374,10 +374,10 @@ impl Board {
         if m.flag() == MoveType::DoublePush {
             match self.to_move {
                 Color::White => {
-                    self.en_passant_square = Some(m.dest_square().shift(South));
+                    self.en_passant_square = Some(m.to().shift(South));
                 }
                 Color::Black => {
-                    self.en_passant_square = Some(m.dest_square().shift(North));
+                    self.en_passant_square = Some(m.to().shift(North));
                 }
             }
         }
@@ -396,8 +396,7 @@ impl Board {
         }
 
         self.zobrist_hash ^= ZOBRIST.castling[self.castling_rights as usize];
-        self.castling_rights &=
-            CASTLING_RIGHTS[m.origin_square()] & CASTLING_RIGHTS[m.dest_square()];
+        self.castling_rights &= CASTLING_RIGHTS[m.from()] & CASTLING_RIGHTS[m.to()];
         self.zobrist_hash ^= ZOBRIST.castling[self.castling_rights as usize];
 
         self.to_move = !self.to_move;

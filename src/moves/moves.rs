@@ -60,7 +60,7 @@ impl Move {
     }
 
     pub fn is_capture(self, board: &Board) -> bool {
-        board.occupancies().occupied(self.dest_square())
+        board.occupancies().occupied(self.to())
     }
 
     pub fn is_castle(self) -> bool {
@@ -90,18 +90,19 @@ impl Move {
         }
     }
 
-    pub const fn origin_square(self) -> Square {
+    pub const fn from(self) -> Square {
         Square(self.0 & 0b11_1111)
     }
 
-    pub const fn dest_square(self) -> Square {
+    pub const fn to(self) -> Square {
         Square(self.0 >> 6 & 0b11_1111)
     }
 
     pub fn is_tactical(self, board: &Board) -> bool {
-        self.promotion().is_some()
+        (self.promotion().is_some()
             || self.is_en_passant()
-            || board.occupancies().occupied(self.dest_square())
+            || board.occupancies().occupied(self.to()))
+            && self != Self::NULL
     }
 
     pub const fn as_u16(self) -> u16 {
@@ -112,10 +113,10 @@ impl Move {
     pub fn to_san(self) -> String {
         let mut str = String::new();
         let arr = ["a", "b", "c", "d", "e", "f", "g", "h"];
-        let origin_number = self.origin_square().rank() + 1;
-        let origin_letter = self.origin_square().file();
-        let end_number = self.dest_square().rank() + 1;
-        let end_letter = self.dest_square().file();
+        let origin_number = self.from().rank() + 1;
+        let origin_letter = self.from().file();
+        let end_number = self.to().rank() + 1;
+        let end_letter = self.to().file();
         str += arr[origin_letter as usize];
         str += &origin_number.to_string();
         str += arr[end_letter as usize];
@@ -134,15 +135,15 @@ impl Move {
 
     pub fn castle_type(self) -> Castle {
         debug_assert!(self.is_castle());
-        if self.dest_square().dist(self.origin_square()) != 2 {
+        if self.to().dist(self.from()) != 2 {
             Castle::None
-        } else if self.dest_square() == Square(2) {
+        } else if self.to() == Square(2) {
             Castle::WhiteQueen
-        } else if self.dest_square() == Square(6) {
+        } else if self.to() == Square(6) {
             Castle::WhiteKing
-        } else if self.dest_square() == Square(58) {
+        } else if self.to() == Square(58) {
             Castle::BlackQueen
-        } else if self.dest_square() == Square(62) {
+        } else if self.to() == Square(62) {
             Castle::BlackKing
         } else {
             unreachable!()
@@ -229,9 +230,9 @@ impl Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut str = String::new();
         str += "Start: ";
-        str += &self.origin_square().to_string();
+        str += &self.from().to_string();
         str += " End: ";
-        str += &self.dest_square().to_string();
+        str += &self.to().to_string();
         str += " Castle: ";
         str += &self.is_castle().to_string();
         str += " Promotion: ";
@@ -351,24 +352,24 @@ mod move_test {
     #[test]
     fn test_move_creation() {
         let normal_move = Move::new(Square(10), Square(20), MoveType::Normal, Piece::WhitePawn);
-        assert_eq!(normal_move.origin_square(), Square(10));
-        assert_eq!(normal_move.dest_square(), Square(20));
+        assert_eq!(normal_move.from(), Square(10));
+        assert_eq!(normal_move.to(), Square(20));
         assert!(!normal_move.is_castle());
         assert!(!normal_move.is_en_passant());
         assert_eq!(normal_move.promotion(), None);
         assert_eq!(normal_move.piece_moving(), Piece::WhitePawn);
 
         let promotion_move = Move::new(Square(15), Square(25), QueenPromotion, Piece::WhitePawn);
-        assert_eq!(promotion_move.origin_square(), Square(15));
-        assert_eq!(promotion_move.dest_square(), Square(25));
+        assert_eq!(promotion_move.from(), Square(15));
+        assert_eq!(promotion_move.to(), Square(25));
         assert!(!promotion_move.is_castle());
         assert!(!promotion_move.is_en_passant());
         assert_eq!(promotion_move.promotion(), Some(Piece::WhiteQueen));
         assert_eq!(promotion_move.piece_moving(), Piece::WhitePawn);
 
         let castle_move = Move::new(Square(4), Square(2), CastleMove, Piece::WhiteKing);
-        assert_eq!(castle_move.origin_square(), Square(4));
-        assert_eq!(castle_move.dest_square(), Square(2));
+        assert_eq!(castle_move.from(), Square(4));
+        assert_eq!(castle_move.to(), Square(2));
         assert!(castle_move.is_castle());
         assert!(!castle_move.is_en_passant());
         assert_eq!(castle_move.promotion(), None);
@@ -376,8 +377,8 @@ mod move_test {
 
         let en_passant_move =
             Move::new(Square(7), Square(5), MoveType::EnPassant, Piece::BlackPawn);
-        assert_eq!(en_passant_move.origin_square(), Square(7));
-        assert_eq!(en_passant_move.dest_square(), Square(5));
+        assert_eq!(en_passant_move.from(), Square(7));
+        assert_eq!(en_passant_move.to(), Square(5));
         assert!(!en_passant_move.is_castle());
         assert!(en_passant_move.is_en_passant());
         assert_eq!(en_passant_move.promotion(), None);

@@ -69,10 +69,10 @@ impl TableEntry {
 
     pub fn best_move(self, b: &Board) -> Move {
         let m = Move(u32::from(self.best_move));
-        if b.piece_at(m.origin_square()) == Piece::None {
+        if b.piece_at(m.from()) == Piece::None {
             Move::NULL
         } else {
-            let p = b.piece_at(m.origin_square()) as u32;
+            let p = b.piece_at(m.from()) as u32;
             Move(u32::from(self.best_move) | p << 16)
         }
     }

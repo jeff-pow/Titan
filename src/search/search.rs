@@ -447,8 +447,7 @@ fn negamax<const IS_PV: bool>(
         }
 
         if is_root {
-            td.nodes_table[m.origin_square()][m.dest_square()] +=
-                td.nodes.local_count() - pre_search_nodes;
+            td.nodes_table[m.from()][m.to()] += td.nodes.local_count() - pre_search_nodes;
         }
         moves_searched += 1;
         td.hash_history.pop();
@@ -553,10 +552,10 @@ fn extension<const IS_PV: bool>(
         || m != tt_move
         || depth < 7
         || td.ply == 0
+        || tt_move == Move::NULL
     {
         return 0;
     }
-    assert_ne!(tt_move, Move::NULL);
 
     let ext_beta = (entry.search_score() - 2 * depth).max(-CHECKMATE);
     let ext_depth = (depth - 1) / 2;
