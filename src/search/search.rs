@@ -339,10 +339,11 @@ fn negamax<const IS_PV: bool>(
                 }
 
                 // Futility pruning
-                let lmr_depth = depth - td.lmr.base_reduction(depth, moves_searched);
+                let lmr_depth = (depth - td.lmr.base_reduction(depth, moves_searched)).max(0);
                 if !singular_search
+                    && !in_check
                     && lmr_depth < 9
-                    && static_eval + 160 + 100 * lmr_depth <= alpha
+                    && static_eval + 242 + 52 * lmr_depth <= alpha
                     && alpha < CHECKMATE
                 {
                     break;
