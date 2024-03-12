@@ -94,8 +94,12 @@ impl<'a> ThreadData<'a> {
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
             SearchType::Infinite => self.halt.load(Ordering::Relaxed),
             SearchType::Mate(d) => {
-                let dist = CHECKMATE - prev_score;
-                dist <= d
+                let dist = if prev_score.is_positive() {
+                    (CHECKMATE - prev_score + 1) / 2
+                } else {
+                    -(CHECKMATE + prev_score) / 2
+                };
+                dist.abs() <= d.abs()
             }
         }
     }
