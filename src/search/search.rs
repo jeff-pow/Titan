@@ -343,7 +343,7 @@ fn negamax<const IS_PV: bool>(
                 if !singular_search
                     && !in_check
                     && lmr_depth < 9
-                    && static_eval + 242 + 52 * lmr_depth <= alpha
+                    && static_eval + 242 + 67 * lmr_depth <= alpha
                     && alpha < CHECKMATE
                 {
                     break;
