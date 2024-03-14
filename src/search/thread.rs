@@ -16,8 +16,10 @@ use crate::{
 };
 
 use super::{
-    game_time::Clock, history_table::HistoryTable, search::search, AccumulatorStack, SearchStack,
-    SearchType, PV,
+    game_time::Clock,
+    history_table::HistoryTable,
+    search::{search, MAX_SEARCH_DEPTH},
+    AccumulatorStack, SearchStack, SearchType, PV,
 };
 
 #[derive(Clone)]
@@ -99,7 +101,7 @@ impl<'a> ThreadData<'a> {
                 } else {
                     -(CHECKMATE + prev_score) / 2
                 };
-                dist.abs() <= d.abs()
+                dist.abs() <= d.abs() || depth > MAX_SEARCH_DEPTH
             }
         }
     }
