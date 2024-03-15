@@ -111,6 +111,7 @@ impl Clone for U64Wrapper {
 }
 
 #[derive(Default)]
+#[repr(C)]
 struct InternalEntry {
     depth: AtomicU8,
     age_pv_bound: AtomicU8,
