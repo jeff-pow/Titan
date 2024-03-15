@@ -387,6 +387,11 @@ fn negamax<const IS_PV: bool>(
         td.ply += 1;
         let mut node_pv = PV::default();
         let mut eval = -INFINITY;
+        let history = if is_quiet {
+            td.history.quiet_history(m, &td.stack, td.ply)
+        } else {
+            td.history.capt_hist(m, board)
+        };
 
         // Late Move Reductions (LMR) - Search moves after the first with reduced depth and
         // window as they are much less likely to be the best move than the first move
@@ -401,6 +406,8 @@ fn negamax<const IS_PV: bool>(
             r -= i32::from(td.stack[td.ply].cutoffs < 4);
 
             r += ((alpha - static_eval) / 300).clamp(0, 2);
+
+            r -= (history / 8192).clamp(-2, 2);
 
             // Calculate a reduction and calculate a reduced depth, ensuring we won't drop to depth
             // zero and thus straight into qsearch.
