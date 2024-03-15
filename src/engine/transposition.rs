@@ -1,7 +1,7 @@
 use std::{
     mem::{size_of, transmute},
     ptr::from_ref,
-    sync::atomic::{AtomicU64, Ordering},
+    sync::atomic::{AtomicI16, AtomicU16, AtomicU64, AtomicU8, Ordering},
 };
 
 use crate::{
@@ -25,23 +25,20 @@ use crate::{
 /// truncated before being placed in transposition table, and extracted back into 32 bits before
 /// being returned to caller
 pub struct TableEntry {
-    key: u64,
     depth: u8,
-    /// Holds flag in the first two bits and age in the most significant six bits
-    other: u8,
+    age_pv_bound: u8,
+    key: u16,
     search_score: i16,
     best_move: u16,
     static_eval: i16,
 }
 
 impl TableEntry {
-    /// There's not a *huge* point to storing eval since neural network is currently
-    /// fairly small, but there's not much else to store in the extra space here.
     pub const fn static_eval(self) -> i32 {
         self.static_eval as i32
     }
 
-    pub const fn key(self) -> u64 {
+    pub const fn key(self) -> u16 {
         self.key
     }
 
@@ -50,7 +47,7 @@ impl TableEntry {
     }
 
     pub fn flag(self) -> EntryFlag {
-        match self.other & 0b11 {
+        match self.age_pv_bound & 0b11 {
             0 => EntryFlag::None,
             1 => EntryFlag::AlphaUnchanged,
             2 => EntryFlag::BetaCutOff,
@@ -60,7 +57,11 @@ impl TableEntry {
     }
 
     fn age(self) -> u64 {
-        u64::from(self.other) >> 2
+        u64::from(self.age_pv_bound) >> 3
+    }
+
+    pub fn was_pv(self) -> bool {
+        (self.age_pv_bound & 0b0000_0100) != 0
     }
 
     pub fn search_score(self) -> i32 {
@@ -75,6 +76,18 @@ impl TableEntry {
             let p = b.piece_at(m.from()) as u32;
             Move(u32::from(self.best_move) | p << 16)
         }
+    }
+}
+
+impl From<TableEntry> for InternalEntry {
+    fn from(value: TableEntry) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
+impl From<InternalEntry> for TableEntry {
+    fn from(value: InternalEntry) -> Self {
+        unsafe { transmute(value) }
     }
 }
 
@@ -99,32 +112,24 @@ impl Clone for U64Wrapper {
 
 #[derive(Default)]
 struct InternalEntry {
-    zobrist_hash: AtomicU64,
-    remainder: AtomicU64,
+    depth: AtomicU8,
+    age_pv_bound: AtomicU8,
+    key: AtomicU16,
+    search_score: AtomicI16,
+    best_move: AtomicU16,
+    static_eval: AtomicI16,
 }
 
 impl Clone for InternalEntry {
     fn clone(&self) -> Self {
         Self {
-            zobrist_hash: AtomicU64::new(self.zobrist_hash.load(Ordering::Relaxed)),
-            remainder: AtomicU64::new(self.remainder.load(Ordering::Relaxed)),
+            depth: AtomicU8::new(self.depth.load(Ordering::Relaxed)),
+            age_pv_bound: AtomicU8::new(self.age_pv_bound.load(Ordering::Relaxed)),
+            key: AtomicU16::new(self.key.load(Ordering::Relaxed)),
+            search_score: AtomicI16::new(self.search_score.load(Ordering::Relaxed)),
+            best_move: AtomicU16::new(self.best_move.load(Ordering::Relaxed)),
+            static_eval: AtomicI16::new(self.static_eval.load(Ordering::Relaxed)),
         }
-    }
-}
-
-impl From<TableEntry> for (u64, u64) {
-    fn from(value: TableEntry) -> Self {
-        let (mut zobrist, remainder): (u64, u64) = unsafe { transmute(value) };
-        zobrist ^= remainder;
-        (zobrist, remainder)
-    }
-}
-
-impl From<InternalEntry> for TableEntry {
-    fn from(value: InternalEntry) -> Self {
-        let (mut zobrist, remainder): (u64, u64) = unsafe { transmute(value) };
-        zobrist ^= remainder;
-        unsafe { transmute((zobrist, remainder)) }
     }
 }
 
@@ -137,6 +142,7 @@ pub struct TranspositionTable {
 pub const TARGET_TABLE_SIZE_MB: usize = 16;
 const BYTES_PER_MB: usize = 1024 * 1024;
 const ENTRY_SIZE: usize = size_of::<TableEntry>();
+const MAX_AGE: u64 = (1 << 5) - 1;
 
 impl TranspositionTable {
     pub fn prefetch(&self, hash: u64) {
@@ -149,7 +155,6 @@ impl TranspositionTable {
         }
     }
 
-    /// Size here is the desired size in MB
     pub fn new(mb: usize) -> Self {
         let target_size = mb * BYTES_PER_MB;
         let table_capacity = target_size / ENTRY_SIZE;
@@ -161,8 +166,12 @@ impl TranspositionTable {
 
     pub fn clear(&self) {
         self.vec.iter().for_each(|x| {
-            x.zobrist_hash.store(0, Ordering::Relaxed);
-            x.remainder.store(0, Ordering::Relaxed);
+            x.depth.store(0, Ordering::Relaxed);
+            x.age_pv_bound.store(0, Ordering::Relaxed);
+            x.key.store(0, Ordering::Relaxed);
+            x.search_score.store(0, Ordering::Relaxed);
+            x.best_move.store(0, Ordering::Relaxed);
+            x.static_eval.store(0, Ordering::Relaxed);
         });
         self.age.0.store(0, Ordering::Relaxed);
     }
@@ -172,8 +181,8 @@ impl TranspositionTable {
     }
 
     pub fn age_up(&self) {
-        // Keep age under 63 b/c that is the max age that fits in a table entry
-        self.age.0.store(63.min(self.age() + 1), Ordering::Relaxed);
+        // Keep age under 31 b/c that is the max age that fits in a table entry
+        self.age.0.store((self.age() + 1) & MAX_AGE, Ordering::Relaxed);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -189,13 +198,13 @@ impl TranspositionTable {
         static_eval: i32,
     ) {
         let idx = index(hash, self.vec.len());
-        let key = hash;
+        let key = hash as u16;
 
         let old_entry = unsafe { TableEntry::from(self.vec.get_unchecked(idx).clone()) };
 
         // Conditions from Alexandria
         if old_entry.age() != self.age()
-            || old_entry.key != key
+            || old_entry.key() != key
             || flag == EntryFlag::Exact
             || depth as usize + 5 + 2 * usize::from(is_pv) > old_entry.depth as usize
         {
@@ -212,26 +221,24 @@ impl TranspositionTable {
                 score -= ply;
             }
 
-            let entry = TableEntry {
-                key,
-                depth: depth as u8,
-                other: (self.age() << 2) as u8 | flag as u8,
-                search_score: score as i16,
-                best_move: best_m,
-                static_eval: static_eval as i16,
-            };
-
-            let (zobrist_hash, remainder) = entry.into();
+            let age_pv_bound = (self.age() << 3) as u8 | u8::from(is_pv) << 2 | flag as u8;
             unsafe {
-                self.vec.get_unchecked(idx).zobrist_hash.store(zobrist_hash, Ordering::Relaxed);
-                self.vec.get_unchecked(idx).remainder.store(remainder, Ordering::Relaxed);
+                self.vec.get_unchecked(idx).key.store(key, Ordering::Relaxed);
+                self.vec.get_unchecked(idx).depth.store(depth as u8, Ordering::Relaxed);
+                self.vec.get_unchecked(idx).age_pv_bound.store(age_pv_bound, Ordering::Relaxed);
+                self.vec.get_unchecked(idx).search_score.store(score as i16, Ordering::Relaxed);
+                self.vec.get_unchecked(idx).best_move.store(best_m, Ordering::Relaxed);
+                self.vec
+                    .get_unchecked(idx)
+                    .static_eval
+                    .store(static_eval as i16, Ordering::Relaxed);
             }
         }
     }
 
     pub fn get(&self, hash: u64, ply: i32) -> Option<TableEntry> {
         let idx = index(hash, self.vec.len());
-        let key = hash;
+        let key = hash as u16;
 
         let mut entry = unsafe { TableEntry::from(self.vec.get_unchecked(idx).clone()) };
 
