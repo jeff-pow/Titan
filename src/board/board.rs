@@ -282,22 +282,6 @@ impl Board {
             {
                 return false;
             }
-            let qwerty = if m.to().dist(m.from()) != 2 {
-                Castle::None
-            } else if m.to() == Square(2) {
-                Castle::WhiteQueen
-            } else if m.to() == Square(6) {
-                Castle::WhiteKing
-            } else if m.to() == Square(58) {
-                Castle::BlackQueen
-            } else if m.to() == Square(62) {
-                Castle::BlackKing
-            } else {
-                unreachable!()
-            };
-            if qwerty != castle {
-                return false;
-            }
 
             return true;
         }
