@@ -409,6 +409,7 @@ fn negamax<const IS_PV: bool>(
 
             r -= history / 8192;
 
+
             // Calculate a reduction and calculate a reduced depth, ensuring we won't drop to depth
             // zero and thus straight into qsearch.
             let d = max(1, min(new_depth - r, new_depth + 1));

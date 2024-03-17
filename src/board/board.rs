@@ -277,6 +277,11 @@ impl Board {
             if castle.check_squares() & self.threats() != Bitboard::EMPTY {
                 return false;
             }
+            if self.bitboard(self.to_move, PieceName::Rook) & castle.rook_src().bitboard()
+                == Bitboard::EMPTY
+            {
+                return false;
+            }
 
             return true;
         }
