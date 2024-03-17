@@ -407,7 +407,8 @@ fn negamax<const IS_PV: bool>(
 
             r += ((alpha - static_eval) / 300).clamp(0, 2);
 
-            r -= (history / 8192).clamp(-2, 2);
+            r -= history / 8192;
+
 
             // Calculate a reduction and calculate a reduced depth, ensuring we won't drop to depth
             // zero and thus straight into qsearch.
