@@ -278,6 +278,7 @@ mod transpos_tests {
         board::fen::{build_board, STARTING_FEN},
         engine::transposition::{EntryFlag, TranspositionTable},
         moves::moves::{Move, MoveType},
+        search::search::CHECKMATE,
         types::{pieces::Piece, square::Square},
     };
 
@@ -293,5 +294,30 @@ mod transpos_tests {
         let entry = table.get(b.zobrist_hash, 2);
         assert_eq!(25, entry.unwrap().static_eval());
         assert_eq!(m, entry.unwrap().best_move(&b));
+    }
+
+    #[test]
+    fn search_scores() {
+        let m = Move::new(Square(12), Square(28), MoveType::Normal, Piece::WhitePawn);
+        let table = TranspositionTable::new(64);
+
+        let search_score = 37;
+        table.store(0, m, 0, EntryFlag::Exact, search_score, 4, false, 25);
+        let entry = table.get(0, 2);
+        assert_eq!(search_score, entry.unwrap().search_score());
+
+        table.clear();
+        let ply = 15;
+        let mated_score = -CHECKMATE + ply;
+        table.store(0, m, 0, EntryFlag::Exact, mated_score, ply, false, 25);
+        let entry = table.get(0, 2);
+        assert_eq!(-CHECKMATE + 2, entry.unwrap().search_score());
+
+        table.clear();
+        let ply = 12;
+        let found_mate = CHECKMATE - ply;
+        table.store(0, m, 0, EntryFlag::Exact, found_mate, ply, false, 25);
+        let entry = table.get(0, 4);
+        assert_eq!(CHECKMATE - 4, entry.unwrap().search_score());
     }
 }
