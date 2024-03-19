@@ -40,7 +40,7 @@ pub enum MoveType {
 /// bit 12-15: special move flag: normal move(0), promotion (1), en passant (2), castling (3)
 /// bit 16-19: piece moving - useful in continuation history
 /// NOTE: en passant bit is set only when a pawn can be captured
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub struct Move(pub u32);
 
 impl Move {
@@ -149,103 +149,95 @@ impl Move {
             unreachable!()
         }
     }
-}
 
-/// Method converts a san move provided by UCI framework into a Move struct
-pub fn from_san(str: &str, board: &Board) -> Move {
-    let vec: Vec<char> = str.chars().collect();
+    /// Method converts a san move provided by UCI framework into a Move struct
+    pub fn from_san(str: &str, board: &Board) -> Move {
+        let vec: Vec<char> = str.chars().collect();
 
-    // Using base 20 allows program to convert letters directly to numbers instead of matching
-    // against letters or some other workaround
-    let start_column = vec[0].to_digit(20).unwrap() - 10;
-    let start_row = (vec[1].to_digit(10).unwrap() - 1) * 8;
-    let origin_sq = Square(start_row + start_column);
+        // Using base 20 allows program to convert letters directly to numbers instead of matching
+        // against letters or some other workaround
+        let start_column = vec[0].to_digit(20).unwrap() - 10;
+        let start_row = (vec[1].to_digit(10).unwrap() - 1) * 8;
+        let origin_sq = Square(start_row + start_column);
 
-    let end_column = vec[2].to_digit(20).unwrap() - 10;
-    let end_row = (vec[3].to_digit(10).unwrap() - 1) * 8;
-    let dest_sq = Square(end_row + end_column);
+        let end_column = vec[2].to_digit(20).unwrap() - 10;
+        let end_row = (vec[3].to_digit(10).unwrap() - 1) * 8;
+        let dest_sq = Square(end_row + end_column);
 
-    let promotion = if vec.len() > 4 {
-        match vec[4] {
-            'q' => Some(PieceName::Queen),
-            'r' => Some(PieceName::Rook),
-            'b' => Some(PieceName::Bishop),
-            'n' => Some(PieceName::Knight),
-            _ => panic!(),
-        }
-    } else {
-        None
-    };
-    let piece_moving = board.piece_at(origin_sq);
-    assert!(piece_moving != Piece::None);
-    let captured = board.piece_at(dest_sq);
-    let castle = match piece_moving.name() {
-        PieceName::King => {
-            if origin_sq.dist(dest_sq) != 2 {
-                Castle::None
-            } else if dest_sq == Square(2) {
-                Castle::WhiteQueen
-            } else if dest_sq == Square(6) {
-                Castle::WhiteKing
-            } else if dest_sq == Square(58) {
-                Castle::BlackQueen
-            } else if dest_sq == Square(62) {
-                Castle::BlackKing
-            } else {
-                unreachable!()
+        let promotion = if vec.len() > 4 {
+            match vec[4] {
+                'q' => Some(PieceName::Queen),
+                'r' => Some(PieceName::Rook),
+                'b' => Some(PieceName::Bishop),
+                'n' => Some(PieceName::Knight),
+                _ => panic!(),
             }
-        }
-        _ => Castle::None,
-    };
-    let castle = castle != Castle::None;
-    let en_passant = {
-        piece_moving.name() == PieceName::Pawn
-            && captured == Piece::None
-            && start_column != end_column
-    };
-    let double_push = { piece_moving.name() == PieceName::Pawn && origin_sq.dist(dest_sq) == 2 };
-    let move_type = {
-        if castle {
-            CastleMove
-        } else if en_passant {
-            EnPassant
-        } else if promotion.is_some() {
-            promotion.map_or(Normal, |p| match p {
-                PieceName::Knight => KnightPromotion,
-                PieceName::Bishop => BishopPromotion,
-                PieceName::Rook => RookPromotion,
-                PieceName::Queen => QueenPromotion,
-                _ => Normal,
-            })
-        } else if double_push {
-            DoublePush
         } else {
-            Normal
-        }
-    };
-    Move::new(origin_sq, dest_sq, move_type, piece_moving)
+            None
+        };
+        let piece_moving = board.piece_at(origin_sq);
+        assert!(piece_moving != Piece::None);
+        let captured = board.piece_at(dest_sq);
+        let castle = match piece_moving.name() {
+            PieceName::King => {
+                if origin_sq.dist(dest_sq) != 2 {
+                    Castle::None
+                } else if dest_sq == Square(2) {
+                    Castle::WhiteQueen
+                } else if dest_sq == Square(6) {
+                    Castle::WhiteKing
+                } else if dest_sq == Square(58) {
+                    Castle::BlackQueen
+                } else if dest_sq == Square(62) {
+                    Castle::BlackKing
+                } else {
+                    unreachable!()
+                }
+            }
+            _ => Castle::None,
+        };
+        let castle = castle != Castle::None;
+        let en_passant = {
+            piece_moving.name() == PieceName::Pawn
+                && captured == Piece::None
+                && start_column != end_column
+        };
+        let double_push =
+            { piece_moving.name() == PieceName::Pawn && origin_sq.dist(dest_sq) == 2 };
+        let move_type = {
+            if castle {
+                CastleMove
+            } else if en_passant {
+                EnPassant
+            } else if promotion.is_some() {
+                promotion.map_or(Normal, |p| match p {
+                    PieceName::Knight => KnightPromotion,
+                    PieceName::Bishop => BishopPromotion,
+                    PieceName::Rook => RookPromotion,
+                    PieceName::Queen => QueenPromotion,
+                    _ => Normal,
+                })
+            } else if double_push {
+                DoublePush
+            } else {
+                Normal
+            }
+        };
+        Move::new(origin_sq, dest_sq, move_type, piece_moving)
+    }
 }
 
 impl Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut str = String::new();
-        str += "Start: ";
-        str += &self.from().to_string();
-        str += " End: ";
-        str += &self.to().to_string();
-        str += " Castle: ";
-        str += &self.is_castle().to_string();
-        str += " Promotion: ";
-        match self.promotion().map_or(PieceName::Pawn, Piece::name) {
-            PieceName::Queen => str += "Queen ",
-            PieceName::Rook => str += "Rook ",
-            PieceName::Bishop => str += "Bishop ",
-            PieceName::Knight => str += "Knight ",
-            _ => str += "None ",
-        }
-        str += " En Passant: ";
-        str += &self.is_en_passant().to_string();
-        str += "  ";
+        str += &self.to_san();
+        write!(f, "{str}")
+    }
+}
+
+impl fmt::Debug for Move {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut str = String::new();
         str += &self.to_san();
         write!(f, "{str}")
     }

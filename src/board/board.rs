@@ -19,6 +19,8 @@ use crate::{
     },
 };
 
+use super::fen::STARTING_FEN;
+
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Board {
     bitboards: [Bitboard; NUM_PIECES],
@@ -37,20 +39,7 @@ pub struct Board {
 
 impl Default for Board {
     fn default() -> Self {
-        Self {
-            bitboards: [Bitboard::EMPTY; 6],
-            color_occupancies: [Bitboard::EMPTY; 2],
-            mailbox: [Piece::None; 64],
-            castling_rights: 0,
-            to_move: Color::White,
-            en_passant_square: None,
-            num_moves: 0,
-            half_moves: 0,
-            zobrist_hash: 0,
-            in_check: false,
-            threats: Bitboard::EMPTY,
-            delta: Delta::default(),
-        }
+        Board::build_board(STARTING_FEN)
     }
 }
 
@@ -437,6 +426,23 @@ impl Board {
             }
         }
     }
+
+    pub fn empty() -> Self {
+        Self {
+            bitboards: [Bitboard::EMPTY; 6],
+            color_occupancies: [Bitboard::EMPTY; 2],
+            mailbox: [Piece::None; 64],
+            castling_rights: 0,
+            to_move: Color::White,
+            en_passant_square: None,
+            num_moves: 0,
+            half_moves: 0,
+            zobrist_hash: 0,
+            in_check: false,
+            threats: Bitboard::EMPTY,
+            delta: Delta::default(),
+        }
+    }
 }
 
 impl fmt::Display for Board {
@@ -511,14 +517,14 @@ mod board_tests {
     use crate::board::fen;
     #[test]
     fn test_place_piece() {
-        let mut board = Board::default();
+        let mut board = Board::empty();
         board.place_piece::<false>(Piece::WhiteRook, Square(0));
         assert!(board.bitboard(Color::White, PieceName::Rook).occupied(Square(0)));
     }
 
     #[test]
     fn test_remove_piece() {
-        let board = fen::build_board(fen::STARTING_FEN);
+        let board = Board::build_board(fen::STARTING_FEN);
 
         let mut c = board;
         c.remove_piece::<false>(Square(0));

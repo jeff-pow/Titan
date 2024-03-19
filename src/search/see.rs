@@ -1,8 +1,8 @@
 use crate::{
-    board::{board::Board, fen::build_board},
+    board::board::Board,
     moves::{
         magics::{bishop_attacks, rook_attacks},
-        moves::{from_san, Move},
+        moves::Move,
     },
     types::{
         bitboard::Bitboard,
@@ -116,8 +116,8 @@ impl Board {
 pub fn see_test() {
     SEE_POSITIONS.iter().enumerate().for_each(|(test_num, str)| {
         let mut iter = str.split('|');
-        let board = build_board(iter.next().unwrap());
-        let m = from_san(iter.next().unwrap().trim(), &board);
+        let board = Board::build_board(iter.next().unwrap());
+        let m = Move::from_san(iter.next().unwrap().trim(), &board);
         let threshold = iter.next().unwrap().trim().parse::<i32>().unwrap();
         assert!(board.see(m, threshold), "{test_num} failed");
     });

@@ -40,7 +40,7 @@ mod movegen_tests {
     use std::thread;
     use std::{fs::File, io::BufRead, io::BufReader};
 
-    use crate::board::fen::build_board;
+    use crate::board::board::Board;
     use crate::engine::perft::perft;
 
     #[test]
@@ -54,7 +54,7 @@ mod movegen_tests {
                     let l = line.as_ref().unwrap().clone();
                     let vec = l.split(" ;").collect::<Vec<&str>>();
                     let mut iter = vec.iter();
-                    let board = build_board(iter.next().unwrap());
+                    let board = Board::build_board(iter.next().unwrap());
                     for entry in iter {
                         let (depth, nodes) = entry.split_once(' ').unwrap();
                         let depth = depth[1..].parse::<i32>().unwrap();

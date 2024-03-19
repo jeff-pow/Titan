@@ -275,7 +275,7 @@ fn index(hash: u64, table_capacity: usize) -> usize {
 #[cfg(test)]
 mod transpos_tests {
     use crate::{
-        board::fen::{build_board, STARTING_FEN},
+        board::{board::Board, fen::STARTING_FEN},
         engine::transposition::{EntryFlag, TranspositionTable},
         moves::moves::{Move, MoveType},
         search::search::CHECKMATE,
@@ -284,7 +284,7 @@ mod transpos_tests {
 
     #[test]
     fn transpos_table() {
-        let b = build_board(STARTING_FEN);
+        let b = Board::build_board(STARTING_FEN);
         let table = TranspositionTable::new(64);
         let entry = table.get(b.zobrist_hash, 4);
         assert!(entry.is_none());

@@ -12,74 +12,76 @@ use super::board::Board;
 pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 /// Takes in a string in fen notation and returns a board state
-pub fn build_board(fen_string: &str) -> Board {
-    let mut board = Board::default();
-    let mut row = 7;
-    let pieces: Vec<&str> = fen_string.split(['/', ' ']).collect();
-    // FEN strings have 13 entries (if each slash and each space delimit an entry)
-    let mut iter = pieces.iter();
-    let mut start = 7;
-    let end = 0;
-    let step: i32 = -1;
-    while start >= end {
-        // Loop handles reading board part of fen string
-        let entry = iter.next().unwrap();
-        let mut idx = 0;
-        for c in entry.chars() {
-            if c.is_ascii_digit() {
-                idx += c.to_digit(10).unwrap();
-                continue;
+impl Board {
+    pub fn from_fen(fen_string: &str) -> Self {
+        let mut board = Board::empty();
+        let mut row = 7;
+        let pieces: Vec<&str> = fen_string.split(['/', ' ']).collect();
+        // FEN strings have 13 entries (if each slash and each space delimit an entry)
+        let mut iter = pieces.iter();
+        let mut start = 7;
+        let end = 0;
+        let step: i32 = -1;
+        while start >= end {
+            // Loop handles reading board part of fen string
+            let entry = iter.next().unwrap();
+            let mut idx = 0;
+            for c in entry.chars() {
+                if c.is_ascii_digit() {
+                    idx += c.to_digit(10).unwrap();
+                    continue;
+                }
+                let square = row * 8 + idx;
+                let square = Square(square);
+                const PIECES: &str = "PpNnBbRrQqKk";
+                let Some(i) = PIECES.chars().position(|x| x == c) else {
+                    panic!("Unrecognized char {c}, board could not be made");
+                };
+                board.place_piece::<false>(Piece::from_u32(i as u32), square);
+                idx += 1;
             }
-            let square = row * 8 + idx;
-            let square = Square(square);
-            const PIECES: &str = "PpNnBbRrQqKk";
-            let Some(i) = PIECES.chars().position(|x| x == c) else {
-                panic!("Unrecognized char {c}, board could not be made");
-            };
-            board.place_piece::<false>(Piece::from_u32(i as u32), square);
-            idx += 1;
+            start += step;
+            row = row.saturating_sub(1);
         }
-        start += step;
-        row = row.saturating_sub(1);
-    }
-    // 9th element: find who's turn it is to move
-    board.to_move = match iter.next().unwrap().chars().next().unwrap() {
-        'w' => Color::White,
-        'b' => Color::Black,
-        _ => panic!("Invalid turn"),
-    };
-    board.zobrist_hash = board.generate_hash();
-    board.calculate_threats();
+        // 9th element: find who's turn it is to move
+        board.to_move = match iter.next().unwrap().chars().next().unwrap() {
+            'w' => Color::White,
+            'b' => Color::Black,
+            _ => panic!("Invalid turn"),
+        };
+        board.zobrist_hash = board.generate_hash();
+        board.calculate_threats();
 
-    // 10th bucket find who can still castle
-    // Order of array is white king castle, white queen castle, black king castle, black queen castle
-    let Some(next) = iter.next() else { return board };
-    board.castling_rights = parse_castling(next);
+        // 10th bucket find who can still castle
+        // Order of array is white king castle, white queen castle, black king castle, black queen castle
+        let Some(next) = iter.next() else { return board };
+        board.castling_rights = parse_castling(next);
 
-    let Some(next) = iter.next() else { return board };
-    let en_passant_letters: Vec<char> = next.chars().collect();
-    let en_passant_idx = find_en_passant_square(&en_passant_letters);
-    if let Some(idx) = en_passant_idx {
-        board.en_passant_square = Some(Square(idx));
-    }
-    board.zobrist_hash = board.generate_hash();
-
-    let half_moves = iter.next();
-    if let Some(half_moves) = half_moves {
-        if let Ok(half_moves) = half_moves.parse() {
-            board.half_moves = half_moves;
+        let Some(next) = iter.next() else { return board };
+        let en_passant_letters: Vec<char> = next.chars().collect();
+        let en_passant_idx = find_en_passant_square(&en_passant_letters);
+        if let Some(idx) = en_passant_idx {
+            board.en_passant_square = Some(Square(idx));
         }
-    }
+        board.zobrist_hash = board.generate_hash();
 
-    // Full number of moves in the game: starts from 1 and incremented after black's first move
-    let full_moves = iter.next();
-    if let Some(full_moves) = full_moves {
-        if let Ok(full_moves) = full_moves.parse() {
-            board.num_moves = full_moves;
+        let half_moves = iter.next();
+        if let Some(half_moves) = half_moves {
+            if let Ok(half_moves) = half_moves.parse() {
+                board.half_moves = half_moves;
+            }
         }
+
+        // Full number of moves in the game: starts from 1 and incremented after black's first move
+        let full_moves = iter.next();
+        if let Some(full_moves) = full_moves {
+            if let Ok(full_moves) = full_moves.parse() {
+                board.num_moves = full_moves;
+            }
+        }
+        assert_eq!(iter.next(), None);
+        board
     }
-    assert_eq!(iter.next(), None);
-    board
 }
 
 fn parse_castling(buf: &&str) -> u32 {

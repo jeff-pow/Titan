@@ -86,11 +86,11 @@ fn flatten(acc: &Block, weights: &Block) -> i32 {
 mod nnue_tests {
     use std::{hint::black_box, time::Instant};
 
-    use crate::board::fen::{build_board, STARTING_FEN};
+    use crate::board::{board::Board, fen::STARTING_FEN};
 
     #[test]
     fn inference_benchmark() {
-        let mut board = build_board(STARTING_FEN);
+        let mut board = Board::build_board(STARTING_FEN);
         let acc = board.new_accumulator();
         let start = Instant::now();
         let iters = 10_000_000_u128;

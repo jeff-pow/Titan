@@ -8,14 +8,14 @@ use crate::bench::bench;
 use crate::board::fen::{parse_fen_from_buffer, STARTING_FEN};
 use crate::engine::perft::perft;
 use crate::engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
+use crate::moves::moves::Move;
 use crate::search::lmr_table::LmrTable;
 use crate::search::thread::ThreadPool;
 use crate::{
     board::{
         board::Board,
-        fen::{self, build_board},
+        fen::{self},
     },
-    moves::moves::from_san,
     search::game_time::Clock,
     types::pieces::Color,
 };
@@ -25,7 +25,7 @@ pub const ENGINE_NAME: &str = "Titan";
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
     let mut transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
-    let mut board = build_board(STARTING_FEN);
+    let mut board = Board::build_board(STARTING_FEN);
     let consts = LmrTable::new();
     let mut msg: Option<String> = None;
     let mut hash_history = Vec::new();
@@ -126,13 +126,13 @@ fn position_command(input: &[&str], board: &mut Board, hash_history: &mut Vec<u6
     hash_history.clear();
 
     if input.contains(&"fen") {
-        *board = build_board(&parse_fen_from_buffer(input));
+        *board = Board::build_board(&parse_fen_from_buffer(input));
 
         if input.len() > 9 {
             parse_moves(input, board, 9, hash_history);
         }
     } else if input.contains(&"startpos") {
-        *board = build_board(fen::STARTING_FEN);
+        *board = Board::build_board(fen::STARTING_FEN);
 
         if input.len() > 3 {
             parse_moves(input, board, 3, hash_history);
@@ -142,7 +142,7 @@ fn position_command(input: &[&str], board: &mut Board, hash_history: &mut Vec<u6
 
 fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, hash_history: &mut Vec<u64>) {
     for str in moves.iter().skip(skip) {
-        let m = from_san(str, board);
+        let m = Move::from_san(str, board);
         let _ = board.make_move::<false>(m);
         hash_history.push(board.zobrist_hash);
     }

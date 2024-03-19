@@ -79,13 +79,13 @@ impl Board {
 
 #[cfg(test)]
 mod hashing_test {
-    use crate::board::fen;
+    use crate::board::{board::Board, fen};
 
     #[test]
     fn test_hashing() {
-        let board1 = fen::build_board(fen::STARTING_FEN);
-        let board2 = fen::build_board("4r3/4k3/8/4K3/8/8/8/8 w - - 0 1");
-        let board3 = fen::build_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        let board1 = Board::from_fen(fen::STARTING_FEN);
+        let board2 = Board::from_fen("4r3/4k3/8/4K3/8/8/8/8 w - - 0 1");
+        let board3 = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         assert_ne!(board1.generate_hash(), board2.generate_hash());
         assert_eq!(board1.generate_hash(), board3.generate_hash());
     }
