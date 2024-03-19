@@ -25,7 +25,7 @@ pub const ENGINE_NAME: &str = "Titan";
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
     let mut transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
-    let mut board = Board::build_board(STARTING_FEN);
+    let mut board = Board::from_fen(STARTING_FEN);
     let consts = LmrTable::new();
     let mut msg: Option<String> = None;
     let mut hash_history = Vec::new();
@@ -126,13 +126,13 @@ fn position_command(input: &[&str], board: &mut Board, hash_history: &mut Vec<u6
     hash_history.clear();
 
     if input.contains(&"fen") {
-        *board = Board::build_board(&parse_fen_from_buffer(input));
+        *board = Board::from_fen(&parse_fen_from_buffer(input));
 
         if input.len() > 9 {
             parse_moves(input, board, 9, hash_history);
         }
     } else if input.contains(&"startpos") {
-        *board = Board::build_board(fen::STARTING_FEN);
+        *board = Board::from_fen(fen::STARTING_FEN);
 
         if input.len() > 3 {
             parse_moves(input, board, 3, hash_history);

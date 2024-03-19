@@ -284,7 +284,7 @@ mod transpos_tests {
 
     #[test]
     fn transpos_table() {
-        let b = Board::build_board(STARTING_FEN);
+        let b = Board::from_fen(STARTING_FEN);
         let table = TranspositionTable::new(64);
         let entry = table.get(b.zobrist_hash, 4);
         assert!(entry.is_none());

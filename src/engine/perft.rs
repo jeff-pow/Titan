@@ -54,7 +54,7 @@ mod movegen_tests {
                     let l = line.as_ref().unwrap().clone();
                     let vec = l.split(" ;").collect::<Vec<&str>>();
                     let mut iter = vec.iter();
-                    let board = Board::build_board(iter.next().unwrap());
+                    let board = Board::from_fen(iter.next().unwrap());
                     for entry in iter {
                         let (depth, nodes) = entry.split_once(' ').unwrap();
                         let depth = depth[1..].parse::<i32>().unwrap();

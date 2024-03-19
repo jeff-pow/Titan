@@ -39,7 +39,7 @@ pub struct Board {
 
 impl Default for Board {
     fn default() -> Self {
-        Board::build_board(STARTING_FEN)
+        Board::from_fen(STARTING_FEN)
     }
 }
 
@@ -524,7 +524,7 @@ mod board_tests {
 
     #[test]
     fn test_remove_piece() {
-        let board = Board::build_board(fen::STARTING_FEN);
+        let board = Board::from_fen(fen::STARTING_FEN);
 
         let mut c = board;
         c.remove_piece::<false>(Square(0));
