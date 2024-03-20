@@ -221,6 +221,9 @@ impl Board {
     }
 
     pub(crate) fn is_pseudo_legal(&self, m: Move) -> bool {
+        // Be careful, eventually engine could try to verify tt moves with this and it will error
+        // out which is not desired behavior
+        assert_ne!(PieceName::King, self.capture(m).name());
         if m == Move::NULL {
             return false;
         }
@@ -327,6 +330,11 @@ impl Board {
         let piece_moving = m.piece_moving();
         assert_eq!(piece_moving, self.piece_at(m.from()));
         let capture = self.capture(m);
+
+        // Be careful, eventually engine could try to verify tt moves with this and it will error
+        // out which is not desired behavior
+        assert_ne!(PieceName::King, capture.name());
+
         self.remove_piece::<NNUE>(m.to());
 
         if m.promotion().is_none() {
@@ -438,6 +446,9 @@ impl Board {
     }
 
     pub(crate) fn is_legal(&self, m: Move) -> bool {
+        // Be careful, eventually engine could try to verify tt moves with this and it will error
+        // out which is not desired behavior
+        assert_ne!(PieceName::King, self.capture(m).name());
         let attacker = !self.to_move;
         let king = self.king_square(self.to_move);
         if m.is_en_passant() {
