@@ -56,12 +56,12 @@ impl Square {
         self.0 as usize
     }
 
-    pub const fn get_rank_bitboard(self) -> Bitboard {
+    pub const fn rank_bitboard(self) -> Bitboard {
         let x = self.rank();
         RANKS[x as usize]
     }
 
-    pub const fn get_file_bitboard(self) -> Bitboard {
+    pub const fn file_bitboard(self) -> Bitboard {
         let y = self.file();
         FILES[y as usize]
     }

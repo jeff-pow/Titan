@@ -71,63 +71,6 @@ pub const PAWN_ATTACKS: [[Bitboard; 64]; 2] = [
     const_array!(|sq, 64| pawn_set_attacks(Bitboard(1 << sq), Color::Black)),
 ];
 
-// pub const BETWEEN_SQUARES: [[Bitboard; 64]; 64] = {
-//     let mut arr = [[Bitboard::EMPTY; 64]; 64];
-//     let mut src = 0;
-//     while src < 64 {
-//         let mut dest = src + 1;
-//         while dest < 64 {
-//             if Square(src).rank() == Square(dest).rank() {
-//                 // dest > src, so we always want to shift in a smaller direction,
-//                 // from dest towards src
-//                 let mut i = Square(dest).shift(Direction::West);
-//                 while i.0 > src && i.is_valid() {
-//                     arr[src as usize][dest as usize].0 |= i.bitboard().0;
-//                     i = i.shift(Direction::West);
-//                 }
-//             } else if Square(src).file() == Square(dest).file() {
-//                 let mut i = Square(dest).shift(Direction::South);
-//                 while i.0 > src && i.is_valid() {
-//                     arr[src as usize][dest as usize].0 |= i.bitboard().0;
-//                     i = i.shift(Direction::South);
-//                 }
-//             } else if (dest - src) % Direction::NorthWest as u32 == 0
-//                 && Square(dest).file() < Square(src).file()
-//             {
-//                 let mut i = Square(dest).shift(Direction::SouthEast);
-//
-//                 while i.0 > src && i.is_valid() {
-//                     arr[src as usize][dest as usize].0 |= i.bitboard().0;
-//                     i = i.shift(Direction::SouthEast);
-//                 }
-//             } else if (dest - src) % Direction::NorthEast as u32 == 0
-//                 && Square(dest).file() > Square(src).file()
-//             {
-//                 let mut i = Square(dest).shift(Direction::SouthWest);
-//
-//                 while i.0 > src && i.is_valid() {
-//                     arr[src as usize][dest as usize].0 |= i.bitboard().0;
-//                     i = i.shift(Direction::SouthWest);
-//                 }
-//             }
-//             dest += 1;
-//         }
-//         src += 1;
-//     }
-//
-//     // Copy top half of the triangle over to the bottom half
-//     let mut src = 0;
-//     while src < 64 {
-//         let mut dest = 0;
-//         while dest < src {
-//             arr[src][dest] = arr[dest][src];
-//             dest += 1;
-//         }
-//         src += 1;
-//     }
-//     arr
-// };
-
 #[macro_export]
 /// Credit for this macro goes to akimbo
 macro_rules! const_array {

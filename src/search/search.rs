@@ -150,7 +150,7 @@ fn negamax<const IS_PV: bool>(
     cut_node: bool,
 ) -> i32 {
     let is_root = td.ply == 0;
-    let in_check = board.in_check;
+    let in_check = board.in_check();
 
     let singular_move = td.stack[td.ply].singular;
     let singular_search = singular_move != Move::NULL;
@@ -360,9 +360,10 @@ fn negamax<const IS_PV: bool>(
 
         let mut new_b = *board;
         // Make move filters out illegal moves by returning false if a move was illegal
-        if !new_b.make_move::<true>(m) {
+        if !new_b.is_legal(m) {
             continue;
         }
+        new_b.make_move::<true>(m);
         tt.prefetch(new_b.zobrist_hash);
         td.accumulators.increment();
         td.accumulators.top().lazy_update(&mut new_b.delta);
@@ -408,7 +409,6 @@ fn negamax<const IS_PV: bool>(
             r += ((alpha - static_eval) / 300).clamp(0, 2);
 
             r -= history / 8192;
-
 
             // Calculate a reduction and calculate a reduced depth, ensuring we won't drop to depth
             // zero and thus straight into qsearch.

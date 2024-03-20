@@ -227,8 +227,8 @@ pub fn gen_magics() {
     let mut bishop_magics = [MagicEntry::default(); 64];
 
     for sq in Square::iter() {
-        let edges = ((RANKS[0] | RANKS[7]) & !(sq.get_rank_bitboard()))
-            | ((FILES[0] | FILES[7]) & !(sq.get_file_bitboard()));
+        let edges = ((RANKS[0] | RANKS[7]) & !(sq.rank_bitboard()))
+            | ((FILES[0] | FILES[7]) & !(sq.file_bitboard()));
 
         let rook_bits = sliding_attack(R_DELTAS, sq, Bitboard::EMPTY);
         let mask = rook_bits & !edges;

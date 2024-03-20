@@ -143,7 +143,7 @@ fn position_command(input: &[&str], board: &mut Board, hash_history: &mut Vec<u6
 fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, hash_history: &mut Vec<u64>) {
     for str in moves.iter().skip(skip) {
         let m = Move::from_san(str, board);
-        let _ = board.make_move::<false>(m);
+        board.make_move::<false>(m);
         hash_history.push(board.zobrist_hash);
     }
 }
