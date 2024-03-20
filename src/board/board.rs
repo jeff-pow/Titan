@@ -438,7 +438,6 @@ impl Board {
     }
 
     pub(crate) fn is_legal(&self, m: Move) -> bool {
-        // assert!(self.is_pseudo_legal(m), "{}\n{:?}", m.to_san(), self);
         let attacker = !self.to_move;
         let king = self.king_square(self.to_move);
         if m.is_en_passant() {
@@ -459,8 +458,10 @@ impl Board {
         self.pinned = Bitboard::EMPTY;
         let attacker = !self.to_move;
         let king_sq = self.king_square(self.to_move);
+
         self.checkers = knight_attacks(king_sq) & self.bitboard(attacker, PieceName::Knight)
             | pawn_attacks(king_sq, self.to_move) & self.bitboard(attacker, PieceName::Pawn);
+
         let sliders_attacks = self.diags(attacker) & bishop_attacks(king_sq, Bitboard::EMPTY)
             | self.orthos(attacker) & rook_attacks(king_sq, Bitboard::EMPTY);
         for sq in sliders_attacks {

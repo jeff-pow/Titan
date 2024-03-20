@@ -13,11 +13,18 @@ mod moves;
 mod search;
 mod types;
 
+use moves::moves::Move;
+
 use crate::bench::bench;
+use crate::board::board::Board;
+use crate::engine::perft::perft;
 use crate::engine::uci::main_loop;
 use std::env;
 
 fn main() {
+    let mut b = Board::default();
+    b.make_move::<false>(Move::from_san("d2d4", &b));
+    perft(&b, 1);
     if env::args().any(|x| x == *"bench") {
         bench();
     } else {

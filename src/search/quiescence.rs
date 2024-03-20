@@ -95,6 +95,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
     let mut moves_searched = 0;
 
     while let Some(MoveListEntry { m, .. }) = picker.next(board, td) {
+        let s = m.to_san();
         let mut node_pv = PV::default();
         let mut new_b = *board;
 
