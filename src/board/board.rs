@@ -4,7 +4,9 @@ use crate::{
     board::zobrist::ZOBRIST,
     eval::accumulator::Delta,
     moves::{
-        attack_boards::{king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, RANKS},
+        attack_boards::{
+            king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, BETWEEN_SQUARES, RANKS,
+        },
         magics::{bishop_attacks, queen_attacks, rook_attacks},
         moves::{
             Castle,
@@ -30,6 +32,8 @@ pub struct Board {
     pub castling_rights: u32,
     pub en_passant_square: Option<Square>,
     pub num_moves: usize,
+    checkers: Bitboard,
+    pinned: Bitboard,
     pub half_moves: usize,
     pub zobrist_hash: u64,
     pub in_check: bool,
@@ -156,7 +160,7 @@ impl Board {
     }
 
     pub fn king_square(&self, color: Color) -> Square {
-        self.bitboard(color, PieceName::King).get_lsb()
+        self.bitboard(color, PieceName::King).lsb()
     }
 
     pub fn attackers(&self, sq: Square, occupancy: Bitboard) -> Bitboard {
@@ -399,6 +403,7 @@ impl Board {
         self.num_moves += 1;
 
         self.calculate_threats();
+        self.pinned_and_checkers();
         self.in_check = self.threats_in_check();
 
         // This move is valid, so we return true to denote this fact
@@ -415,6 +420,7 @@ impl Board {
         }
         self.en_passant_square = None;
         self.calculate_threats();
+        self.pinned_and_checkers();
     }
 
     pub fn debug_bitboards(&self) {
@@ -441,7 +447,38 @@ impl Board {
             in_check: false,
             threats: Bitboard::EMPTY,
             delta: Delta::default(),
+            checkers: Bitboard::EMPTY,
+            pinned: Bitboard::EMPTY,
         }
+    }
+
+    pub(crate) fn pinned_and_checkers(&mut self) {
+        self.pinned = Bitboard::EMPTY;
+        let attacker = !self.to_move;
+        let king_sq = self.king_square(self.to_move);
+        self.checkers = knight_attacks(king_sq) & self.bitboard(attacker, PieceName::Knight)
+            | pawn_attacks(king_sq, self.to_move) & self.bitboard(attacker, PieceName::Pawn);
+        let sliders_attacks = self.diags(attacker) & bishop_attacks(king_sq, Bitboard::EMPTY)
+            | self.orthos(attacker) & rook_attacks(king_sq, Bitboard::EMPTY);
+        for sq in sliders_attacks {
+            let blockers = BETWEEN_SQUARES[sq][king_sq] & self.occupancies();
+            if blockers == Bitboard::EMPTY {
+                // No pieces between attacker and king
+                self.checkers |= sq.bitboard();
+            } else if blockers.count_bits() == 1 {
+                // One piece between attacker and king
+                self.pinned |= blockers & self.color(self.to_move);
+            }
+            // Multiple pieces between attacker and king, we don't really care
+        }
+    }
+
+    pub(crate) fn diags(&self, side: Color) -> Bitboard {
+        self.bitboard(side, PieceName::Bishop) | self.bitboard(side, PieceName::Queen)
+    }
+
+    pub(crate) fn orthos(&self, side: Color) -> Bitboard {
+        self.bitboard(side, PieceName::Rook) | self.bitboard(side, PieceName::Queen)
     }
 }
 
