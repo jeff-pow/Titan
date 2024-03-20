@@ -21,6 +21,38 @@ pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 30000;
 pub const MAX_SEARCH_DEPTH: i32 = 100;
 
+pub static mut A1: i32 = 10;
+pub static mut A2: i32 = 9534;
+pub static mut A3: i32 = 4;
+pub static mut A4: i32 = 3;
+
+pub static mut B1: i32 = 4;
+
+pub static mut C1: i32 = 87;
+pub static mut C2: i32 = 27;
+pub static mut C3: i32 = 7;
+
+pub static mut D1: i32 = 4;
+pub static mut D2: i32 = 4;
+pub static mut D3: i32 = 175;
+pub static mut D4: i32 = 3;
+
+pub static mut E1: i32 = -100;
+
+pub static mut F1: f32 = 2.44;
+pub static mut F2: f32 = 0.96;
+pub static mut F3: f32 = 1.00;
+pub static mut F4: f32 = 0.32;
+pub static mut F5: i32 = 8;
+
+pub static mut G1: i32 = 9;
+pub static mut G2: i32 = 242;
+pub static mut G3: i32 = 67;
+
+pub static mut H1: i32 = -100;
+pub static mut H2: i32 = -46;
+pub static mut H3: i32 = 9;
+
 pub fn search(
     td: &mut ThreadData,
     print_uci: bool,
@@ -125,7 +157,7 @@ fn aspiration_windows(
         } else {
             return score;
         }
-        delta += delta / 3;
+        delta += delta * unsafe { A4 } / 9;
     }
 }
 
@@ -214,7 +246,7 @@ fn negamax<const IS_PV: bool>(
         {
             return tt_score;
         }
-    } else if depth >= 4 && !IS_PV && !singular_search {
+    } else if depth >= unsafe { B1 } && !IS_PV && !singular_search {
         // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT hit and isn't a
         // PV node
         // TODO: Unlink IIR from the entry existing - just check if tt move is null instead
@@ -408,7 +440,6 @@ fn negamax<const IS_PV: bool>(
             r += ((alpha - static_eval) / 300).clamp(0, 2);
 
             r -= history / 8192;
-
 
             // Calculate a reduction and calculate a reduced depth, ensuring we won't drop to depth
             // zero and thus straight into qsearch.
