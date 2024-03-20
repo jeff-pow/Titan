@@ -11,6 +11,7 @@ mod engine;
 mod eval;
 mod moves;
 mod search;
+mod spsa;
 mod types;
 
 use crate::bench::bench;
@@ -18,6 +19,11 @@ use crate::engine::uci::main_loop;
 use std::env;
 
 fn main() {
+    // #[cfg(feature = "tuning")]
+    // {
+    //     use crate::spsa::print_params_ob;
+    //     print_params_ob();
+    // }
     if env::args().any(|x| x == *"bench") {
         bench();
     } else {

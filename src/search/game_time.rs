@@ -1,8 +1,6 @@
 use std::time::{Duration, Instant};
 
-use crate::types::pieces::Color;
-
-const TIME_FRACTION: f64 = 0.60;
+use crate::{spsa::time_fraction, types::pieces::Color};
 
 const GUI_DELAY: Duration = Duration::from_millis(25);
 
@@ -36,7 +34,7 @@ impl Clock {
     pub fn recommended_time(&mut self, side: Color) {
         let clock = self.time_remaining[side] - GUI_DELAY;
         let time = clock / 20 + self.time_inc[side] * 3 / 4;
-        self.rec_time = time.mul_f64(TIME_FRACTION);
+        self.rec_time = time.mul_f64(time_fraction() as f64 / 100.);
         self.max_time = (time * 2).min(self.time_remaining[side]);
     }
 }

@@ -10,6 +10,7 @@ authors = ["Jeff Powell"]
 [features]
 avx2 = []
 avx512 = []
+tuning = []
 
 [dependencies]
 itertools = "0.11.0"

@@ -11,6 +11,8 @@ use crate::engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
 use crate::moves::moves::Move;
 use crate::search::lmr_table::LmrTable;
 use crate::search::thread::ThreadPool;
+#[cfg(feature = "tuning")]
+use crate::spsa::set_param;
 use crate::{
     board::{
         board::Board,
@@ -107,6 +109,8 @@ pub fn main_loop() -> ! {
                     &consts,
                     &global_nodes,
                 ),
+                #[cfg(feature = "tuning")]
+                ["setoption", "name", name, "value", x] => set_param(name, x.parse().unwrap()),
                 _ => println!("Option not recognized"),
             },
             _ => (),
@@ -119,6 +123,11 @@ fn uci_opts() {
     println!("id author {}", env!("CARGO_PKG_AUTHORS"));
     println!("option name Threads type spin default 1 min 1 max 64");
     println!("option name Hash type spin default 16 min 1 max 8388608");
+    #[cfg(feature = "tuning")]
+    {
+        use crate::spsa::list_params;
+        list_params();
+    }
     println!("uciok");
 }
 

@@ -1,4 +1,9 @@
-use crate::{board::board::Board, moves::moves::Move, types::pieces::PieceName};
+use crate::{
+    board::board::Board,
+    moves::moves::Move,
+    spsa::{history1, history2},
+    types::pieces::PieceName,
+};
 
 use super::SearchStack;
 
@@ -56,7 +61,7 @@ impl HistoryTable {
         stack: &SearchStack,
         ply: i32,
     ) {
-        let bonus = (180 * depth).min(2282);
+        let bonus = (history1() * depth).min(history2());
         assert_ne!(best_move, Move::NULL);
         if best_move.is_tactical(board) {
             let cap = capthist_capture(board, best_move);

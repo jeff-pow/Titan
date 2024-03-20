@@ -9,6 +9,11 @@ use crate::moves::movelist::MoveListEntry;
 use crate::moves::movepicker::MovePicker;
 use crate::moves::moves::Move;
 use crate::search::SearchStack;
+use crate::spsa::{
+    asp_depth, delta_div, delta_expansion, delta_init, ext1, ext2, ext3, ext4, ext5, fp1, fp2, fp3,
+    iir_depth, lmp1, lmp2, lmp3, lmp4, lmp5, lmr1, lmr2, lmr3, lmr4, nmp1, nmp2, nmp3, nmp4,
+    picker_value, rfp1, rfp2, rfp_depth, see1, see2, see3,
+};
 use crate::types::pieces::PieceName;
 
 use super::quiescence::quiescence;
@@ -20,38 +25,6 @@ pub const STALEMATE: i32 = 0;
 pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 30000;
 pub const MAX_SEARCH_DEPTH: i32 = 100;
-
-pub static mut A1: i32 = 10;
-pub static mut A2: i32 = 9534;
-pub static mut A3: i32 = 4;
-pub static mut A4: i32 = 3;
-
-pub static mut B1: i32 = 4;
-
-pub static mut C1: i32 = 87;
-pub static mut C2: i32 = 27;
-pub static mut C3: i32 = 7;
-
-pub static mut D1: i32 = 4;
-pub static mut D2: i32 = 4;
-pub static mut D3: i32 = 175;
-pub static mut D4: i32 = 3;
-
-pub static mut E1: i32 = -100;
-
-pub static mut F1: f32 = 2.44;
-pub static mut F2: f32 = 0.96;
-pub static mut F3: f32 = 1.00;
-pub static mut F4: f32 = 0.32;
-pub static mut F5: i32 = 8;
-
-pub static mut G1: i32 = 9;
-pub static mut G2: i32 = 242;
-pub static mut G3: i32 = 67;
-
-pub static mut H1: i32 = -100;
-pub static mut H2: i32 = -46;
-pub static mut H3: i32 = 9;
 
 pub fn search(
     td: &mut ThreadData,
@@ -130,11 +103,11 @@ fn aspiration_windows(
     let mut alpha = -INFINITY;
     let mut beta = INFINITY;
     // Asp window should start wider if score is more extreme
-    let mut delta = 10 + prev_score * prev_score / 9534;
+    let mut delta = delta_init() + prev_score * prev_score / delta_div();
 
     let mut depth = td.iter_max_depth;
 
-    if td.iter_max_depth >= 4 {
+    if td.iter_max_depth >= asp_depth() {
         alpha = alpha.max(prev_score - delta);
         beta = beta.min(prev_score + delta);
     }
@@ -157,7 +130,7 @@ fn aspiration_windows(
         } else {
             return score;
         }
-        delta += delta * unsafe { A4 } / 9;
+        delta += delta * delta_expansion() / 9;
     }
 }
 
@@ -246,7 +219,7 @@ fn negamax<const IS_PV: bool>(
         {
             return tt_score;
         }
-    } else if depth >= unsafe { B1 } && !IS_PV && !singular_search {
+    } else if depth >= iir_depth() && !IS_PV && !singular_search {
         // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT hit and isn't a
         // PV node
         // TODO: Unlink IIR from the entry existing - just check if tt move is null instead
@@ -298,9 +271,9 @@ fn negamax<const IS_PV: bool>(
     // Reverse futility pruning (RFP) - If we are below beta by a certain amount, we are unlikely to
     // raise it, so we can prune the nodes that would have followed
     if can_prune
-        && static_eval - 87 * depth + i32::from(improving) * 27 * depth >= beta
+        && static_eval - rfp1() * depth + i32::from(improving) * rfp2() * depth >= beta
         && static_eval >= beta
-        && depth < 7
+        && depth < rfp_depth()
         && static_eval.abs() < NEAR_CHECKMATE
     {
         return (static_eval + beta) / 2;
@@ -325,7 +298,7 @@ fn negamax<const IS_PV: bool>(
         td.ply += 1;
 
         // Reduction
-        let r = 4 + depth / 4 + min((static_eval - beta) / 175, 3);
+        let r = nmp1() + depth / nmp2() + min((static_eval - beta) / nmp3(), nmp4());
         let mut null_eval =
             -negamax::<false>(depth - r, -beta, -beta + 1, &mut node_pv, td, tt, &new_b, !cut_node);
 
@@ -342,7 +315,7 @@ fn negamax<const IS_PV: bool>(
     }
 
     let mut moves_searched = 0;
-    let mut picker = MovePicker::new(tt_move, td, -PieceName::Pawn.value(), false);
+    let mut picker = MovePicker::new(tt_move, td, picker_value(), false);
 
     let mut quiets_tried = Vec::new();
     let mut tacticals_tried = Vec::new();
@@ -362,11 +335,11 @@ fn negamax<const IS_PV: bool>(
                 // Good moves are likely to be searched first due to tt move ordering and history
                 // table, so we can prune all the moves that follow as they are very unlikely to be good.
                 let moves_required = if improving {
-                    2.44 + 0.96 * depth as f32 * depth as f32
+                    (lmp1() as f32 / 100.) + (lmp2() as f32 / 100.) * depth as f32 * depth as f32
                 } else {
-                    1.00 + 0.32 * depth as f32 * depth as f32
+                    (lmp3() as f32 / 100.) + (lmp4() as f32 / 100.) * depth as f32 * depth as f32
                 } as i32;
-                if depth < 8 && moves_searched > moves_required {
+                if depth < lmp5() && moves_searched > moves_required {
                     break;
                 }
 
@@ -374,8 +347,8 @@ fn negamax<const IS_PV: bool>(
                 let lmr_depth = (depth - td.lmr.base_reduction(depth, moves_searched)).max(0);
                 if !singular_search
                     && !in_check
-                    && lmr_depth < 9
-                    && static_eval + 242 + 67 * lmr_depth <= alpha
+                    && lmr_depth < fp1()
+                    && static_eval + fp2() + fp3() * lmr_depth <= alpha
                     && alpha < CHECKMATE
                 {
                     break;
@@ -384,8 +357,8 @@ fn negamax<const IS_PV: bool>(
 
             // Static exchange pruning - If we fail to immediately recapture a depth dependent
             // threshold, don't bother searching the move
-            let margin = if m.is_capture(board) { -100 } else { -46 } * depth;
-            if depth < 9 && !board.see(m, margin) {
+            let margin = if m.is_capture(board) { see1() } else { see2() } * depth;
+            if depth < see3() && !board.see(m, margin) {
                 continue;
             }
         }
@@ -413,6 +386,7 @@ fn negamax<const IS_PV: bool>(
         let new_depth = depth + extension - 1;
 
         td.nodes.increment();
+        moves_searched += 1;
         let pre_search_nodes = td.nodes.local_count();
         td.stack[td.ply].played_move = m;
         td.hash_history.push(new_b.zobrist_hash);
@@ -428,18 +402,18 @@ fn negamax<const IS_PV: bool>(
         // Late Move Reductions (LMR) - Search moves after the first with reduced depth and
         // window as they are much less likely to be the best move than the first move
         // selected by the move picker.
-        if depth > 2 && moves_searched > 1 + i32::from(is_root) && (is_quiet || !IS_PV) {
+        if depth > lmr1() && moves_searched > 1 + i32::from(is_root) && (is_quiet || !IS_PV) {
             let mut r = td.lmr.base_reduction(depth, moves_searched);
             if cut_node {
                 r += 1 + i32::from(!m.is_tactical(board));
             }
             // This technically looks one ply into the future since ply is incremented a few lines
             // prior.
-            r -= i32::from(td.stack[td.ply].cutoffs < 4);
+            r -= i32::from(td.stack[td.ply].cutoffs < lmr2() as u32);
 
-            r += ((alpha - static_eval) / 300).clamp(0, 2);
+            r += ((alpha - static_eval) / lmr3()).clamp(0, 2);
 
-            r -= history / 8192;
+            r -= history / lmr4();
 
             // Calculate a reduction and calculate a reduced depth, ensuring we won't drop to depth
             // zero and thus straight into qsearch.
@@ -465,7 +439,7 @@ fn negamax<const IS_PV: bool>(
         // If LMR was not performed, conduct a zero window full depth search on the first move of
         // non-PV nodes (which already have a zero window b/t alpha and beta), or the moves
         // following the first move for PV nodes
-        else if moves_searched > 0 || !IS_PV {
+        else if moves_searched > 1 || !IS_PV {
             eval = -negamax::<false>(
                 new_depth,
                 -alpha - 1,
@@ -481,14 +455,13 @@ fn negamax<const IS_PV: bool>(
         // If the node is a PV node and the score calculated in a previous search fell between
         // alpha and beta (an exact score) or no moves have been searched from the current
         // position, execute a full window full depth search.
-        if IS_PV && (moves_searched == 0 || (eval > alpha && eval < beta)) {
+        if IS_PV && (moves_searched == 1 || (eval > alpha && eval < beta)) {
             eval = -negamax::<true>(new_depth, -beta, -alpha, &mut node_pv, td, tt, &new_b, false);
         }
 
         if is_root {
             td.nodes_table[m.from()][m.to()] += td.nodes.local_count() - pre_search_nodes;
         }
-        moves_searched += 1;
         td.hash_history.pop();
         td.accumulators.pop();
         td.ply -= 1;
@@ -589,14 +562,14 @@ fn extension<const IS_PV: bool>(
     if entry.depth() < depth - 3
         || matches!(entry.flag(), EntryFlag::AlphaUnchanged | EntryFlag::None)
         || m != tt_move
-        || depth < 7
+        || depth < ext1()
         || td.ply == 0
         || tt_move == Move::NULL
     {
         return 0;
     }
 
-    let ext_beta = (entry.search_score() - 2 * depth).max(-CHECKMATE);
+    let ext_beta = (entry.search_score() - ext2() * depth / 16).max(-CHECKMATE);
     let ext_depth = (depth - 1) / 2;
     let mut node_pv = PV::default();
     let npv = &mut node_pv;
@@ -609,9 +582,9 @@ fn extension<const IS_PV: bool>(
     td.accumulators.push(prev);
 
     if ext_score < ext_beta {
-        if td.stack[td.ply].dbl_extns <= 9 && !IS_PV && ext_score < ext_beta - 18 {
+        if td.stack[td.ply].dbl_extns < ext3() && !IS_PV && ext_score < ext_beta - ext4() {
             td.stack[td.ply].dbl_extns += 1;
-            2 + i32::from(!tt_move.is_tactical(board) && ext_score < ext_beta - 200)
+            2 + i32::from(!tt_move.is_tactical(board) && ext_score < ext_beta - ext5())
         } else {
             1
         }

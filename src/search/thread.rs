@@ -13,6 +13,7 @@ use crate::{
     moves::moves::Move,
     search::lmr_table::LmrTable,
     search::search::{CHECKMATE, NEAR_CHECKMATE},
+    spsa::{tm1, tm2, tm3, tm4},
 };
 
 use super::{
@@ -77,7 +78,11 @@ impl<'a> ThreadData<'a> {
         assert_eq!(0, self.thread_idx);
         let m = self.best_move;
         let frac = self.nodes_table[m.from()][m.to()] as f64 / self.nodes.global_count() as f64;
-        let time_scale = if depth > 8 { (1.5 - frac) * 1.4 } else { 0.9 };
+        let time_scale = if depth > tm1() {
+            ((tm2() as f64 / 100.) - frac) * (tm3() as f64 / 100.)
+        } else {
+            tm4() as f64 / 100.
+        };
         if self.search_start.elapsed().as_millis() as f64
             >= game_time.rec_time.as_millis() as f64 * time_scale
         {
