@@ -357,7 +357,7 @@ fn negamax<const IS_PV: bool>(
 
             // Static exchange pruning - If we fail to immediately recapture a depth dependent
             // threshold, don't bother searching the move
-            let margin = if m.is_capture(board) { see1() } else { see2() } * depth;
+            let margin = if m.is_capture(board) { -see1() } else { -see2() } * depth;
             if depth < see3() && !board.see(m, margin) {
                 continue;
             }
