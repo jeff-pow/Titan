@@ -26,7 +26,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
         return 0;
     }
 
-    if td.nodes.check_time() && td.thread_idx == 0 && td.hard_stop() {
+    if td.hard_stop() {
         td.halt.store(true, Ordering::Relaxed);
         return 0;
     }

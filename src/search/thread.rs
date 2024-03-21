@@ -111,7 +111,11 @@ impl<'a> ThreadData<'a> {
             SearchType::Mate(_) | SearchType::Depth(_) | SearchType::Infinite => {
                 self.halt.load(Ordering::Relaxed)
             }
-            SearchType::Time(time) => time.hard_termination(self.search_start),
+            SearchType::Time(time) => {
+                self.nodes.check_time()
+                    && self.thread_idx == 0
+                    && time.hard_termination(self.search_start)
+            }
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
         }
     }
