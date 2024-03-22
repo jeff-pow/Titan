@@ -361,6 +361,12 @@ impl Board {
             }
         }
 
+        assert!(
+            !self.square_under_attack(!self.to_move, self.king_square(self.to_move)),
+            "{:?}",
+            &self
+        );
+
         // Xor out the old en passant square hash
         if let Some(sq) = self.en_passant_square {
             self.zobrist_hash ^= ZOBRIST.en_passant[sq];

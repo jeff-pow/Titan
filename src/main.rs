@@ -24,7 +24,11 @@ use std::env;
 fn main() {
     let mut b = Board::default();
     b.make_move::<false>(Move::from_san("d2d4", &b));
-    perft(&b, 1);
+    b.make_move::<false>(Move::from_san("c7c5", &b));
+    b.make_move::<false>(Move::from_san("d4d5", &b));
+    b.make_move::<false>(Move::from_san("d8a5", &b));
+    // dbg!(b);
+    // perft(&b, 1);
     if env::args().any(|x| x == *"bench") {
         bench();
     } else {
