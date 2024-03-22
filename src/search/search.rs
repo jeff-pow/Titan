@@ -282,6 +282,7 @@ fn negamax<const IS_PV: bool>(
         && depth >= 2
         && static_eval >= beta
         && td.stack[td.ply - 1].played_move != Move::NULL
+        && beta > -NEAR_CHECKMATE
     {
         let mut node_pv = PV::default();
         let mut new_b = *board;
@@ -408,7 +409,6 @@ fn negamax<const IS_PV: bool>(
             r += ((alpha - static_eval) / 300).clamp(0, 2);
 
             r -= history / 8192;
-
 
             // Calculate a reduction and calculate a reduced depth, ensuring we won't drop to depth
             // zero and thus straight into qsearch.
