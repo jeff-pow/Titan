@@ -282,6 +282,7 @@ fn negamax<const IS_PV: bool>(
         && depth >= 2
         && static_eval >= beta
         && td.stack[td.ply - 1].played_move != Move::NULL
+        && beta > -NEAR_CHECKMATE
     {
         let mut node_pv = PV::default();
         let mut new_b = *board;
