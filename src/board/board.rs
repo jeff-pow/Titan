@@ -223,7 +223,7 @@ impl Board {
     pub(crate) fn is_pseudo_legal(&self, m: Move) -> bool {
         // Be careful, eventually engine could try to verify tt moves with this and it will error
         // out which is not desired behavior
-        assert_ne!(PieceName::King, self.capture(m).name());
+        // assert_ne!(PieceName::King, self.capture(m).name());
         if m == Move::NULL {
             return false;
         }
@@ -234,7 +234,7 @@ impl Board {
         let moved_piece = self.piece_at(from);
         let captured_piece = self.piece_at(to);
         let is_capture = captured_piece != Piece::None;
-        let is_pawn_double_push = m.flag() == MoveType::DoublePush;
+        let king = self.king_square(self.to_move);
 
         if moved_piece != m.piece_moving() {
             return false;
@@ -279,47 +279,115 @@ impl Board {
             return true;
         }
 
+        let up = match self.to_move {
+            Color::White => North,
+            Color::Black => South,
+        };
+
+        if m.promotion().is_some() {
+            if self.checkers().count_bits() > 1 {
+                return false;
+            }
+
+            let valid = if self.checkers() != Bitboard::EMPTY {
+                self.checkers() | BETWEEN_SQUARES[king][self.checkers().lsb()]
+            } else {
+                !Bitboard::EMPTY
+            };
+            let goal = if self.to_move == Color::White { RANKS[7] } else { RANKS[0] };
+            let opts = (from.shift(up).bitboard() & !self.occupancies())
+                | (pawn_attacks(from, self.to_move) & self.color(!self.to_move));
+            return goal & opts & valid & to.bitboard() != Bitboard::EMPTY;
+        }
+
+        if m.is_capture(self) && !m.is_en_passant() && self.piece_at(to) == Piece::None {
+            return false;
+        }
+        if !m.is_capture(self) && self.piece_at(to) != Piece::None {
+            return false;
+        }
+        if m.is_en_passant() && Some(to) != self.en_passant_square {
+            return false;
+        }
+        if self.color(self.to_move).contains(to) {
+            return false;
+        }
+        if moved_piece.name() == PieceName::King
+            && self.threats() & to.bitboard() != Bitboard::EMPTY
+        {
+            return false;
+        }
+
         match moved_piece.name() {
             PieceName::Pawn => {
-                if is_capture && is_pawn_double_push {
-                    return false;
+                if !m.is_en_passant() {
+                    let should_be_promoting = to.bitboard() & RANKS[7] != Bitboard::EMPTY
+                        || to.bitboard() & RANKS[0] != Bitboard::EMPTY;
+                    if should_be_promoting && m.promotion().is_none() {
+                        return false;
+                    }
+                    if m.flag() == MoveType::DoublePush {
+                        // Double pushes
+                        let one_forward = from.shift(up);
+                        let two_forward = one_forward.shift(up);
+                        if self.piece_at(one_forward) != Piece::None
+                            || self.piece_at(two_forward) != Piece::None
+                            || to != one_forward.shift(up)
+                        {
+                            return false;
+                        }
+                    }
+                    if !(from.shift(up) == to && self.piece_at(to) == Piece::None) {
+                        // Single pushes
+                        return false;
+                    }
+                    // Captures
+                    if pawn_attacks(from, self.to_move) & to.bitboard() & self.color(!self.to_move)
+                        == Bitboard::EMPTY
+                    {
+                        return false;
+                    }
                 }
-                let should_be_promoting = to.bitboard() & RANKS[7] != Bitboard::EMPTY
-                    || to.bitboard() & RANKS[0] != Bitboard::EMPTY;
-                if should_be_promoting && m.promotion().is_none() {
-                    return false;
-                }
-                let up = match self.to_move {
-                    Color::White => North,
-                    Color::Black => South,
-                };
-                if m.is_en_passant() {
-                    return Some(to) == self.en_passant_square;
-                }
-                if is_pawn_double_push {
-                    let one_forward = from.shift(up);
-                    return self.piece_at(one_forward) == Piece::None
-                        && to == one_forward.shift(up);
-                }
-                if !is_capture {
-                    return to == from.shift(up) && captured_piece == Piece::None;
-                }
-                // Captures
-                (pawn_set_attacks(from.bitboard(), self.to_move) & to.bitboard()) != Bitboard::EMPTY
             }
-            PieceName::Knight => to.bitboard() & knight_attacks(from) != Bitboard::EMPTY,
+            PieceName::Knight => {
+                if to.bitboard() & knight_attacks(from) == Bitboard::EMPTY {
+                    return false;
+                }
+            }
             PieceName::Bishop => {
-                to.bitboard() & bishop_attacks(from, self.occupancies()) != Bitboard::EMPTY
+                if to.bitboard() & bishop_attacks(from, self.occupancies()) == Bitboard::EMPTY {
+                    return false;
+                }
             }
             PieceName::Rook => {
-                to.bitboard() & rook_attacks(from, self.occupancies()) != Bitboard::EMPTY
+                if to.bitboard() & rook_attacks(from, self.occupancies()) == Bitboard::EMPTY {
+                    return false;
+                }
             }
             PieceName::Queen => {
-                to.bitboard() & queen_attacks(from, self.occupancies()) != Bitboard::EMPTY
+                if to.bitboard() & queen_attacks(from, self.occupancies()) == Bitboard::EMPTY {
+                    return false;
+                }
             }
-            PieceName::King => to.bitboard() & king_attacks(from) != Bitboard::EMPTY,
+            PieceName::King => {
+                if to.bitboard() & king_attacks(from) == Bitboard::EMPTY {
+                    return false;
+                }
+            }
             PieceName::None => panic!(),
+        };
+
+        if self.checkers() != Bitboard::EMPTY && moved_piece.name() != PieceName::King {
+            if self.checkers().count_bits() > 1 {
+                return false;
+            }
+            let dests = self.checkers() | BETWEEN_SQUARES[king][self.checkers().lsb()];
+            if dests & to.bitboard() == Bitboard::EMPTY {
+                return false;
+            }
         }
+
+        true
     }
 
     /// Function makes a move and modifies board state to reflect the move that just happened.
@@ -361,11 +429,11 @@ impl Board {
             }
         }
 
-        assert!(
-            !self.square_under_attack(!self.to_move, self.king_square(self.to_move)),
-            "{:?}",
-            &self
-        );
+        // assert!(
+        //     !self.square_under_attack(!self.to_move, self.king_square(self.to_move)),
+        //     "{:?}",
+        //     &self
+        // );
 
         // Xor out the old en passant square hash
         if let Some(sq) = self.en_passant_square {
@@ -408,6 +476,15 @@ impl Board {
 
         self.calculate_threats();
         self.pinned_and_checkers();
+        // if self.square_under_attack(!self.to_move, self.king_square(self.to_move)) {
+        //     assert!(
+        //         self.checkers != Bitboard::EMPTY
+        //             && self.threats & self.king_square(self.to_move).bitboard() != Bitboard::EMPTY,
+        //         "move {:?}\n{:?}",
+        //         m,
+        //         self
+        //     );
+        // }
     }
 
     pub fn make_null_move(&mut self) {
@@ -471,7 +548,7 @@ impl Board {
             || valid_pinned_moves(king, m.from()) & m.to().bitboard() != Bitboard::EMPTY
     }
 
-    pub(crate) fn pinned_and_checkers(&mut self) {
+    pub(super) fn pinned_and_checkers(&mut self) {
         self.pinned = Bitboard::EMPTY;
         let attacker = !self.to_move;
         let king_sq = self.king_square(self.to_move);

@@ -34,6 +34,14 @@ impl Bitboard {
         self.0.count_ones() as i32
     }
 
+    pub const fn contains(self, sq: Square) -> bool {
+        self.and(sq.bitboard()).0 != 0
+    }
+
+    pub const fn and(self, rhs: Self) -> Self {
+        Self(self.0 & rhs.0)
+    }
+
     /// Executes a shift without checking to ensure no information is lost. Only to be used when a
     /// shift has already been proven to be safe
     pub const fn shift(self, dir: Direction) -> Self {

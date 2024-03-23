@@ -28,15 +28,15 @@ pub enum MovePickerPhase {
 
 pub struct MovePicker {
     pub phase: MovePickerPhase,
-    skip_quiets: bool,
-    margin: i32,
+    pub skip_quiets: bool,
+    pub margin: i32,
 
-    moves: MoveList,
-    index: usize,
+    pub moves: MoveList,
+    pub index: usize,
 
-    tt_move: Move,
-    killer_move: Move,
-    counter_move: Move,
+    pub tt_move: Move,
+    pub killer_move: Move,
+    pub counter_move: Move,
 }
 
 impl MovePicker {

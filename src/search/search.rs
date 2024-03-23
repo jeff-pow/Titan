@@ -318,11 +318,17 @@ fn negamax<const IS_PV: bool>(
     // Start of search
     while let Some(MoveListEntry { m, score: _hist_score }) = picker.next(board, td) {
         // Don't consider the singular move in a verification search
-        let s = m.to_san();
+        // let s = m.to_san();
         if m == singular_move {
             continue;
         }
         let is_quiet = !m.is_tactical(board);
+
+        let mut new_b = *board;
+        // Make move filters out illegal moves by returning false if a move was illegal
+        if !new_b.is_legal(m) {
+            continue;
+        }
 
         // Mid-move loop pruning
         if !is_root && best_score >= -NEAR_CHECKMATE {
@@ -359,12 +365,9 @@ fn negamax<const IS_PV: bool>(
             }
         }
 
-        let mut new_b = *board;
-        // Make move filters out illegal moves by returning false if a move was illegal
-        if !new_b.is_legal(m) {
-            continue;
-        }
         new_b.make_move::<true>(m);
+        // let old = format!("{:?}", &board);
+        // let new = format!("{:?}", &new_b);
         tt.prefetch(new_b.zobrist_hash);
         td.accumulators.increment();
         td.accumulators.top().lazy_update(&mut new_b.delta);
