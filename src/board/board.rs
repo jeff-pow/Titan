@@ -301,7 +301,7 @@ impl Board {
                     return to == from.shift(up) && captured_piece == Piece::None;
                 }
                 // Captures
-                (pawn_set_attacks(from.bitboard(), self.to_move) & to.bitboard()) != Bitboard::EMPTY
+                (pawn_attacks(from, self.to_move) & to.bitboard()) != Bitboard::EMPTY
             }
             PieceName::Knight => to.bitboard() & knight_attacks(from) != Bitboard::EMPTY,
             PieceName::Bishop => {
