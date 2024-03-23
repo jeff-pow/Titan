@@ -1,3 +1,4 @@
+// TODO: Remove avx2 feature, target_feature instead
 #[cfg(all(not(feature = "avx512"), feature = "avx2"))]
 pub(crate) mod avx2 {
     use std::arch::x86_64::*;

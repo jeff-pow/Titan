@@ -195,11 +195,14 @@ fn negamax<const IS_PV: bool>(
 
     // Attempt to look up information from previous searches in the same board state
     let mut tt_move = Move::NULL;
+    // TODO: Test replacing IS_PV with tt_pv in store calls to tt
+    let mut tt_pv = IS_PV;
     let entry = tt.get(board.zobrist_hash, td.ply);
     if let Some(entry) = entry {
         let tt_flag = entry.flag();
         let tt_score = entry.search_score();
         tt_move = entry.best_move(board);
+        tt_pv |= entry.was_pv();
 
         // Don't do TT cutoffs in verification search for singular moves
         if !singular_search
