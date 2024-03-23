@@ -218,6 +218,7 @@ fn negamax<const IS_PV: bool>(
         // IIR (Internal Iterative Deepening) - Reduce depth if a node doesn't have a TT hit and isn't a
         // PV node
         // TODO: Unlink IIR from the entry existing - just check if tt move is null instead
+        // TODO: Try high depth cutnode iir as seen in SF
         depth -= 1;
     }
 
