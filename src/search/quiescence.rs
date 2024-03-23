@@ -47,6 +47,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
     let entry = tt.get(board.zobrist_hash, td.ply);
     if let Some(e) = entry {
         if !IS_PV
+        // TODO: There shouldn't be an IS_PV condition here...
             && match e.flag() {
                 EntryFlag::None => false,
                 EntryFlag::AlphaUnchanged => e.search_score() <= alpha,
