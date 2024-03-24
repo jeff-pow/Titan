@@ -13,12 +13,12 @@ impl Bitboard {
     /// Returns the index of the lowest bit of a bitboard, and modifies the bitboard to exclude
     /// that bit
     pub fn pop_lsb(&mut self) -> Square {
-        let lsb = self.get_lsb();
+        let lsb = self.lsb();
         self.0 &= self.0 - 1;
         lsb
     }
 
-    pub const fn get_lsb(self) -> Square {
+    pub const fn lsb(self) -> Square {
         unsafe { std::mem::transmute(self.0.trailing_zeros()) }
     }
 
@@ -32,6 +32,14 @@ impl Bitboard {
 
     pub const fn count_bits(self) -> i32 {
         self.0.count_ones() as i32
+    }
+
+    pub const fn contains(self, sq: Square) -> bool {
+        self.and(sq.bitboard()).0 != 0
+    }
+
+    pub const fn and(self, rhs: Self) -> Self {
+        Self(self.0 & rhs.0)
     }
 
     /// Executes a shift without checking to ensure no information is lost. Only to be used when a

@@ -33,7 +33,7 @@ impl Board {
         for p in PieceName::iter() {
             let bb = attackers & self.bitboard(side, p);
             if (attackers & self.bitboard(side, p)) != Bitboard::EMPTY {
-                *occupied ^= bb.get_lsb().bitboard();
+                *occupied ^= bb.lsb().bitboard();
                 return p;
             }
         }

@@ -68,7 +68,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
     };
     td.stack[td.ply].static_eval = stand_pat;
     // Store eval in tt if it wasn't previously found in tt
-    if entry.is_none() && !board.in_check {
+    if entry.is_none() && !board.in_check() {
         tt.store(
             board.zobrist_hash,
             Move::NULL,
@@ -86,7 +86,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
     let original_alpha = alpha;
     alpha = alpha.max(stand_pat);
 
-    let in_check = board.in_check;
+    let in_check = board.in_check();
     // Try to find an evasion if we are in check, otherwise just generate captures
     let mut picker = MovePicker::new(table_move, td, 1, !in_check);
 

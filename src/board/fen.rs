@@ -51,6 +51,7 @@ impl Board {
         };
         board.zobrist_hash = board.generate_hash();
         board.calculate_threats();
+        board.pinned_and_checkers();
 
         // 10th bucket find who can still castle
         // Order of array is white king castle, white queen castle, black king castle, black queen castle
