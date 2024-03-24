@@ -9,7 +9,7 @@ pub struct HistoryEntry {
     score: i32,
     counter: Move,
     // King can't be captured, so it doesn't need an entry
-    capt_hist: [i32; 5],
+    capt_hist: [i32; 7],
     cont_hist: [[i32; 64]; 6],
 }
 

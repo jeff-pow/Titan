@@ -83,7 +83,7 @@ pub enum PieceName {
     Rook,
     Queen,
     King,
-    None = 7,
+    None,
 }
 
 impl PieceName {
@@ -104,7 +104,7 @@ impl PieceName {
     }
 
     fn from_u32(val: u32) -> Self {
-        assert!((0..6).contains(&val) || val == 7);
+        // assert!((0..6).contains(&val) || val == 7);
         unsafe { transmute(val as u8) }
     }
 
@@ -135,7 +135,7 @@ pub enum Piece {
     WhiteKing,
     BlackKing,
 
-    None = 15,
+    None,
 }
 
 impl Piece {
@@ -156,7 +156,7 @@ impl Piece {
     }
 
     pub(crate) fn from_u32(x: u32) -> Self {
-        assert!((0..12).contains(&x) || x == 15);
+        // assert!((0..12).contains(&x) || x == 15);
         unsafe { transmute(x as u8) }
     }
 

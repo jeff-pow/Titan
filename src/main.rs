@@ -13,6 +13,9 @@ mod types;
 
 use crate::bench::bench;
 use crate::engine::uci::main_loop;
+use crate::search::history_table::capthist_capture;
+use board::board::Board;
+use moves::movelist::MoveList;
 use std::env;
 
 fn main() {
