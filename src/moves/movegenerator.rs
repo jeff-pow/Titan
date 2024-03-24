@@ -1,6 +1,7 @@
 use crate::{
     board::board::Board,
     moves::{
+        attack_boards::BETWEEN_SQUARES,
         moves::Direction,
         moves::Direction::{North, NorthEast, NorthWest, South, SouthEast, SouthWest},
     },
@@ -30,12 +31,6 @@ pub enum MoveGenerationType {
 impl Board {
     /// Generates all pseudolegal moves
     pub fn generate_moves(&self, gen_type: MGT, moves: &mut MoveList) {
-        let destinations = match gen_type {
-            MoveGenerationType::CapturesOnly => self.color(!self.to_move),
-            MoveGenerationType::QuietsOnly => !self.occupancies(),
-            MoveGenerationType::All => !self.color(self.to_move),
-        };
-
         let knights = self.bitboard(self.to_move, PieceName::Knight);
         let kings = self.bitboard(self.to_move, PieceName::King);
         let bishops = self.bitboard(self.to_move, PieceName::Bishop)
@@ -43,12 +38,37 @@ impl Board {
         let rooks = self.bitboard(self.to_move, PieceName::Rook)
             | self.bitboard(self.to_move, PieceName::Queen);
 
-        self.jumper_moves(knights, destinations, moves, knight_attacks);
+        if self.checkers().count_bits() > 1 {
+            // Only way out of a double check is to move the king
+            self.jumper_moves(
+                kings,
+                !self.threats() & !self.color(self.to_move),
+                moves,
+                king_attacks,
+            );
+            return;
+        }
+
+        let opts = if self.checkers() == Bitboard::EMPTY {
+            // If not in check, move anywhere
+            !Bitboard::EMPTY
+        } else {
+            // Otherwise a piece must move
+            BETWEEN_SQUARES[self.king_square(self.to_move)][self.checkers().lsb()] | self.checkers()
+        };
+
+        let destinations = match gen_type {
+            MoveGenerationType::CapturesOnly => self.color(!self.to_move),
+            MoveGenerationType::QuietsOnly => !self.occupancies(),
+            MoveGenerationType::All => !self.color(self.to_move),
+        };
+
+        self.jumper_moves(knights, destinations & opts, moves, knight_attacks);
         self.jumper_moves(kings, destinations & !self.threats(), moves, king_attacks);
-        self.magic_moves(rooks, destinations, moves, rook_attacks);
-        self.magic_moves(bishops, destinations, moves, bishop_attacks);
-        self.pawn_moves(gen_type, moves);
-        if gen_type == MGT::QuietsOnly || gen_type == MGT::All {
+        self.magic_moves(rooks, destinations & opts, moves, rook_attacks);
+        self.magic_moves(bishops, destinations & opts, moves, bishop_attacks);
+        self.pawn_moves(destinations & opts, gen_type, moves);
+        if (gen_type == MGT::QuietsOnly || gen_type == MGT::All) && !self.in_check() {
             self.castling_moves(moves);
         }
     }
@@ -93,7 +113,7 @@ impl Board {
         }
     }
 
-    fn pawn_moves(&self, gen_type: MGT, moves: &mut MoveList) {
+    fn pawn_moves(&self, dests: Bitboard, gen_type: MGT, moves: &mut MoveList) {
         let piece = Piece::new(PieceName::Pawn, self.to_move);
         let pawns = self.bitboard(self.to_move, PieceName::Pawn);
         let vacancies = !self.occupancies();
@@ -113,11 +133,11 @@ impl Board {
             // Single and double pawn pushes w/o captures
             let push_one = vacancies & non_promotions.shift(up);
             let push_two = vacancies & (push_one & rank3).shift(up);
-            for dest in push_one {
+            for dest in push_one & dests {
                 let src = dest.shift(up.opp());
                 moves.push(Move::new(src, dest, MoveType::Normal, piece));
             }
-            for dest in push_two {
+            for dest in push_two & dests {
                 let src = dest.shift(up.opp()).shift(up.opp());
                 moves.push(Move::new(src, dest, MoveType::DoublePush, piece));
             }
@@ -126,9 +146,9 @@ impl Board {
         // Promotions - captures and straight pushes
         // Promotions are generated with captures because they are so good
         if matches!(gen_type, MGT::All | MGT::CapturesOnly) && promotions != Bitboard::EMPTY {
-            let no_capture_promotions = promotions.shift(up) & vacancies;
-            let left_capture_promotions = promotions.shift(left) & enemies;
-            let right_capture_promotions = promotions.shift(right) & enemies;
+            let no_capture_promotions = promotions.shift(up) & vacancies & dests;
+            let left_capture_promotions = promotions.shift(left) & enemies & dests;
+            let right_capture_promotions = promotions.shift(right) & enemies & dests;
             for dest in no_capture_promotions {
                 gen_promotions(piece, dest.shift(up.opp()), dest, moves);
             }
@@ -143,8 +163,8 @@ impl Board {
         if matches!(gen_type, MGT::All | MGT::CapturesOnly) {
             // Captures that do not lead to promotions
             if non_promotions != Bitboard::EMPTY {
-                let left_captures = non_promotions.shift(left) & enemies;
-                let right_captures = non_promotions.shift(right) & enemies;
+                let left_captures = non_promotions.shift(left) & enemies & dests;
+                let right_captures = non_promotions.shift(right) & enemies & dests;
                 for dest in left_captures {
                     let src = dest.shift(left.opp());
                     moves.push(Move::new(src, dest, MoveType::Normal, piece));
@@ -156,7 +176,9 @@ impl Board {
             }
 
             // En Passant
-            if self.can_en_passant() {
+            if self.can_en_passant()
+            // && self.en_passant_square.unwrap().bitboard() & dests != Bitboard::EMPTY
+            {
                 if let Some(x) = self.get_en_passant(left.opp(), piece) {
                     moves.push(x);
                 }
