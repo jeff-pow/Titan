@@ -8,7 +8,6 @@ authors = ["Jeff Powell"]
 
 
 [features]
-avx2 = []
 avx512 = []
 
 [dependencies]
