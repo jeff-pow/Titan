@@ -2,8 +2,6 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(long_running_const_eval)]
 #![cfg_attr(feature = "avx512", feature(stdarch_x86_avx512))]
-#[cfg(all(feature = "avx2", feature = "avx512"))]
-compile_error!("Cannot enable both avx2 and avx512 simultaneously.");
 
 mod bench;
 mod board;
