@@ -27,7 +27,8 @@ pub struct Board {
     bitboards: [Bitboard; NUM_PIECES],
     color_occupancies: [Bitboard; 2],
     mailbox: [Piece; 64],
-    pub to_move: Color,
+    /// Side to move
+    pub stm: Color,
     pub castling_rights: u32,
     pub en_passant_square: Option<Square>,
     pub num_moves: usize,
@@ -98,7 +99,7 @@ impl Board {
     /// Returns the type of piece captured by a move, if any
     pub fn capture(&self, m: Move) -> Piece {
         if m.is_en_passant() {
-            Piece::new(PieceName::Pawn, !self.to_move)
+            Piece::new(PieceName::Pawn, !self.stm)
         } else {
             self.piece_at(m.to())
         }
@@ -190,7 +191,7 @@ impl Board {
     }
 
     fn threats_in_check(&self) -> bool {
-        self.king_square(self.to_move).bitboard() & self.threats != Bitboard::EMPTY
+        self.king_square(self.stm).bitboard() & self.threats != Bitboard::EMPTY
     }
 
     pub(crate) const fn threats(&self) -> Bitboard {
@@ -198,9 +199,9 @@ impl Board {
     }
 
     pub(crate) fn calculate_threats(&mut self) {
-        let attacker = !self.to_move;
+        let attacker = !self.stm;
         let mut threats = Bitboard::EMPTY;
-        let occ = self.occupancies() ^ self.king_square(self.to_move).bitboard();
+        let occ = self.occupancies() ^ self.king_square(self.stm).bitboard();
 
         threats |= pawn_set_attacks(self.bitboard(attacker, PieceName::Pawn), attacker);
 
@@ -242,11 +243,11 @@ impl Board {
             return false;
         }
 
-        if moved_piece.color() != self.to_move {
+        if moved_piece.color() != self.stm {
             return false;
         }
 
-        if is_capture && captured_piece.color() == self.to_move {
+        if is_capture && captured_piece.color() == self.stm {
             return false;
         }
 
@@ -268,7 +269,7 @@ impl Board {
             if castle.check_squares() & self.threats() != Bitboard::EMPTY {
                 return false;
             }
-            if self.bitboard(self.to_move, PieceName::Rook) & castle.rook_src().bitboard()
+            if self.bitboard(self.stm, PieceName::Rook) & castle.rook_src().bitboard()
                 == Bitboard::EMPTY
             {
                 return false;
@@ -287,7 +288,7 @@ impl Board {
                 if should_be_promoting && m.promotion().is_none() {
                     return false;
                 }
-                let up = match self.to_move {
+                let up = match self.stm {
                     Color::White => North,
                     Color::Black => South,
                 };
@@ -303,7 +304,7 @@ impl Board {
                     return to == from.shift(up) && captured_piece == Piece::None;
                 }
                 // Captures
-                (pawn_attacks(from, self.to_move) & to.bitboard()) != Bitboard::EMPTY
+                (pawn_attacks(from, self.stm) & to.bitboard()) != Bitboard::EMPTY
             }
             PieceName::Knight => to.bitboard() & knight_attacks(from) != Bitboard::EMPTY,
             PieceName::Bishop => {
@@ -339,13 +340,13 @@ impl Board {
 
         // Move rooks if a castle move is applied
         if m.is_castle() {
-            let rook = Piece::new(PieceName::Rook, self.to_move);
+            let rook = Piece::new(PieceName::Rook, self.stm);
             self.place_piece::<NNUE>(rook, m.castle_type().rook_dest());
             self.remove_piece::<NNUE>(m.castle_type().rook_src());
         } else if let Some(p) = m.promotion() {
             self.place_piece::<NNUE>(p, m.to());
         } else if m.is_en_passant() {
-            match self.to_move {
+            match self.stm {
                 Color::White => {
                     self.remove_piece::<NNUE>(m.to().shift(South));
                 }
@@ -357,7 +358,7 @@ impl Board {
 
         // If we are in check after all pieces have been moved, this move is illegal and we return
         // false to denote so
-        if self.in_check(self.to_move) {
+        if self.in_check(self.stm) {
             return false;
         }
 
@@ -368,7 +369,7 @@ impl Board {
         // If the end index of a move is 16 squares from the start (and a pawn moved), an en passant is possible
         self.en_passant_square = None;
         if m.flag() == MoveType::DoublePush {
-            match self.to_move {
+            match self.stm {
                 Color::White => {
                     self.en_passant_square = Some(m.to().shift(South));
                 }
@@ -395,7 +396,7 @@ impl Board {
         self.castling_rights &= CASTLING_RIGHTS[m.from()] & CASTLING_RIGHTS[m.to()];
         self.zobrist_hash ^= ZOBRIST.castling[self.castling_rights as usize];
 
-        self.to_move = !self.to_move;
+        self.stm = !self.stm;
         self.zobrist_hash ^= ZOBRIST.turn_hash;
 
         self.num_moves += 1;
@@ -408,7 +409,7 @@ impl Board {
     }
 
     pub fn make_null_move(&mut self) {
-        self.to_move = !self.to_move;
+        self.stm = !self.stm;
         self.zobrist_hash ^= ZOBRIST.turn_hash;
         self.num_moves += 1;
         self.half_moves += 1;
@@ -435,7 +436,7 @@ impl Board {
             color_occupancies: [Bitboard::EMPTY; 2],
             mailbox: [Piece::None; 64],
             castling_rights: 0,
-            to_move: Color::White,
+            stm: Color::White,
             en_passant_square: None,
             num_moves: 0,
             half_moves: 0,
@@ -472,6 +473,10 @@ impl fmt::Display for Board {
 
         str.push_str("    a   b   c   d   e   f   g   h\n");
 
+        str.push('\n');
+        str.push_str(&self.to_fen());
+        str.push('\n');
+
         write!(f, "{str}")
     }
 }
@@ -479,7 +484,7 @@ impl fmt::Display for Board {
 impl fmt::Debug for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut str = String::new();
-        str += match self.to_move {
+        str += match self.stm {
             Color::White => "White to move\n",
             Color::Black => "Black to move\n",
         };

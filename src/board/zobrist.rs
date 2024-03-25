@@ -69,7 +69,7 @@ impl Board {
 
         hash ^= ZOBRIST.castling[self.castling_rights as usize];
 
-        if self.to_move == Color::Black {
+        if self.stm == Color::Black {
             hash ^= ZOBRIST.turn_hash;
         }
 

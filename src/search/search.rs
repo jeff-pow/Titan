@@ -282,7 +282,7 @@ fn negamax<const IS_PV: bool>(
     // raise beta at a reduced depth search, they likely won't be able to if we move either,
     // so we can prune the nodes that would have followed
     if can_prune
-        && board.has_non_pawns(board.to_move)
+        && board.has_non_pawns(board.stm)
         && depth >= 2
         && static_eval >= beta
         && td.stack[td.ply - 1].played_move != Move::NULL

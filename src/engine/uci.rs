@@ -2,21 +2,15 @@ use std::process::exit;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::{io, time::Duration};
 
-use itertools::Itertools;
-
 use crate::bench::bench;
 use crate::board::fen::{parse_fen_from_buffer, STARTING_FEN};
 use crate::engine::perft::perft;
 use crate::engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
 use crate::moves::moves::Move;
 use crate::search::lmr_table::LmrTable;
-use crate::search::thread::ThreadPool;
 use crate::{
-    board::{
-        board::Board,
-        fen::{self},
-    },
-    search::game_time::Clock,
+    board::board::Board,
+    search::{game_time::Clock, thread::ThreadPool},
     types::pieces::Color,
 };
 
@@ -128,20 +122,20 @@ fn position_command(input: &[&str], board: &mut Board, hash_history: &mut Vec<u6
     if input.contains(&"fen") {
         *board = Board::from_fen(&parse_fen_from_buffer(input));
 
-        if input.len() > 9 {
-            parse_moves(input, board, 9, hash_history);
+        if let Some(skip) = input.iter().position(|f| f == &"moves") {
+            parse_moves(&input[skip + 1..], board, hash_history);
         }
     } else if input.contains(&"startpos") {
-        *board = Board::from_fen(fen::STARTING_FEN);
+        *board = Board::from_fen(STARTING_FEN);
 
-        if input.len() > 3 {
-            parse_moves(input, board, 3, hash_history);
+        if let Some(skip) = input.iter().position(|f| f == &"moves") {
+            parse_moves(&input[skip + 1..], board, hash_history);
         }
     }
 }
 
-fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, hash_history: &mut Vec<u64>) {
-    for str in moves.iter().skip(skip) {
+fn parse_moves(moves: &[&str], board: &mut Board, hash_history: &mut Vec<u64>) {
+    for str in moves.iter() {
         let m = Move::from_san(str, board);
         let _ = board.make_move::<false>(m);
         hash_history.push(board.zobrist_hash);
@@ -150,26 +144,28 @@ fn parse_moves(moves: &[&str], board: &mut Board, skip: usize, hash_history: &mu
 
 pub fn parse_time(buff: &[&str]) -> Clock {
     let mut game_time = Clock::default();
-    let vec = buff.iter().skip(1).tuples::<(_, _)>();
-    for entry in vec {
-        match entry {
-            (&"wtime", wtime) => {
+    let mut iter = buff.iter().skip(1);
+    while let Some(uci_opt) = iter.next() {
+        match *uci_opt {
+            "wtime" => {
                 game_time.time_remaining[Color::White] =
-                    Duration::from_millis(wtime.parse::<u64>().expect("Valid u64"));
+                    Duration::from_millis(iter.next().unwrap().parse::<u64>().expect("Valid u64"));
             }
-            (&"btime", btime) => {
+            "btime" => {
                 game_time.time_remaining[Color::Black] =
-                    Duration::from_millis(btime.parse::<u64>().expect("Valid u64"));
+                    Duration::from_millis(iter.next().unwrap().parse::<u64>().expect("Valid u64"));
             }
-            (&"winc", winc) => {
+            "winc" => {
                 game_time.time_inc[Color::White] =
-                    Duration::from_millis(winc.parse::<u64>().expect("Valid u64"));
+                    Duration::from_millis(iter.next().unwrap().parse::<u64>().expect("Valid u64"));
             }
-            (&"binc", binc) => {
+            "binc" => {
                 game_time.time_inc[Color::Black] =
-                    Duration::from_millis(binc.parse::<u64>().expect("Valid u64"));
+                    Duration::from_millis(iter.next().unwrap().parse::<u64>().expect("Valid u64"));
             }
-            (&"movestogo", moves) => game_time.movestogo = moves.parse::<i32>().expect("Valid i32"),
+            "movestogo" => {
+                game_time.movestogo = iter.next().unwrap().parse::<i32>().expect("Valid i32")
+            }
             _ => return game_time,
         }
     }

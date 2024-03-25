@@ -11,8 +11,6 @@ authors = ["Jeff Powell"]
 avx512 = []
 
 [dependencies]
-itertools = "0.11.0"
-arr_macro = "0.2.1"
 arrayvec = "0.7.4"
 
 [profile.release]

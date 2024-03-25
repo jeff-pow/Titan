@@ -233,7 +233,7 @@ impl<'a> ThreadPool<'a> {
         self.halt.store(false, Ordering::Relaxed);
         self.main_thread.hash_history = hash_history.to_vec();
         for t in &mut self.workers {
-            t.hash_history = hash_history.to_owned();
+            hash_history.clone_into(&mut t.hash_history);
         }
 
         if buffer.contains(&"depth") {
@@ -252,7 +252,7 @@ impl<'a> ThreadPool<'a> {
             }
         } else if buffer.contains(&"wtime") {
             let mut clock = parse_time(buffer);
-            clock.recommended_time(board.to_move);
+            clock.recommended_time(board.stm);
 
             self.main_thread.search_type = SearchType::Time(clock);
         } else if buffer.contains(&"mate") {
