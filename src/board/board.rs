@@ -34,7 +34,6 @@ pub struct Board {
     pub num_moves: usize,
     pub half_moves: usize,
     pub zobrist_hash: u64,
-    pub in_check: bool,
     pub(crate) delta: Delta,
     threats: Bitboard,
     checkers: Bitboard,
@@ -178,15 +177,7 @@ impl Board {
         self.attackers_for_side(attacker, sq, self.occupancies()) != Bitboard::EMPTY
     }
 
-    fn in_check(&self, side: Color) -> bool {
-        let king_square = self.king_square(side);
-        if !king_square.is_valid() {
-            return true;
-        }
-        self.square_under_attack(!side, king_square)
-    }
-
-    pub fn checkers_in_check(&self) -> bool {
+    pub fn in_check(&self) -> bool {
         self.checkers != Bitboard::EMPTY
     }
 
@@ -223,10 +214,6 @@ impl Board {
 
     pub(crate) fn orthos(&self, side: Color) -> Bitboard {
         self.bitboard(side, PieceName::Rook) | self.bitboard(side, PieceName::Queen)
-    }
-
-    fn threats_in_check(&self) -> bool {
-        self.king_square(self.stm).bitboard() & self.threats != Bitboard::EMPTY
     }
 
     pub(crate) const fn threats(&self) -> Bitboard {
@@ -283,7 +270,7 @@ impl Board {
         }
 
         if m.is_castle() {
-            if self.in_check {
+            if self.in_check() {
                 return false;
             }
             if moved_piece.name() != PieceName::King {
@@ -380,9 +367,7 @@ impl Board {
 
         // If we are in check after all pieces have been moved, this move is illegal and we return
         // false to denote so
-        assert!(self.king_square(self.stm).0 < 64);
-        assert_eq!(self.in_check(self.stm), self.square_under_attack(!self.stm, self.king_square(self.stm)), "Move: {}\n\n{:?}", m.to_san(), self);
-        if self.in_check(self.stm) {
+        if self.square_under_attack(!self.stm, self.king_square(self.stm)) {
             return false;
         }
 
@@ -427,8 +412,6 @@ impl Board {
 
         self.calculate_threats();
         self.pinned_and_checkers();
-        self.in_check = self.threats_in_check();
-        assert_eq!(self.in_check, self.checkers_in_check());
 
         // This move is valid, so we return true to denote this fact
         true
@@ -445,7 +428,6 @@ impl Board {
         self.en_passant_square = None;
         self.calculate_threats();
         self.pinned_and_checkers();
-        assert_eq!(self.threats_in_check(), self.checkers_in_check());
     }
 
     pub fn debug_bitboards(&self) {
@@ -469,7 +451,6 @@ impl Board {
             num_moves: 0,
             half_moves: 0,
             zobrist_hash: 0,
-            in_check: false,
             threats: Bitboard::EMPTY,
             delta: Delta::default(),
             checkers: Bitboard::EMPTY,
