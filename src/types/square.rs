@@ -15,15 +15,19 @@ pub const NUM_SQUARES: usize = 64;
 
 impl Square {
     /// Function checks whether a shift is valid before executing it
-    pub fn checked_shift(self, dir: Direction) -> Option<Self> {
+    pub const fn checked_shift(self, dir: Direction) -> Option<Self> {
         let s = self.bitboard().shift(dir);
-        (s != Bitboard::EMPTY).then(|| s.get_lsb())
+        if s.0 != 0 {
+            Some(s.lsb())
+        } else {
+            None
+        }
     }
 
     /// Function does not check a shift's validity before returning it. Only to be used when the
     /// shifts validity has already been proven valid elsewhere
     pub const fn shift(self, dir: Direction) -> Self {
-        self.bitboard().shift(dir).get_lsb()
+        self.bitboard().shift(dir).lsb()
     }
 
     /// Returns the max dist of file or rank between two squares
@@ -72,6 +76,23 @@ impl Square {
 
     pub fn iter() -> impl Iterator<Item = Self> {
         (0..64).map(Self)
+    }
+
+    pub const fn dir_to(self, other: Self) -> Option<Direction> {
+        let rank_diff = other.rank() as i32 - self.rank() as i32;
+        let file_diff = other.file() as i32 - self.file() as i32;
+
+        match (rank_diff, file_diff) {
+            (0, _) if file_diff > 0 => Some(Direction::East),
+            (0, _) if file_diff < 0 => Some(Direction::West),
+            (_, 0) if rank_diff > 0 => Some(Direction::North),
+            (_, 0) if rank_diff < 0 => Some(Direction::South),
+            (r, f) if r == f && r > 0 => Some(Direction::NorthEast),
+            (r, f) if r == -f && r > 0 => Some(Direction::NorthWest),
+            (r, f) if r == f && r < 0 => Some(Direction::SouthWest),
+            (r, f) if r == -f && r < 0 => Some(Direction::SouthEast),
+            _ => None,
+        }
     }
 
     pub const A1: Self = Self(0);
