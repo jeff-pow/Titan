@@ -21,12 +21,7 @@ pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 30000;
 pub const MAX_SEARCH_DEPTH: i32 = 100;
 
-pub fn search(
-    td: &mut ThreadData,
-    print_uci: bool,
-    mut board: Board,
-    tt: &TranspositionTable,
-) -> Move {
+pub fn search(td: &mut ThreadData, print_uci: bool, mut board: Board, tt: &TranspositionTable) -> Move {
     td.search_start = Instant::now();
     td.nodes_table = [[0; 64]; 64];
     td.nodes.reset();
@@ -43,12 +38,7 @@ pub fn search(
 /// finishing quickly, building up important structures like transposition and history tables along
 /// the way. As a result, for more expensive depths, we already have a good idea of the best move
 /// and can maximize the efficacy of alpha beta pruning.
-pub fn iterative_deepening(
-    td: &mut ThreadData,
-    board: &Board,
-    print_uci: bool,
-    tt: &TranspositionTable,
-) -> Move {
+pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, tt: &TranspositionTable) -> Move {
     let mut pv = PV::default();
     let mut prev_score = -INFINITY;
     let mut depth = 1;
@@ -299,8 +289,7 @@ fn negamax<const IS_PV: bool>(
 
         // Reduction
         let r = 4 + depth / 4 + min((static_eval - beta) / 175, 3);
-        let mut null_eval =
-            -negamax::<false>(depth - r, -beta, -beta + 1, &mut node_pv, td, tt, &new_b, !cut_node);
+        let mut null_eval = -negamax::<false>(depth - r, -beta, -beta + 1, &mut node_pv, td, tt, &new_b, !cut_node);
 
         td.hash_history.pop();
         td.ply -= 1;
@@ -392,11 +381,8 @@ fn negamax<const IS_PV: bool>(
         td.ply += 1;
         let mut node_pv = PV::default();
         let mut eval = -INFINITY;
-        let history = if is_quiet {
-            td.history.quiet_history(m, &td.stack, td.ply)
-        } else {
-            td.history.capt_hist(m, board)
-        };
+        let history =
+            if is_quiet { td.history.quiet_history(m, &td.stack, td.ply) } else { td.history.capt_hist(m, board) };
 
         // Late Move Reductions (LMR) - Search moves after the first with reduced depth and
         // window as they are much less likely to be the best move than the first move
@@ -423,32 +409,14 @@ fn negamax<const IS_PV: bool>(
             // If eval would raise alpha and calculated reduced depth is actually less than our
             // full depth search (including extensions), search again
             if eval > alpha && d < new_depth {
-                eval = -negamax::<false>(
-                    new_depth,
-                    -alpha - 1,
-                    -alpha,
-                    &mut node_pv,
-                    td,
-                    tt,
-                    &new_b,
-                    !cut_node,
-                );
+                eval = -negamax::<false>(new_depth, -alpha - 1, -alpha, &mut node_pv, td, tt, &new_b, !cut_node);
             }
         }
         // If LMR was not performed, conduct a zero window full depth search on the first move of
         // non-PV nodes (which already have a zero window b/t alpha and beta), or the moves
         // following the first move for PV nodes
         else if moves_searched > 0 || !IS_PV {
-            eval = -negamax::<false>(
-                new_depth,
-                -alpha - 1,
-                -alpha,
-                &mut node_pv,
-                td,
-                tt,
-                &new_b,
-                !cut_node,
-            );
+            eval = -negamax::<false>(new_depth, -alpha - 1, -alpha, &mut node_pv, td, tt, &new_b, !cut_node);
         }
 
         // If the node is a PV node and the score calculated in a previous search fell between
@@ -496,15 +464,7 @@ fn negamax<const IS_PV: bool>(
             }
         }
         // Update history tables on a beta cutoff
-        td.history.update_histories(
-            m,
-            &quiets_tried,
-            &tacticals_tried,
-            board,
-            depth,
-            &td.stack,
-            td.ply,
-        );
+        td.history.update_histories(m, &quiets_tried, &tacticals_tried, board, depth, &td.stack, td.ply);
         break;
     }
 
@@ -530,16 +490,7 @@ fn negamax<const IS_PV: bool>(
 
     // Don't save to TT while in a singular extension verification search
     if !singular_search {
-        tt.store(
-            board.zobrist_hash,
-            best_move,
-            depth,
-            entry_flag,
-            best_score,
-            td.ply,
-            IS_PV,
-            static_eval,
-        );
+        tt.store(board.zobrist_hash, best_move, depth, entry_flag, best_score, td.ply, IS_PV, static_eval);
     }
 
     best_score
@@ -576,8 +527,7 @@ fn extension<const IS_PV: bool>(
 
     td.stack[td.ply].singular = m;
     let prev = td.accumulators.pop();
-    let ext_score =
-        negamax::<false>(ext_depth, ext_beta - 1, ext_beta, npv, td, tt, board, cut_node);
+    let ext_score = negamax::<false>(ext_depth, ext_beta - 1, ext_beta, npv, td, tt, board, cut_node);
     td.stack[td.ply].singular = Move::NULL;
     td.accumulators.push(prev);
 
