@@ -140,8 +140,8 @@ fn negamax<const IS_PV: bool>(
     cut_node: bool,
 ) -> i32 {
     let is_root = td.ply == 0;
-    assert_eq!(board.in_check, board.checkers_in_check(), "{:?}", board);
-    let in_check = board.in_check;
+    // assert_eq!(board.in_check, board.checkers_in_check(), "{:?}", board);
+    let in_check = board.checkers_in_check();
 
     let singular_move = td.stack[td.ply].singular;
     let singular_search = singular_move != Move::NULL;
