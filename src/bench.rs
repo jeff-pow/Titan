@@ -25,7 +25,7 @@ pub fn bench() {
 
     for fen in &BENCH_POSITIONS {
         let board = Board::from_fen(fen);
-        search(&mut thread, false, board, &transpos_table);
+        search(&mut thread, true, board, &transpos_table);
         nodes += thread.nodes.local_count();
         thread.nodes.reset();
     }

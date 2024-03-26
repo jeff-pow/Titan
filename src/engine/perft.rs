@@ -71,20 +71,20 @@ mod movegen_tests {
     pub fn berky_perft() {
         thread::scope(|s| {
             BERKY_PERFT.iter().enumerate().for_each(|(test_num, line)| {
-                // s.spawn(move || {
-                let vec = line.split(" ;").collect::<Vec<&str>>();
-                let mut iter = vec.iter();
-                let fen = iter.next().unwrap();
-                let board = Board::from_fen(fen);
-                for entry in iter {
-                    let (depth, nodes) = entry.split_once(' ').unwrap();
-                    let depth = depth[1..].parse::<i32>().unwrap();
-                    let nodes = nodes.parse::<usize>().unwrap();
-                    eprintln!("test {test_num}: depth {depth} expected {nodes}");
-                    assert_eq!(nodes, perft(&board, depth), "Fen {fen} failed.");
-                }
-                eprintln!("{test_num} passed");
-                // });
+                s.spawn(move || {
+                    let vec = line.split(" ;").collect::<Vec<&str>>();
+                    let mut iter = vec.iter();
+                    let fen = iter.next().unwrap();
+                    let board = Board::from_fen(fen);
+                    for entry in iter {
+                        let (depth, nodes) = entry.split_once(' ').unwrap();
+                        let depth = depth[1..].parse::<i32>().unwrap();
+                        let nodes = nodes.parse::<usize>().unwrap();
+                        eprintln!("test {test_num}: depth {depth} expected {nodes}");
+                        assert_eq!(nodes, perft(&board, depth), "Fen {fen} failed.");
+                    }
+                    eprintln!("{test_num} passed");
+                });
             });
         });
     }
