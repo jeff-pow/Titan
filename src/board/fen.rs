@@ -2,7 +2,7 @@ use crate::{
     moves::moves::Castle,
     types::{
         pieces::{Color, Piece},
-        square::Square,
+        square::{Square, SQUARE_NAMES},
     },
 };
 
@@ -16,7 +16,7 @@ impl Board {
     pub fn from_fen(fen_string: &str) -> Self {
         let mut board = Board::empty();
         let mut row = 7;
-        let pieces: Vec<&str> = fen_string.split(['/', ' ']).collect();
+        let pieces = fen_string.split(['/', ' ']).collect::<Vec<_>>();
         // FEN strings have 13 entries (if each slash and each space delimit an entry)
         let mut iter = pieces.iter();
         let mut start = 7;
@@ -44,7 +44,7 @@ impl Board {
             row = row.saturating_sub(1);
         }
         // 9th element: find who's turn it is to move
-        board.to_move = match iter.next().unwrap().chars().next().unwrap() {
+        board.stm = match iter.next().unwrap().chars().next().unwrap() {
             'w' => Color::White,
             'b' => Color::Black,
             _ => panic!("Invalid turn"),
@@ -82,9 +82,77 @@ impl Board {
         assert_eq!(iter.next(), None);
         board
     }
+
+    pub fn to_fen(self) -> String {
+        let mut str = String::new();
+        for r in (0..8).rev() {
+            let mut gap = 0;
+            for f in 0..8 {
+                let sq = Square(r * 8 + f);
+                let piece = self.piece_at(sq);
+
+                if piece != Piece::None {
+                    if gap > 0 {
+                        str += &gap.to_string();
+                    }
+                    str += &piece.char();
+                    gap = 0;
+                } else {
+                    gap += 1;
+                }
+            }
+
+            if gap > 0 {
+                str += &gap.to_string();
+            }
+
+            if r != 0 {
+                str += "/";
+            }
+        }
+
+        str += " ";
+        str += match self.stm {
+            Color::White => "w",
+            Color::Black => "b",
+        };
+
+        str += " ";
+        if self.castling_rights == 0 {
+            str += "-";
+        } else {
+            if self.can_castle(Castle::WhiteKing) {
+                str += "K";
+            }
+            if self.can_castle(Castle::WhiteQueen) {
+                str += "Q";
+            }
+            if self.can_castle(Castle::BlackKing) {
+                str += "k";
+            }
+            if self.can_castle(Castle::BlackQueen) {
+                str += "q";
+            }
+        }
+
+        str += " ";
+        if let Some(sq) = self.en_passant_square {
+            str += SQUARE_NAMES[sq];
+        } else {
+            str += "-";
+        }
+
+        str += " ";
+        str += &self.half_moves.to_string();
+
+        str += " ";
+        str += &self.num_moves.to_string();
+
+        str
+    }
 }
 
-fn parse_castling(buf: &&str) -> u32 {
+fn parse_castling(buf: &str) -> u32 {
     let rights = buf.chars().fold(0, |x, ch| {
         x | match ch {
             'K' => Castle::WhiteKing as u32,
@@ -107,7 +175,7 @@ fn find_en_passant_square(vec: &[char]) -> Option<u32> {
     let row = (vec[1].to_digit(10).unwrap() - 1) * 8;
     Some(row + column)
 }
-#[allow(clippy::ptr_arg)]
+
 pub fn parse_fen_from_buffer(buf: &[&str]) -> String {
     let mut vec = buf.to_owned();
     vec.remove(0);
@@ -121,7 +189,10 @@ pub fn parse_fen_from_buffer(buf: &[&str]) -> String {
 #[cfg(test)]
 mod fen_tests {
     use crate::{
-        board::fen::{find_en_passant_square, parse_castling},
+        board::{
+            board::Board,
+            fen::{find_en_passant_square, parse_castling},
+        },
         moves::moves::Castle,
     };
 
@@ -141,42 +212,42 @@ mod fen_tests {
     #[test]
     fn test_parse_castling_white_king() {
         let input = "K";
-        let result = parse_castling(&input);
+        let result = parse_castling(input);
         assert_eq!(result, Castle::WhiteKing as u32);
     }
 
     #[test]
     fn test_parse_castling_white_queen() {
         let input = "Q";
-        let result = parse_castling(&input);
+        let result = parse_castling(input);
         assert_eq!(result, Castle::WhiteQueen as u32);
     }
 
     #[test]
     fn test_parse_castling_black_king() {
         let input = "k";
-        let result = parse_castling(&input);
+        let result = parse_castling(input);
         assert_eq!(result, Castle::BlackKing as u32);
     }
 
     #[test]
     fn test_parse_castling_black_queen() {
         let input = "q";
-        let result = parse_castling(&input);
+        let result = parse_castling(input);
         assert_eq!(result, Castle::BlackQueen as u32);
     }
 
     #[test]
     fn test_parse_castling_invalid() {
         let input = "X";
-        let result = parse_castling(&input);
+        let result = parse_castling(input);
         assert_eq!(result, 0); // Expecting 0 for invalid input
     }
 
     #[test]
     fn test_parse_multiple_castlings() {
         let input = "KQkq";
-        let result = parse_castling(&input);
+        let result = parse_castling(input);
         // You need to define the expected result based on the combination of castling rights.
         // For example, if all castling rights are allowed (KQkq), you can set the expected result to a specific value.
         let expected_result = Castle::WhiteKing as u32
@@ -189,9 +260,22 @@ mod fen_tests {
     #[test]
     fn test_parse_partial_castlings() {
         let input = "Kk";
-        let result = parse_castling(&input);
+        let result = parse_castling(input);
         // Define the expected result for the combination of castling rights in the input.
         let expected_result = Castle::WhiteKing as u32 | Castle::BlackKing as u32;
         assert_eq!(result, expected_result);
+    }
+
+    #[test]
+    fn fen() {
+        // Suspend your disbelief for these castling availabilities...
+        for fen in [
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQ e3 0 1",
+            "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w Kq c6 0 2",
+            "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b - - 1 2",
+        ] {
+            assert_eq!(fen, Board::from_fen(fen).to_fen());
+        }
     }
 }

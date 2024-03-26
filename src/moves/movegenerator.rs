@@ -31,17 +31,17 @@ impl Board {
     /// Generates all pseudolegal moves
     pub fn generate_moves(&self, gen_type: MGT, moves: &mut MoveList) {
         let destinations = match gen_type {
-            MoveGenerationType::CapturesOnly => self.color(!self.to_move),
+            MoveGenerationType::CapturesOnly => self.color(!self.stm),
             MoveGenerationType::QuietsOnly => !self.occupancies(),
-            MoveGenerationType::All => !self.color(self.to_move),
+            MoveGenerationType::All => !self.color(self.stm),
         };
 
-        let knights = self.bitboard(self.to_move, PieceName::Knight);
-        let kings = self.bitboard(self.to_move, PieceName::King);
-        let bishops = self.bitboard(self.to_move, PieceName::Bishop)
-            | self.bitboard(self.to_move, PieceName::Queen);
-        let rooks = self.bitboard(self.to_move, PieceName::Rook)
-            | self.bitboard(self.to_move, PieceName::Queen);
+        let knights = self.bitboard(self.stm, PieceName::Knight);
+        let kings = self.bitboard(self.stm, PieceName::King);
+        let bishops =
+            self.bitboard(self.stm, PieceName::Bishop) | self.bitboard(self.stm, PieceName::Queen);
+        let rooks =
+            self.bitboard(self.stm, PieceName::Rook) | self.bitboard(self.stm, PieceName::Queen);
 
         self.jumper_moves(knights, destinations, moves, knight_attacks);
         self.jumper_moves(kings, destinations & !self.threats(), moves, king_attacks);
@@ -54,7 +54,7 @@ impl Board {
     }
 
     fn castling_moves(&self, moves: &mut MoveList) {
-        if self.to_move == Color::White {
+        if self.stm == Color::White {
             if self.can_castle(Castle::WhiteKing)
                 && self.threats() & Castle::WhiteKing.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::WhiteKing.empty_squares() == Bitboard::EMPTY
@@ -94,20 +94,19 @@ impl Board {
     }
 
     fn pawn_moves(&self, gen_type: MGT, moves: &mut MoveList) {
-        let piece = Piece::new(PieceName::Pawn, self.to_move);
-        let pawns = self.bitboard(self.to_move, PieceName::Pawn);
+        let piece = Piece::new(PieceName::Pawn, self.stm);
+        let pawns = self.bitboard(self.stm, PieceName::Pawn);
         let vacancies = !self.occupancies();
-        let enemies = self.color(!self.to_move);
+        let enemies = self.color(!self.stm);
 
-        let non_promotions =
-            pawns & if self.to_move == Color::White { !RANKS[6] } else { !RANKS[1] };
-        let promotions = pawns & if self.to_move == Color::White { RANKS[6] } else { RANKS[1] };
+        let non_promotions = pawns & if self.stm == Color::White { !RANKS[6] } else { !RANKS[1] };
+        let promotions = pawns & if self.stm == Color::White { RANKS[6] } else { RANKS[1] };
 
-        let up = if self.to_move == Color::White { North } else { South };
-        let right = if self.to_move == Color::White { NorthEast } else { SouthWest };
-        let left = if self.to_move == Color::White { NorthWest } else { SouthEast };
+        let up = if self.stm == Color::White { North } else { South };
+        let right = if self.stm == Color::White { NorthEast } else { SouthWest };
+        let left = if self.stm == Color::White { NorthWest } else { SouthEast };
 
-        let rank3 = if self.to_move == Color::White { RANKS[2] } else { RANKS[5] };
+        let rank3 = if self.stm == Color::White { RANKS[2] } else { RANKS[5] };
 
         if matches!(gen_type, MGT::All | MGT::QuietsOnly) {
             // Single and double pawn pushes w/o captures
@@ -169,7 +168,7 @@ impl Board {
 
     fn get_en_passant(&self, dir: Direction, piece: Piece) -> Option<Move> {
         let sq = self.en_passant_square?.checked_shift(dir)?;
-        let pawn = sq.bitboard() & self.bitboard(self.to_move, PieceName::Pawn);
+        let pawn = sq.bitboard() & self.bitboard(self.stm, PieceName::Pawn);
         if pawn != Bitboard::EMPTY {
             let dest = self.en_passant_square?;
             let src = dest.checked_shift(dir)?;

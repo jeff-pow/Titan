@@ -72,7 +72,7 @@ impl Board {
         let bishops = self.piece(PieceName::Bishop) | self.piece(PieceName::Queen);
         let rooks = self.piece(PieceName::Rook) | self.piece(PieceName::Queen);
 
-        let mut to_move = !self.to_move;
+        let mut to_move = !self.stm;
 
         loop {
             let my_attackers = attackers & self.color(to_move);
@@ -106,7 +106,7 @@ impl Board {
             }
         }
 
-        to_move != self.to_move
+        to_move != self.stm
     }
 }
 
