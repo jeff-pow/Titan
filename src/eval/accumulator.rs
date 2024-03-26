@@ -47,10 +47,10 @@ impl Default for Accumulator {
 }
 
 impl Accumulator {
-    fn add_sub(&mut self, white_add: usize, black_add: usize, white_sub: usize, black_sub: usize) {
+    fn add_sub(&mut self, old: &Accumulator, white_add: usize, black_add: usize, white_sub: usize, black_sub: usize) {
         #[cfg(feature = "avx512")]
         unsafe {
-            self.avx512_add_sub(white_add, black_add, white_sub, black_sub);
+            self.avx512_add_sub(old, white_add, black_add, white_sub, black_sub);
         }
         #[cfg(not(feature = "avx512"))]
         {
@@ -59,21 +59,25 @@ impl Accumulator {
                 .iter_mut()
                 .zip(&weights[white_add].0)
                 .zip(&weights[white_sub].0)
-                .for_each(|((i, &a), &s)| {
-                    *i += a - s;
+                .zip(old.0[Color::White].iter())
+                .for_each(|(((i, &a), &s), &o)| {
+                    *i = o + a - s;
                 });
             self.0[Color::Black]
                 .iter_mut()
                 .zip(&weights[black_add].0)
                 .zip(&weights[black_sub].0)
-                .for_each(|((i, &a), &s)| {
-                    *i += a - s;
+                .zip(old.0[Color::Black].iter())
+                .for_each(|(((i, &a), &s), &o)| {
+                    *i = o + a - s;
                 });
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn add_sub_sub(
         &mut self,
+        old: &Accumulator,
         white_add: usize,
         black_add: usize,
         white_sub_1: usize,
@@ -83,14 +87,7 @@ impl Accumulator {
     ) {
         #[cfg(feature = "avx512")]
         unsafe {
-            self.avx512_add_sub_sub(
-                white_add,
-                black_add,
-                white_sub_1,
-                black_sub_1,
-                white_sub_2,
-                black_sub_2,
-            );
+            self.avx512_add_sub_sub(old, white_add, black_add, white_sub_1, black_sub_1, white_sub_2, black_sub_2);
         }
         #[cfg(not(feature = "avx512"))]
         {
@@ -100,16 +97,18 @@ impl Accumulator {
                 .zip(&weights[white_add].0)
                 .zip(&weights[white_sub_1].0)
                 .zip(&weights[white_sub_2].0)
-                .for_each(|(((i, &a), &s1), &s2)| {
-                    *i += a - s1 - s2;
+                .zip(old.0[Color::White].iter())
+                .for_each(|((((i, &a), &s1), &s2), &o)| {
+                    *i = o - a - s1 - s2;
                 });
             self.0[Color::Black]
                 .iter_mut()
                 .zip(&weights[black_add].0)
                 .zip(&weights[black_sub_1].0)
                 .zip(&weights[black_sub_2].0)
-                .for_each(|(((i, &a), &s1), &s2)| {
-                    *i += a - s1 - s2;
+                .zip(old.0[Color::Black].iter())
+                .for_each(|((((i, &a), &s1), &s2), &o)| {
+                    *i = o - a - s1 - s2;
                 });
         }
     }
@@ -117,6 +116,7 @@ impl Accumulator {
     #[allow(clippy::too_many_arguments)]
     fn add_add_sub_sub(
         &mut self,
+        old: &Accumulator,
         white_add_1: usize,
         black_add_1: usize,
         white_add_2: usize,
@@ -129,6 +129,7 @@ impl Accumulator {
         #[cfg(feature = "avx512")]
         unsafe {
             self.avx512_add_add_sub_sub(
+                old,
                 white_add_1,
                 black_add_1,
                 white_add_2,
@@ -148,8 +149,9 @@ impl Accumulator {
                 .zip(&weights[white_add_2].0)
                 .zip(&weights[white_sub_1].0)
                 .zip(&weights[white_sub_2].0)
-                .for_each(|((((i, &a1), &a2), &s1), &s2)| {
-                    *i += a1 + a2 - s1 - s2;
+                .zip(old.0[Color::White].iter())
+                .for_each(|(((((i, &a1), &a2), &s1), &s2), &o)| {
+                    *i = o + a1 + a2 - s1 - s2;
                 });
             self.0[Color::Black]
                 .iter_mut()
@@ -157,27 +159,24 @@ impl Accumulator {
                 .zip(&weights[black_add_2].0)
                 .zip(&weights[black_sub_1].0)
                 .zip(&weights[black_sub_2].0)
-                .for_each(|((((i, &a1), &a2), &s1), &s2)| {
-                    *i += a1 + a2 - s1 - s2;
+                .zip(old.0[Color::Black].iter())
+                .for_each(|(((((i, &a1), &a2), &s1), &s2), &o)| {
+                    *i = o + a1 + a2 - s1 - s2;
                 });
         }
     }
 
-    pub(crate) fn lazy_update(&mut self, delta: &mut Delta) {
+    pub(crate) fn lazy_ref_update(&mut self, delta: &mut Delta, old: &Accumulator) {
         if delta.add.len() == 1 && delta.sub.len() == 1 {
             let (w_add, b_add) = delta.add[0];
             let (w_sub, b_sub) = delta.sub[0];
-            self.add_sub(
-                usize::from(w_add),
-                usize::from(b_add),
-                usize::from(w_sub),
-                usize::from(b_sub),
-            );
+            self.add_sub(old, usize::from(w_add), usize::from(b_add), usize::from(w_sub), usize::from(b_sub));
         } else if delta.add.len() == 1 && delta.sub.len() == 2 {
             let (w_add, b_add) = delta.add[0];
             let (w_sub1, b_sub1) = delta.sub[0];
             let (w_sub2, b_sub2) = delta.sub[1];
             self.add_sub_sub(
+                old,
                 usize::from(w_add),
                 usize::from(b_add),
                 usize::from(w_sub1),
@@ -192,6 +191,7 @@ impl Accumulator {
             let (w_sub1, b_sub1) = delta.sub[0];
             let (w_sub2, b_sub2) = delta.sub[1];
             self.add_add_sub_sub(
+                old,
                 usize::from(w_add1),
                 usize::from(b_add1),
                 usize::from(w_add2),
@@ -210,25 +210,6 @@ impl Accumulator {
         let black_idx = feature_idx(!color, piece, sq.flip_vertical());
         self.activate(&NET.feature_weights[white_idx], Color::White);
         self.activate(&NET.feature_weights[black_idx], Color::Black);
-    }
-
-    pub fn remove_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
-        let white_idx = feature_idx(color, piece, sq);
-        let black_idx = feature_idx(!color, piece, sq.flip_vertical());
-        self.deactivate(&NET.feature_weights[white_idx], Color::White);
-        self.deactivate(&NET.feature_weights[black_idx], Color::Black);
-    }
-
-    fn deactivate(&mut self, weights: &Block, color: Color) {
-        #[cfg(feature = "avx512")]
-        unsafe {
-            self.avx512_deactivate(weights, color);
-        }
-
-        #[cfg(not(feature = "avx512"))]
-        self.0[color].iter_mut().zip(weights).for_each(|(i, &d)| {
-            *i -= d;
-        });
     }
 
     fn activate(&mut self, weights: &Block, color: Color) {

@@ -1,7 +1,7 @@
 use arrayvec::ArrayVec;
 use std::ops::{Index, IndexMut};
 
-use crate::eval::accumulator::Accumulator;
+use crate::eval::accumulator::{Accumulator, Delta};
 use crate::moves::moves::Move;
 
 use self::game_time::Clock;
@@ -88,33 +88,38 @@ pub enum SearchType {
 #[derive(Clone)]
 pub struct AccumulatorStack {
     pub(crate) stack: Vec<Accumulator>,
+    pub top: usize,
 }
 
 impl AccumulatorStack {
-    pub fn increment(&mut self) {
-        self.stack.extend_from_within(self.stack.len() - 1..self.stack.len());
+    pub fn apply_update(&mut self, delta: &mut Delta) {
+        let (bottom, top) = self.stack.split_at_mut(self.top + 1);
+        top[0].lazy_ref_update(delta, bottom.last().unwrap());
+        self.top += 1;
     }
 
     pub fn top(&mut self) -> &mut Accumulator {
-        self.stack.last_mut().unwrap()
+        &mut self.stack[self.top]
     }
 
     pub fn pop(&mut self) -> Accumulator {
-        self.stack.pop().unwrap()
+        self.top -= 1;
+        self.stack[self.top + 1]
     }
 
     pub fn push(&mut self, acc: Accumulator) {
-        self.stack.push(acc);
+        self.top += 1;
+        self.stack[self.top] = acc;
     }
 
     pub fn clear(&mut self, base_accumulator: &Accumulator) {
-        assert!(self.stack.len() == 1);
         self.stack[0] = *base_accumulator;
+        self.top = 0;
     }
 
     pub fn new(base_accumulator: &Accumulator) -> Self {
-        let mut vec = Vec::with_capacity(MAX_SEARCH_DEPTH as usize + 50);
-        vec.push(*base_accumulator);
-        Self { stack: vec }
+        let mut vec = vec![Accumulator::default(); MAX_SEARCH_DEPTH as usize + 50];
+        vec[0] = *base_accumulator;
+        Self { stack: vec, top: 0 }
     }
 }

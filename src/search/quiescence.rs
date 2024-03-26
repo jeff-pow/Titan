@@ -61,24 +61,11 @@ pub(super) fn quiescence<const IS_PV: bool>(
     }
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
-    let stand_pat = if let Some(entry) = entry {
-        entry.static_eval()
-    } else {
-        board.evaluate(td.accumulators.top())
-    };
+    let stand_pat = if let Some(entry) = entry { entry.static_eval() } else { board.evaluate(td.accumulators.top()) };
     td.stack[td.ply].static_eval = stand_pat;
     // Store eval in tt if it wasn't previously found in tt
     if entry.is_none() && !board.in_check {
-        tt.store(
-            board.zobrist_hash,
-            Move::NULL,
-            0,
-            EntryFlag::None,
-            INFINITY,
-            td.ply,
-            IS_PV,
-            stand_pat,
-        );
+        tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, INFINITY, td.ply, IS_PV, stand_pat);
     }
     if stand_pat >= beta {
         return stand_pat;
@@ -110,8 +97,9 @@ pub(super) fn quiescence<const IS_PV: bool>(
             continue;
         }
         tt.prefetch(new_b.zobrist_hash);
-        td.accumulators.increment();
-        td.accumulators.top().lazy_update(&mut new_b.delta);
+        // td.accumulators.increment();
+        // td.accumulators.top().lazy_update(&mut new_b.delta);
+        td.accumulators.apply_update(&mut new_b.delta);
         td.hash_history.push(new_b.zobrist_hash);
         td.stack[td.ply].played_move = m;
         td.nodes.increment();

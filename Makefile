@@ -18,3 +18,11 @@ bench:
 
 ancient:
 	cargo rustc --release -- -C target-cpu=x86-64 --emit link=$(NAME)
+
+bench3:
+	make ancient
+	./$(NAME) bench
+	make openbench
+	./$(NAME) bench
+	make avx512
+	./$(NAME) bench
