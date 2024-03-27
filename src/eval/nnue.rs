@@ -45,9 +45,8 @@ impl Board {
         let (us, them) = (&acc.0[self.stm], &acc.0[!self.stm]);
         let weights = &NET.output_weights;
         let output = flatten(us, &weights[0]) + flatten(them, &weights[1]);
-        let a = (i32::from(NET.output_bias) + output / NORMALIZATION_FACTOR) * SCALE / QAB;
-        assert!(i16::try_from(a).is_ok());
-        a
+        ((i32::from(NET.output_bias) + output / NORMALIZATION_FACTOR) * SCALE / QAB)
+            .clamp(-NEAR_CHECKMATE + 1, NEAR_CHECKMATE - 1)
     }
 }
 

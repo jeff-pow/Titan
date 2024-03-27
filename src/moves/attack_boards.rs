@@ -1,5 +1,6 @@
 use crate::const_array;
 
+use super::moves::Direction;
 use crate::types::bitboard::Bitboard;
 use crate::types::pieces::Color;
 use crate::types::square::Square;
@@ -69,62 +70,102 @@ pub const PAWN_ATTACKS: [[Bitboard; 64]; 2] = [
     const_array!(|sq, 64| pawn_set_attacks(Bitboard(1 << sq), Color::Black)),
 ];
 
-// pub const BETWEEN_SQUARES: [[Bitboard; 64]; 64] = {
-//     let mut arr = [[Bitboard::EMPTY; 64]; 64];
-//     let mut src = 0;
-//     while src < 64 {
-//         let mut dest = src + 1;
-//         while dest < 64 {
-//             if Square(src).rank() == Square(dest).rank() {
-//                 // dest > src, so we always want to shift in a smaller direction,
-//                 // from dest towards src
-//                 let mut i = Square(dest).shift(Direction::West);
-//                 while i.0 > src && i.is_valid() {
-//                     arr[src as usize][dest as usize].0 |= i.bitboard().0;
-//                     i = i.shift(Direction::West);
-//                 }
-//             } else if Square(src).file() == Square(dest).file() {
-//                 let mut i = Square(dest).shift(Direction::South);
-//                 while i.0 > src && i.is_valid() {
-//                     arr[src as usize][dest as usize].0 |= i.bitboard().0;
-//                     i = i.shift(Direction::South);
-//                 }
-//             } else if (dest - src) % Direction::NorthWest as u32 == 0
-//                 && Square(dest).file() < Square(src).file()
-//             {
-//                 let mut i = Square(dest).shift(Direction::SouthEast);
-//
-//                 while i.0 > src && i.is_valid() {
-//                     arr[src as usize][dest as usize].0 |= i.bitboard().0;
-//                     i = i.shift(Direction::SouthEast);
-//                 }
-//             } else if (dest - src) % Direction::NorthEast as u32 == 0
-//                 && Square(dest).file() > Square(src).file()
-//             {
-//                 let mut i = Square(dest).shift(Direction::SouthWest);
-//
-//                 while i.0 > src && i.is_valid() {
-//                     arr[src as usize][dest as usize].0 |= i.bitboard().0;
-//                     i = i.shift(Direction::SouthWest);
-//                 }
-//             }
-//             dest += 1;
-//         }
-//         src += 1;
-//     }
-//
-//     // Copy top half of the triangle over to the bottom half
-//     let mut src = 0;
-//     while src < 64 {
-//         let mut dest = 0;
-//         while dest < src {
-//             arr[src][dest] = arr[dest][src];
-//             dest += 1;
-//         }
-//         src += 1;
-//     }
-//     arr
-// };
+pub const BETWEEN_SQUARES: [[Bitboard; 64]; 64] = {
+    let mut arr = [[Bitboard::EMPTY; 64]; 64];
+    let mut src = 0;
+    while src < 64 {
+        let mut dest = src + 1;
+        while dest < 64 {
+            if Square(src).rank() == Square(dest).rank() {
+                // dest > src, so we always want to shift in a smaller direction,
+                // from dest towards src
+                let mut i = Square(dest).shift(Direction::West);
+                while i.0 > src && i.is_valid() {
+                    arr[src as usize][dest as usize].0 |= i.bitboard().0;
+                    i = i.shift(Direction::West);
+                }
+            } else if Square(src).file() == Square(dest).file() {
+                let mut i = Square(dest).shift(Direction::South);
+                while i.0 > src && i.is_valid() {
+                    arr[src as usize][dest as usize].0 |= i.bitboard().0;
+                    i = i.shift(Direction::South);
+                }
+            } else if (dest - src) % Direction::NorthWest as u32 == 0 && Square(dest).file() < Square(src).file() {
+                let mut i = Square(dest).shift(Direction::SouthEast);
+
+                while i.0 > src && i.is_valid() {
+                    arr[src as usize][dest as usize].0 |= i.bitboard().0;
+                    i = i.shift(Direction::SouthEast);
+                }
+            } else if (dest - src) % Direction::NorthEast as u32 == 0 && Square(dest).file() > Square(src).file() {
+                let mut i = Square(dest).shift(Direction::SouthWest);
+
+                while i.0 > src && i.is_valid() {
+                    arr[src as usize][dest as usize].0 |= i.bitboard().0;
+                    i = i.shift(Direction::SouthWest);
+                }
+            }
+            dest += 1;
+        }
+        src += 1;
+    }
+
+    // Copy top half of the triangle over to the bottom half
+    let mut src = 0;
+    while src < 64 {
+        let mut dest = 0;
+        while dest < src {
+            arr[src][dest] = arr[dest][src];
+            dest += 1;
+        }
+        src += 1;
+    }
+    arr
+};
+
+const fn pinned_attack(king: usize, pinned: usize) -> Bitboard {
+    let mut valid = 0;
+    let king = Square(king as u32);
+    let pinned = Square(pinned as u32);
+    let Some(dir) = pinned.dir_to(king) else {
+        return Bitboard::EMPTY;
+    };
+    // Draw a line straight towards the attacker
+    'inner: {
+        let Some(mut current) = pinned.checked_shift(dir) else {
+            break 'inner;
+        };
+        loop {
+            valid |= current.bitboard().0;
+            let Some(sq) = current.checked_shift(dir) else {
+                break;
+            };
+            current = sq;
+            if current.0 == king.0 {
+                break;
+            }
+        }
+    }
+    'inner: {
+        // Draw a line the opposite way from the attacker
+        let Some(mut current) = pinned.checked_shift(dir.opp()) else { break 'inner };
+        loop {
+            valid |= current.bitboard().0;
+            let Some(sq) = current.checked_shift(dir.opp()) else {
+                break;
+            };
+            current = sq;
+        }
+    }
+    Bitboard(valid)
+}
+
+pub fn valid_pinned_moves(king: Square, pinned: Square) -> Bitboard {
+    PINNED_MOVES[king][pinned]
+}
+
+/// Indexed by PINNED_MOVES[King square][Pinned piece]
+const PINNED_MOVES: [[Bitboard; 64]; 64] = const_array!(|sq1, 64| const_array!(|sq2, 64| pinned_attack(sq1, sq2)));
 
 #[macro_export]
 /// Credit for this macro goes to akimbo
@@ -154,13 +195,7 @@ mod test_attack_boards {
         assert_eq!(pawn_attacks(p_sq, Color::White), Square(49).bitboard());
 
         let p_sq = Square(19);
-        assert_eq!(
-            pawn_attacks(p_sq, Color::Black),
-            (Square(10).bitboard() | Square(12).bitboard())
-        );
-        assert_eq!(
-            pawn_attacks(p_sq, Color::White),
-            (Square(26).bitboard() | Square(28).bitboard())
-        );
+        assert_eq!(pawn_attacks(p_sq, Color::Black), (Square(10).bitboard() | Square(12).bitboard()));
+        assert_eq!(pawn_attacks(p_sq, Color::White), (Square(26).bitboard() | Square(28).bitboard()));
     }
 }

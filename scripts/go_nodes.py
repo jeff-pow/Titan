@@ -2,26 +2,28 @@
 import chess
 import chess.engine
 import chess.pgn
+import itertools
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
 pgn = open("error_base.pgn")
 game = chess.pgn.read_game(pgn)
-dev = chess.engine.SimpleEngine.popen_uci("dev.exe", debug=True)
-dev.configure({"Threads": 1, "Hash": 8})
-base = chess.engine.SimpleEngine.popen_uci("base.exe", debug=True)
-base.configure({"Threads": 1, "Hash": 8})
+base = chess.engine.SimpleEngine.popen_uci("./Titan", debug=True)
+base.configure({"Threads": 1, "Hash": 16})
+
+if game.headers["White"] == "Titan-dev":
+    print('Dev is white')
+    offset = 0
+else:
+    print('Dev is black')
+    offset = 1
 
 board = game.board()
-for node in game.mainline():
+for node in itertools.islice(game.mainline(), offset, None, 2):
     comment = node.comment
     node_count = int(comment.split(' ')[3].rstrip(','))
-    color = not node.turn()
-    engine_to_play = dev
-    if color == chess.WHITE:
-        engine_to_play = base
-    result = engine_to_play.play(board, chess.engine.Limit(nodes=node_count))
+    result = base.play(board, chess.engine.Limit(nodes=node_count))
     print(node_count, node.move, result.move)
     assert (result.move == node.move)
     board.push(result.move)
@@ -31,4 +33,3 @@ result = base.play(board, chess.engine.Limit(time=0.01))
 print(result)
 
 base.quit()
-dev.quit()

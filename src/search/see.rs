@@ -24,16 +24,11 @@ impl Board {
         score
     }
 
-    fn next_attacker(
-        &self,
-        occupied: &mut Bitboard,
-        attackers: Bitboard,
-        side: Color,
-    ) -> PieceName {
+    fn next_attacker(&self, occupied: &mut Bitboard, attackers: Bitboard, side: Color) -> PieceName {
         for p in PieceName::iter() {
             let bb = attackers & self.bitboard(side, p);
             if (attackers & self.bitboard(side, p)) != Bitboard::EMPTY {
-                *occupied ^= bb.get_lsb().bitboard();
+                *occupied ^= bb.lsb().bitboard();
                 return p;
             }
         }
@@ -97,9 +92,7 @@ impl Board {
             if score >= 0 {
                 // This statement states if a king is the next piece to be captured and the enemy
                 // has more pieces attacking the square, the move is illegal so we can break early
-                if next_piece == PieceName::King
-                    && (attackers & self.color(to_move) != Bitboard::EMPTY)
-                {
+                if next_piece == PieceName::King && (attackers & self.color(to_move) != Bitboard::EMPTY) {
                     to_move = !to_move;
                 }
                 break;
