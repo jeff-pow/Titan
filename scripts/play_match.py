@@ -8,10 +8,10 @@ logging.basicConfig(level=logging.DEBUG)
 
 pgn = open("error_base.pgn")
 game = chess.pgn.read_game(pgn)
-dev = chess.engine.SimpleEngine.popen_uci("dev.exe", debug=True)
-dev.configure({"Threads": 1, "Hash": 8})
-base = chess.engine.SimpleEngine.popen_uci("base.exe", debug=True)
-base.configure({"Threads": 1, "Hash": 8})
+dev = chess.engine.SimpleEngine.popen_uci("../Titan", debug=True)
+dev.configure({"Threads": 1, "Hash": 16})
+base = chess.engine.SimpleEngine.popen_uci("../main", debug=True)
+base.configure({"Threads": 1, "Hash": 16})
 
 board = game.board()
 for node in game.mainline():
