@@ -86,9 +86,7 @@ impl Board {
                 return true;
             }
             // If there is one bishop per side, checkmate is impossible
-            if self.color(Color::White).count_bits() == 2
-                && self.piece(PieceName::Bishop).count_bits() == 2
-            {
+            if self.color(Color::White).count_bits() == 2 && self.piece(PieceName::Bishop).count_bits() == 2 {
                 return true;
             }
         }
@@ -110,9 +108,7 @@ impl Board {
     }
 
     pub fn has_non_pawns(&self, side: Color) -> bool {
-        self.occupancies()
-            ^ self.bitboard(side, PieceName::King)
-            ^ self.bitboard(side, PieceName::Pawn)
+        self.occupancies() ^ self.bitboard(side, PieceName::King) ^ self.bitboard(side, PieceName::Pawn)
             != Bitboard::EMPTY
     }
 
@@ -162,8 +158,7 @@ impl Board {
     }
 
     pub fn attackers(&self, sq: Square, occupancy: Bitboard) -> Bitboard {
-        self.attackers_for_side(Color::White, sq, occupancy)
-            | self.attackers_for_side(Color::Black, sq, occupancy)
+        self.attackers_for_side(Color::White, sq, occupancy) | self.attackers_for_side(Color::Black, sq, occupancy)
     }
 
     pub fn attackers_for_side(&self, attacker: Color, sq: Square, occupancy: Bitboard) -> Bitboard {
@@ -174,15 +169,14 @@ impl Board {
         let bishop_attacks = bishop_attacks(sq, occupancy) & bishops;
         let rook_attacks = rook_attacks(sq, occupancy) & rooks;
         let king_attacks = king_attacks(sq) & self.piece(PieceName::King);
-        (pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks)
-            & self.color(attacker)
+        (pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks) & self.color(attacker)
     }
 
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
         self.attackers_for_side(attacker, sq, self.occupancies()) != Bitboard::EMPTY
     }
 
-    fn in_check(&self, side: Color) -> bool {
+    pub fn in_check(&self, side: Color) -> bool {
         let king_square = self.king_square(side);
         if !king_square.is_valid() {
             return true;
@@ -205,17 +199,13 @@ impl Board {
 
         threats |= pawn_set_attacks(self.bitboard(attacker, PieceName::Pawn), attacker);
 
-        let rooks =
-            (self.piece(PieceName::Rook) | self.piece(PieceName::Queen)) & self.color(attacker);
+        let rooks = (self.piece(PieceName::Rook) | self.piece(PieceName::Queen)) & self.color(attacker);
         rooks.into_iter().for_each(|sq| threats |= rook_attacks(sq, occ));
 
-        let bishops =
-            (self.piece(PieceName::Bishop) | self.piece(PieceName::Queen)) & self.color(attacker);
+        let bishops = (self.piece(PieceName::Bishop) | self.piece(PieceName::Queen)) & self.color(attacker);
         bishops.into_iter().for_each(|sq| threats |= bishop_attacks(sq, occ));
 
-        self.bitboard(attacker, PieceName::Knight)
-            .into_iter()
-            .for_each(|sq| threats |= knight_attacks(sq));
+        self.bitboard(attacker, PieceName::Knight).into_iter().for_each(|sq| threats |= knight_attacks(sq));
 
         threats |= king_attacks(self.king_square(attacker));
 
@@ -269,9 +259,7 @@ impl Board {
             if castle.check_squares() & self.threats() != Bitboard::EMPTY {
                 return false;
             }
-            if self.bitboard(self.stm, PieceName::Rook) & castle.rook_src().bitboard()
-                == Bitboard::EMPTY
-            {
+            if self.bitboard(self.stm, PieceName::Rook) & castle.rook_src().bitboard() == Bitboard::EMPTY {
                 return false;
             }
 
@@ -283,8 +271,8 @@ impl Board {
                 if is_capture && is_pawn_double_push {
                     return false;
                 }
-                let should_be_promoting = to.bitboard() & RANKS[7] != Bitboard::EMPTY
-                    || to.bitboard() & RANKS[0] != Bitboard::EMPTY;
+                let should_be_promoting =
+                    to.bitboard() & RANKS[7] != Bitboard::EMPTY || to.bitboard() & RANKS[0] != Bitboard::EMPTY;
                 if should_be_promoting && m.promotion().is_none() {
                     return false;
                 }
@@ -297,8 +285,7 @@ impl Board {
                 }
                 if is_pawn_double_push {
                     let one_forward = from.shift(up);
-                    return self.piece_at(one_forward) == Piece::None
-                        && to == one_forward.shift(up);
+                    return self.piece_at(one_forward) == Piece::None && to == one_forward.shift(up);
                 }
                 if !is_capture {
                     return to == from.shift(up) && captured_piece == Piece::None;
@@ -307,15 +294,9 @@ impl Board {
                 (pawn_attacks(from, self.stm) & to.bitboard()) != Bitboard::EMPTY
             }
             PieceName::Knight => to.bitboard() & knight_attacks(from) != Bitboard::EMPTY,
-            PieceName::Bishop => {
-                to.bitboard() & bishop_attacks(from, self.occupancies()) != Bitboard::EMPTY
-            }
-            PieceName::Rook => {
-                to.bitboard() & rook_attacks(from, self.occupancies()) != Bitboard::EMPTY
-            }
-            PieceName::Queen => {
-                to.bitboard() & queen_attacks(from, self.occupancies()) != Bitboard::EMPTY
-            }
+            PieceName::Bishop => to.bitboard() & bishop_attacks(from, self.occupancies()) != Bitboard::EMPTY,
+            PieceName::Rook => to.bitboard() & rook_attacks(from, self.occupancies()) != Bitboard::EMPTY,
+            PieceName::Queen => to.bitboard() & queen_attacks(from, self.occupancies()) != Bitboard::EMPTY,
             PieceName::King => to.bitboard() & king_attacks(from) != Bitboard::EMPTY,
             PieceName::None => panic!(),
         }

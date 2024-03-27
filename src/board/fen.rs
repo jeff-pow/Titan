@@ -51,6 +51,7 @@ impl Board {
         };
         board.zobrist_hash = board.generate_hash();
         board.calculate_threats();
+        board.in_check = board.in_check(board.stm);
 
         // 10th bucket find who can still castle
         // Order of array is white king castle, white queen castle, black king castle, black queen castle
@@ -250,10 +251,8 @@ mod fen_tests {
         let result = parse_castling(input);
         // You need to define the expected result based on the combination of castling rights.
         // For example, if all castling rights are allowed (KQkq), you can set the expected result to a specific value.
-        let expected_result = Castle::WhiteKing as u32
-            | Castle::WhiteQueen as u32
-            | Castle::BlackKing as u32
-            | Castle::BlackQueen as u32;
+        let expected_result =
+            Castle::WhiteKing as u32 | Castle::WhiteQueen as u32 | Castle::BlackKing as u32 | Castle::BlackQueen as u32;
         assert_eq!(result, expected_result);
     }
 
