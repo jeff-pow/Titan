@@ -367,6 +367,9 @@ impl Board {
 
         // If we are in check after all pieces have been moved, this move is illegal and we return
         // false to denote so
+        if !self.king_square(self.stm).is_valid() {
+            return false;
+        }
         if self.square_under_attack(!self.stm, self.king_square(self.stm)) {
             return false;
         }
