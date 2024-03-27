@@ -4,7 +4,7 @@ use crate::{
     board::zobrist::ZOBRIST,
     eval::accumulator::Delta,
     moves::{
-        attack_boards::{king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, RANKS},
+        attack_boards::{king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, BETWEEN_SQUARES, RANKS},
         magics::{bishop_attacks, queen_attacks, rook_attacks},
         moves::{
             Castle,
@@ -34,9 +34,10 @@ pub struct Board {
     pub num_moves: usize,
     pub half_moves: usize,
     pub zobrist_hash: u64,
-    pub in_check: bool,
     pub(crate) delta: Delta,
     threats: Bitboard,
+    checkers: Bitboard,
+    pinned: Bitboard,
 }
 
 impl Default for Board {
@@ -154,7 +155,7 @@ impl Board {
     }
 
     pub fn king_square(&self, color: Color) -> Square {
-        self.bitboard(color, PieceName::King).get_lsb()
+        self.bitboard(color, PieceName::King).lsb()
     }
 
     pub fn attackers(&self, sq: Square, occupancy: Bitboard) -> Bitboard {
@@ -176,16 +177,43 @@ impl Board {
         self.attackers_for_side(attacker, sq, self.occupancies()) != Bitboard::EMPTY
     }
 
-    pub fn in_check(&self, side: Color) -> bool {
-        let king_square = self.king_square(side);
-        if !king_square.is_valid() {
-            return true;
-        }
-        self.square_under_attack(!side, king_square)
+    pub fn in_check(&self) -> bool {
+        self.checkers != Bitboard::EMPTY
     }
 
-    fn threats_in_check(&self) -> bool {
-        self.king_square(self.stm).bitboard() & self.threats != Bitboard::EMPTY
+    pub const fn checkers(&self) -> Bitboard {
+        self.checkers
+    }
+
+    pub(super) fn pinned_and_checkers(&mut self) {
+        self.pinned = Bitboard::EMPTY;
+        let attacker = !self.stm;
+        let king_sq = self.king_square(self.stm);
+
+        self.checkers = knight_attacks(king_sq) & self.bitboard(attacker, PieceName::Knight)
+            | pawn_attacks(king_sq, self.stm) & self.bitboard(attacker, PieceName::Pawn);
+
+        let sliders_attacks = self.diags(attacker) & bishop_attacks(king_sq, Bitboard::EMPTY)
+            | self.orthos(attacker) & rook_attacks(king_sq, Bitboard::EMPTY);
+        for sq in sliders_attacks {
+            let blockers = BETWEEN_SQUARES[sq][king_sq] & self.occupancies();
+            if blockers == Bitboard::EMPTY {
+                // No pieces between attacker and king
+                self.checkers |= sq.bitboard();
+            } else if blockers.count_bits() == 1 {
+                // One piece between attacker and king
+                self.pinned |= blockers & self.color(self.stm);
+            }
+            // Multiple pieces between attacker and king, we don't really care
+        }
+    }
+
+    pub(crate) fn diags(&self, side: Color) -> Bitboard {
+        self.bitboard(side, PieceName::Bishop) | self.bitboard(side, PieceName::Queen)
+    }
+
+    pub(crate) fn orthos(&self, side: Color) -> Bitboard {
+        self.bitboard(side, PieceName::Rook) | self.bitboard(side, PieceName::Queen)
     }
 
     pub(crate) const fn threats(&self) -> Bitboard {
@@ -242,7 +270,7 @@ impl Board {
         }
 
         if m.is_castle() {
-            if self.in_check {
+            if self.in_check() {
                 return false;
             }
             if moved_piece.name() != PieceName::King {
@@ -339,7 +367,10 @@ impl Board {
 
         // If we are in check after all pieces have been moved, this move is illegal and we return
         // false to denote so
-        if self.in_check(self.stm) {
+        if !self.king_square(self.stm).is_valid() {
+            return false;
+        }
+        if self.square_under_attack(!self.stm, self.king_square(self.stm)) {
             return false;
         }
 
@@ -383,7 +414,7 @@ impl Board {
         self.num_moves += 1;
 
         self.calculate_threats();
-        self.in_check = self.threats_in_check();
+        self.pinned_and_checkers();
 
         // This move is valid, so we return true to denote this fact
         true
@@ -399,6 +430,7 @@ impl Board {
         }
         self.en_passant_square = None;
         self.calculate_threats();
+        self.pinned_and_checkers();
     }
 
     pub fn debug_bitboards(&self) {
@@ -422,9 +454,10 @@ impl Board {
             num_moves: 0,
             half_moves: 0,
             zobrist_hash: 0,
-            in_check: false,
             threats: Bitboard::EMPTY,
             delta: Delta::default(),
+            checkers: Bitboard::EMPTY,
+            pinned: Bitboard::EMPTY,
         }
     }
 }
@@ -470,6 +503,13 @@ impl fmt::Debug for Board {
             Color::Black => "Black to move\n",
         };
         str += &self.to_string();
+        str += "threats:\n";
+        str += &format!("{:?}\n", self.threats());
+        str += "checkers:\n";
+        str += &format!("{:?}\n", self.checkers);
+        str += "pinned:\n";
+        str += &format!("{:?}\n", self.pinned);
+        str += "\n";
         str += "Castles available: ";
         if self.can_castle(Castle::WhiteKing) {
             str += "K";
