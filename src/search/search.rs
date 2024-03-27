@@ -48,11 +48,11 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
         td.ply = 0;
         td.sel_depth = 0;
 
-        assert_eq!(1, td.accumulators.stack.len());
+        assert_eq!(0, td.accumulators.top);
 
         prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt);
 
-        assert_eq!(1, td.accumulators.stack.len());
+        assert_eq!(0, td.accumulators.top);
         assert!(!pv.line.is_empty());
         td.best_move = pv.line[0];
 
@@ -358,8 +358,9 @@ fn negamax<const IS_PV: bool>(
             continue;
         }
         tt.prefetch(new_b.zobrist_hash);
-        td.accumulators.increment();
-        td.accumulators.top().lazy_update(&mut new_b.delta);
+        // td.accumulators.increment();
+        // td.accumulators.top().lazy_update(&mut new_b.delta);
+        td.accumulators.apply_update(&mut new_b.delta);
 
         if is_quiet {
             quiets_tried.push(m);
