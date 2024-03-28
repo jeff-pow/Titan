@@ -14,7 +14,7 @@ use crate::{
     search::{
         game_time::Clock,
         lmr_table::LmrTable,
-        search::{search, CHECKMATE, MAX_SEARCH_DEPTH, NEAR_CHECKMATE},
+        search::{start_search, CHECKMATE, MAX_SEARCH_DEPTH, NEAR_CHECKMATE},
         SearchStack, SearchType, PV,
     },
     transposition::TranspositionTable,
@@ -257,14 +257,15 @@ impl<'a> ThreadPool<'a> {
         thread::scope(|s| {
             for t in &mut self.workers {
                 s.spawn(|| {
-                    search(t, false, *board, tt);
+                    start_search(t, false, *board, tt);
                 });
             }
 
-            s.spawn(|| {});
-            search(&mut self.main_thread, true, *board, tt);
-            self.halt.store(true, Ordering::Relaxed);
-            println!("bestmove {}", self.main_thread.best_move.to_san());
+            s.spawn(|| {
+                start_search(&mut self.main_thread, true, *board, tt);
+                self.halt.store(true, Ordering::Relaxed);
+                println!("bestmove {}", self.main_thread.best_move.to_san());
+            });
 
             let mut s = String::new();
             let len_read = io::stdin().read_line(&mut s).unwrap();
