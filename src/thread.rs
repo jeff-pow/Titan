@@ -7,19 +7,18 @@ use std::{
 };
 
 use crate::{
-    board::board::Board,
-    engine::{transposition::TranspositionTable, uci::parse_time},
-    eval::accumulator::Accumulator,
-    moves::moves::Move,
-    search::lmr_table::LmrTable,
-    search::search::{CHECKMATE, NEAR_CHECKMATE},
-};
-
-use super::{
-    game_time::Clock,
+    board::Board,
+    chess_move::Move,
+    eval::accumulator::{Accumulator, AccumulatorStack},
     history_table::HistoryTable,
-    search::{search, MAX_SEARCH_DEPTH},
-    AccumulatorStack, SearchStack, SearchType, PV,
+    search::{
+        game_time::Clock,
+        lmr_table::LmrTable,
+        search::{search, CHECKMATE, MAX_SEARCH_DEPTH, NEAR_CHECKMATE},
+        SearchStack, SearchType, PV,
+    },
+    transposition::TranspositionTable,
+    uci::parse_time,
 };
 
 #[derive(Clone)]
@@ -78,9 +77,7 @@ impl<'a> ThreadData<'a> {
         let m = self.best_move;
         let frac = self.nodes_table[m.from()][m.to()] as f64 / self.nodes.global_count() as f64;
         let time_scale = if depth > 8 { (1.5 - frac) * 1.4 } else { 0.9 };
-        if self.search_start.elapsed().as_millis() as f64
-            >= game_time.rec_time.as_millis() as f64 * time_scale
-        {
+        if self.search_start.elapsed().as_millis() as f64 >= game_time.rec_time.as_millis() as f64 * time_scale {
             self.halt.store(true, Ordering::Relaxed);
             return true;
         }
@@ -90,9 +87,7 @@ impl<'a> ThreadData<'a> {
     pub(super) fn soft_stop(&mut self, depth: i32, prev_score: i32) -> bool {
         match self.search_type {
             SearchType::Depth(d) => depth >= d,
-            SearchType::Time(time) => {
-                self.node_tm_stop(time, depth) || time.soft_termination(self.search_start)
-            }
+            SearchType::Time(time) => self.node_tm_stop(time, depth) || time.soft_termination(self.search_start),
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
             SearchType::Infinite => self.halt.load(Ordering::Relaxed),
             SearchType::Mate(d) => {
@@ -108,13 +103,9 @@ impl<'a> ThreadData<'a> {
 
     pub(super) fn hard_stop(&mut self) -> bool {
         match self.search_type {
-            SearchType::Mate(_) | SearchType::Depth(_) | SearchType::Infinite => {
-                self.halt.load(Ordering::Relaxed)
-            }
+            SearchType::Mate(_) | SearchType::Depth(_) | SearchType::Infinite => self.halt.load(Ordering::Relaxed),
             SearchType::Time(time) => {
-                self.nodes.check_time()
-                    && self.thread_idx == 0
-                    && time.hard_termination(self.search_start)
+                self.nodes.check_time() && self.thread_idx == 0 && time.hard_termination(self.search_start)
             }
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
         }
@@ -211,13 +202,7 @@ impl<'a> ThreadPool<'a> {
     ) {
         self.workers.clear();
         for i in 1..threads {
-            self.workers.push(ThreadData::new(
-                self.halt,
-                hash_history.to_owned(),
-                i,
-                consts,
-                global_nodes,
-            ));
+            self.workers.push(ThreadData::new(self.halt, hash_history.to_owned(), i, consts, global_nodes));
         }
     }
 

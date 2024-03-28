@@ -1,5 +1,6 @@
 use crate::{
-    board::board::Board,
+    board::Board,
+    search::search::MAX_SEARCH_DEPTH,
     types::{
         pieces::{Color, Piece, PieceName, NUM_PIECES},
         square::{Square, NUM_SQUARES},
@@ -243,5 +244,44 @@ impl Board {
             }
         }
         acc
+    }
+}
+
+#[derive(Clone)]
+pub struct AccumulatorStack {
+    pub(crate) stack: Vec<Accumulator>,
+    pub top: usize,
+}
+
+impl AccumulatorStack {
+    pub fn apply_update(&mut self, delta: &mut Delta) {
+        let (bottom, top) = self.stack.split_at_mut(self.top + 1);
+        top[0].lazy_ref_update(delta, bottom.last().unwrap());
+        self.top += 1;
+    }
+
+    pub fn top(&mut self) -> &mut Accumulator {
+        &mut self.stack[self.top]
+    }
+
+    pub fn pop(&mut self) -> Accumulator {
+        self.top -= 1;
+        self.stack[self.top + 1]
+    }
+
+    pub fn push(&mut self, acc: Accumulator) {
+        self.top += 1;
+        self.stack[self.top] = acc;
+    }
+
+    pub fn clear(&mut self, base_accumulator: &Accumulator) {
+        self.stack[0] = *base_accumulator;
+        self.top = 0;
+    }
+
+    pub fn new(base_accumulator: &Accumulator) -> Self {
+        let mut vec = vec![Accumulator::default(); MAX_SEARCH_DEPTH as usize + 50];
+        vec[0] = *base_accumulator;
+        Self { stack: vec, top: 0 }
     }
 }

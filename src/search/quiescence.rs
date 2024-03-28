@@ -1,15 +1,15 @@
 use std::sync::atomic::Ordering;
 
-use crate::board::board::Board;
-use crate::engine::transposition::{EntryFlag, TranspositionTable};
-use crate::moves::movelist::MoveListEntry;
-use crate::moves::movepicker::MovePicker;
-use crate::moves::moves::Move;
+use crate::board::Board;
+use crate::chess_move::Move;
+use crate::movelist::MoveListEntry;
+use crate::movepicker::MovePicker;
 use crate::search::search::STALEMATE;
+use crate::thread::ThreadData;
+use crate::transposition::{EntryFlag, TranspositionTable};
 
 use super::search::MAX_SEARCH_DEPTH;
 use super::search::{CHECKMATE, INFINITY};
-use super::thread::ThreadData;
 use super::PV;
 
 pub(super) fn quiescence<const IS_PV: bool>(

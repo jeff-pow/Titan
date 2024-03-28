@@ -1,6 +1,6 @@
 use crate::const_array;
 
-use super::moves::Direction;
+use crate::chess_move::Direction;
 use crate::types::bitboard::Bitboard;
 use crate::types::pieces::Color;
 use crate::types::square::Square;
@@ -184,7 +184,7 @@ macro_rules! const_array {
 #[cfg(test)]
 mod test_attack_boards {
     use crate::{
-        moves::attack_boards::pawn_attacks,
+        attack_boards::pawn_attacks,
         types::{pieces::Color, square::Square},
     };
 

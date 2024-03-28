@@ -1,25 +1,18 @@
 use core::fmt;
 
+use super::fen::STARTING_FEN;
 use crate::{
-    board::zobrist::ZOBRIST,
+    attack_boards::{king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, BETWEEN_SQUARES, RANKS},
+    chess_move::{Castle, Direction::*, Move, MoveType, CASTLING_RIGHTS},
     eval::accumulator::Delta,
-    moves::{
-        attack_boards::{king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, BETWEEN_SQUARES, RANKS},
-        magics::{bishop_attacks, queen_attacks, rook_attacks},
-        moves::{
-            Castle,
-            Direction::{North, South},
-            Move, MoveType, CASTLING_RIGHTS,
-        },
-    },
+    magics::{bishop_attacks, queen_attacks, rook_attacks},
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName, NUM_PIECES},
         square::Square,
     },
+    zobrist::ZOBRIST,
 };
-
-use super::fen::STARTING_FEN;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 // TODO: Fit boards within 192 bytes since cpus copy in chunks of 64 bytes
@@ -299,8 +292,9 @@ impl Board {
                 if is_capture && is_pawn_double_push {
                     return false;
                 }
+                let bitboard = RANKS[7];
                 let should_be_promoting =
-                    to.bitboard() & RANKS[7] != Bitboard::EMPTY || to.bitboard() & RANKS[0] != Bitboard::EMPTY;
+                    to.bitboard() & bitboard != Bitboard::EMPTY || to.bitboard() & RANKS[0] != Bitboard::EMPTY;
                 if should_be_promoting && m.promotion().is_none() {
                     return false;
                 }
@@ -542,7 +536,7 @@ impl fmt::Debug for Board {
 #[cfg(test)]
 mod board_tests {
     use super::*;
-    use crate::board::fen;
+    use crate::fen;
     #[test]
     fn test_place_piece() {
         let mut board = Board::empty();

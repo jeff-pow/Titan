@@ -2,17 +2,17 @@ use std::cmp::{max, min};
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
-use crate::board::board::Board;
-use crate::board::zobrist::ZOBRIST;
-use crate::engine::transposition::{EntryFlag, TableEntry, TranspositionTable};
-use crate::moves::movelist::MoveListEntry;
-use crate::moves::movepicker::MovePicker;
-use crate::moves::moves::Move;
+use crate::board::Board;
+use crate::chess_move::Move;
+use crate::movelist::MoveListEntry;
+use crate::movepicker::MovePicker;
 use crate::search::SearchStack;
+use crate::thread::ThreadData;
+use crate::transposition::{EntryFlag, TableEntry, TranspositionTable};
 use crate::types::pieces::PieceName;
+use crate::zobrist::ZOBRIST;
 
 use super::quiescence::quiescence;
-use super::thread::ThreadData;
 use super::PV;
 
 pub const CHECKMATE: i32 = 25000;

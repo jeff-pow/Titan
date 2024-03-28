@@ -3,7 +3,7 @@
 pub(crate) mod avx2 {
     use std::arch::x86_64::*;
 
-    use crate::eval::nnue::{RELU_MAX, RELU_MIN};
+    use crate::eval::network::{RELU_MAX, RELU_MIN};
     use crate::eval::{Block, HIDDEN_SIZE};
 
     const CHUNK_SIZE: usize = 16;

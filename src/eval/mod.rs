@@ -1,9 +1,9 @@
 use std::ops::{Deref, DerefMut};
 
-use self::nnue::Network;
+use self::network::Network;
 
 pub mod accumulator;
-pub mod nnue;
+pub mod network;
 mod simd;
 
 // TODO: perf list and align 64

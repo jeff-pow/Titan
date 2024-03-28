@@ -1,5 +1,5 @@
 use crate::{
-    moves::moves::Castle,
+    chess_move::Castle,
     types::{
         pieces::{Color, Piece},
         square::{Square, SQUARE_NAMES},
@@ -52,7 +52,6 @@ impl Board {
         board.zobrist_hash = board.generate_hash();
         board.calculate_threats();
         board.pinned_and_checkers();
-
 
         // 10th bucket find who can still castle
         // Order of array is white king castle, white queen castle, black king castle, black queen castle
@@ -191,11 +190,9 @@ pub fn parse_fen_from_buffer(buf: &[&str]) -> String {
 #[cfg(test)]
 mod fen_tests {
     use crate::{
-        board::{
-            board::Board,
-            fen::{find_en_passant_square, parse_castling},
-        },
-        moves::moves::Castle,
+        board::Board,
+        chess_move::Castle,
+        fen::{find_en_passant_square, parse_castling},
     };
 
     #[test]

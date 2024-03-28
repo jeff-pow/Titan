@@ -4,9 +4,10 @@ use std::{
 };
 
 use crate::{
-    board::board::Board,
-    engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB},
-    search::{lmr_table::LmrTable, search::search, thread::ThreadData, SearchType},
+    board::Board,
+    search::{lmr_table::LmrTable, search::search, SearchType},
+    thread::ThreadData,
+    transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB},
 };
 
 pub fn bench() {
