@@ -83,7 +83,7 @@ pub enum PieceName {
     Rook,
     Queen,
     King,
-    None = 7,
+    None,
 }
 
 impl PieceName {
@@ -135,7 +135,7 @@ pub enum Piece {
     WhiteKing,
     BlackKing,
 
-    None = 15,
+    None,
 }
 
 impl Piece {

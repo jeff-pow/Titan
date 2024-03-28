@@ -1,4 +1,4 @@
-EXE=Titan
+EXE = titan
 
 ifeq ($(OS),Windows_NT)
 	NAME := $(EXE).exe
