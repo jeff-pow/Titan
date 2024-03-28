@@ -104,7 +104,7 @@ impl PieceName {
     }
 
     fn from_u32(val: u32) -> Self {
-        assert!((0..6).contains(&val) || val == 7);
+        assert!((0..7).contains(&val));
         unsafe { transmute(val as u8) }
     }
 
@@ -156,7 +156,7 @@ impl Piece {
     }
 
     pub(crate) fn from_u32(x: u32) -> Self {
-        assert!((0..12).contains(&x) || x == 15);
+        assert!((0..13).contains(&x));
         unsafe { transmute(x as u8) }
     }
 
@@ -229,7 +229,7 @@ mod piece_tests {
         assert_eq!(PieceName::from_u32(3), PieceName::Rook);
         assert_eq!(PieceName::from_u32(4), PieceName::Queen);
         assert_eq!(PieceName::from_u32(5), PieceName::King);
-        assert_eq!(PieceName::from_u32(7), PieceName::None);
+        assert_eq!(PieceName::from_u32(6), PieceName::None);
     }
 
     #[test]
