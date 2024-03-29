@@ -210,6 +210,12 @@ const fn feature_idx(color: Color, piece: PieceName, sq: Square) -> usize {
     color.idx() * COLOR_OFFSET + piece.idx() * PIECE_OFFSET + sq.idx()
 }
 
+fn feature_idx_lazy(piece: Piece, sq: Square, view: Color) -> usize {
+    (piece.color().idx() ^ view.idx()) * COLOR_OFFSET
+        + piece.name().idx() * PIECE_OFFSET
+        + (((piece.color().idx() ^ view.idx()) * 56) ^ sq.idx())
+}
+
 impl Board {
     pub fn new_accumulator(&mut self) -> Accumulator {
         let mut acc = Accumulator::default();
