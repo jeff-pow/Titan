@@ -1,6 +1,6 @@
 use super::{accumulator::Accumulator, Align64, Block, INPUT_SIZE, NET};
 
-use crate::{board::board::Board, search::search::NEAR_CHECKMATE, types::pieces::PieceName};
+use crate::{board::Board, search::search::NEAR_CHECKMATE, types::pieces::PieceName};
 /**
 * When changing activation functions, both the normalization factor and QA may need to change
 * alongside changing the crelu calls to screlu in simd and serial code.
@@ -85,7 +85,7 @@ fn flatten(acc: &Block, weights: &Block) -> i32 {
 mod nnue_tests {
     use std::{hint::black_box, time::Instant};
 
-    use crate::board::{board::Board, fen::STARTING_FEN};
+    use crate::{board::Board, fen::STARTING_FEN};
 
     #[test]
     fn inference_benchmark() {

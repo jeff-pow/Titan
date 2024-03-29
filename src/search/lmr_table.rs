@@ -1,4 +1,4 @@
-use crate::{moves::movelist::MAX_LEN, search::search::MAX_SEARCH_DEPTH};
+use crate::{movelist::MAX_LEN, search::search::MAX_SEARCH_DEPTH};
 
 type LmrReductions = [[i32; MAX_LEN + 1]; (MAX_SEARCH_DEPTH + 1) as usize];
 
@@ -16,8 +16,7 @@ impl LmrTable {
     fn init_lmr(&mut self) {
         for depth in 0..=MAX_SEARCH_DEPTH {
             for moves_played in 0..=MAX_LEN {
-                let reduction =
-                    (0.88 + (depth as f32).ln() * (moves_played as f32).ln() / 1.88) as i32;
+                let reduction = (0.88 + (depth as f32).ln() * (moves_played as f32).ln() / 1.88) as i32;
                 self.lmr_table[depth as usize][moves_played] = reduction;
             }
         }

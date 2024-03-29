@@ -1,7 +1,7 @@
 use crate::{
-    board::board::Board,
+    board::Board,
     const_array,
-    moves::magics::{rand_u64, Rng},
+    magics::{rand_u64, Rng},
     types::pieces::{Color, PieceName},
 };
 
@@ -79,7 +79,7 @@ impl Board {
 
 #[cfg(test)]
 mod hashing_test {
-    use crate::board::{board::Board, fen};
+    use crate::{board::Board, fen};
 
     #[test]
     fn test_hashing() {

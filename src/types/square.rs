@@ -1,12 +1,11 @@
 use core::ops::{Index, IndexMut};
 use std::fmt::Display;
 
-use crate::moves::{
-    attack_boards::{FILES, RANKS},
-    moves::Direction,
-};
-
 use super::bitboard::Bitboard;
+use crate::{
+    attack_boards::{FILES, RANKS},
+    chess_move::Direction,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Square(pub u32);

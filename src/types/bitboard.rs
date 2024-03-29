@@ -1,8 +1,7 @@
 use std::{fmt, ops};
 
-use crate::moves::{attack_boards::FILES, moves::Direction};
-
 use super::square::Square;
+use crate::{attack_boards::FILES, chess_move::Direction};
 
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
 pub struct Bitboard(pub u64);

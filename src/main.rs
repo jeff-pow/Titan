@@ -3,17 +3,29 @@
 #![allow(long_running_const_eval)]
 #![cfg_attr(feature = "avx512", feature(stdarch_x86_avx512))]
 
+mod attack_boards;
 mod bench;
 mod board;
-mod engine;
+mod chess_move;
 mod eval;
-mod moves;
+mod fen;
+mod history_table;
+mod magics;
+mod movegen;
+mod movelist;
+mod movepicker;
+mod perft;
 mod search;
+mod see;
+mod thread;
+mod transposition;
 mod types;
+mod uci;
+mod zobrist;
 
 use crate::bench::bench;
-use crate::engine::uci::main_loop;
 use std::env;
+use uci::main_loop;
 
 fn main() {
     if env::args().any(|x| x == *"bench") {

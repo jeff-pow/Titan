@@ -1,19 +1,13 @@
 use arrayvec::ArrayVec;
 use std::ops::{Index, IndexMut};
 
-use crate::eval::accumulator::{Accumulator, Delta};
-use crate::moves::moves::Move;
-
-use self::game_time::Clock;
-use self::search::MAX_SEARCH_DEPTH;
+use self::{game_time::Clock, search::MAX_SEARCH_DEPTH};
+use crate::chess_move::Move;
 
 pub mod game_time;
-pub mod history_table;
 pub mod lmr_table;
 pub mod quiescence;
 pub mod search;
-pub mod see;
-pub mod thread;
 
 #[derive(Clone, Copy, Default)]
 pub struct PlyEntry {
@@ -27,8 +21,8 @@ pub struct PlyEntry {
 }
 
 #[derive(Default)]
-struct PV {
-    line: ArrayVec<Move, { MAX_SEARCH_DEPTH as usize }>,
+pub struct PV {
+    pub line: ArrayVec<Move, { MAX_SEARCH_DEPTH as usize }>,
 }
 
 impl PV {
@@ -83,43 +77,4 @@ pub enum SearchType {
     #[default]
     /// Search forever
     Infinite,
-}
-
-#[derive(Clone)]
-pub struct AccumulatorStack {
-    pub(crate) stack: Vec<Accumulator>,
-    pub top: usize,
-}
-
-impl AccumulatorStack {
-    pub fn apply_update(&mut self, delta: &mut Delta) {
-        let (bottom, top) = self.stack.split_at_mut(self.top + 1);
-        top[0].lazy_ref_update(delta, bottom.last().unwrap());
-        self.top += 1;
-    }
-
-    pub fn top(&mut self) -> &mut Accumulator {
-        &mut self.stack[self.top]
-    }
-
-    pub fn pop(&mut self) -> Accumulator {
-        self.top -= 1;
-        self.stack[self.top + 1]
-    }
-
-    pub fn push(&mut self, acc: Accumulator) {
-        self.top += 1;
-        self.stack[self.top] = acc;
-    }
-
-    pub fn clear(&mut self, base_accumulator: &Accumulator) {
-        self.stack[0] = *base_accumulator;
-        self.top = 0;
-    }
-
-    pub fn new(base_accumulator: &Accumulator) -> Self {
-        let mut vec = vec![Accumulator::default(); MAX_SEARCH_DEPTH as usize + 50];
-        vec[0] = *base_accumulator;
-        Self { stack: vec, top: 0 }
-    }
 }

@@ -1,6 +1,6 @@
-use crate::{board::board::Board, moves::moves::Move, types::pieces::PieceName};
+use crate::{board::Board, chess_move::Move, types::pieces::PieceName};
 
-use super::SearchStack;
+use crate::search::SearchStack;
 
 pub const MAX_HIST_VAL: i32 = 16384;
 

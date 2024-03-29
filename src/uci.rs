@@ -3,16 +3,13 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::{io, time::Duration};
 
 use crate::bench::bench;
-use crate::board::fen::{parse_fen_from_buffer, STARTING_FEN};
-use crate::engine::perft::perft;
-use crate::engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
-use crate::moves::moves::Move;
+use crate::chess_move::Move;
+use crate::fen::{parse_fen_from_buffer, STARTING_FEN};
+use crate::perft::perft;
 use crate::search::lmr_table::LmrTable;
-use crate::{
-    board::board::Board,
-    search::{game_time::Clock, thread::ThreadPool},
-    types::pieces::Color,
-};
+use crate::thread::ThreadPool;
+use crate::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
+use crate::{board::Board, search::game_time::Clock, types::pieces::Color};
 
 pub const ENGINE_NAME: &str = "Titan";
 
@@ -72,14 +69,7 @@ pub fn main_loop() -> ! {
                 transpos_table.clear();
             }
             "go" => {
-                thread_pool.handle_go(
-                    &input,
-                    &board,
-                    &halt,
-                    &mut msg,
-                    &hash_history,
-                    &transpos_table,
-                );
+                thread_pool.handle_go(&input, &board, &halt, &mut msg, &hash_history, &transpos_table);
             }
             "perft" => {
                 perft(&board, input[1].parse().unwrap());
@@ -95,12 +85,9 @@ pub fn main_loop() -> ! {
                     transpos_table = TranspositionTable::new(x.parse().unwrap());
                 }
                 ["setoption", "name", "Clear", "Hash"] => transpos_table.clear(),
-                ["setoption", "name", "Threads", "value", x] => thread_pool.add_workers(
-                    x.parse().unwrap(),
-                    &hash_history,
-                    &consts,
-                    &global_nodes,
-                ),
+                ["setoption", "name", "Threads", "value", x] => {
+                    thread_pool.add_workers(x.parse().unwrap(), &hash_history, &consts, &global_nodes)
+                }
                 _ => println!("Option not recognized"),
             },
             _ => (),
@@ -163,9 +150,7 @@ pub fn parse_time(buff: &[&str]) -> Clock {
                 game_time.time_inc[Color::Black] =
                     Duration::from_millis(iter.next().unwrap().parse::<u64>().expect("Valid u64"));
             }
-            "movestogo" => {
-                game_time.movestogo = iter.next().unwrap().parse::<i32>().expect("Valid i32")
-            }
+            "movestogo" => game_time.movestogo = iter.next().unwrap().parse::<i32>().expect("Valid i32"),
             _ => return game_time,
         }
     }

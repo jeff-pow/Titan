@@ -1,11 +1,8 @@
+use crate::{board::Board, chess_move::Move, search::search::NEAR_CHECKMATE, types::pieces::Piece};
 use std::{
     mem::{size_of, transmute},
     ptr::from_ref,
     sync::atomic::{AtomicI16, AtomicU16, AtomicU64, AtomicU8, Ordering},
-};
-
-use crate::{
-    board::board::Board, moves::moves::Move, search::search::NEAR_CHECKMATE, types::pieces::Piece,
 };
 
 /**
@@ -159,10 +156,7 @@ impl TranspositionTable {
     pub fn new(mb: usize) -> Self {
         let target_size = mb * BYTES_PER_MB;
         let table_capacity = target_size / ENTRY_SIZE;
-        Self {
-            vec: vec![InternalEntry::default(); table_capacity].into_boxed_slice(),
-            age: U64Wrapper::default(),
-        }
+        Self { vec: vec![InternalEntry::default(); table_capacity].into_boxed_slice(), age: U64Wrapper::default() }
     }
 
     pub fn clear(&self) {
@@ -210,11 +204,7 @@ impl TranspositionTable {
             || depth as usize + 5 + 2 * usize::from(is_pv) > old_entry.depth as usize
         {
             // Don't overwrite a best move with a null move
-            let best_m = if m == Move::NULL && key == old_entry.key {
-                old_entry.best_move
-            } else {
-                m.as_u16()
-            };
+            let best_m = if m == Move::NULL && key == old_entry.key { old_entry.best_move } else { m.as_u16() };
 
             if score > NEAR_CHECKMATE {
                 score += ply;
@@ -229,10 +219,7 @@ impl TranspositionTable {
                 self.vec.get_unchecked(idx).age_pv_bound.store(age_pv_bound, Ordering::Relaxed);
                 self.vec.get_unchecked(idx).search_score.store(score as i16, Ordering::Relaxed);
                 self.vec.get_unchecked(idx).best_move.store(best_m, Ordering::Relaxed);
-                self.vec
-                    .get_unchecked(idx)
-                    .static_eval
-                    .store(static_eval as i16, Ordering::Relaxed);
+                self.vec.get_unchecked(idx).static_eval.store(static_eval as i16, Ordering::Relaxed);
             }
         }
     }
@@ -275,11 +262,11 @@ fn index(hash: u64, table_capacity: usize) -> usize {
 #[cfg(test)]
 mod transpos_tests {
     use crate::{
-        board::{board::Board, fen::STARTING_FEN},
-        engine::transposition::{EntryFlag, TranspositionTable},
-        moves::moves::{Move, MoveType},
+        chess_move::{Move, MoveType},
         search::search::CHECKMATE,
+        transposition::{EntryFlag, TranspositionTable},
         types::{pieces::Piece, square::Square},
+        {board::Board, fen::STARTING_FEN},
     };
 
     #[test]

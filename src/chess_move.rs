@@ -2,10 +2,8 @@ use core::fmt;
 use std::fmt::Display;
 
 use crate::{
-    board::board::Board,
-    moves::moves::Direction::{
-        East, North, NorthEast, NorthWest, South, SouthEast, SouthWest, West,
-    },
+    board::Board,
+    chess_move::Direction::{East, North, NorthEast, NorthWest, South, SouthEast, SouthWest, West},
     types::{
         bitboard::Bitboard,
         pieces::{Piece, PieceName},
@@ -14,8 +12,7 @@ use crate::{
 };
 
 use MoveType::{
-    BishopPromotion, CastleMove, DoublePush, EnPassant, KnightPromotion, Normal, QueenPromotion,
-    RookPromotion,
+    BishopPromotion, CastleMove, DoublePush, EnPassant, KnightPromotion, Normal, QueenPromotion, RookPromotion,
 };
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MoveType {
@@ -46,16 +43,8 @@ pub struct Move(pub u32);
 impl Move {
     pub const NULL: Self = Self(0);
 
-    pub const fn new(
-        origin: Square,
-        destination: Square,
-        move_type: MoveType,
-        piece_moving: Piece,
-    ) -> Self {
-        let m = origin.0
-            | (destination.0 << 6)
-            | ((move_type as u32) << 12)
-            | ((piece_moving as u32) << 16);
+    pub const fn new(origin: Square, destination: Square, move_type: MoveType, piece_moving: Piece) -> Self {
+        let m = origin.0 | (destination.0 << 6) | ((move_type as u32) << 12) | ((piece_moving as u32) << 16);
         Self(m)
     }
 
@@ -99,9 +88,7 @@ impl Move {
     }
 
     pub fn is_tactical(self, board: &Board) -> bool {
-        (self.promotion().is_some()
-            || self.is_en_passant()
-            || board.occupancies().occupied(self.to()))
+        (self.promotion().is_some() || self.is_en_passant() || board.occupancies().occupied(self.to()))
             && self != Self::NULL
     }
 
@@ -197,13 +184,9 @@ impl Move {
             _ => Castle::None,
         };
         let castle = castle != Castle::None;
-        let en_passant = {
-            piece_moving.name() == PieceName::Pawn
-                && captured == Piece::None
-                && start_column != end_column
-        };
-        let double_push =
-            { piece_moving.name() == PieceName::Pawn && origin_sq.dist(dest_sq) == 2 };
+        let en_passant =
+            { piece_moving.name() == PieceName::Pawn && captured == Piece::None && start_column != end_column };
+        let double_push = { piece_moving.name() == PieceName::Pawn && origin_sq.dist(dest_sq) == 2 };
         let move_type = {
             if castle {
                 CastleMove
@@ -277,20 +260,20 @@ impl Castle {
 
     pub(crate) const fn rook_dest(self) -> Square {
         match self {
-            Self::WhiteKing => Square(5),
-            Self::WhiteQueen => Square(3),
-            Self::BlackKing => Square(61),
-            Self::BlackQueen => Square(59),
+            Self::WhiteKing => Square::F1,
+            Self::WhiteQueen => Square::D1,
+            Self::BlackKing => Square::F8,
+            Self::BlackQueen => Square::D8,
             Self::None => panic!("Invalid castle"),
         }
     }
 
     pub(crate) const fn rook_src(self) -> Square {
         match self {
-            Self::WhiteKing => Square(7),
-            Self::WhiteQueen => Square(0),
-            Self::BlackKing => Square(63),
-            Self::BlackQueen => Square(56),
+            Self::WhiteKing => Square::H1,
+            Self::WhiteQueen => Square::A1,
+            Self::BlackKing => Square::H8,
+            Self::BlackQueen => Square::A8,
             Self::None => panic!("Invalid castle"),
         }
     }
@@ -367,8 +350,7 @@ mod move_test {
         assert_eq!(castle_move.promotion(), None);
         assert_eq!(castle_move.piece_moving(), Piece::WhiteKing);
 
-        let en_passant_move =
-            Move::new(Square(7), Square(5), MoveType::EnPassant, Piece::BlackPawn);
+        let en_passant_move = Move::new(Square(7), Square(5), MoveType::EnPassant, Piece::BlackPawn);
         assert_eq!(en_passant_move.from(), Square(7));
         assert_eq!(en_passant_move.to(), Square(5));
         assert!(!en_passant_move.is_castle());

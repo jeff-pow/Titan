@@ -2,7 +2,7 @@ use arrayvec::ArrayVec;
 
 use std::ops::Index;
 
-use super::moves::Move;
+use super::chess_move::Move;
 
 pub const MAX_LEN: usize = 218;
 #[derive(Clone, Debug, Default)]

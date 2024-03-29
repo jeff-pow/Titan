@@ -1,15 +1,12 @@
 use std::time::Instant;
 
-use crate::{
-    board::board::Board,
-    moves::{movegenerator::MGT, movelist::MoveList},
-};
+use crate::{board::Board, movegen::MGT, movelist::MoveList};
 
 pub fn perft(board: &Board, depth: i32) -> usize {
     let start = Instant::now();
     let count = non_bulk_perft::<true>(board, depth);
     let elapsed = start.elapsed().as_secs_f64();
-    println!("{count} nodes in {elapsed} secs = {} nps", count as f64 / elapsed);
+    println!("{count} nodes in {elapsed} secs = {} nps", (count as f64 / elapsed) as u64);
     count
 }
 
@@ -40,12 +37,12 @@ mod movegen_tests {
     use std::thread;
     use std::{fs::File, io::BufRead, io::BufReader};
 
-    use crate::board::board::Board;
-    use crate::engine::perft::perft;
+    use crate::board::Board;
+    use crate::perft::perft;
 
     #[test]
     pub fn epd_perft() {
-        let file = BufReader::new(File::open("./src/engine/ethereal_perft.epd").expect("File not found"));
+        let file = BufReader::new(File::open("./src/ethereal_perft.epd").expect("File not found"));
         let vec = file.lines().collect::<Vec<_>>();
         thread::scope(|s| {
             vec.iter().enumerate().for_each(|(test_num, line)| {

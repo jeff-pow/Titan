@@ -1,8 +1,8 @@
 use super::{
+    chess_move::Move,
     movelist::{MoveList, MoveListEntry},
-    moves::Move,
 };
-use crate::{board::board::Board, moves::movegenerator::MGT, search::thread::ThreadData};
+use crate::{board::Board, movegen::MGT, thread::ThreadData};
 
 pub const TT_MOVE_SCORE: i32 = i32::MAX - 1000;
 pub const GOOD_CAPTURE: i32 = 10_000_000;
@@ -83,16 +83,12 @@ impl MovePicker {
                 self.index -= 1;
             }
 
-            self.phase =
-                if self.skip_quiets { MovePickerPhase::Finished } else { MovePickerPhase::Killer };
+            self.phase = if self.skip_quiets { MovePickerPhase::Finished } else { MovePickerPhase::Killer };
         }
 
         if self.phase == MovePickerPhase::Killer {
             self.phase = MovePickerPhase::Counter;
-            if !self.skip_quiets
-                && self.killer_move != self.tt_move
-                && board.is_pseudo_legal(self.killer_move)
-            {
+            if !self.skip_quiets && self.killer_move != self.tt_move && board.is_pseudo_legal(self.killer_move) {
                 return Some(MoveListEntry { m: self.killer_move, score: FIRST_KILLER_SCORE });
             }
         }
@@ -162,7 +158,6 @@ fn score_quiets(td: &ThreadData, moves: &mut [MoveListEntry]) {
 
 fn score_captures(td: &ThreadData, margin: i32, board: &Board, moves: &mut [MoveListEntry]) {
     for MoveListEntry { m, score } in moves {
-        *score = (if board.see(*m, margin) { GOOD_CAPTURE } else { BAD_CAPTURE })
-            + td.history.capt_hist(*m, board);
+        *score = (if board.see(*m, margin) { GOOD_CAPTURE } else { BAD_CAPTURE }) + td.history.capt_hist(*m, board);
     }
 }

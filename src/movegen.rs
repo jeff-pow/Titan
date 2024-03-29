@@ -1,8 +1,8 @@
 use crate::{
-    board::board::Board,
-    moves::{
-        moves::Direction,
-        moves::Direction::{North, NorthEast, NorthWest, South, SouthEast, SouthWest},
+    board::Board,
+    chess_move::{
+        Direction,
+        Direction::{North, NorthEast, NorthWest, South, SouthEast, SouthWest},
     },
     types::{
         bitboard::Bitboard,
@@ -13,9 +13,9 @@ use crate::{
 
 use super::{
     attack_boards::{king_attacks, knight_attacks, RANKS},
+    chess_move::{Castle, Move, MoveType},
     magics::{bishop_attacks, rook_attacks},
     movelist::MoveList,
-    moves::{Castle, Move, MoveType},
 };
 
 #[allow(clippy::upper_case_acronyms)]
@@ -38,10 +38,8 @@ impl Board {
 
         let knights = self.bitboard(self.stm, PieceName::Knight);
         let kings = self.bitboard(self.stm, PieceName::King);
-        let bishops =
-            self.bitboard(self.stm, PieceName::Bishop) | self.bitboard(self.stm, PieceName::Queen);
-        let rooks =
-            self.bitboard(self.stm, PieceName::Rook) | self.bitboard(self.stm, PieceName::Queen);
+        let bishops = self.bitboard(self.stm, PieceName::Bishop) | self.bitboard(self.stm, PieceName::Queen);
+        let rooks = self.bitboard(self.stm, PieceName::Rook) | self.bitboard(self.stm, PieceName::Queen);
 
         self.jumper_moves(knights, destinations, moves, knight_attacks);
         self.jumper_moves(kings, destinations & !self.threats(), moves, king_attacks);
@@ -59,36 +57,26 @@ impl Board {
                 && self.threats() & Castle::WhiteKing.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::WhiteKing.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(Square(4), Square(6), MoveType::CastleMove, Piece::WhiteKing));
+                moves.push(Move::new(Square::E1, Square::G1, MoveType::CastleMove, Piece::WhiteKing));
             }
             if self.can_castle(Castle::WhiteQueen)
                 && self.threats() & Castle::WhiteQueen.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::WhiteQueen.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(Square(4), Square(2), MoveType::CastleMove, Piece::WhiteKing));
+                moves.push(Move::new(Square::E1, Square::C1, MoveType::CastleMove, Piece::WhiteKing));
             }
         } else {
             if self.can_castle(Castle::BlackKing)
                 && self.threats() & Castle::BlackKing.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::BlackKing.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(
-                    Square(60),
-                    Square(62),
-                    MoveType::CastleMove,
-                    Piece::BlackKing,
-                ));
+                moves.push(Move::new(Square::E8, Square::G8, MoveType::CastleMove, Piece::BlackKing));
             }
             if self.can_castle(Castle::BlackQueen)
                 && self.threats() & Castle::BlackQueen.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::BlackQueen.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(
-                    Square(60),
-                    Square(58),
-                    MoveType::CastleMove,
-                    Piece::BlackKing,
-                ));
+                moves.push(Move::new(Square::E8, Square::C8, MoveType::CastleMove, Piece::BlackKing));
             }
         }
     }
@@ -207,12 +195,8 @@ impl Board {
 }
 
 fn gen_promotions(piece: Piece, src: Square, dest: Square, moves: &mut MoveList) {
-    const PROMOS: [MoveType; 4] = [
-        MoveType::QueenPromotion,
-        MoveType::RookPromotion,
-        MoveType::BishopPromotion,
-        MoveType::KnightPromotion,
-    ];
+    const PROMOS: [MoveType; 4] =
+        [MoveType::QueenPromotion, MoveType::RookPromotion, MoveType::BishopPromotion, MoveType::KnightPromotion];
     for promo in PROMOS {
         moves.push(Move::new(src, dest, promo, piece));
     }

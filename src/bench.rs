@@ -4,9 +4,10 @@ use std::{
 };
 
 use crate::{
-    board::board::Board,
-    engine::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB},
-    search::{lmr_table::LmrTable, search::search, thread::ThreadData, SearchType},
+    board::Board,
+    search::{lmr_table::LmrTable, search::start_search, SearchType},
+    thread::ThreadData,
+    transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB},
 };
 
 pub fn bench() {
@@ -25,7 +26,7 @@ pub fn bench() {
 
     for fen in &BENCH_POSITIONS {
         let board = Board::from_fen(fen);
-        search(&mut thread, false, board, &transpos_table);
+        start_search(&mut thread, false, board, &transpos_table);
         nodes += thread.nodes.local_count();
         thread.nodes.reset();
     }

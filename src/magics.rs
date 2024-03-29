@@ -4,12 +4,11 @@ use std::{
     mem::{size_of, transmute},
 };
 
-use crate::{
-    moves::attack_boards::{FILES, RANKS},
-    types::{bitboard::Bitboard, square::Square},
-};
+use crate::attack_boards::FILES;
+use crate::attack_boards::RANKS;
+use crate::types::{bitboard::Bitboard, square::Square};
 
-use super::moves::{
+use super::chess_move::{
     Direction,
     Direction::{East, North, NorthEast, NorthWest, South, SouthEast, SouthWest, West},
 };
@@ -227,8 +226,7 @@ pub fn gen_magics() {
     let mut bishop_magics = [MagicEntry::default(); 64];
 
     for sq in Square::iter() {
-        let edges = ((RANKS[0] | RANKS[7]) & !(sq.rank_bitboard()))
-            | ((FILES[0] | FILES[7]) & !(sq.file_bitboard()));
+        let edges = ((RANKS[0] | RANKS[7]) & !(sq.rank_bitboard())) | ((FILES[0] | FILES[7]) & !(sq.file_bitboard()));
 
         let rook_bits = sliding_attack(R_DELTAS, sq, Bitboard::EMPTY);
         let mask = rook_bits & !edges;
@@ -274,14 +272,10 @@ pub fn gen_magics() {
     write_bin("./bins/bishop_magics.bin", &bishop_magics, size_of::<[MagicEntry; 64]>());
 }
 
-const ROOK_TABLE: [Bitboard; ROOK_M_SIZE] =
-    unsafe { transmute(*include_bytes!("../../bins/rook_table.bin")) };
-const ROOK_MAGICS: [MagicEntry; 64] =
-    unsafe { transmute(*include_bytes!("../../bins/rook_magics.bin")) };
-const BISHOP_TABLE: [Bitboard; BISHOP_M_SIZE] =
-    unsafe { transmute(*include_bytes!("../../bins/bishop_table.bin")) };
-const BISHOP_MAGICS: [MagicEntry; 64] =
-    unsafe { transmute(*include_bytes!("../../bins/bishop_magics.bin")) };
+const ROOK_TABLE: [Bitboard; ROOK_M_SIZE] = unsafe { transmute(*include_bytes!("../bins/rook_table.bin")) };
+const ROOK_MAGICS: [MagicEntry; 64] = unsafe { transmute(*include_bytes!("../bins/rook_magics.bin")) };
+const BISHOP_TABLE: [Bitboard; BISHOP_M_SIZE] = unsafe { transmute(*include_bytes!("../bins/bishop_table.bin")) };
+const BISHOP_MAGICS: [MagicEntry; 64] = unsafe { transmute(*include_bytes!("../bins/bishop_magics.bin")) };
 
 pub fn write_bin<T>(file: &str, data: &[T], size: usize) {
     let mut file = File::create(file).unwrap();
@@ -290,12 +284,7 @@ pub fn write_bin<T>(file: &str, data: &[T], size: usize) {
 }
 
 /// Function finds a magic valid for a given square
-fn find_magic(
-    mask: Bitboard,
-    sq: Square,
-    deltas: [Direction; 4],
-    rng: &mut Rng,
-) -> (MagicEntry, Vec<Bitboard>) {
+fn find_magic(mask: Bitboard, sq: Square, deltas: [Direction; 4], rng: &mut Rng) -> (MagicEntry, Vec<Bitboard>) {
     loop {
         let mut magic;
         loop {
@@ -314,11 +303,7 @@ fn find_magic(
 }
 
 /// Function tries to make a table with a given magic number
-fn make_table(
-    deltas: [Direction; 4],
-    sq: Square,
-    magic_entry: &MagicEntry,
-) -> Option<Vec<Bitboard>> {
+fn make_table(deltas: [Direction; 4], sq: Square, magic_entry: &MagicEntry) -> Option<Vec<Bitboard>> {
     let idx_bits = 64 - magic_entry.shift;
     let mut table = vec![Bitboard::EMPTY; 1 << idx_bits];
     let mut blockers = Bitboard::EMPTY;
