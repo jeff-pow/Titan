@@ -136,42 +136,51 @@ impl Accumulator {
         }
     }
 
-    pub(crate) fn lazy_ref_update(&mut self, delta: &mut Delta, old: &Accumulator) {
+    pub(crate) fn lazy_update(&mut self, delta: &mut Delta, old: &Accumulator, side: Color) {
         if delta.add.len() == 1 && delta.sub.len() == 1 {
             let (w_add, b_add) = delta.add[0];
             let (w_sub, b_sub) = delta.sub[0];
-            self.add_sub(old, usize::from(w_add), usize::from(w_sub), Color::White);
-            self.add_sub(old, usize::from(b_add), usize::from(b_sub), Color::Black);
+            if side == Color::White {
+                self.add_sub(old, usize::from(w_add), usize::from(w_sub), Color::White);
+            } else {
+                self.add_sub(old, usize::from(b_add), usize::from(b_sub), Color::Black);
+            }
         } else if delta.add.len() == 1 && delta.sub.len() == 2 {
             let (w_add, b_add) = delta.add[0];
             let (w_sub1, b_sub1) = delta.sub[0];
             let (w_sub2, b_sub2) = delta.sub[1];
-            self.add_sub_sub(old, usize::from(w_add), usize::from(w_sub1), usize::from(w_sub2), Color::White);
-            self.add_sub_sub(old, usize::from(b_add), usize::from(b_sub1), usize::from(b_sub2), Color::Black);
+            if side == Color::White {
+                self.add_sub_sub(old, usize::from(w_add), usize::from(w_sub1), usize::from(w_sub2), Color::White);
+            } else {
+                self.add_sub_sub(old, usize::from(b_add), usize::from(b_sub1), usize::from(b_sub2), Color::Black);
+            }
         } else {
             // Castling
             let (w_add1, b_add1) = delta.add[0];
             let (w_add2, b_add2) = delta.add[1];
             let (w_sub1, b_sub1) = delta.sub[0];
             let (w_sub2, b_sub2) = delta.sub[1];
-            self.add_add_sub_sub(
-                old,
-                usize::from(w_add1),
-                usize::from(w_add2),
-                usize::from(w_sub1),
-                usize::from(w_sub2),
-                Color::White,
-            );
-            self.add_add_sub_sub(
-                old,
-                usize::from(b_add1),
-                usize::from(b_add2),
-                usize::from(b_sub1),
-                usize::from(b_sub2),
-                Color::Black,
-            );
+
+            if side == Color::White {
+                self.add_add_sub_sub(
+                    old,
+                    usize::from(w_add1),
+                    usize::from(w_add2),
+                    usize::from(w_sub1),
+                    usize::from(w_sub2),
+                    Color::White,
+                );
+            } else {
+                self.add_add_sub_sub(
+                    old,
+                    usize::from(b_add1),
+                    usize::from(b_add2),
+                    usize::from(b_sub1),
+                    usize::from(b_sub2),
+                    Color::Black,
+                );
+            }
         }
-        delta.clear();
     }
 
     pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
@@ -224,7 +233,9 @@ pub struct AccumulatorStack {
 impl AccumulatorStack {
     pub fn apply_update(&mut self, delta: &mut Delta) {
         let (bottom, top) = self.stack.split_at_mut(self.top + 1);
-        top[0].lazy_ref_update(delta, bottom.last().unwrap());
+        top[0].lazy_update(delta, bottom.last().unwrap(), Color::White);
+        top[0].lazy_update(delta, bottom.last().unwrap(), Color::Black);
+        delta.clear();
         self.top += 1;
     }
 
