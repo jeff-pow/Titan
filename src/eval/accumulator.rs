@@ -94,38 +94,20 @@ impl Accumulator {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn add_sub_sub(
-        &mut self,
-        old: &Accumulator,
-        white_add: usize,
-        black_add: usize,
-        white_sub_1: usize,
-        black_sub_1: usize,
-        white_sub_2: usize,
-        black_sub_2: usize,
-    ) {
+    fn add_sub_sub(&mut self, old: &Accumulator, a1: usize, s1: usize, s2: usize, side: Color) {
         #[cfg(feature = "avx512")]
         unsafe {
-            self.avx512_add_sub_sub(old, white_add, black_add, white_sub_1, black_sub_1, white_sub_2, black_sub_2);
+            self.avx512_add_sub_sub(old, a1, black_add, s1, black_sub_1, s2, black_sub_2);
         }
         #[cfg(not(feature = "avx512"))]
         {
             let weights = &NET.feature_weights;
-            self[Color::White]
+            self[side]
                 .iter_mut()
-                .zip(&weights[white_add].0)
-                .zip(&weights[white_sub_1].0)
-                .zip(&weights[white_sub_2].0)
-                .zip(old[Color::White].iter())
-                .for_each(|((((i, &a), &s1), &s2), &o)| {
-                    *i = o - a - s1 - s2;
-                });
-            self[Color::Black]
-                .iter_mut()
-                .zip(&weights[black_add].0)
-                .zip(&weights[black_sub_1].0)
-                .zip(&weights[black_sub_2].0)
-                .zip(old[Color::Black].iter())
+                .zip(&weights[a1].0)
+                .zip(&weights[s1].0)
+                .zip(&weights[s2].0)
+                .zip(old[side].iter())
                 .for_each(|((((i, &a), &s1), &s2), &o)| {
                     *i = o - a - s1 - s2;
                 });
@@ -133,52 +115,21 @@ impl Accumulator {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn add_add_sub_sub(
-        &mut self,
-        old: &Accumulator,
-        white_add_1: usize,
-        black_add_1: usize,
-        white_add_2: usize,
-        black_add_2: usize,
-        white_sub_1: usize,
-        black_sub_1: usize,
-        white_sub_2: usize,
-        black_sub_2: usize,
-    ) {
+    fn add_add_sub_sub(&mut self, old: &Accumulator, a1: usize, a2: usize, s1: usize, s2: usize, side: Color) {
         #[cfg(feature = "avx512")]
         unsafe {
-            self.avx512_add_add_sub_sub(
-                old,
-                white_add_1,
-                black_add_1,
-                white_add_2,
-                black_add_2,
-                white_sub_1,
-                black_sub_1,
-                white_sub_2,
-                black_sub_2,
-            );
+            self.avx512_add_add_sub_sub(old, a1, black_add_1, a2, black_add_2, s1, black_sub_1, s2, black_sub_2);
         }
         #[cfg(not(feature = "avx512"))]
         {
             let weights = &NET.feature_weights;
-            self[Color::White]
+            self[side]
                 .iter_mut()
-                .zip(&weights[white_add_1].0)
-                .zip(&weights[white_add_2].0)
-                .zip(&weights[white_sub_1].0)
-                .zip(&weights[white_sub_2].0)
-                .zip(old[Color::White].iter())
-                .for_each(|(((((i, &a1), &a2), &s1), &s2), &o)| {
-                    *i = o + a1 + a2 - s1 - s2;
-                });
-            self[Color::Black]
-                .iter_mut()
-                .zip(&weights[black_add_1].0)
-                .zip(&weights[black_add_2].0)
-                .zip(&weights[black_sub_1].0)
-                .zip(&weights[black_sub_2].0)
-                .zip(old[Color::Black].iter())
+                .zip(&weights[a1].0)
+                .zip(&weights[a2].0)
+                .zip(&weights[s1].0)
+                .zip(&weights[s2].0)
+                .zip(old[side].iter())
                 .for_each(|(((((i, &a1), &a2), &s1), &s2), &o)| {
                     *i = o + a1 + a2 - s1 - s2;
                 });
@@ -195,15 +146,8 @@ impl Accumulator {
             let (w_add, b_add) = delta.add[0];
             let (w_sub1, b_sub1) = delta.sub[0];
             let (w_sub2, b_sub2) = delta.sub[1];
-            self.add_sub_sub(
-                old,
-                usize::from(w_add),
-                usize::from(b_add),
-                usize::from(w_sub1),
-                usize::from(b_sub1),
-                usize::from(w_sub2),
-                usize::from(b_sub2),
-            );
+            self.add_sub_sub(old, usize::from(w_add), usize::from(w_sub1), usize::from(w_sub2), Color::White);
+            self.add_sub_sub(old, usize::from(b_add), usize::from(b_sub1), usize::from(b_sub2), Color::Black);
         } else {
             // Castling
             let (w_add1, b_add1) = delta.add[0];
@@ -213,13 +157,18 @@ impl Accumulator {
             self.add_add_sub_sub(
                 old,
                 usize::from(w_add1),
-                usize::from(b_add1),
                 usize::from(w_add2),
-                usize::from(b_add2),
                 usize::from(w_sub1),
-                usize::from(b_sub1),
                 usize::from(w_sub2),
+                Color::White,
+            );
+            self.add_add_sub_sub(
+                old,
+                usize::from(b_add1),
+                usize::from(b_add2),
+                usize::from(b_sub1),
                 usize::from(b_sub2),
+                Color::Black,
             );
         }
         delta.clear();
