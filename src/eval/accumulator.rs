@@ -69,30 +69,27 @@ impl IndexMut<Color> for Accumulator {
 }
 
 impl Accumulator {
-    fn add_sub(&mut self, old: &Accumulator, white_add: usize, black_add: usize, white_sub: usize, black_sub: usize) {
+    fn add_sub(&mut self, old: &Accumulator, a1: usize, s1: usize, side: Color) {
         #[cfg(feature = "avx512")]
         unsafe {
-            self.avx512_add_sub(old, white_add, black_add, white_sub, black_sub);
+            self.avx512_add_sub(old, a1, black_add, s1, black_sub);
         }
         #[cfg(not(feature = "avx512"))]
         {
             let weights = &NET.feature_weights;
-            self[Color::White]
-                .iter_mut()
-                .zip(&weights[white_add].0)
-                .zip(&weights[white_sub].0)
-                .zip(old[Color::White].iter())
-                .for_each(|(((i, &a), &s), &o)| {
+            self[side].iter_mut().zip(&weights[a1].0).zip(&weights[s1].0).zip(old[side].iter()).for_each(
+                |(((i, &a), &s), &o)| {
                     *i = o + a - s;
-                });
-            self[Color::Black]
-                .iter_mut()
-                .zip(&weights[black_add].0)
-                .zip(&weights[black_sub].0)
-                .zip(old[Color::Black].iter())
-                .for_each(|(((i, &a), &s), &o)| {
-                    *i = o + a - s;
-                });
+                },
+            );
+            // self[Color::Black]
+            //     .iter_mut()
+            //     .zip(&weights[black_add].0)
+            //     .zip(&weights[black_sub].0)
+            //     .zip(old[Color::Black].iter())
+            //     .for_each(|(((i, &a), &s), &o)| {
+            //         *i = o + a - s;
+            //     });
         }
     }
 
@@ -192,7 +189,8 @@ impl Accumulator {
         if delta.add.len() == 1 && delta.sub.len() == 1 {
             let (w_add, b_add) = delta.add[0];
             let (w_sub, b_sub) = delta.sub[0];
-            self.add_sub(old, usize::from(w_add), usize::from(b_add), usize::from(w_sub), usize::from(b_sub));
+            self.add_sub(old, usize::from(w_add), usize::from(w_sub), Color::White);
+            self.add_sub(old, usize::from(b_add), usize::from(b_sub), Color::Black);
         } else if delta.add.len() == 1 && delta.sub.len() == 2 {
             let (w_add, b_add) = delta.add[0];
             let (w_sub1, b_sub1) = delta.sub[0];
