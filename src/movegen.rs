@@ -57,26 +57,26 @@ impl Board {
                 && self.threats() & Castle::WhiteKing.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::WhiteKing.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(Square(4), Square(6), MoveType::CastleMove, Piece::WhiteKing));
+                moves.push(Move::new(Square::E1, Square::G1, MoveType::CastleMove, Piece::WhiteKing));
             }
             if self.can_castle(Castle::WhiteQueen)
                 && self.threats() & Castle::WhiteQueen.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::WhiteQueen.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(Square(4), Square(2), MoveType::CastleMove, Piece::WhiteKing));
+                moves.push(Move::new(Square::E1, Square::C1, MoveType::CastleMove, Piece::WhiteKing));
             }
         } else {
             if self.can_castle(Castle::BlackKing)
                 && self.threats() & Castle::BlackKing.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::BlackKing.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(Square(60), Square(62), MoveType::CastleMove, Piece::BlackKing));
+                moves.push(Move::new(Square::E8, Square::G8, MoveType::CastleMove, Piece::BlackKing));
             }
             if self.can_castle(Castle::BlackQueen)
                 && self.threats() & Castle::BlackQueen.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::BlackQueen.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(Square(60), Square(58), MoveType::CastleMove, Piece::BlackKing));
+                moves.push(Move::new(Square::E8, Square::C8, MoveType::CastleMove, Piece::BlackKing));
             }
         }
     }

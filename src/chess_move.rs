@@ -260,20 +260,20 @@ impl Castle {
 
     pub(crate) const fn rook_dest(self) -> Square {
         match self {
-            Self::WhiteKing => Square(5),
-            Self::WhiteQueen => Square(3),
-            Self::BlackKing => Square(61),
-            Self::BlackQueen => Square(59),
+            Self::WhiteKing => Square::F1,
+            Self::WhiteQueen => Square::D1,
+            Self::BlackKing => Square::F8,
+            Self::BlackQueen => Square::D8,
             Self::None => panic!("Invalid castle"),
         }
     }
 
     pub(crate) const fn rook_src(self) -> Square {
         match self {
-            Self::WhiteKing => Square(7),
-            Self::WhiteQueen => Square(0),
-            Self::BlackKing => Square(63),
-            Self::BlackQueen => Square(56),
+            Self::WhiteKing => Square::H1,
+            Self::WhiteQueen => Square::A1,
+            Self::BlackKing => Square::H8,
+            Self::BlackQueen => Square::A8,
             Self::None => panic!("Invalid castle"),
         }
     }
