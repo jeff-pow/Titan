@@ -1,5 +1,6 @@
 use crate::{
     board::Board,
+    chess_move::Move,
     search::search::MAX_SEARCH_DEPTH,
     types::{
         pieces::{Color, Piece, PieceName, NUM_PIECES},
@@ -8,6 +9,7 @@ use crate::{
 };
 
 use super::{Align64, Block, NET};
+use std::ops::{Index, IndexMut};
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub struct Delta {
@@ -39,11 +41,30 @@ impl Delta {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C, align(64))]
-pub struct Accumulator(pub(super) [Align64<Block>; 2]);
+pub struct Accumulator {
+    pub vals: [Align64<Block>; 2],
+    pub correct: [bool; 2],
+    pub m: Move,
+    pub capture: Piece,
+}
 
 impl Default for Accumulator {
     fn default() -> Self {
-        Self([NET.feature_bias; 2])
+        Self { vals: [NET.feature_bias; 2], correct: [true; 2], m: Move::NULL, capture: Piece::None }
+    }
+}
+
+impl Index<Color> for Accumulator {
+    type Output = Block;
+
+    fn index(&self, index: Color) -> &Self::Output {
+        &self.vals[index.idx()]
+    }
+}
+
+impl IndexMut<Color> for Accumulator {
+    fn index_mut(&mut self, index: Color) -> &mut Self::Output {
+        &mut self.vals[index.idx()]
     }
 }
 
@@ -56,19 +77,19 @@ impl Accumulator {
         #[cfg(not(feature = "avx512"))]
         {
             let weights = &NET.feature_weights;
-            self.0[Color::White]
+            self[Color::White]
                 .iter_mut()
                 .zip(&weights[white_add].0)
                 .zip(&weights[white_sub].0)
-                .zip(old.0[Color::White].iter())
+                .zip(old[Color::White].iter())
                 .for_each(|(((i, &a), &s), &o)| {
                     *i = o + a - s;
                 });
-            self.0[Color::Black]
+            self[Color::Black]
                 .iter_mut()
                 .zip(&weights[black_add].0)
                 .zip(&weights[black_sub].0)
-                .zip(old.0[Color::Black].iter())
+                .zip(old[Color::Black].iter())
                 .for_each(|(((i, &a), &s), &o)| {
                     *i = o + a - s;
                 });
@@ -93,21 +114,21 @@ impl Accumulator {
         #[cfg(not(feature = "avx512"))]
         {
             let weights = &NET.feature_weights;
-            self.0[Color::White]
+            self[Color::White]
                 .iter_mut()
                 .zip(&weights[white_add].0)
                 .zip(&weights[white_sub_1].0)
                 .zip(&weights[white_sub_2].0)
-                .zip(old.0[Color::White].iter())
+                .zip(old[Color::White].iter())
                 .for_each(|((((i, &a), &s1), &s2), &o)| {
                     *i = o - a - s1 - s2;
                 });
-            self.0[Color::Black]
+            self[Color::Black]
                 .iter_mut()
                 .zip(&weights[black_add].0)
                 .zip(&weights[black_sub_1].0)
                 .zip(&weights[black_sub_2].0)
-                .zip(old.0[Color::Black].iter())
+                .zip(old[Color::Black].iter())
                 .for_each(|((((i, &a), &s1), &s2), &o)| {
                     *i = o - a - s1 - s2;
                 });
@@ -144,23 +165,23 @@ impl Accumulator {
         #[cfg(not(feature = "avx512"))]
         {
             let weights = &NET.feature_weights;
-            self.0[Color::White]
+            self[Color::White]
                 .iter_mut()
                 .zip(&weights[white_add_1].0)
                 .zip(&weights[white_add_2].0)
                 .zip(&weights[white_sub_1].0)
                 .zip(&weights[white_sub_2].0)
-                .zip(old.0[Color::White].iter())
+                .zip(old[Color::White].iter())
                 .for_each(|(((((i, &a1), &a2), &s1), &s2), &o)| {
                     *i = o + a1 + a2 - s1 - s2;
                 });
-            self.0[Color::Black]
+            self[Color::Black]
                 .iter_mut()
                 .zip(&weights[black_add_1].0)
                 .zip(&weights[black_add_2].0)
                 .zip(&weights[black_sub_1].0)
                 .zip(&weights[black_sub_2].0)
-                .zip(old.0[Color::Black].iter())
+                .zip(old[Color::Black].iter())
                 .for_each(|(((((i, &a1), &a2), &s1), &s2), &o)| {
                     *i = o + a1 + a2 - s1 - s2;
                 });
@@ -220,7 +241,7 @@ impl Accumulator {
         }
 
         #[cfg(not(feature = "avx512"))]
-        self.0[color].iter_mut().zip(weights).for_each(|(i, &d)| {
+        self[color].iter_mut().zip(weights).for_each(|(i, &d)| {
             *i += d;
         });
     }

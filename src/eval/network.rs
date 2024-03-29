@@ -42,7 +42,7 @@ impl Board {
 
     #[allow(clippy::assertions_on_constants)]
     pub fn raw_evaluate(&self, acc: &Accumulator) -> i32 {
-        let (us, them) = (&acc.0[self.stm], &acc.0[!self.stm]);
+        let (us, them) = (&acc[self.stm], &acc[!self.stm]);
         let weights = &NET.output_weights;
         let output = flatten(us, &weights[0]) + flatten(them, &weights[1]);
         ((i32::from(NET.output_bias) + output / NORMALIZATION_FACTOR) * SCALE / QAB)
