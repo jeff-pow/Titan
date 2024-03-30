@@ -100,14 +100,6 @@ impl Accumulator {
                     *i = o + a - s;
                 },
             );
-            // self[Color::Black]
-            //     .iter_mut()
-            //     .zip(&weights[black_add].0)
-            //     .zip(&weights[black_sub].0)
-            //     .zip(old[Color::Black].iter())
-            //     .for_each(|(((i, &a), &s), &o)| {
-            //         *i = o + a - s;
-            //     });
         }
     }
 
@@ -127,7 +119,7 @@ impl Accumulator {
                 .zip(&weights[s2].0)
                 .zip(old[side].iter())
                 .for_each(|((((i, &a), &s1), &s2), &o)| {
-                    *i = o - a - s1 - s2;
+                    *i = o + a - s1 - s2;
                 });
         }
     }
@@ -193,50 +185,31 @@ impl Accumulator {
             assert_eq!(delta.num_add, 1);
         }
         self.correct[side] = true;
-        if delta.add.len() == 1 && delta.sub.len() == 1 {
-            let (w_add, b_add) = delta.add[0];
-            let (w_sub, b_sub) = delta.sub[0];
-            // if side == Color::White {
-            //     self.add_sub(old, usize::from(w_add), usize::from(w_sub), Color::White);
-            // } else {
-            //     self.add_sub(old, usize::from(b_add), usize::from(b_sub), Color::Black);
-            // }
-        } else if delta.add.len() == 1 && delta.sub.len() == 2 {
-            let (w_add, b_add) = delta.add[0];
-            let (w_sub1, b_sub1) = delta.sub[0];
-            let (w_sub2, b_sub2) = delta.sub[1];
-            // if side == Color::White {
-            //     self.add_sub_sub(old, usize::from(w_add), usize::from(w_sub1), usize::from(w_sub2), Color::White);
-            // } else {
-            //     self.add_sub_sub(old, usize::from(b_add), usize::from(b_sub1), usize::from(b_sub2), Color::Black);
-            // }
-        } else {
-            // Castling
-            let (w_add1, b_add1) = delta.add[0];
-            let (w_add2, b_add2) = delta.add[1];
-            let (w_sub1, b_sub1) = delta.sub[0];
-            let (w_sub2, b_sub2) = delta.sub[1];
+        // Castling
+        let (w_add1, b_add1) = delta.add[0];
+        let (w_add2, b_add2) = delta.add[1];
+        let (w_sub1, b_sub1) = delta.sub[0];
+        let (w_sub2, b_sub2) = delta.sub[1];
 
-            // if side == Color::White {
-            //     self.add_add_sub_sub(
-            //         old,
-            //         usize::from(w_add1),
-            //         usize::from(w_add2),
-            //         usize::from(w_sub1),
-            //         usize::from(w_sub2),
-            //         Color::White,
-            //     );
-            // } else {
-            //     self.add_add_sub_sub(
-            //         old,
-            //         usize::from(b_add1),
-            //         usize::from(b_add2),
-            //         usize::from(b_sub1),
-            //         usize::from(b_sub2),
-            //         Color::Black,
-            //     );
-            // }
-        }
+        // if side == Color::White {
+        //     self.add_add_sub_sub(
+        //         old,
+        //         usize::from(w_add1),
+        //         usize::from(w_add2),
+        //         usize::from(w_sub1),
+        //         usize::from(w_sub2),
+        //         Color::White,
+        //     );
+        // } else {
+        //     self.add_add_sub_sub(
+        //         old,
+        //         usize::from(b_add1),
+        //         usize::from(b_add2),
+        //         usize::from(b_sub1),
+        //         usize::from(b_sub2),
+        //         Color::Black,
+        //     );
+        // }
     }
 
     pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
