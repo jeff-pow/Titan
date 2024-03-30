@@ -358,9 +358,7 @@ fn negamax<const IS_PV: bool>(
             continue;
         }
         tt.prefetch(new_b.zobrist_hash);
-        // td.accumulators.increment();
-        // td.accumulators.top().lazy_update(&mut new_b.delta);
-        td.accumulators.apply_update(&mut new_b.delta);
+        td.accumulators.apply_update(&mut new_b.delta, board, m, board.piece_at(m.to()));
 
         if is_quiet {
             quiets_tried.push(m);

@@ -1,6 +1,6 @@
 use crate::{
     board::Board,
-    chess_move::Move,
+    chess_move::{Direction, Move},
     search::search::MAX_SEARCH_DEPTH,
     types::{
         pieces::{Color, Piece, PieceName, NUM_PIECES},
@@ -22,6 +22,24 @@ pub struct Delta {
 impl Delta {
     fn clear(&mut self) {
         *self = Self::default();
+    }
+
+    fn wadd_contains(&self, x: usize) -> bool {
+        for idx in 0..self.num_add {
+            if self.add[idx].0 as usize == x || self.add[idx].1 as usize == x {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn wsub_contains(&self, x: usize) -> bool {
+        for idx in 0..self.num_sub {
+            if self.sub[idx].0 as usize == x || self.sub[idx].1 as usize == x {
+                return true;
+            }
+        }
+        false
     }
 
     pub(crate) fn add(&mut self, p: Piece, sq: Square) {
@@ -141,18 +159,28 @@ impl Accumulator {
         let piece_moving = m.promotion().unwrap_or(m.piece_moving());
         let a1 = feature_idx_lazy(piece_moving, m.to(), side);
         let s1 = feature_idx_lazy(m.piece_moving(), m.from(), side);
+        let a = self.capture;
         if m.is_castle() {
             let rook = Piece::new(PieceName::Rook, m.piece_moving().color());
             let a2 = feature_idx_lazy(rook, m.castle_type().rook_to(), side);
             let s2 = feature_idx_lazy(rook, m.castle_type().rook_from(), side);
             assert_eq!(delta.num_add, 2);
             assert_eq!(delta.num_sub, 2);
-        } else if self.capture != Piece::None {
-            let s2 = feature_idx_lazy(self.capture, m.to(), side);
+        } else if self.capture != Piece::None || m.is_en_passant() {
+            let cap_square = if m.is_en_passant() {
+                match m.piece_moving().color() {
+                    Color::White => m.to().shift(Direction::South),
+                    Color::Black => m.to().shift(Direction::North),
+                }
+            } else {
+                m.to()
+            };
+            let s2 = feature_idx_lazy(self.capture, cap_square, side);
+
             assert_eq!(delta.num_sub, 2);
             assert_eq!(delta.num_add, 1);
         } else {
-            assert_eq!(delta.num_sub, 1, "{:?}\n{:?}", m, board);
+            assert_eq!(delta.num_sub, 1);
             assert_eq!(delta.num_add, 1);
         }
         if delta.add.len() == 1 && delta.sub.len() == 1 {
@@ -255,10 +283,12 @@ pub struct AccumulatorStack {
 }
 
 impl AccumulatorStack {
-    pub fn apply_update(&mut self, delta: &mut Delta) {
+    pub fn apply_update(&mut self, delta: &mut Delta, board: &Board, m: Move, capture: Piece) {
         let (bottom, top) = self.stack.split_at_mut(self.top + 1);
-        top[0].lazy_update(delta, bottom.last().unwrap(), Color::White);
-        top[0].lazy_update(delta, bottom.last().unwrap(), Color::Black);
+        top[0].m = m;
+        top[0].capture = capture;
+        top[0].lazy_update(delta, bottom.last().unwrap(), Color::White, board);
+        top[0].lazy_update(delta, bottom.last().unwrap(), Color::Black, board);
         delta.clear();
         self.top += 1;
     }
