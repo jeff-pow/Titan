@@ -217,25 +217,25 @@ impl Accumulator {
             let (w_sub1, b_sub1) = delta.sub[0];
             let (w_sub2, b_sub2) = delta.sub[1];
 
-            if side == Color::White {
-                self.add_add_sub_sub(
-                    old,
-                    usize::from(w_add1),
-                    usize::from(w_add2),
-                    usize::from(w_sub1),
-                    usize::from(w_sub2),
-                    Color::White,
-                );
-            } else {
-                self.add_add_sub_sub(
-                    old,
-                    usize::from(b_add1),
-                    usize::from(b_add2),
-                    usize::from(b_sub1),
-                    usize::from(b_sub2),
-                    Color::Black,
-                );
-            }
+            // if side == Color::White {
+            //     self.add_add_sub_sub(
+            //         old,
+            //         usize::from(w_add1),
+            //         usize::from(w_add2),
+            //         usize::from(w_sub1),
+            //         usize::from(w_sub2),
+            //         Color::White,
+            //     );
+            // } else {
+            //     self.add_add_sub_sub(
+            //         old,
+            //         usize::from(b_add1),
+            //         usize::from(b_add2),
+            //         usize::from(b_sub1),
+            //         usize::from(b_sub2),
+            //         Color::Black,
+            //     );
+            // }
         }
     }
 
