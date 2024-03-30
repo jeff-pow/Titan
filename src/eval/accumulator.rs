@@ -136,7 +136,25 @@ impl Accumulator {
         }
     }
 
-    pub(crate) fn lazy_update(&mut self, delta: &mut Delta, old: &Accumulator, side: Color) {
+    pub(crate) fn lazy_update(&mut self, delta: &mut Delta, old: &Accumulator, side: Color, board: &Board) {
+        let m = self.m;
+        let piece_moving = m.promotion().unwrap_or(m.piece_moving());
+        let a1 = feature_idx_lazy(piece_moving, m.to(), side);
+        let s1 = feature_idx_lazy(m.piece_moving(), m.from(), side);
+        if m.is_castle() {
+            let rook = Piece::new(PieceName::Rook, m.piece_moving().color());
+            let a2 = feature_idx_lazy(rook, m.castle_type().rook_to(), side);
+            let s2 = feature_idx_lazy(rook, m.castle_type().rook_from(), side);
+            assert_eq!(delta.num_add, 2);
+            assert_eq!(delta.num_sub, 2);
+        } else if self.capture != Piece::None {
+            let s2 = feature_idx_lazy(self.capture, m.to(), side);
+            assert_eq!(delta.num_sub, 2);
+            assert_eq!(delta.num_add, 1);
+        } else {
+            assert_eq!(delta.num_sub, 1, "{:?}\n{:?}", m, board);
+            assert_eq!(delta.num_add, 1);
+        }
         if delta.add.len() == 1 && delta.sub.len() == 1 {
             let (w_add, b_add) = delta.add[0];
             let (w_sub, b_sub) = delta.sub[0];

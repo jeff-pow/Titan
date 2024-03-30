@@ -280,7 +280,7 @@ impl Board {
             if castle.check_squares() & self.threats() != Bitboard::EMPTY {
                 return false;
             }
-            if self.bitboard(self.stm, PieceName::Rook) & castle.rook_src().bitboard() == Bitboard::EMPTY {
+            if self.bitboard(self.stm, PieceName::Rook) & castle.rook_from().bitboard() == Bitboard::EMPTY {
                 return false;
             }
 
@@ -344,8 +344,8 @@ impl Board {
         // Move rooks if a castle move is applied
         if m.is_castle() {
             let rook = Piece::new(PieceName::Rook, self.stm);
-            self.place_piece::<NNUE>(rook, m.castle_type().rook_dest());
-            self.remove_piece::<NNUE>(m.castle_type().rook_src());
+            self.place_piece::<NNUE>(rook, m.castle_type().rook_to());
+            self.remove_piece::<NNUE>(m.castle_type().rook_from());
         } else if let Some(p) = m.promotion() {
             self.place_piece::<NNUE>(p, m.to());
         } else if m.is_en_passant() {
