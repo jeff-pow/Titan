@@ -158,8 +158,9 @@ impl Accumulator {
         let m = self.m;
         let piece_moving = m.promotion().unwrap_or(m.piece_moving());
         let a1 = feature_idx_lazy(piece_moving, m.to(), side);
+        assert!(delta.wadd_contains(a1), "{:?} {:?}", a1, delta);
         let s1 = feature_idx_lazy(m.piece_moving(), m.from(), side);
-        let a = self.capture;
+        assert!(delta.wsub_contains(s1), "{:?} {:?}", s1, delta);
         if m.is_castle() {
             let rook = Piece::new(PieceName::Rook, m.piece_moving().color());
             let a2 = feature_idx_lazy(rook, m.castle_type().rook_to(), side);
@@ -257,9 +258,12 @@ const fn feature_idx(color: Color, piece: PieceName, sq: Square) -> usize {
 }
 
 fn feature_idx_lazy(piece: Piece, sq: Square, view: Color) -> usize {
-    (piece.color().idx() ^ view.idx()) * COLOR_OFFSET
-        + piece.name().idx() * PIECE_OFFSET
-        + (((piece.color().idx() ^ view.idx()) * 56) ^ sq.idx())
+    match view {
+        Color::White => piece.color().idx() * COLOR_OFFSET + piece.name().idx() * PIECE_OFFSET + sq.idx(),
+        Color::Black => {
+            (!piece.color()).idx() * COLOR_OFFSET + piece.name().idx() * PIECE_OFFSET + sq.flip_vertical().idx()
+        }
+    }
 }
 
 impl Board {

@@ -88,6 +88,23 @@ impl Board {
         false
     }
 
+    pub fn hash_after(&self, m: Move) -> u64 {
+        let mut hash = self.zobrist_hash ^ ZOBRIST.turn_hash;
+
+        if m == Move::NULL {
+            return hash;
+        }
+
+        hash ^= ZOBRIST.piece_square_hashes[m.piece_moving().color()][m.piece_moving().name()][m.from()]
+            ^ ZOBRIST.piece_square_hashes[m.piece_moving().color()][m.piece_moving().name()][m.to()];
+
+        if self.piece_at(m.to()) != Piece::None {
+            hash ^= ZOBRIST.piece_square_hashes[!self.stm][self.piece_at(m.to()).name()][m.to()];
+        }
+
+        hash
+    }
+
     /// Returns the type of piece captured by a move, if any
     pub fn capture(&self, m: Move) -> Piece {
         if m.is_en_passant() {

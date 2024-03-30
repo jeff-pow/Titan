@@ -281,7 +281,7 @@ fn negamax<const IS_PV: bool>(
         let mut node_pv = PV::default();
         let mut new_b = *board;
 
-        tt.prefetch(board.zobrist_hash ^ ZOBRIST.turn_hash);
+        tt.prefetch(board.hash_after(Move::NULL));
         new_b.make_null_move();
         td.stack[td.ply].played_move = Move::NULL;
         td.hash_history.push(new_b.zobrist_hash);
@@ -354,10 +354,10 @@ fn negamax<const IS_PV: bool>(
 
         let mut new_b = *board;
         // Make move filters out illegal moves by returning false if a move was illegal
+        tt.prefetch(board.hash_after(m));
         if !new_b.make_move::<true>(m) {
             continue;
         }
-        tt.prefetch(new_b.zobrist_hash);
         td.accumulators.apply_update(&mut new_b.delta, board, m, board.piece_at(m.to()));
 
         if is_quiet {
