@@ -11,52 +11,6 @@ use crate::{
 use super::{Align64, Block, NET};
 use std::ops::{Index, IndexMut};
 
-#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
-pub struct Delta {
-    pub add: [(u16, u16); 2],
-    pub num_add: usize,
-    pub sub: [(u16, u16); 2],
-    pub num_sub: usize,
-}
-
-impl Delta {
-    fn clear(&mut self) {
-        *self = Self::default();
-    }
-
-    fn add_contains(&self, x: usize) -> bool {
-        for idx in 0..self.num_add {
-            if self.add[idx].0 as usize == x || self.add[idx].1 as usize == x {
-                return true;
-            }
-        }
-        false
-    }
-
-    fn sub_contains(&self, x: usize) -> bool {
-        for idx in 0..self.num_sub {
-            if self.sub[idx].0 as usize == x || self.sub[idx].1 as usize == x {
-                return true;
-            }
-        }
-        false
-    }
-
-    pub(crate) fn add(&mut self, p: Piece, sq: Square) {
-        let w_idx = feature_idx(p.color(), p.name(), sq);
-        let b_idx = feature_idx(!p.color(), p.name(), sq.flip_vertical());
-        self.add[self.num_add] = (w_idx as u16, b_idx as u16);
-        self.num_add += 1;
-    }
-
-    pub(crate) fn remove(&mut self, p: Piece, sq: Square) {
-        let w_idx = feature_idx(p.color(), p.name(), sq);
-        let b_idx = feature_idx(!p.color(), p.name(), sq.flip_vertical());
-        self.sub[self.num_sub] = (w_idx as u16, b_idx as u16);
-        self.num_sub += 1;
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C, align(64))]
 pub struct Accumulator {
@@ -146,21 +100,16 @@ impl Accumulator {
         }
     }
 
-    pub(crate) fn lazy_update(&mut self, delta: &mut Delta, old: &Accumulator, side: Color, board: &Board) {
+    pub(crate) fn lazy_update(&mut self, old: &Accumulator, side: Color) {
         let m = self.m;
         let piece_moving = m.promotion().unwrap_or(m.piece_moving());
         let a1 = feature_idx_lazy(piece_moving, m.to(), side);
-        assert!(delta.add_contains(a1), "{:?} {:?}", a1, delta);
         let s1 = feature_idx_lazy(m.piece_moving(), m.from(), side);
-        assert!(delta.sub_contains(s1), "{:?} {:?}", s1, delta);
         if m.is_castle() {
             let rook = Piece::new(PieceName::Rook, m.piece_moving().color());
             let a2 = feature_idx_lazy(rook, m.castle_type().rook_to(), side);
             let s2 = feature_idx_lazy(rook, m.castle_type().rook_from(), side);
-            assert!(delta.add_contains(a2));
-            assert!(delta.sub_contains(s2));
-            assert_eq!(delta.num_add, 2);
-            assert_eq!(delta.num_sub, 2);
+
             self.add_add_sub_sub(old, a1, a2, s1, s2, side);
         } else if self.capture != Piece::None || m.is_en_passant() {
             let cap_square = if m.is_en_passant() {
@@ -175,41 +124,10 @@ impl Accumulator {
                 if m.is_en_passant() { Piece::new(PieceName::Pawn, !m.piece_moving().color()) } else { self.capture };
             let s2 = feature_idx_lazy(capture, cap_square, side);
             self.add_sub_sub(old, a1, s1, s2, side);
-            assert!(delta.sub_contains(s2));
-
-            assert_eq!(delta.num_sub, 2);
-            assert_eq!(delta.num_add, 1);
         } else {
             self.add_sub(old, a1, s1, side);
-            assert_eq!(delta.num_sub, 1);
-            assert_eq!(delta.num_add, 1);
         }
         self.correct[side] = true;
-        // Castling
-        let (w_add1, b_add1) = delta.add[0];
-        let (w_add2, b_add2) = delta.add[1];
-        let (w_sub1, b_sub1) = delta.sub[0];
-        let (w_sub2, b_sub2) = delta.sub[1];
-
-        // if side == Color::White {
-        //     self.add_add_sub_sub(
-        //         old,
-        //         usize::from(w_add1),
-        //         usize::from(w_add2),
-        //         usize::from(w_sub1),
-        //         usize::from(w_sub2),
-        //         Color::White,
-        //     );
-        // } else {
-        //     self.add_add_sub_sub(
-        //         old,
-        //         usize::from(b_add1),
-        //         usize::from(b_add2),
-        //         usize::from(b_sub1),
-        //         usize::from(b_sub2),
-        //         Color::Black,
-        //     );
-        // }
     }
 
     pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
@@ -269,14 +187,13 @@ pub struct AccumulatorStack {
 }
 
 impl AccumulatorStack {
-    pub fn apply_update(&mut self, delta: &mut Delta, board: &Board, m: Move, capture: Piece) {
+    pub fn apply_update(&mut self, m: Move, capture: Piece) {
         let (bottom, top) = self.stack.split_at_mut(self.top + 1);
         top[0].correct = [false; 2];
         top[0].m = m;
         top[0].capture = capture;
-        top[0].lazy_update(delta, bottom.last().unwrap(), Color::White, board);
-        top[0].lazy_update(delta, bottom.last().unwrap(), Color::Black, board);
-        delta.clear();
+        top[0].lazy_update(bottom.last().unwrap(), Color::White);
+        top[0].lazy_update(bottom.last().unwrap(), Color::Black);
         self.top += 1;
     }
 

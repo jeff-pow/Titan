@@ -4,7 +4,6 @@ use super::fen::STARTING_FEN;
 use crate::{
     attack_boards::{king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, BETWEEN_SQUARES, RANKS},
     chess_move::{Castle, Direction::*, Move, MoveType, CASTLING_RIGHTS},
-    eval::accumulator::Delta,
     magics::{bishop_attacks, queen_attacks, rook_attacks},
     types::{
         bitboard::Bitboard,
@@ -27,7 +26,6 @@ pub struct Board {
     pub num_moves: usize,
     pub half_moves: usize,
     pub zobrist_hash: u64,
-    pub(crate) delta: Delta,
     threats: Bitboard,
     checkers: Bitboard,
     pinned: Bitboard,
@@ -144,10 +142,6 @@ impl Board {
         self.bitboards[piece.name()] ^= sq.bitboard();
         self.color_occupancies[color] ^= sq.bitboard();
         self.zobrist_hash ^= ZOBRIST.piece_square_hashes[color][name][sq];
-        if NNUE {
-            // acc.add_feature(name, color, sq);
-            self.delta.add(piece, sq);
-        }
     }
 
     fn remove_piece<const NNUE: bool>(&mut self, sq: Square) {
@@ -157,10 +151,6 @@ impl Board {
             self.bitboards[piece.name()] ^= sq.bitboard();
             self.color_occupancies[piece.color()] ^= sq.bitboard();
             self.zobrist_hash ^= ZOBRIST.piece_square_hashes[piece.color()][piece.name()][sq];
-            if NNUE {
-                // acc.remove_feature(piece.name(), piece.color(), sq);
-                self.delta.remove(piece, sq);
-            }
         }
     }
 
@@ -345,8 +335,6 @@ impl Board {
     /// Returns true if a move was legal, and false if it was illegal.
     #[must_use]
     pub fn make_move<const NNUE: bool>(&mut self, m: Move) -> bool {
-        assert_eq!(self.delta.num_add, 0);
-        assert_eq!(self.delta.num_sub, 0);
         let piece_moving = m.piece_moving();
         assert_eq!(piece_moving, self.piece_at(m.from()));
         let capture = self.capture(m);
@@ -466,7 +454,6 @@ impl Board {
             half_moves: 0,
             zobrist_hash: 0,
             threats: Bitboard::EMPTY,
-            delta: Delta::default(),
             checkers: Bitboard::EMPTY,
             pinned: Bitboard::EMPTY,
         }

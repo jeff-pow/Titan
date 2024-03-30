@@ -10,7 +10,6 @@ use crate::search::SearchStack;
 use crate::thread::ThreadData;
 use crate::transposition::{EntryFlag, TableEntry, TranspositionTable};
 use crate::types::pieces::PieceName;
-use crate::zobrist::ZOBRIST;
 
 use super::quiescence::quiescence;
 use super::PV;
@@ -358,7 +357,7 @@ fn negamax<const IS_PV: bool>(
         if !new_b.make_move::<true>(m) {
             continue;
         }
-        td.accumulators.apply_update(&mut new_b.delta, board, m, board.piece_at(m.to()));
+        td.accumulators.apply_update(m, board.piece_at(m.to()));
 
         if is_quiet {
             quiets_tried.push(m);
