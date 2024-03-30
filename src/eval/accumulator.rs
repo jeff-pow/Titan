@@ -169,6 +169,7 @@ impl Accumulator {
             assert!(delta.sub_contains(s2));
             assert_eq!(delta.num_add, 2);
             assert_eq!(delta.num_sub, 2);
+            self.add_add_sub_sub(old, a1, a2, s1, s2, side);
         } else if self.capture != Piece::None || m.is_en_passant() {
             let cap_square = if m.is_en_passant() {
                 match m.piece_moving().color() {
@@ -181,11 +182,13 @@ impl Accumulator {
             let capture =
                 if m.is_en_passant() { Piece::new(PieceName::Pawn, !m.piece_moving().color()) } else { self.capture };
             let s2 = feature_idx_lazy(capture, cap_square, side);
+            self.add_sub_sub(old, a1, s1, s2, side);
             assert!(delta.sub_contains(s2));
 
             assert_eq!(delta.num_sub, 2);
             assert_eq!(delta.num_add, 1);
         } else {
+            self.add_sub(old, a1, s1, side);
             assert_eq!(delta.num_sub, 1);
             assert_eq!(delta.num_add, 1);
         }
@@ -193,20 +196,20 @@ impl Accumulator {
         if delta.add.len() == 1 && delta.sub.len() == 1 {
             let (w_add, b_add) = delta.add[0];
             let (w_sub, b_sub) = delta.sub[0];
-            if side == Color::White {
-                self.add_sub(old, usize::from(w_add), usize::from(w_sub), Color::White);
-            } else {
-                self.add_sub(old, usize::from(b_add), usize::from(b_sub), Color::Black);
-            }
+            // if side == Color::White {
+            //     self.add_sub(old, usize::from(w_add), usize::from(w_sub), Color::White);
+            // } else {
+            //     self.add_sub(old, usize::from(b_add), usize::from(b_sub), Color::Black);
+            // }
         } else if delta.add.len() == 1 && delta.sub.len() == 2 {
             let (w_add, b_add) = delta.add[0];
             let (w_sub1, b_sub1) = delta.sub[0];
             let (w_sub2, b_sub2) = delta.sub[1];
-            if side == Color::White {
-                self.add_sub_sub(old, usize::from(w_add), usize::from(w_sub1), usize::from(w_sub2), Color::White);
-            } else {
-                self.add_sub_sub(old, usize::from(b_add), usize::from(b_sub1), usize::from(b_sub2), Color::Black);
-            }
+            // if side == Color::White {
+            //     self.add_sub_sub(old, usize::from(w_add), usize::from(w_sub1), usize::from(w_sub2), Color::White);
+            // } else {
+            //     self.add_sub_sub(old, usize::from(b_add), usize::from(b_sub1), usize::from(b_sub2), Color::Black);
+            // }
         } else {
             // Castling
             let (w_add1, b_add1) = delta.add[0];
