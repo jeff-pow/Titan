@@ -135,7 +135,7 @@ impl Board {
         }
     }
 
-    pub fn place_piece<const NNUE: bool>(&mut self, piece: Piece, sq: Square) {
+    pub fn place_piece(&mut self, piece: Piece, sq: Square) {
         let color = piece.color();
         let name = piece.name();
         self.mailbox[sq] = piece;
@@ -144,7 +144,7 @@ impl Board {
         self.zobrist_hash ^= ZOBRIST.piece_square_hashes[color][name][sq];
     }
 
-    fn remove_piece<const NNUE: bool>(&mut self, sq: Square) {
+    fn remove_piece(&mut self, sq: Square) {
         let piece = self.mailbox[sq];
         if piece != Piece::None {
             self.mailbox[sq] = Piece::None;
@@ -334,32 +334,32 @@ impl Board {
     /// Function makes a move and modifies board state to reflect the move that just happened.
     /// Returns true if a move was legal, and false if it was illegal.
     #[must_use]
-    pub fn make_move<const NNUE: bool>(&mut self, m: Move) -> bool {
+    pub fn make_move(&mut self, m: Move) -> bool {
         let piece_moving = m.piece_moving();
         assert_eq!(piece_moving, self.piece_at(m.from()));
         let capture = self.capture(m);
-        self.remove_piece::<NNUE>(m.to());
+        self.remove_piece(m.to());
 
         if m.promotion().is_none() {
-            self.place_piece::<NNUE>(piece_moving, m.to());
+            self.place_piece(piece_moving, m.to());
         }
 
-        self.remove_piece::<NNUE>(m.from());
+        self.remove_piece(m.from());
 
         // Move rooks if a castle move is applied
         if m.is_castle() {
             let rook = Piece::new(PieceName::Rook, self.stm);
-            self.place_piece::<NNUE>(rook, m.castle_type().rook_to());
-            self.remove_piece::<NNUE>(m.castle_type().rook_from());
+            self.place_piece(rook, m.castle_type().rook_to());
+            self.remove_piece(m.castle_type().rook_from());
         } else if let Some(p) = m.promotion() {
-            self.place_piece::<NNUE>(p, m.to());
+            self.place_piece(p, m.to());
         } else if m.is_en_passant() {
             match self.stm {
                 Color::White => {
-                    self.remove_piece::<NNUE>(m.to().shift(South));
+                    self.remove_piece(m.to().shift(South));
                 }
                 Color::Black => {
-                    self.remove_piece::<NNUE>(m.to().shift(North));
+                    self.remove_piece(m.to().shift(North));
                 }
             }
         }
@@ -544,7 +544,7 @@ mod board_tests {
     #[test]
     fn test_place_piece() {
         let mut board = Board::empty();
-        board.place_piece::<false>(Piece::WhiteRook, Square(0));
+        board.place_piece(Piece::WhiteRook, Square(0));
         assert!(board.bitboard(Color::White, PieceName::Rook).occupied(Square(0)));
     }
 
@@ -553,13 +553,13 @@ mod board_tests {
         let board = Board::from_fen(fen::STARTING_FEN);
 
         let mut c = board;
-        c.remove_piece::<false>(Square(0));
+        c.remove_piece(Square(0));
         assert!(c.bitboard(Color::White, PieceName::Rook).empty(Square(0)));
         assert!(c.occupancies().empty(Square(0)));
         assert_ne!(c, board);
 
         let mut c = board;
-        c.remove_piece::<false>(Square(27));
+        c.remove_piece(Square(27));
         assert_eq!(board, c);
     }
 }

@@ -354,10 +354,10 @@ fn negamax<const IS_PV: bool>(
         let mut new_b = *board;
         // Make move filters out illegal moves by returning false if a move was illegal
         tt.prefetch(board.hash_after(m));
-        if !new_b.make_move::<true>(m) {
+        if !new_b.make_move(m) {
             continue;
         }
-        td.accumulators.apply_update(m, board.piece_at(m.to()));
+        td.accumulators.update_stack(m, board.piece_at(m.to()));
 
         if is_quiet {
             quiets_tried.push(m);

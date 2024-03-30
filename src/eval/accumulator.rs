@@ -187,7 +187,7 @@ pub struct AccumulatorStack {
 }
 
 impl AccumulatorStack {
-    pub fn apply_update(&mut self, m: Move, capture: Piece) {
+    pub fn update_stack(&mut self, m: Move, capture: Piece) {
         let (bottom, top) = self.stack.split_at_mut(self.top + 1);
         top[0].correct = [false; 2];
         top[0].m = m;
