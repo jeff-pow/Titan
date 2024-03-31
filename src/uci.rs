@@ -51,8 +51,8 @@ pub fn main_loop() -> ! {
             }
             "eval" => println!(
                 "raw: {} cp, adjusted: {} cp",
-                board.raw_evaluate(&board.clone().new_accumulator()),
-                board.evaluate(&board.clone().new_accumulator()),
+                board.new_accumulator().raw_evaluate(board.stm),
+                board.new_accumulator().scaled_evaluate(&board),
             ),
             "position" => position_command(&input, &mut board, &mut hash_history),
             "d" => {
@@ -124,7 +124,7 @@ fn position_command(input: &[&str], board: &mut Board, hash_history: &mut Vec<u6
 fn parse_moves(moves: &[&str], board: &mut Board, hash_history: &mut Vec<u64>) {
     for str in moves.iter() {
         let m = Move::from_san(str, board);
-        let _ = board.make_move::<false>(m);
+        let _ = board.make_move(m);
         hash_history.push(board.zobrist_hash);
     }
 }

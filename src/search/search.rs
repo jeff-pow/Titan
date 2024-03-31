@@ -10,7 +10,6 @@ use crate::search::SearchStack;
 use crate::thread::ThreadData;
 use crate::transposition::{EntryFlag, TableEntry, TranspositionTable};
 use crate::types::pieces::PieceName;
-use crate::zobrist::ZOBRIST;
 
 use super::quiescence::quiescence;
 use super::PV;
@@ -21,7 +20,7 @@ pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 30000;
 pub const MAX_SEARCH_DEPTH: i32 = 100;
 
-pub fn start_search(td: &mut ThreadData, print_uci: bool, mut board: Board, tt: &TranspositionTable) -> Move {
+pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &TranspositionTable) -> Move {
     td.search_start = Instant::now();
     td.nodes_table = [[0; 64]; 64];
     td.nodes.reset();
@@ -171,7 +170,7 @@ fn negamax<const IS_PV: bool>(
         }
 
         if td.ply >= MAX_SEARCH_DEPTH - 1 {
-            return if in_check { 0 } else { board.evaluate(td.accumulators.top()) };
+            return if in_check { 0 } else { td.accumulators.evaluate(board) };
         }
 
         // Determines if there is a faster path to checkmate than evaluating the current node, and
@@ -225,7 +224,7 @@ fn negamax<const IS_PV: bool>(
         // Get static eval from transposition table if possible
         entry.static_eval()
     } else {
-        board.evaluate(td.accumulators.top())
+        td.accumulators.evaluate(board)
     };
     td.stack[td.ply].static_eval = static_eval;
     let improving = {
@@ -281,7 +280,7 @@ fn negamax<const IS_PV: bool>(
         let mut node_pv = PV::default();
         let mut new_b = *board;
 
-        tt.prefetch(board.zobrist_hash ^ ZOBRIST.turn_hash);
+        tt.prefetch(board.hash_after(Move::NULL));
         new_b.make_null_move();
         td.stack[td.ply].played_move = Move::NULL;
         td.hash_history.push(new_b.zobrist_hash);
@@ -328,6 +327,7 @@ fn negamax<const IS_PV: bool>(
                 } else {
                     1.00 + 0.32 * depth as f32 * depth as f32
                 } as i32;
+                // TODO: Remove depth condition
                 if depth < 8 && moves_searched > moves_required {
                     break;
                 }
@@ -354,13 +354,11 @@ fn negamax<const IS_PV: bool>(
 
         let mut new_b = *board;
         // Make move filters out illegal moves by returning false if a move was illegal
-        if !new_b.make_move::<true>(m) {
+        tt.prefetch(board.hash_after(m));
+        if !new_b.make_move(m) {
             continue;
         }
-        tt.prefetch(new_b.zobrist_hash);
-        // td.accumulators.increment();
-        // td.accumulators.top().lazy_update(&mut new_b.delta);
-        td.accumulators.apply_update(&mut new_b.delta);
+        td.accumulators.update_stack(m, board.piece_at(m.to()));
 
         if is_quiet {
             quiets_tried.push(m);

@@ -37,7 +37,7 @@ impl Board {
                 let Some(i) = PIECES.chars().position(|x| x == c) else {
                     panic!("Unrecognized char {c}, board could not be made");
                 };
-                board.place_piece::<false>(Piece::from_u32(i as u32), square);
+                board.place_piece(Piece::from_u32(i as u32), square);
                 idx += 1;
             }
             start += step;

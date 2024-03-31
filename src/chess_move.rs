@@ -258,7 +258,7 @@ impl Castle {
         }
     }
 
-    pub(crate) const fn rook_dest(self) -> Square {
+    pub(crate) const fn rook_to(self) -> Square {
         match self {
             Self::WhiteKing => Square::F1,
             Self::WhiteQueen => Square::D1,
@@ -268,7 +268,7 @@ impl Castle {
         }
     }
 
-    pub(crate) const fn rook_src(self) -> Square {
+    pub(crate) const fn rook_from(self) -> Square {
         match self {
             Self::WhiteKing => Square::H1,
             Self::WhiteQueen => Square::A1,

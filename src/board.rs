@@ -4,7 +4,6 @@ use super::fen::STARTING_FEN;
 use crate::{
     attack_boards::{king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, BETWEEN_SQUARES, RANKS},
     chess_move::{Castle, Direction::*, Move, MoveType, CASTLING_RIGHTS},
-    eval::accumulator::Delta,
     magics::{bishop_attacks, queen_attacks, rook_attacks},
     types::{
         bitboard::Bitboard,
@@ -27,7 +26,6 @@ pub struct Board {
     pub num_moves: usize,
     pub half_moves: usize,
     pub zobrist_hash: u64,
-    pub(crate) delta: Delta,
     threats: Bitboard,
     checkers: Bitboard,
     pinned: Bitboard,
@@ -88,6 +86,23 @@ impl Board {
         false
     }
 
+    pub fn hash_after(&self, m: Move) -> u64 {
+        let mut hash = self.zobrist_hash ^ ZOBRIST.turn_hash;
+
+        if m == Move::NULL {
+            return hash;
+        }
+
+        hash ^= ZOBRIST.piece_square_hashes[m.piece_moving().color()][m.piece_moving().name()][m.from()]
+            ^ ZOBRIST.piece_square_hashes[m.piece_moving().color()][m.piece_moving().name()][m.to()];
+
+        if self.piece_at(m.to()) != Piece::None {
+            hash ^= ZOBRIST.piece_square_hashes[!self.stm][self.piece_at(m.to()).name()][m.to()];
+        }
+
+        hash
+    }
+
     /// Returns the type of piece captured by a move, if any
     pub fn capture(&self, m: Move) -> Piece {
         if m.is_en_passant() {
@@ -120,30 +135,22 @@ impl Board {
         }
     }
 
-    pub fn place_piece<const NNUE: bool>(&mut self, piece: Piece, sq: Square) {
+    pub fn place_piece(&mut self, piece: Piece, sq: Square) {
         let color = piece.color();
         let name = piece.name();
         self.mailbox[sq] = piece;
         self.bitboards[piece.name()] ^= sq.bitboard();
         self.color_occupancies[color] ^= sq.bitboard();
         self.zobrist_hash ^= ZOBRIST.piece_square_hashes[color][name][sq];
-        if NNUE {
-            // acc.add_feature(name, color, sq);
-            self.delta.add(piece, sq);
-        }
     }
 
-    fn remove_piece<const NNUE: bool>(&mut self, sq: Square) {
+    fn remove_piece(&mut self, sq: Square) {
         let piece = self.mailbox[sq];
         if piece != Piece::None {
             self.mailbox[sq] = Piece::None;
             self.bitboards[piece.name()] ^= sq.bitboard();
             self.color_occupancies[piece.color()] ^= sq.bitboard();
             self.zobrist_hash ^= ZOBRIST.piece_square_hashes[piece.color()][piece.name()][sq];
-            if NNUE {
-                // acc.remove_feature(piece.name(), piece.color(), sq);
-                self.delta.remove(piece, sq);
-            }
         }
     }
 
@@ -280,7 +287,7 @@ impl Board {
             if castle.check_squares() & self.threats() != Bitboard::EMPTY {
                 return false;
             }
-            if self.bitboard(self.stm, PieceName::Rook) & castle.rook_src().bitboard() == Bitboard::EMPTY {
+            if self.bitboard(self.stm, PieceName::Rook) & castle.rook_from().bitboard() == Bitboard::EMPTY {
                 return false;
             }
 
@@ -327,34 +334,32 @@ impl Board {
     /// Function makes a move and modifies board state to reflect the move that just happened.
     /// Returns true if a move was legal, and false if it was illegal.
     #[must_use]
-    pub fn make_move<const NNUE: bool>(&mut self, m: Move) -> bool {
-        assert_eq!(self.delta.num_add, 0);
-        assert_eq!(self.delta.num_sub, 0);
+    pub fn make_move(&mut self, m: Move) -> bool {
         let piece_moving = m.piece_moving();
         assert_eq!(piece_moving, self.piece_at(m.from()));
         let capture = self.capture(m);
-        self.remove_piece::<NNUE>(m.to());
+        self.remove_piece(m.to());
 
         if m.promotion().is_none() {
-            self.place_piece::<NNUE>(piece_moving, m.to());
+            self.place_piece(piece_moving, m.to());
         }
 
-        self.remove_piece::<NNUE>(m.from());
+        self.remove_piece(m.from());
 
         // Move rooks if a castle move is applied
         if m.is_castle() {
             let rook = Piece::new(PieceName::Rook, self.stm);
-            self.place_piece::<NNUE>(rook, m.castle_type().rook_dest());
-            self.remove_piece::<NNUE>(m.castle_type().rook_src());
+            self.place_piece(rook, m.castle_type().rook_to());
+            self.remove_piece(m.castle_type().rook_from());
         } else if let Some(p) = m.promotion() {
-            self.place_piece::<NNUE>(p, m.to());
+            self.place_piece(p, m.to());
         } else if m.is_en_passant() {
             match self.stm {
                 Color::White => {
-                    self.remove_piece::<NNUE>(m.to().shift(South));
+                    self.remove_piece(m.to().shift(South));
                 }
                 Color::Black => {
-                    self.remove_piece::<NNUE>(m.to().shift(North));
+                    self.remove_piece(m.to().shift(North));
                 }
             }
         }
@@ -427,6 +432,14 @@ impl Board {
         self.pinned_and_checkers();
     }
 
+    pub fn mat_scale(&self) -> i32 {
+        700 + ((PieceName::Knight.value() * self.piece(PieceName::Knight).count_bits())
+            + (PieceName::Bishop.value() * self.piece(PieceName::Bishop).count_bits())
+            + (PieceName::Rook.value() * self.piece(PieceName::Rook).count_bits())
+            + (PieceName::Queen.value() * self.piece(PieceName::Queen).count_bits()))
+            / 32
+    }
+
     pub fn debug_bitboards(&self) {
         for color in Color::iter() {
             for piece in PieceName::iter() {
@@ -449,7 +462,6 @@ impl Board {
             half_moves: 0,
             zobrist_hash: 0,
             threats: Bitboard::EMPTY,
-            delta: Delta::default(),
             checkers: Bitboard::EMPTY,
             pinned: Bitboard::EMPTY,
         }
@@ -540,7 +552,7 @@ mod board_tests {
     #[test]
     fn test_place_piece() {
         let mut board = Board::empty();
-        board.place_piece::<false>(Piece::WhiteRook, Square(0));
+        board.place_piece(Piece::WhiteRook, Square(0));
         assert!(board.bitboard(Color::White, PieceName::Rook).occupied(Square(0)));
     }
 
@@ -549,13 +561,13 @@ mod board_tests {
         let board = Board::from_fen(fen::STARTING_FEN);
 
         let mut c = board;
-        c.remove_piece::<false>(Square(0));
+        c.remove_piece(Square(0));
         assert!(c.bitboard(Color::White, PieceName::Rook).empty(Square(0)));
         assert!(c.occupancies().empty(Square(0)));
         assert_ne!(c, board);
 
         let mut c = board;
-        c.remove_piece::<false>(Square(27));
+        c.remove_piece(Square(27));
         assert_eq!(board, c);
     }
 }
