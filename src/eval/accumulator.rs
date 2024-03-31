@@ -52,6 +52,7 @@ impl Accumulator {
             .clamp(-NEAR_CHECKMATE + 1, NEAR_CHECKMATE - 1)
     }
 
+    /// Credit to viridithas for these values and concepts
     pub fn scaled_evaluate(&self, board: &Board) -> i32 {
         let raw = self.raw_evaluate(board.stm);
         let eval = raw * board.mat_scale() / 1024;
@@ -218,9 +219,9 @@ impl AccumulatorStack {
         self.stack[self.top].m = m;
         self.stack[self.top].capture = capture;
         self.stack[self.top].correct = [false; 2];
-        let (bottom, top) = self.stack.split_at_mut(self.top);
-        top[0].lazy_update(bottom.last().unwrap(), Color::White);
-        top[0].lazy_update(bottom.last().unwrap(), Color::Black);
+        // let (bottom, top) = self.stack.split_at_mut(self.top);
+        // top[0].lazy_update(bottom.last().unwrap(), Color::White);
+        // top[0].lazy_update(bottom.last().unwrap(), Color::Black);
     }
 
     fn all_lazy_updates(&mut self, side: Color) {
@@ -261,9 +262,9 @@ impl AccumulatorStack {
         }
     }
 
-    /// Credit to viridithas for these values and concepts
     pub fn evaluate(&mut self, board: &Board) -> i32 {
-        // self.force_updates(board);
+        self.force_updates(board);
+        assert_eq!(self.stack[self.top].correct, [true; 2]);
         self.top().scaled_evaluate(board)
     }
 
