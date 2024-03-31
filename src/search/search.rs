@@ -327,6 +327,7 @@ fn negamax<const IS_PV: bool>(
                 } else {
                     1.00 + 0.32 * depth as f32 * depth as f32
                 } as i32;
+                // TODO: Remove depth condition
                 if depth < 8 && moves_searched > moves_required {
                     break;
                 }
