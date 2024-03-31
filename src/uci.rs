@@ -51,8 +51,8 @@ pub fn main_loop() -> ! {
             }
             "eval" => println!(
                 "raw: {} cp, adjusted: {} cp",
-                board.raw_evaluate(&board.clone().new_accumulator()),
-                board.evaluate(&board.clone().new_accumulator()),
+                board.new_accumulator().raw_evaluate(board.stm),
+                board.new_accumulator().scaled_evaluate(&board),
             ),
             "position" => position_command(&input, &mut board, &mut hash_history),
             "d" => {

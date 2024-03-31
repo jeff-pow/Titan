@@ -170,7 +170,7 @@ fn negamax<const IS_PV: bool>(
         }
 
         if td.ply >= MAX_SEARCH_DEPTH - 1 {
-            return if in_check { 0 } else { board.evaluate(td.accumulators.top()) };
+            return if in_check { 0 } else { td.accumulators.evaluate(board) };
         }
 
         // Determines if there is a faster path to checkmate than evaluating the current node, and
@@ -224,7 +224,7 @@ fn negamax<const IS_PV: bool>(
         // Get static eval from transposition table if possible
         entry.static_eval()
     } else {
-        board.evaluate(td.accumulators.top())
+        td.accumulators.evaluate(board)
     };
     td.stack[td.ply].static_eval = static_eval;
     let improving = {

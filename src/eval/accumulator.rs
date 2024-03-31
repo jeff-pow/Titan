@@ -1,14 +1,17 @@
 use crate::{
     board::Board,
     chess_move::{Direction, Move},
-    search::search::MAX_SEARCH_DEPTH,
+    search::search::{MAX_SEARCH_DEPTH, NEAR_CHECKMATE},
     types::{
         pieces::{Color, Piece, PieceName, NUM_PIECES},
         square::{Square, NUM_SQUARES},
     },
 };
 
-use super::{Align64, Block, NET};
+use super::{
+    network::{flatten, NORMALIZATION_FACTOR, QAB, SCALE},
+    Align64, Block, NET,
+};
 use std::ops::{Index, IndexMut};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -41,6 +44,21 @@ impl IndexMut<Color> for Accumulator {
 }
 
 impl Accumulator {
+    pub fn raw_evaluate(&self, stm: Color) -> i32 {
+        let (us, them) = (&self[stm], &self[!stm]);
+        let weights = &NET.output_weights;
+        let output = flatten(us, &weights[0]) + flatten(them, &weights[1]);
+        ((i32::from(NET.output_bias) + output / NORMALIZATION_FACTOR) * SCALE / QAB)
+            .clamp(-NEAR_CHECKMATE + 1, NEAR_CHECKMATE - 1)
+    }
+
+    pub fn scaled_evaluate(&self, board: &Board) -> i32 {
+        let raw = self.raw_evaluate(board.stm);
+        let eval = raw * board.mat_scale() / 1024;
+        let eval = eval * (200 - board.half_moves as i32) / 200;
+        (eval).clamp(-NEAR_CHECKMATE, NEAR_CHECKMATE)
+    }
+
     fn add_sub(&mut self, old: &Accumulator, a1: usize, s1: usize, side: Color) {
         #[cfg(feature = "avx512")]
         unsafe {
@@ -167,7 +185,7 @@ fn feature_idx_lazy(piece: Piece, sq: Square, view: Color) -> usize {
 }
 
 impl Board {
-    pub fn new_accumulator(&mut self) -> Accumulator {
+    pub fn new_accumulator(&self) -> Accumulator {
         let mut acc = Accumulator::default();
         for c in Color::iter() {
             for p in PieceName::iter() {
@@ -188,13 +206,18 @@ pub struct AccumulatorStack {
 
 impl AccumulatorStack {
     pub fn update_stack(&mut self, m: Move, capture: Piece) {
-        let (bottom, top) = self.stack.split_at_mut(self.top + 1);
-        top[0].correct = [false; 2];
-        top[0].m = m;
-        top[0].capture = capture;
+        self.top += 1;
+        self.stack[self.top].m = m;
+        self.stack[self.top].capture = capture;
+        self.stack[self.top].correct = [false; 2];
+        let (bottom, top) = self.stack.split_at_mut(self.top);
         top[0].lazy_update(bottom.last().unwrap(), Color::White);
         top[0].lazy_update(bottom.last().unwrap(), Color::Black);
-        self.top += 1;
+    }
+
+    /// Credit to viridithas for these values and concepts
+    pub fn evaluate(&mut self, board: &Board) -> i32 {
+        self.top().scaled_evaluate(board)
     }
 
     pub fn top(&mut self) -> &mut Accumulator {

@@ -432,6 +432,14 @@ impl Board {
         self.pinned_and_checkers();
     }
 
+    pub fn mat_scale(&self) -> i32 {
+        700 + ((PieceName::Knight.value() * self.piece(PieceName::Knight).count_bits())
+            + (PieceName::Bishop.value() * self.piece(PieceName::Bishop).count_bits())
+            + (PieceName::Rook.value() * self.piece(PieceName::Rook).count_bits())
+            + (PieceName::Queen.value() * self.piece(PieceName::Queen).count_bits()))
+            / 32
+    }
+
     pub fn debug_bitboards(&self) {
         for color in Color::iter() {
             for piece in PieceName::iter() {
