@@ -145,7 +145,6 @@ impl Accumulator {
         } else {
             self.add_sub(old, a1, s1, side);
         }
-        self.correct[side] = true;
     }
 
     pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
@@ -165,6 +164,15 @@ impl Accumulator {
         self[color].iter_mut().zip(weights).for_each(|(i, &d)| {
             *i += d;
         });
+    }
+
+    fn refresh(&mut self, board: &Board, view: Color) {
+        self.vals[view] = NET.feature_bias;
+        for sq in board.occupancies() {
+            let p = board.piece_at(sq);
+            let idx = feature_idx_lazy(p, sq, view);
+            self.activate(&NET.feature_weights[idx], view);
+        }
     }
 }
 
@@ -215,8 +223,47 @@ impl AccumulatorStack {
         top[0].lazy_update(bottom.last().unwrap(), Color::Black);
     }
 
+    fn all_lazy_updates(&mut self, side: Color) {
+        let mut curr = self.top;
+        while !self.stack[curr].correct[side] {
+            curr -= 1;
+        }
+
+        while curr < self.top {
+            let (bottom, top) = self.stack.split_at_mut(curr + 1);
+            top[0].lazy_update(bottom.last().unwrap(), side);
+            top[0].correct[side] = true;
+            curr += 1;
+        }
+    }
+
+    fn force_updates(&mut self, board: &Board) {
+        for color in Color::iter() {
+            if !self.stack[self.top].correct[color] {
+                if self.can_efficiently_update(color) {
+                    self.all_lazy_updates(color)
+                } else {
+                    self.stack[self.top].refresh(board, color);
+                    self.stack[self.top].correct[color] = true;
+                }
+            }
+        }
+    }
+
+    fn can_efficiently_update(&mut self, side: Color) -> bool {
+        let mut curr = self.top;
+        loop {
+            curr -= 1;
+
+            if self.stack[curr].correct[side.idx()] {
+                return true;
+            }
+        }
+    }
+
     /// Credit to viridithas for these values and concepts
     pub fn evaluate(&mut self, board: &Board) -> i32 {
+        // self.force_updates(board);
         self.top().scaled_evaluate(board)
     }
 

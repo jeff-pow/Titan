@@ -1,7 +1,7 @@
 use core::ops::{Index, IndexMut};
 use std::fmt::Display;
 
-use super::bitboard::Bitboard;
+use super::{bitboard::Bitboard, pieces::Color};
 use crate::{
     attack_boards::{FILES, RANKS},
     chess_move::Direction,
@@ -44,6 +44,14 @@ impl Square {
 
     pub const fn flip_vertical(self) -> Self {
         Self(self.0 ^ 56)
+    }
+
+    pub const fn relative_flip_vertical(self, view: Color) -> Self {
+        if matches!(view, Color::Black) {
+            self.flip_vertical()
+        } else {
+            self
+        }
     }
 
     /// File is the vertical component of the piece (x-coord)
