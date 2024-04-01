@@ -67,7 +67,6 @@ impl Accumulator {
         }
         #[cfg(not(feature = "avx512"))]
         {
-            println!("not avx512 addsub");
             let weights = &NET.feature_weights;
             self[side].iter_mut().zip(&weights[a1].0).zip(&weights[s1].0).zip(old[side].iter()).for_each(
                 |(((i, &a), &s), &o)| {
@@ -86,7 +85,6 @@ impl Accumulator {
         #[cfg(not(feature = "avx512"))]
         {
             let weights = &NET.feature_weights;
-            println!("not avx512 addsubsub");
             self[side]
                 .iter_mut()
                 .zip(&weights[a1].0)
@@ -107,7 +105,6 @@ impl Accumulator {
         }
         #[cfg(not(feature = "avx512"))]
         {
-            println!("not avx512 addaddsubsub");
             let weights = &NET.feature_weights;
             self[side]
                 .iter_mut()
