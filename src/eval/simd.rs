@@ -56,7 +56,7 @@ pub(crate) mod avx512 {
     use std::arch::x86_64::*;
 
     use crate::eval::accumulator::Accumulator;
-    use crate::eval::nnue::{RELU_MAX, RELU_MIN};
+    use crate::eval::network::{RELU_MAX, RELU_MIN};
     use crate::eval::{Block, HIDDEN_SIZE, NET};
     use crate::types::pieces::Color;
 
@@ -89,71 +89,44 @@ pub(crate) mod avx512 {
         pub(crate) unsafe fn avx512_activate(&mut self, weights: &Block, color: Color) {
             for i in 0..REQUIRED_ITERS {
                 let weights = _mm512_load_si512(weights.as_ptr().add(i * CHUNK_SIZE).cast());
-                let acc = _mm512_load_si512(self.0[color].as_ptr().add(i * CHUNK_SIZE).cast());
+                let acc = _mm512_load_si512(self[color].as_ptr().add(i * CHUNK_SIZE).cast());
                 let updated_acc = _mm512_add_epi16(acc, weights);
-                _mm512_store_si512(self.0[color].as_mut_ptr().add(i * CHUNK_SIZE).cast(), updated_acc);
+                _mm512_store_si512(self[color].as_mut_ptr().add(i * CHUNK_SIZE).cast(), updated_acc);
             }
         }
 
-        pub(crate) unsafe fn avx512_add_sub(
-            &mut self,
-            old: &Accumulator,
-            white_add: usize,
-            black_add: usize,
-            white_sub: usize,
-            black_sub: usize,
-        ) {
+        pub(crate) unsafe fn avx512_add_sub(&mut self, old: &Accumulator, a1: usize, s1: usize, side: Color) {
             let weights = &NET.feature_weights;
             for i in 0..REQUIRED_ITERS {
-                let w_acc = _mm512_load_si512(old.0[Color::White].as_ptr().add(i * CHUNK_SIZE).cast());
-                let w_add = _mm512_load_si512(weights[white_add].as_ptr().add(i * CHUNK_SIZE).cast());
-                let w_sub = _mm512_load_si512(weights[white_sub].as_ptr().add(i * CHUNK_SIZE).cast());
-
-                let b_acc = _mm512_load_si512(old.0[Color::Black].as_ptr().add(i * CHUNK_SIZE).cast());
-                let b_add = _mm512_load_si512(weights[black_add].as_ptr().add(i * CHUNK_SIZE).cast());
-                let b_sub = _mm512_load_si512(weights[black_sub].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_acc = _mm512_load_si512(old[side].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_add = _mm512_load_si512(weights[a1].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_sub = _mm512_load_si512(weights[s1].as_ptr().add(i * CHUNK_SIZE).cast());
 
                 let w_updated = _mm512_add_epi16(w_acc, w_add);
                 let w_updated = _mm512_sub_epi16(w_updated, w_sub);
-                _mm512_store_si512(self.0[Color::White].as_mut_ptr().add(i * CHUNK_SIZE).cast(), w_updated);
-
-                let b_updated = _mm512_add_epi16(b_acc, b_add);
-                let b_updated = _mm512_sub_epi16(b_updated, b_sub);
-                _mm512_store_si512(self.0[Color::Black].as_mut_ptr().add(i * CHUNK_SIZE).cast(), b_updated);
+                _mm512_store_si512(self[side].as_mut_ptr().add(i * CHUNK_SIZE).cast(), w_updated);
             }
         }
 
         pub(crate) unsafe fn avx512_add_sub_sub(
             &mut self,
             old: &Accumulator,
-            white_add: usize,
-            black_add: usize,
-            white_sub_1: usize,
-            black_sub_1: usize,
-            white_sub_2: usize,
-            black_sub_2: usize,
+            a1: usize,
+            s1: usize,
+            s2: usize,
+            side: Color,
         ) {
             let weights = &NET.feature_weights;
             for i in 0..REQUIRED_ITERS {
-                let w_acc = _mm512_load_si512(old.0[Color::White].as_ptr().add(i * CHUNK_SIZE).cast());
-                let w_add = _mm512_load_si512(weights[white_add].as_ptr().add(i * CHUNK_SIZE).cast());
-                let w_sub1 = _mm512_load_si512(weights[white_sub_1].as_ptr().add(i * CHUNK_SIZE).cast());
-                let w_sub2 = _mm512_load_si512(weights[white_sub_2].as_ptr().add(i * CHUNK_SIZE).cast());
-
-                let b_acc = _mm512_load_si512(old.0[Color::Black].as_ptr().add(i * CHUNK_SIZE).cast());
-                let b_add = _mm512_load_si512(weights[black_add].as_ptr().add(i * CHUNK_SIZE).cast());
-                let b_sub1 = _mm512_load_si512(weights[black_sub_1].as_ptr().add(i * CHUNK_SIZE).cast());
-                let b_sub2 = _mm512_load_si512(weights[black_sub_2].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_acc = _mm512_load_si512(old[side].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_add = _mm512_load_si512(weights[a1].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_sub1 = _mm512_load_si512(weights[s1].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_sub2 = _mm512_load_si512(weights[s2].as_ptr().add(i * CHUNK_SIZE).cast());
 
                 let w_updated = _mm512_add_epi16(w_acc, w_add);
                 let w_updated = _mm512_sub_epi16(w_updated, w_sub1);
                 let w_updated = _mm512_sub_epi16(w_updated, w_sub2);
-                _mm512_store_si512(self.0[Color::White].as_mut_ptr().add(i * CHUNK_SIZE).cast(), w_updated);
-
-                let b_updated = _mm512_add_epi16(b_acc, b_add);
-                let b_updated = _mm512_sub_epi16(b_updated, b_sub1);
-                let b_updated = _mm512_sub_epi16(b_updated, b_sub2);
-                _mm512_store_si512(self.0[Color::Black].as_mut_ptr().add(i * CHUNK_SIZE).cast(), b_updated);
+                _mm512_store_si512(self[side].as_mut_ptr().add(i * CHUNK_SIZE).cast(), w_updated);
             }
         }
 
@@ -161,40 +134,25 @@ pub(crate) mod avx512 {
         pub(crate) unsafe fn avx512_add_add_sub_sub(
             &mut self,
             old: &Accumulator,
-            white_add_1: usize,
-            black_add_1: usize,
-            white_add_2: usize,
-            black_add_2: usize,
-            white_sub_1: usize,
-            black_sub_1: usize,
-            white_sub_2: usize,
-            black_sub_2: usize,
+            a1: usize,
+            a2: usize,
+            s1: usize,
+            s2: usize,
+            side: Color,
         ) {
             let weights = &NET.feature_weights;
             for i in 0..REQUIRED_ITERS {
-                let w_acc = _mm512_load_si512(old.0[Color::White].as_ptr().add(i * CHUNK_SIZE).cast());
-                let w_add1 = _mm512_load_si512(weights[white_add_1].as_ptr().add(i * CHUNK_SIZE).cast());
-                let w_add2 = _mm512_load_si512(weights[white_add_2].as_ptr().add(i * CHUNK_SIZE).cast());
-                let w_sub1 = _mm512_load_si512(weights[white_sub_1].as_ptr().add(i * CHUNK_SIZE).cast());
-                let w_sub2 = _mm512_load_si512(weights[white_sub_2].as_ptr().add(i * CHUNK_SIZE).cast());
-
-                let b_acc = _mm512_load_si512(old.0[Color::Black].as_ptr().add(i * CHUNK_SIZE).cast());
-                let b_add1 = _mm512_load_si512(weights[black_add_1].as_ptr().add(i * CHUNK_SIZE).cast());
-                let b_add2 = _mm512_load_si512(weights[black_add_2].as_ptr().add(i * CHUNK_SIZE).cast());
-                let b_sub1 = _mm512_load_si512(weights[black_sub_1].as_ptr().add(i * CHUNK_SIZE).cast());
-                let b_sub2 = _mm512_load_si512(weights[black_sub_2].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_acc = _mm512_load_si512(old[side].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_add1 = _mm512_load_si512(weights[a1].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_add2 = _mm512_load_si512(weights[a2].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_sub1 = _mm512_load_si512(weights[s1].as_ptr().add(i * CHUNK_SIZE).cast());
+                let w_sub2 = _mm512_load_si512(weights[s2].as_ptr().add(i * CHUNK_SIZE).cast());
 
                 let w_updated = _mm512_add_epi16(w_acc, w_add1);
                 let w_updated = _mm512_add_epi16(w_updated, w_add2);
                 let w_updated = _mm512_sub_epi16(w_updated, w_sub1);
                 let w_updated = _mm512_sub_epi16(w_updated, w_sub2);
-                _mm512_store_si512(self.0[Color::White].as_mut_ptr().add(i * CHUNK_SIZE).cast(), w_updated);
-
-                let b_updated = _mm512_add_epi16(b_acc, b_add1);
-                let b_updated = _mm512_add_epi16(b_updated, b_add2);
-                let b_updated = _mm512_sub_epi16(b_updated, b_sub1);
-                let b_updated = _mm512_sub_epi16(b_updated, b_sub2);
-                _mm512_store_si512(self.0[Color::Black].as_mut_ptr().add(i * CHUNK_SIZE).cast(), b_updated);
+                _mm512_store_si512(self[side].as_mut_ptr().add(i * CHUNK_SIZE).cast(), w_updated);
             }
         }
     }
