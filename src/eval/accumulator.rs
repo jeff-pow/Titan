@@ -63,10 +63,11 @@ impl Accumulator {
     fn add_sub(&mut self, old: &Accumulator, a1: usize, s1: usize, side: Color) {
         #[cfg(feature = "avx512")]
         unsafe {
-            self.avx512_add_sub(old, a1, black_add, s1, black_sub);
+            self.avx512_add_sub(old, a1, s1, side);
         }
         #[cfg(not(feature = "avx512"))]
         {
+            println!("not avx512 addsub");
             let weights = &NET.feature_weights;
             self[side].iter_mut().zip(&weights[a1].0).zip(&weights[s1].0).zip(old[side].iter()).for_each(
                 |(((i, &a), &s), &o)| {
@@ -80,11 +81,12 @@ impl Accumulator {
     fn add_sub_sub(&mut self, old: &Accumulator, a1: usize, s1: usize, s2: usize, side: Color) {
         #[cfg(feature = "avx512")]
         unsafe {
-            self.avx512_add_sub_sub(old, a1, black_add, s1, black_sub_1, s2, black_sub_2);
+            self.avx512_add_sub_sub(old, a1, s1, s2, side);
         }
         #[cfg(not(feature = "avx512"))]
         {
             let weights = &NET.feature_weights;
+            println!("not avx512 addsubsub");
             self[side]
                 .iter_mut()
                 .zip(&weights[a1].0)
@@ -101,10 +103,11 @@ impl Accumulator {
     fn add_add_sub_sub(&mut self, old: &Accumulator, a1: usize, a2: usize, s1: usize, s2: usize, side: Color) {
         #[cfg(feature = "avx512")]
         unsafe {
-            self.avx512_add_add_sub_sub(old, a1, black_add_1, a2, black_add_2, s1, black_sub_1, s2, black_sub_2);
+            self.avx512_add_add_sub_sub(old, a1, a2, s1, s2, side);
         }
         #[cfg(not(feature = "avx512"))]
         {
+            println!("not avx512 addaddsubsub");
             let weights = &NET.feature_weights;
             self[side]
                 .iter_mut()
