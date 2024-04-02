@@ -160,6 +160,7 @@ const fn pinned_attack(king: usize, pinned: usize) -> Bitboard {
     Bitboard(valid)
 }
 
+#[allow(dead_code)]
 pub fn valid_pinned_moves(king: Square, pinned: Square) -> Bitboard {
     PINNED_MOVES[king][pinned]
 }

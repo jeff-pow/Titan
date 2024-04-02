@@ -36,10 +36,10 @@ impl Board {
             MoveGenerationType::All => !self.color(self.stm),
         };
 
-        let knights = self.bitboard(self.stm, PieceName::Knight);
-        let kings = self.bitboard(self.stm, PieceName::King);
-        let bishops = self.bitboard(self.stm, PieceName::Bishop) | self.bitboard(self.stm, PieceName::Queen);
-        let rooks = self.bitboard(self.stm, PieceName::Rook) | self.bitboard(self.stm, PieceName::Queen);
+        let knights = self.piece_color(self.stm, PieceName::Knight);
+        let kings = self.piece_color(self.stm, PieceName::King);
+        let bishops = self.piece_color(self.stm, PieceName::Bishop) | self.piece_color(self.stm, PieceName::Queen);
+        let rooks = self.piece_color(self.stm, PieceName::Rook) | self.piece_color(self.stm, PieceName::Queen);
 
         self.jumper_moves(knights, destinations, moves, knight_attacks);
         self.jumper_moves(kings, destinations & !self.threats(), moves, king_attacks);
@@ -83,7 +83,7 @@ impl Board {
 
     fn pawn_moves(&self, gen_type: MGT, moves: &mut MoveList) {
         let piece = Piece::new(PieceName::Pawn, self.stm);
-        let pawns = self.bitboard(self.stm, PieceName::Pawn);
+        let pawns = self.piece_color(self.stm, PieceName::Pawn);
         let vacancies = !self.occupancies();
         let enemies = self.color(!self.stm);
 
@@ -156,7 +156,7 @@ impl Board {
 
     fn get_en_passant(&self, dir: Direction, piece: Piece) -> Option<Move> {
         let sq = self.en_passant_square?.checked_shift(dir)?;
-        let pawn = sq.bitboard() & self.bitboard(self.stm, PieceName::Pawn);
+        let pawn = sq.bitboard() & self.piece_color(self.stm, PieceName::Pawn);
         if pawn != Bitboard::EMPTY {
             let dest = self.en_passant_square?;
             let src = dest.checked_shift(dir)?;

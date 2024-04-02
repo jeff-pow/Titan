@@ -3,7 +3,11 @@ use core::fmt;
 use super::fen::STARTING_FEN;
 use crate::{
     attack_boards::{king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, BETWEEN_SQUARES, RANKS},
-    chess_move::{Castle, Direction::*, Move, MoveType, CASTLING_RIGHTS},
+    chess_move::{
+        Castle,
+        Direction::{North, South},
+        Move, MoveType, CASTLING_RIGHTS,
+    },
     magics::{bishop_attacks, queen_attacks, rook_attacks},
     types::{
         bitboard::Bitboard,
@@ -33,12 +37,12 @@ pub struct Board {
 
 impl Default for Board {
     fn default() -> Self {
-        Board::from_fen(STARTING_FEN)
+        Self::from_fen(STARTING_FEN)
     }
 }
 
 impl Board {
-    pub fn bitboard(&self, side: Color, piece: PieceName) -> Bitboard {
+    pub fn piece_color(&self, side: Color, piece: PieceName) -> Bitboard {
         self.piece(piece) & self.color(side)
     }
 
@@ -117,7 +121,7 @@ impl Board {
     }
 
     pub fn has_non_pawns(&self, side: Color) -> bool {
-        self.occupancies() ^ self.bitboard(side, PieceName::King) ^ self.bitboard(side, PieceName::Pawn)
+        self.occupancies() ^ self.piece_color(side, PieceName::King) ^ self.piece_color(side, PieceName::Pawn)
             != Bitboard::EMPTY
     }
 
@@ -155,7 +159,7 @@ impl Board {
     }
 
     pub fn king_square(&self, color: Color) -> Square {
-        self.bitboard(color, PieceName::King).lsb()
+        self.piece_color(color, PieceName::King).lsb()
     }
 
     pub fn attackers(&self, sq: Square, occupancy: Bitboard) -> Bitboard {
@@ -178,7 +182,7 @@ impl Board {
     }
 
     pub fn in_check(&self) -> bool {
-        self.checkers != Bitboard::EMPTY
+        self.checkers() != Bitboard::EMPTY
     }
 
     pub const fn checkers(&self) -> Bitboard {
@@ -190,8 +194,8 @@ impl Board {
         let attacker = !self.stm;
         let king_sq = self.king_square(self.stm);
 
-        self.checkers = knight_attacks(king_sq) & self.bitboard(attacker, PieceName::Knight)
-            | pawn_attacks(king_sq, self.stm) & self.bitboard(attacker, PieceName::Pawn);
+        self.checkers = knight_attacks(king_sq) & self.piece_color(attacker, PieceName::Knight)
+            | pawn_attacks(king_sq, self.stm) & self.piece_color(attacker, PieceName::Pawn);
 
         let sliders_attacks = self.diags(attacker) & bishop_attacks(king_sq, Bitboard::EMPTY)
             | self.orthos(attacker) & rook_attacks(king_sq, Bitboard::EMPTY);
@@ -209,11 +213,11 @@ impl Board {
     }
 
     pub(crate) fn diags(&self, side: Color) -> Bitboard {
-        self.bitboard(side, PieceName::Bishop) | self.bitboard(side, PieceName::Queen)
+        self.piece_color(side, PieceName::Bishop) | self.piece_color(side, PieceName::Queen)
     }
 
     pub(crate) fn orthos(&self, side: Color) -> Bitboard {
-        self.bitboard(side, PieceName::Rook) | self.bitboard(side, PieceName::Queen)
+        self.piece_color(side, PieceName::Rook) | self.piece_color(side, PieceName::Queen)
     }
 
     pub(crate) const fn threats(&self) -> Bitboard {
@@ -225,7 +229,7 @@ impl Board {
         let mut threats = Bitboard::EMPTY;
         let occ = self.occupancies() ^ self.king_square(self.stm).bitboard();
 
-        threats |= pawn_set_attacks(self.bitboard(attacker, PieceName::Pawn), attacker);
+        threats |= pawn_set_attacks(self.piece_color(attacker, PieceName::Pawn), attacker);
 
         let rooks = (self.piece(PieceName::Rook) | self.piece(PieceName::Queen)) & self.color(attacker);
         rooks.into_iter().for_each(|sq| threats |= rook_attacks(sq, occ));
@@ -233,7 +237,7 @@ impl Board {
         let bishops = (self.piece(PieceName::Bishop) | self.piece(PieceName::Queen)) & self.color(attacker);
         bishops.into_iter().for_each(|sq| threats |= bishop_attacks(sq, occ));
 
-        self.bitboard(attacker, PieceName::Knight).into_iter().for_each(|sq| threats |= knight_attacks(sq));
+        self.piece_color(attacker, PieceName::Knight).into_iter().for_each(|sq| threats |= knight_attacks(sq));
 
         threats |= king_attacks(self.king_square(attacker));
 
@@ -287,7 +291,7 @@ impl Board {
             if castle.check_squares() & self.threats() != Bitboard::EMPTY {
                 return false;
             }
-            if self.bitboard(self.stm, PieceName::Rook) & castle.rook_from().bitboard() == Bitboard::EMPTY {
+            if self.piece_color(self.stm, PieceName::Rook) & castle.rook_from().bitboard() == Bitboard::EMPTY {
                 return false;
             }
 
@@ -444,7 +448,7 @@ impl Board {
         for color in Color::iter() {
             for piece in PieceName::iter() {
                 dbg!("{:?} {:?}", color, piece);
-                dbg!(self.bitboard(color, piece));
+                dbg!(self.piece_color(color, piece));
                 dbg!("\n");
             }
         }
@@ -553,7 +557,7 @@ mod board_tests {
     fn test_place_piece() {
         let mut board = Board::empty();
         board.place_piece(Piece::WhiteRook, Square(0));
-        assert!(board.bitboard(Color::White, PieceName::Rook).occupied(Square(0)));
+        assert!(board.piece_color(Color::White, PieceName::Rook).occupied(Square(0)));
     }
 
     #[test]
@@ -562,7 +566,7 @@ mod board_tests {
 
         let mut c = board;
         c.remove_piece(Square(0));
-        assert!(c.bitboard(Color::White, PieceName::Rook).empty(Square(0)));
+        assert!(c.piece_color(Color::White, PieceName::Rook).empty(Square(0)));
         assert!(c.occupancies().empty(Square(0)));
         assert_ne!(c, board);
 

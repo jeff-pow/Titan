@@ -56,7 +56,7 @@ impl Board {
 
         for color in Color::iter() {
             for piece in PieceName::iter() {
-                let occupancies = self.bitboard(color, piece);
+                let occupancies = self.piece_color(color, piece);
                 for sq in occupancies {
                     hash ^= ZOBRIST.piece_square_hashes[color][piece][sq];
                 }

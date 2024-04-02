@@ -24,8 +24,8 @@ impl Board {
 
     fn next_attacker(&self, occupied: &mut Bitboard, attackers: Bitboard, side: Color) -> PieceName {
         for p in PieceName::iter() {
-            let bb = attackers & self.bitboard(side, p);
-            if (attackers & self.bitboard(side, p)) != Bitboard::EMPTY {
+            let bb = attackers & self.piece_color(side, p);
+            if (attackers & self.piece_color(side, p)) != Bitboard::EMPTY {
                 *occupied ^= bb.lsb().bitboard();
                 return p;
             }

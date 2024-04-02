@@ -198,7 +198,7 @@ impl Board {
         let mut acc = Accumulator::default();
         for c in Color::iter() {
             for p in PieceName::iter() {
-                for sq in self.bitboard(c, p) {
+                for sq in self.piece_color(c, p) {
                     acc.add_feature(p, c, sq);
                 }
             }

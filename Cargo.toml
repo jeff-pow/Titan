@@ -17,10 +17,9 @@ arrayvec = "0.7.4"
 codegen-units = 1
 opt-level = 3
 lto = true
+strip = true
 panic = "abort"
 incremental = true
 
-[profile.profile]
-inherits = "release"
-debug = true
-strip = false
+[profile.dev]
+opt-level = 1
