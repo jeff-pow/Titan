@@ -1,4 +1,9 @@
-use crate::{board::Board, chess_move::Move, search::search::NEAR_CHECKMATE, types::pieces::Piece};
+use crate::{
+    board::Board,
+    chess_move::Move,
+    search::search::{INFINITY, NEAR_CHECKMATE},
+    types::pieces::Piece,
+};
 use std::{
     mem::{size_of, transmute},
     ptr::from_ref,
@@ -107,7 +112,6 @@ impl Clone for U64Wrapper {
     }
 }
 
-#[derive(Default)]
 #[repr(C)]
 struct InternalEntry {
     depth: AtomicU8,
@@ -116,6 +120,19 @@ struct InternalEntry {
     search_score: AtomicI16,
     best_move: AtomicU16,
     static_eval: AtomicI16,
+}
+
+impl Default for InternalEntry {
+    fn default() -> Self {
+        Self {
+            depth: AtomicU8::new(0),
+            age_pv_bound: AtomicU8::new(0),
+            key: AtomicU16::new(0),
+            search_score: AtomicI16::new(-INFINITY as i16),
+            best_move: AtomicU16::new(Move::NULL.as_u16()),
+            static_eval: AtomicI16::new(-INFINITY as i16),
+        }
+    }
 }
 
 impl Clone for InternalEntry {

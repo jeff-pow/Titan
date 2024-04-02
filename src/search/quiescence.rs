@@ -61,10 +61,25 @@ pub(super) fn quiescence<const IS_PV: bool>(
     }
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
-    let stand_pat = if let Some(entry) = entry { entry.static_eval() } else { td.accumulators.evaluate(board) };
+    let stand_pat = if board.in_check() {
+        -INFINITY
+    } else if let Some(entry) = entry {
+        // Get static eval from transposition table if possible
+        let mut eval =
+            if entry.static_eval() != -INFINITY { entry.static_eval() } else { td.accumulators.evaluate(board) };
+        if entry.search_score() != -INFINITY
+            && (entry.flag() == EntryFlag::AlphaUnchanged && entry.search_score() < eval
+                || entry.flag() == EntryFlag::BetaCutOff && entry.search_score() > eval
+                || entry.flag() == EntryFlag::Exact)
+        {
+            eval = entry.search_score();
+        }
+        eval
+    } else {
+        td.accumulators.evaluate(board)
+    };
     td.stack[td.ply].static_eval = stand_pat;
     // Store eval in tt if it wasn't previously found in tt
-
     if entry.is_none() && !board.in_check() {
         tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, INFINITY, td.ply, IS_PV, stand_pat);
     }
