@@ -16,7 +16,7 @@ impl LmrTable {
     fn init_lmr(&mut self) {
         for depth in 0..=MAX_SEARCH_DEPTH {
             for moves_played in 0..=MAX_LEN {
-                let reduction = (0.88 + (depth as f32).ln() * (moves_played as f32).ln() / 1.88) as i32;
+                let reduction = (0.89 + (depth as f32).ln() * (moves_played as f32).ln() / 1.99) as i32;
                 self.lmr_table[depth as usize][moves_played] = reduction;
             }
         }

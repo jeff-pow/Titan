@@ -90,10 +90,10 @@ impl PieceName {
     pub fn value(self) -> i32 {
         match self {
             Self::Pawn => 100,
-            Self::Knight => 302,
-            Self::Bishop => 286,
-            Self::Rook => 511,
-            Self::Queen => 991,
+            Self::Knight => 313,
+            Self::Bishop => 310,
+            Self::Rook => 514,
+            Self::Queen => 1002,
             Self::King => 0,
             Self::None => panic!("Invalid piece"),
         }

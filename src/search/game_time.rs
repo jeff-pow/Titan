@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use crate::types::pieces::Color;
 
-const TIME_FRACTION: f64 = 0.60;
+const TIME_FRACTION: f64 = 0.67;
 
 const GUI_DELAY: Duration = Duration::from_millis(25);
 

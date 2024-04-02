@@ -56,7 +56,7 @@ impl HistoryTable {
         stack: &SearchStack,
         ply: i32,
     ) {
-        let bonus = (180 * depth).min(2282);
+        let bonus = (238 * depth).min(2095);
         assert_ne!(best_move, Move::NULL);
         if best_move.is_tactical(board) {
             let cap = capthist_capture(board, best_move);
