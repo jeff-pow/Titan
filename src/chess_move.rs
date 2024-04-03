@@ -53,7 +53,7 @@ impl Move {
     }
 
     pub fn is_castle(self) -> bool {
-        self.flag() == MoveType::CastleMove
+        self.flag() == CastleMove
     }
 
     pub fn piece_moving(self) -> Piece {
@@ -66,7 +66,7 @@ impl Move {
     }
 
     pub fn is_en_passant(self) -> bool {
-        self.flag() == MoveType::EnPassant
+        self.flag() == EnPassant
     }
 
     pub fn promotion(self) -> Option<Piece> {
@@ -326,7 +326,7 @@ mod move_test {
 
     #[test]
     fn test_move_creation() {
-        let normal_move = Move::new(Square(10), Square(20), MoveType::Normal, Piece::WhitePawn);
+        let normal_move = Move::new(Square(10), Square(20), Normal, Piece::WhitePawn);
         assert_eq!(normal_move.from(), Square(10));
         assert_eq!(normal_move.to(), Square(20));
         assert!(!normal_move.is_castle());
@@ -350,7 +350,7 @@ mod move_test {
         assert_eq!(castle_move.promotion(), None);
         assert_eq!(castle_move.piece_moving(), Piece::WhiteKing);
 
-        let en_passant_move = Move::new(Square(7), Square(5), MoveType::EnPassant, Piece::BlackPawn);
+        let en_passant_move = Move::new(Square(7), Square(5), EnPassant, Piece::BlackPawn);
         assert_eq!(en_passant_move.from(), Square(7));
         assert_eq!(en_passant_move.to(), Square(5));
         assert!(!en_passant_move.is_castle());

@@ -275,7 +275,7 @@ impl<'a> ThreadPool<'a> {
             }
             match s.as_str().trim() {
                 "isready" => println!("readyok"),
-                "quit" => std::process::exit(0),
+                "quit" => exit(0),
                 "stop" => halt.store(true, Ordering::Relaxed),
                 _ => {
                     *msg = Some(s);

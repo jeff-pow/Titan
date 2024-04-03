@@ -552,7 +552,6 @@ impl fmt::Debug for Board {
 #[cfg(test)]
 mod board_tests {
     use super::*;
-    use crate::fen;
     #[test]
     fn test_place_piece() {
         let mut board = Board::empty();
@@ -562,7 +561,7 @@ mod board_tests {
 
     #[test]
     fn test_remove_piece() {
-        let board = Board::from_fen(fen::STARTING_FEN);
+        let board = Board::from_fen(STARTING_FEN);
 
         let mut c = board;
         c.remove_piece(Square(0));

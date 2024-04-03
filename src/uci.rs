@@ -36,7 +36,7 @@ pub fn main_loop() -> ! {
                 }
                 buffer
             },
-            std::clone::Clone::clone,
+            Clone::clone,
         );
 
         msg = None;

@@ -9,7 +9,6 @@ use crate::movepicker::MovePicker;
 use crate::search::SearchStack;
 use crate::thread::ThreadData;
 use crate::transposition::{EntryFlag, TableEntry, TranspositionTable};
-use crate::types::pieces::PieceName;
 
 use super::quiescence::quiescence;
 use super::PV;
