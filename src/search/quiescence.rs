@@ -45,6 +45,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
     // Probe transposition table for best move and eval
     let mut table_move = Move::NULL;
     let entry = tt.get(board.zobrist_hash, td.ply);
+    let mut tt_pv = IS_PV;
     if let Some(e) = entry {
         if match e.flag() {
             EntryFlag::None => false,
@@ -54,6 +55,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
         } {
             return e.search_score();
         }
+        tt_pv |= e.was_pv();
         table_move = e.best_move(board);
     }
 
@@ -63,7 +65,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
     // Store eval in tt if it wasn't previously found in tt
 
     if entry.is_none() && !board.in_check() {
-        tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, INFINITY, td.ply, IS_PV, stand_pat);
+        tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, INFINITY, td.ply, tt_pv, stand_pat);
     }
     if stand_pat >= beta {
         return stand_pat;
@@ -131,7 +133,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
         EntryFlag::AlphaUnchanged
     };
 
-    tt.store(board.zobrist_hash, best_move, 0, entry_flag, best_score, td.ply, IS_PV, stand_pat);
+    tt.store(board.zobrist_hash, best_move, 0, entry_flag, best_score, td.ply, tt_pv, stand_pat);
 
     if in_check && moves_searched == 0 {
         return -CHECKMATE + td.ply;

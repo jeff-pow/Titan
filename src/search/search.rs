@@ -385,7 +385,7 @@ fn negamax<const IS_PV: bool>(
         // Late Move Reductions (LMR) - Search moves after the first with reduced depth and
         // window as they are much less likely to be the best move than the first move
         // selected by the move picker.
-        if depth > 2 && moves_searched > 1 + i32::from(is_root) && (is_quiet || !IS_PV) {
+        if depth > 2 && moves_searched > 1 + i32::from(is_root) && (is_quiet || !tt_pv) {
             let mut r = td.lmr.base_reduction(depth, moves_searched);
             if cut_node {
                 r += 1 + i32::from(!m.is_tactical(board));
@@ -397,6 +397,10 @@ fn negamax<const IS_PV: bool>(
             r += ((alpha - static_eval) / 337).clamp(0, 2);
 
             r -= history / 9698;
+
+            if tt_pv {
+                r -= 1 + i32::from(cut_node);
+            }
 
             // Calculate a reduction and calculate a reduced depth, ensuring we won't drop to depth
             // zero and thus straight into qsearch.
@@ -488,7 +492,7 @@ fn negamax<const IS_PV: bool>(
 
     // Don't save to TT while in a singular extension verification search
     if !singular_search {
-        tt.store(board.zobrist_hash, best_move, depth, entry_flag, best_score, td.ply, IS_PV, static_eval);
+        tt.store(board.zobrist_hash, best_move, depth, entry_flag, best_score, td.ply, tt_pv, static_eval);
     }
 
     best_score
