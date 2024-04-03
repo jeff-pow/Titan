@@ -58,7 +58,7 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
             td.print_search_stats(prev_score, &pv, tt);
         }
 
-        if td.thread_idx == 0 && td.soft_stop(depth, prev_score) {
+        if td.thread_id == 0 && td.soft_stop(depth, prev_score) {
             break;
         }
 
