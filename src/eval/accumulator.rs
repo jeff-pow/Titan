@@ -9,8 +9,8 @@ use crate::{
 };
 
 use super::{
-    network::{flatten, NORMALIZATION_FACTOR, QAB, SCALE},
-    Align64, Block, NET,
+    network::{flatten, BUCKETS, NORMALIZATION_FACTOR, QAB, SCALE},
+    Align64, Block, INPUT_SIZE, NET,
 };
 use std::ops::{Index, IndexMut};
 
@@ -119,15 +119,16 @@ impl Accumulator {
         }
     }
 
-    pub(crate) fn lazy_update(&mut self, old: &Accumulator, side: Color) {
+    pub(crate) fn lazy_update(&mut self, old: &Accumulator, side: Color, board: &Board) {
         let m = self.m;
         let piece_moving = m.promotion().unwrap_or(m.piece_moving());
-        let a1 = feature_idx(piece_moving, m.to(), side);
-        let s1 = feature_idx(m.piece_moving(), m.from(), side);
+        let king = board.king_square(side);
+        let a1 = feature_idx(piece_moving, m.to(), king, side);
+        let s1 = feature_idx(m.piece_moving(), m.from(), king, side);
         if m.is_castle() {
             let rook = Piece::new(PieceName::Rook, m.piece_moving().color());
-            let a2 = feature_idx(rook, m.castle_type().rook_to(), side);
-            let s2 = feature_idx(rook, m.castle_type().rook_from(), side);
+            let a2 = feature_idx(rook, m.castle_type().rook_to(), king, side);
+            let s2 = feature_idx(rook, m.castle_type().rook_from(), king, side);
 
             self.add_add_sub_sub(old, a1, a2, s1, s2, side);
         } else if self.capture != Piece::None || m.is_en_passant() {
@@ -141,16 +142,16 @@ impl Accumulator {
             };
             let capture =
                 if m.is_en_passant() { Piece::new(PieceName::Pawn, !m.piece_moving().color()) } else { self.capture };
-            let s2 = feature_idx(capture, cap_square, side);
+            let s2 = feature_idx(capture, cap_square, king, side);
             self.add_sub_sub(old, a1, s1, s2, side);
         } else {
             self.add_sub(old, a1, s1, side);
         }
     }
 
-    pub fn add_feature(&mut self, piece: Piece, sq: Square) {
-        let white_idx = feature_idx(piece, sq, Color::White);
-        let black_idx = feature_idx(piece, sq, Color::Black);
+    pub fn add_feature(&mut self, piece: Piece, sq: Square, white_king: Square, black_king: Square) {
+        let white_idx = feature_idx(piece, sq, white_king, Color::White);
+        let black_idx = feature_idx(piece, sq, black_king, Color::Black);
         self.activate(&NET.feature_weights[white_idx], Color::White);
         self.activate(&NET.feature_weights[black_idx], Color::Black);
     }
@@ -171,7 +172,7 @@ impl Accumulator {
         self.vals[view] = NET.feature_bias;
         for sq in board.occupancies() {
             let p = board.piece_at(sq);
-            let idx = feature_idx(p, sq, view);
+            let idx = feature_idx(p, sq, board.king_square(view), view);
             self.activate(&NET.feature_weights[idx], view);
         }
     }
@@ -180,13 +181,17 @@ impl Accumulator {
 const COLOR_OFFSET: usize = NUM_SQUARES * NUM_PIECES;
 const PIECE_OFFSET: usize = NUM_SQUARES;
 
-fn feature_idx(piece: Piece, sq: Square, view: Color) -> usize {
-    match view {
-        Color::White => piece.color().idx() * COLOR_OFFSET + piece.name().idx() * PIECE_OFFSET + sq.idx(),
-        Color::Black => {
-            (!piece.color()).idx() * COLOR_OFFSET + piece.name().idx() * PIECE_OFFSET + sq.flip_vertical().idx()
-        }
+fn feature_idx(piece: Piece, mut sq: Square, mut king: Square, view: Color) -> usize {
+    if king.file() > 3 {
+        king = king.flip_horizontal();
+        sq = sq.flip_horizontal();
     }
+    if view == Color::Black {
+        sq.flip_vertical();
+    }
+    let color = if piece.color() == view { 0 } else { 1 };
+    let bucket_offset = NET.bucket(king, view) * INPUT_SIZE;
+    bucket_offset + color * COLOR_OFFSET + piece.name().idx() * PIECE_OFFSET + sq.idx()
 }
 
 impl Board {
@@ -194,7 +199,7 @@ impl Board {
         let mut acc = Accumulator::default();
         for sq in self.occupancies() {
             let p = self.piece_at(sq);
-            acc.add_feature(p, sq);
+            acc.add_feature(p, sq, self.king_square(Color::White), self.king_square(Color::Black));
         }
         acc
     }
@@ -217,7 +222,7 @@ impl AccumulatorStack {
         // top[0].lazy_update(bottom.last().unwrap(), Color::Black);
     }
 
-    fn all_lazy_updates(&mut self, side: Color) {
+    fn all_lazy_updates(&mut self, board: &Board, side: Color) {
         let mut curr = self.top;
         while !self.stack[curr].correct[side] {
             curr -= 1;
@@ -225,7 +230,7 @@ impl AccumulatorStack {
 
         while curr < self.top {
             let (bottom, top) = self.stack.split_at_mut(curr + 1);
-            top[0].lazy_update(bottom.last().unwrap(), side);
+            top[0].lazy_update(bottom.last().unwrap(), side, board);
             top[0].correct[side] = true;
             curr += 1;
         }
@@ -235,7 +240,7 @@ impl AccumulatorStack {
         for color in Color::iter() {
             if !self.stack[self.top].correct[color] {
                 if self.can_efficiently_update(color) {
-                    self.all_lazy_updates(color)
+                    self.all_lazy_updates(board, color)
                 } else {
                     self.stack[self.top].refresh(board, color);
                     self.stack[self.top].correct[color] = true;
@@ -248,6 +253,17 @@ impl AccumulatorStack {
         let mut curr = self.top;
         loop {
             curr -= 1;
+            let m = self.stack[curr].m;
+
+            if m.piece_moving().color() == side && {
+                if m.piece_moving().name() != PieceName::King {
+                    return false;
+                }
+
+                BUCKETS[m.from()] != BUCKETS[m.to()]
+            } {
+                return false;
+            }
 
             if self.stack[curr].correct[side.idx()] {
                 return true;

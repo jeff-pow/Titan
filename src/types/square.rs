@@ -46,6 +46,10 @@ impl Square {
         Self(self.0 ^ 56)
     }
 
+    pub const fn flip_horizontal(self) -> Self {
+        Self(self.0 ^ 7)
+    }
+
     pub const fn relative_flip_vertical(self, view: Color) -> Self {
         if matches!(view, Color::Black) {
             self.flip_vertical()

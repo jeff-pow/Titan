@@ -1,6 +1,6 @@
 use super::{Align64, Block, INPUT_SIZE};
 
-use crate::board::Board;
+use crate::types::{pieces::Color, square::Square};
 /**
 * When changing activation functions, both the normalization factor and QA may need to change
 * alongside changing the crelu calls to screlu in simd and serial code.
@@ -14,16 +14,37 @@ pub(super) const RELU_MAX: i16 = QA as i16;
 
 pub(super) const SCALE: i32 = 400;
 
+const NUM_BUCKETS: usize = 4;
+
+#[rustfmt::skip]
+pub static BUCKETS: [usize; 64] = [
+    0, 0, 1, 1, 5, 5, 4, 4,
+    2, 2, 2, 2, 6, 6, 6, 6,
+    3, 3, 3, 3, 7, 7, 7, 7,
+    3, 3, 3, 3, 7, 7, 7, 7,
+    3, 3, 3, 3, 7, 7, 7, 7,
+    3, 3, 3, 3, 7, 7, 7, 7,
+    3, 3, 3, 3, 7, 7, 7, 7,
+    3, 3, 3, 3, 7, 7, 7, 7,
+];
+
 #[derive(Debug)]
 #[repr(C, align(64))]
 pub(super) struct Network {
-    pub feature_weights: [Align64<Block>; INPUT_SIZE],
+    pub feature_weights: [Align64<Block>; INPUT_SIZE * NUM_BUCKETS],
     pub feature_bias: Align64<Block>,
     pub output_weights: [Align64<Block>; 2],
     pub output_bias: i16,
 }
 
-impl Board {}
+impl Network {
+    pub fn bucket(&self, mut king: Square, view: Color) -> usize {
+        if view == Color::Black {
+            king = king.flip_vertical();
+        }
+        BUCKETS[king]
+    }
+}
 
 #[cfg(all(not(target_feature = "avx2"), not(feature = "avx512")))]
 fn screlu(i: i16) -> i32 {
