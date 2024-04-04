@@ -221,10 +221,20 @@ fn negamax<const IS_PV: bool>(
         -INFINITY
     } else if let Some(entry) = entry {
         // Get static eval from transposition table if possible
-        entry.static_eval()
+        let mut eval =
+            if entry.static_eval() != -INFINITY { entry.static_eval() } else { td.accumulators.evaluate(board) };
+        if entry.search_score() != -INFINITY
+            && (entry.flag() == EntryFlag::AlphaUnchanged && entry.search_score() < eval
+                || entry.flag() == EntryFlag::BetaCutOff && entry.search_score() > eval
+                || entry.flag() == EntryFlag::Exact)
+        {
+            eval = entry.search_score();
+        }
+        eval
     } else {
         td.accumulators.evaluate(board)
     };
+
     td.stack[td.ply].static_eval = static_eval;
     let improving = {
         if in_check {
