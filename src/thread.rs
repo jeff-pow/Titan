@@ -39,7 +39,7 @@ pub struct ThreadData<'a> {
 
     // pub game_time: GameTime,
     pub search_start: Instant,
-    pub thread_idx: usize,
+    pub thread_id: usize,
     pub search_type: SearchType,
     pub halt: &'a AtomicBool,
     pub lmr: &'a LmrTable,
@@ -66,14 +66,14 @@ impl<'a> ThreadData<'a> {
             halt,
             search_type: SearchType::default(),
             hash_history,
-            thread_idx,
+            thread_id: thread_idx,
             lmr: consts,
             search_start: Instant::now(),
         }
     }
 
     pub(super) fn node_tm_stop(&mut self, game_time: Clock, depth: i32) -> bool {
-        assert_eq!(0, self.thread_idx);
+        assert_eq!(0, self.thread_id);
         let m = self.best_move;
         let frac = self.nodes_table[m.from()][m.to()] as f64 / self.nodes.global_count() as f64;
         let time_scale = if depth > 9 { (1.44 - frac) * 1.62 } else { 1.28 };
@@ -105,7 +105,7 @@ impl<'a> ThreadData<'a> {
         match self.search_type {
             SearchType::Mate(_) | SearchType::Depth(_) | SearchType::Infinite => self.halt.load(Ordering::Relaxed),
             SearchType::Time(time) => {
-                self.nodes.check_time() && self.thread_idx == 0 && time.hard_termination(self.search_start)
+                self.nodes.check_time() && self.thread_id == 0 && time.hard_termination(self.search_start)
             }
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
         }
@@ -159,8 +159,7 @@ impl<'a> ThreadData<'a> {
 }
 
 pub struct ThreadPool<'a> {
-    pub main_thread: ThreadData<'a>,
-    pub workers: Vec<ThreadData<'a>>,
+    pub threads: Vec<ThreadData<'a>>,
     pub halt: &'a AtomicBool,
     pub searching: AtomicBool,
 }
@@ -173,17 +172,14 @@ impl<'a> ThreadPool<'a> {
         global_nodes: &'a AtomicU64,
     ) -> Self {
         Self {
-            main_thread: ThreadData::new(halt, hash_history, 0, consts, global_nodes),
-            workers: Vec::new(),
+            threads: vec![ThreadData::new(halt, hash_history, 0, consts, global_nodes)],
             halt,
             searching: AtomicBool::new(false),
         }
     }
 
     pub fn reset(&mut self) {
-        self.main_thread.history = HistoryTable::default();
-        self.main_thread.nodes.reset();
-        for t in &mut self.workers {
+        for t in &mut self.threads {
             t.history = HistoryTable::default();
             t.nodes.reset();
         }
@@ -200,9 +196,9 @@ impl<'a> ThreadPool<'a> {
         consts: &'a LmrTable,
         global_nodes: &'a AtomicU64,
     ) {
-        self.workers.clear();
+        self.threads.clear();
         for i in 1..threads {
-            self.workers.push(ThreadData::new(self.halt, hash_history.to_owned(), i, consts, global_nodes));
+            self.threads.push(ThreadData::new(self.halt, hash_history.to_owned(), i, consts, global_nodes));
         }
     }
 
@@ -216,56 +212,49 @@ impl<'a> ThreadPool<'a> {
         tt: &TranspositionTable,
     ) {
         self.halt.store(false, Ordering::Relaxed);
-        self.main_thread.hash_history = hash_history.to_vec();
-        for t in &mut self.workers {
+        for t in &mut self.threads {
             hash_history.clone_into(&mut t.hash_history);
         }
 
         if buffer.contains(&"depth") {
             let mut iter = buffer.iter().skip(2);
             let depth = iter.next().unwrap().parse::<i32>().unwrap();
-            self.main_thread.search_type = SearchType::Depth(depth);
-            for t in &mut self.workers {
+            for t in &mut self.threads {
                 t.search_type = SearchType::Depth(depth);
             }
         } else if buffer.contains(&"nodes") {
             let mut iter = buffer.iter().skip(2);
             let nodes = iter.next().unwrap().parse::<u64>().unwrap();
-            self.main_thread.search_type = SearchType::Nodes(nodes);
-            for t in &mut self.workers {
+            for t in &mut self.threads {
                 t.search_type = SearchType::Nodes(nodes);
             }
         } else if buffer.contains(&"wtime") {
             let mut clock = parse_time(buffer);
             clock.recommended_time(board.stm);
 
-            self.main_thread.search_type = SearchType::Time(clock);
+            self.threads[0].search_type = SearchType::Time(clock);
         } else if buffer.contains(&"mate") {
             let mut iter = buffer.iter().skip(2);
             let ply = iter.next().unwrap().parse::<i32>().unwrap();
-            self.main_thread.search_type = SearchType::Mate(ply);
-            for t in &mut self.workers {
+            for t in &mut self.threads {
                 t.search_type = SearchType::Mate(ply);
             }
         } else {
-            self.main_thread.search_type = SearchType::Infinite;
-            for t in &mut self.workers {
+            for t in &mut self.threads {
                 t.search_type = SearchType::Infinite;
             }
         }
 
         thread::scope(|s| {
-            for t in &mut self.workers {
+            for t in &mut self.threads {
                 s.spawn(|| {
-                    start_search(t, false, *board, tt);
+                    start_search(t, t.thread_id == 0, *board, tt);
+                    if t.thread_id == 0 {
+                        self.halt.store(true, Ordering::Relaxed);
+                        println!("bestmove {}", t.best_move.to_san());
+                    }
                 });
             }
-
-            s.spawn(|| {
-                start_search(&mut self.main_thread, true, *board, tt);
-                self.halt.store(true, Ordering::Relaxed);
-                println!("bestmove {}", self.main_thread.best_move.to_san());
-            });
 
             let mut s = String::new();
             let len_read = io::stdin().read_line(&mut s).unwrap();
