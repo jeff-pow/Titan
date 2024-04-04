@@ -273,6 +273,7 @@ fn negamax<const IS_PV: bool>(
         && depth < 9
         && static_eval.abs() < NEAR_CHECKMATE
     {
+        // Make sure this returns a score < checkmate
         return (static_eval + beta) / 2;
     }
 
@@ -301,6 +302,7 @@ fn negamax<const IS_PV: bool>(
 
         td.hash_history.pop();
         td.ply -= 1;
+        // TODO: NMP verification search
 
         if null_eval >= beta {
             // Ensure we don't return a checkmate score
@@ -421,6 +423,7 @@ fn negamax<const IS_PV: bool>(
             // If eval would raise alpha and calculated reduced depth is actually less than our
             // full depth search (including extensions), search again
             if eval > alpha && d < new_depth {
+                // TODO: Deeper shallower search
                 eval = -negamax::<false>(new_depth, -alpha - 1, -alpha, &mut node_pv, td, tt, &new_b, !cut_node);
             }
         }
@@ -547,6 +550,7 @@ fn extension<const IS_PV: bool>(
         if td.stack[td.ply].dbl_extns < 10 && !IS_PV && ext_score < ext_beta - 18 {
             td.stack[td.ply].dbl_extns += 1;
             2 + i32::from(!tt_move.is_tactical(board) && ext_score < ext_beta - 224)
+            // TODO: depth += depth <= x
         } else {
             1
         }
