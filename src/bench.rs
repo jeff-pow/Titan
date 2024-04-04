@@ -28,6 +28,7 @@ pub fn bench() {
         let board = Board::from_fen(fen);
         start_search(&mut thread, false, board, &transpos_table);
         nodes += thread.nodes.local_count();
+        transpos_table.age_up();
         thread.nodes.reset();
     }
 
