@@ -152,6 +152,7 @@ impl Accumulator {
     pub fn add_feature(&mut self, piece: Piece, sq: Square, white_king: Square, black_king: Square) {
         let white_idx = feature_idx(piece, sq, white_king, Color::White);
         let black_idx = feature_idx(piece, sq, black_king, Color::Black);
+        println!("{} {}", white_idx, black_idx);
         self.activate(&NET.feature_weights[white_idx], Color::White);
         self.activate(&NET.feature_weights[black_idx], Color::Black);
     }
@@ -181,17 +182,20 @@ impl Accumulator {
 const COLOR_OFFSET: usize = NUM_SQUARES * NUM_PIECES;
 const PIECE_OFFSET: usize = NUM_SQUARES;
 
-fn feature_idx(piece: Piece, mut sq: Square, mut king: Square, view: Color) -> usize {
-    if king.file() > 3 {
-        king = king.flip_horizontal();
-        sq = sq.flip_horizontal();
-    }
-    if view == Color::Black {
-        sq.flip_vertical();
-    }
-    let color = if piece.color() == view { 0 } else { 1 };
+fn feature_idx(piece: Piece, sq: Square, king: Square, view: Color) -> usize {
     let bucket_offset = NET.bucket(king, view) * INPUT_SIZE;
-    bucket_offset + color * COLOR_OFFSET + piece.name().idx() * PIECE_OFFSET + sq.idx()
+
+    match view {
+        Color::White => {
+            bucket_offset + piece.color().idx() * COLOR_OFFSET + piece.name().idx() * PIECE_OFFSET + sq.idx()
+        }
+        Color::Black => {
+            bucket_offset
+                + (!piece.color()).idx() * COLOR_OFFSET
+                + piece.name().idx() * PIECE_OFFSET
+                + sq.flip_vertical().idx()
+        }
+    }
 }
 
 impl Board {
@@ -217,9 +221,6 @@ impl AccumulatorStack {
         self.stack[self.top].m = m;
         self.stack[self.top].capture = capture;
         self.stack[self.top].correct = [false; 2];
-        // let (bottom, top) = self.stack.split_at_mut(self.top);
-        // top[0].lazy_update(bottom.last().unwrap(), Color::White);
-        // top[0].lazy_update(bottom.last().unwrap(), Color::Black);
     }
 
     fn all_lazy_updates(&mut self, board: &Board, side: Color) {

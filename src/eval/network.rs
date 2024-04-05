@@ -39,6 +39,9 @@ pub(super) struct Network {
 
 impl Network {
     pub fn bucket(&self, mut king: Square, view: Color) -> usize {
+        if king.file() > 3 {
+            king = king.flip_horizontal();
+        }
         if view == Color::Black {
             king = king.flip_vertical();
         }

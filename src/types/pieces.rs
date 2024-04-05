@@ -176,6 +176,24 @@ impl Piece {
             c.to_string()
         }
     }
+
+    pub fn iter() -> impl Iterator<Item = Piece> {
+        [
+            Self::WhitePawn,
+            Self::BlackPawn,
+            Self::WhiteKnight,
+            Self::BlackKnight,
+            Self::WhiteBishop,
+            Self::BlackBishop,
+            Self::WhiteRook,
+            Self::BlackRook,
+            Self::WhiteQueen,
+            Self::BlackQueen,
+            Self::WhiteKing,
+            Self::BlackKing,
+        ]
+        .into_iter()
+    }
 }
 
 #[cfg(test)]
