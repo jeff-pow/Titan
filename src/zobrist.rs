@@ -15,9 +15,8 @@ pub struct Zobrist {
 pub const ZOBRIST: Zobrist = {
     let mut prev = 0xE926_E621_0D9E_3487u64;
 
-    // This will allow for null moves (only a side swap) to place the following board state in the
-    // same tt bucket (when I get around to adding them)
-    let turn_hash = 1;
+    let turn_hash = prev;
+    prev = rand_u64(prev);
 
     let piece_square_hashes = const_array!(|p, 12| const_array!(|sq, 64| {
         prev = rand_u64(prev);
