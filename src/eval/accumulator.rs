@@ -3,14 +3,14 @@ use crate::{
     chess_move::{Direction, Move},
     search::search::{MAX_SEARCH_DEPTH, NEAR_CHECKMATE},
     types::{
-        pieces::{Color, Piece, PieceName, NUM_PIECES},
-        square::{Square, NUM_SQUARES},
+        pieces::{Color, Piece, PieceName},
+        square::Square,
     },
 };
 
 use super::{
-    network::{flatten, BUCKETS, NORMALIZATION_FACTOR, QAB, SCALE},
-    Align64, Block, INPUT_SIZE, NET,
+    network::{flatten, Network, BUCKETS, NORMALIZATION_FACTOR, QAB, SCALE},
+    Align64, Block, NET,
 };
 use std::ops::{Index, IndexMut};
 
@@ -123,12 +123,12 @@ impl Accumulator {
         let m = self.m;
         let piece_moving = m.promotion().unwrap_or(m.piece_moving());
         let king = board.king_square(side);
-        let a1 = feature_idx(piece_moving, m.to(), king, side);
-        let s1 = feature_idx(m.piece_moving(), m.from(), king, side);
+        let a1 = Network::feature_idx(piece_moving, m.to(), king, side);
+        let s1 = Network::feature_idx(m.piece_moving(), m.from(), king, side);
         if m.is_castle() {
             let rook = Piece::new(PieceName::Rook, m.piece_moving().color());
-            let a2 = feature_idx(rook, m.castle_type().rook_to(), king, side);
-            let s2 = feature_idx(rook, m.castle_type().rook_from(), king, side);
+            let a2 = Network::feature_idx(rook, m.castle_type().rook_to(), king, side);
+            let s2 = Network::feature_idx(rook, m.castle_type().rook_from(), king, side);
 
             self.add_add_sub_sub(old, a1, a2, s1, s2, side);
         } else if self.capture != Piece::None || m.is_en_passant() {
@@ -142,7 +142,7 @@ impl Accumulator {
             };
             let capture =
                 if m.is_en_passant() { Piece::new(PieceName::Pawn, !m.piece_moving().color()) } else { self.capture };
-            let s2 = feature_idx(capture, cap_square, king, side);
+            let s2 = Network::feature_idx(capture, cap_square, king, side);
             self.add_sub_sub(old, a1, s1, s2, side);
         } else {
             self.add_sub(old, a1, s1, side);
@@ -150,8 +150,8 @@ impl Accumulator {
     }
 
     pub fn add_feature(&mut self, piece: Piece, sq: Square, white_king: Square, black_king: Square) {
-        let white_idx = feature_idx(piece, sq, white_king, Color::White);
-        let black_idx = feature_idx(piece, sq, black_king, Color::Black);
+        let white_idx = Network::feature_idx(piece, sq, white_king, Color::White);
+        let black_idx = Network::feature_idx(piece, sq, black_king, Color::Black);
         println!("{} {}", white_idx, black_idx);
         self.activate(&NET.feature_weights[white_idx], Color::White);
         self.activate(&NET.feature_weights[black_idx], Color::Black);
@@ -173,27 +173,8 @@ impl Accumulator {
         self.vals[view] = NET.feature_bias;
         for sq in board.occupancies() {
             let p = board.piece_at(sq);
-            let idx = feature_idx(p, sq, board.king_square(view), view);
+            let idx = Network::feature_idx(p, sq, board.king_square(view), view);
             self.activate(&NET.feature_weights[idx], view);
-        }
-    }
-}
-
-const COLOR_OFFSET: usize = NUM_SQUARES * NUM_PIECES;
-const PIECE_OFFSET: usize = NUM_SQUARES;
-
-fn feature_idx(piece: Piece, sq: Square, king: Square, view: Color) -> usize {
-    let bucket_offset = NET.bucket(king, view) * INPUT_SIZE;
-
-    match view {
-        Color::White => {
-            bucket_offset + piece.color().idx() * COLOR_OFFSET + piece.name().idx() * PIECE_OFFSET + sq.idx()
-        }
-        Color::Black => {
-            bucket_offset
-                + (!piece.color()).idx() * COLOR_OFFSET
-                + piece.name().idx() * PIECE_OFFSET
-                + sq.flip_vertical().idx()
         }
     }
 }
@@ -256,13 +237,10 @@ impl AccumulatorStack {
             curr -= 1;
             let m = self.stack[curr].m;
 
-            if m.piece_moving().color() == side && {
-                if m.piece_moving().name() != PieceName::King {
-                    return false;
-                }
-
-                BUCKETS[m.from()] != BUCKETS[m.to()]
-            } {
+            if m.piece_moving().color() == side
+                && m.piece_moving().name() == PieceName::King
+                && BUCKETS[m.from()] != BUCKETS[m.to()]
+            {
                 return false;
             }
 

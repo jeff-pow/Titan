@@ -49,11 +49,10 @@ pub fn main_loop() -> ! {
                 halt.store(false, Ordering::Relaxed);
                 thread_pool = ThreadPool::new(&halt, Vec::new(), &consts, &global_nodes);
             }
-            "eval" => println!(
-                "raw: {} cp, adjusted: {} cp",
-                board.new_accumulator().raw_evaluate(board.stm),
-                board.new_accumulator().scaled_evaluate(&board),
-            ),
+            "eval" => {
+                let acc = board.new_accumulator();
+                println!("raw: {} cp, adjusted: {} cp", acc.raw_evaluate(board.stm), acc.scaled_evaluate(&board),)
+            }
             "position" => position_command(&input, &mut board, &mut hash_history),
             "d" => {
                 dbg!(&board);

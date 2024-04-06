@@ -1,6 +1,12 @@
 use super::{Align64, Block, INPUT_SIZE};
 
-use crate::types::{pieces::Color, square::Square};
+use crate::{
+    eval::NET,
+    types::{
+        pieces::{Color, Piece, NUM_PIECES},
+        square::{Square, NUM_SQUARES},
+    },
+};
 /**
 * When changing activation functions, both the normalization factor and QA may need to change
 * alongside changing the crelu calls to screlu in simd and serial code.
@@ -14,7 +20,7 @@ pub(super) const RELU_MAX: i16 = QA as i16;
 
 pub(super) const SCALE: i32 = 400;
 
-const NUM_BUCKETS: usize = 1;
+pub const NUM_BUCKETS: usize = 1;
 
 #[rustfmt::skip]
 pub static BUCKETS: [usize; 64] = [
@@ -39,13 +45,32 @@ pub(super) struct Network {
 
 impl Network {
     pub fn bucket(&self, mut king: Square, view: Color) -> usize {
-        if king.file() > 3 {
-            king = king.flip_horizontal();
-        }
         if view == Color::Black {
             king = king.flip_vertical();
         }
         BUCKETS[king]
+    }
+
+    pub fn feature_idx(piece: Piece, sq: Square, mut king: Square, view: Color) -> usize {
+        const COLOR_OFFSET: usize = NUM_SQUARES * NUM_PIECES;
+        const PIECE_OFFSET: usize = NUM_SQUARES;
+        if king.file() > 3 {
+            king = king.flip_horizontal();
+        }
+        match view {
+            Color::White => {
+                NET.bucket(king, view) * INPUT_SIZE
+                    + piece.color().idx() * COLOR_OFFSET
+                    + piece.name().idx() * PIECE_OFFSET
+                    + sq.idx()
+            }
+            Color::Black => {
+                NET.bucket(king, view) * INPUT_SIZE
+                    + (!piece.color()).idx() * COLOR_OFFSET
+                    + piece.name().idx() * PIECE_OFFSET
+                    + sq.flip_vertical().idx()
+            }
+        }
     }
 }
 
