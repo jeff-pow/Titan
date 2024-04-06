@@ -152,7 +152,6 @@ impl Accumulator {
     pub fn add_feature(&mut self, piece: Piece, sq: Square, white_king: Square, black_king: Square) {
         let white_idx = Network::feature_idx(piece, sq, white_king, Color::White);
         let black_idx = Network::feature_idx(piece, sq, black_king, Color::Black);
-        println!("{} {}", white_idx, black_idx);
         self.activate(&NET.feature_weights[white_idx], Color::White);
         self.activate(&NET.feature_weights[black_idx], Color::Black);
     }
@@ -193,6 +192,7 @@ impl Board {
 #[derive(Clone)]
 pub struct AccumulatorStack {
     pub(crate) stack: Vec<Accumulator>,
+    /// Top points to the active accumulator, not the space above it
     pub top: usize,
 }
 
