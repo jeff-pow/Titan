@@ -322,6 +322,7 @@ fn negamax<const IS_PV: bool>(
     // Start of search
     while let Some(MoveListEntry { m, score: _hist_score }) = picker.next(board, td) {
         // Don't consider the singular move in a verification search
+        let s = m.to_san();
         if m == singular_move {
             continue;
         }

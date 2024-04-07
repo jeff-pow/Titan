@@ -122,6 +122,11 @@ impl Accumulator {
 
     pub(crate) fn lazy_update(&mut self, old: &Accumulator, side: Color, board: &Board) {
         let m = self.m;
+        assert!(
+            m.piece_moving().name() != PieceName::King
+                || m.piece_moving().color() != side
+                || BUCKETS[m.to()] == BUCKETS[m.from()]
+        );
         let piece_moving = m.promotion().unwrap_or(m.piece_moving());
         let king = board.king_square(side);
         let a1 = Network::feature_idx(piece_moving, m.to(), king, side);
@@ -281,5 +286,27 @@ impl AccumulatorStack {
         let mut vec = vec![Accumulator::default(); MAX_SEARCH_DEPTH as usize + 50];
         vec[0] = *base_accumulator;
         Self { stack: vec, top: 0 }
+    }
+}
+
+#[cfg(test)]
+mod acc_test {
+    use super::AccumulatorStack;
+    use crate::{board::Board, chess_move::Move, thread::ThreadData};
+
+    #[test]
+    fn lazy_updates() {
+        let mut b = Board::from_fen("r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14");
+        let mut stack = AccumulatorStack::new(&b.new_accumulator());
+        let m1 = Move::from_san("e1g1", &b);
+        assert!(b.make_move(m1));
+        stack.update_stack(m1, b.capture(m1));
+
+        let mut stack = AccumulatorStack::new(&b.new_accumulator());
+
+        let m2 = Move::from_san("e8d8", &b);
+        assert!(b.make_move(m2));
+        stack.update_stack(m2, b.capture(m2));
+        stack.evaluate(&b);
     }
 }
