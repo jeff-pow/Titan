@@ -54,7 +54,8 @@ impl Accumulator {
 
     /// Credit to viridithas for these values and concepts
     pub fn scaled_evaluate(&self, board: &Board) -> i32 {
-        let raw = self.raw_evaluate(board.stm);
+        let acc = board.new_accumulator();
+        let raw = acc.raw_evaluate(board.stm);
         let eval = raw * board.mat_scale() / 1024;
         let eval = eval * (200 - board.half_moves as i32) / 200;
         (eval).clamp(-NEAR_CHECKMATE, NEAR_CHECKMATE)
@@ -253,6 +254,7 @@ impl AccumulatorStack {
     pub fn evaluate(&mut self, board: &Board) -> i32 {
         self.force_updates(board);
         assert_eq!(self.stack[self.top].correct, [true; 2]);
+        assert_eq!(self.top().vals, board.new_accumulator().vals);
         self.top().scaled_evaluate(board)
     }
 

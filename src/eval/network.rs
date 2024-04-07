@@ -1,11 +1,8 @@
 use super::{Align64, Block, INPUT_SIZE};
 
-use crate::{
-    eval::NET,
-    types::{
-        pieces::{Color, Piece, NUM_PIECES},
-        square::{Square, NUM_SQUARES},
-    },
+use crate::types::{
+    pieces::{Color, Piece, NUM_PIECES},
+    square::{Square, NUM_SQUARES},
 };
 /**
 * When changing activation functions, both the normalization factor and QA may need to change
