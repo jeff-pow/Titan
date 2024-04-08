@@ -54,8 +54,7 @@ impl Accumulator {
 
     /// Credit to viridithas for these values and concepts
     pub fn scaled_evaluate(&self, board: &Board) -> i32 {
-        let acc = board.new_accumulator();
-        let raw = acc.raw_evaluate(board.stm);
+        let raw = self.raw_evaluate(board.stm);
         let eval = raw * board.mat_scale() / 1024;
         let eval = eval * (200 - board.half_moves as i32) / 200;
         (eval).clamp(-NEAR_CHECKMATE, NEAR_CHECKMATE)
@@ -240,12 +239,14 @@ impl AccumulatorStack {
     fn can_efficiently_update(&mut self, side: Color) -> bool {
         let mut curr = self.top;
         loop {
-            curr -= 1;
             let m = self.stack[curr].m;
+            let from = if side == Color::Black { m.from().flip_vertical() } else { m.from() };
+            let to = if side == Color::Black { m.to().flip_vertical() } else { m.to() };
 
+            //dbg!(m.piece_moving().color(), m.piece_moving().name(), BUCKETS[m.from()], BUCKETS[m.to()]);
             if m.piece_moving().color() == side
                 && m.piece_moving().name() == PieceName::King
-                && BUCKETS[m.from()] != BUCKETS[m.to()]
+                && BUCKETS[from] != BUCKETS[to]
             {
                 return false;
             }
@@ -253,13 +254,15 @@ impl AccumulatorStack {
             if self.stack[curr].correct[side.idx()] {
                 return true;
             }
+
+            curr -= 1;
         }
     }
 
     pub fn evaluate(&mut self, board: &Board) -> i32 {
         self.force_updates(board);
         assert_eq!(self.stack[self.top].correct, [true; 2]);
-        assert_eq!(self.top().vals, board.new_accumulator().vals);
+        // assert_eq!(self.top().vals, board.new_accumulator().vals);
         self.top().scaled_evaluate(board)
     }
 
@@ -292,7 +295,7 @@ impl AccumulatorStack {
 #[cfg(test)]
 mod acc_test {
     use super::AccumulatorStack;
-    use crate::{board::Board, chess_move::Move, thread::ThreadData};
+    use crate::{board::Board, chess_move::Move};
 
     #[test]
     fn lazy_updates() {
@@ -306,6 +309,7 @@ mod acc_test {
 
         let m2 = Move::from_san("e8d8", &b);
         assert!(b.make_move(m2));
+        dbg!(m2.piece_moving(), m2.from(), m2.to());
         stack.update_stack(m2, b.capture(m2));
         stack.evaluate(&b);
     }

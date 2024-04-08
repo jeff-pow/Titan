@@ -26,7 +26,6 @@ pub fn bench() {
 
     for fen in &BENCH_POSITIONS {
         let board = Board::from_fen(fen);
-        dbg!(board);
         start_search(&mut thread, false, board, &transpos_table);
         nodes += thread.nodes.local_count();
         transpos_table.age_up();
