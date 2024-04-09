@@ -55,6 +55,7 @@ impl Accumulator {
     /// Credit to viridithas for these values and concepts
     pub fn scaled_evaluate(&self, board: &Board) -> i32 {
         let raw = self.raw_evaluate(board.stm);
+        let raw = board.new_accumulator().raw_evaluate(board.stm);
         let eval = raw * board.mat_scale() / 1024;
         let eval = eval * (200 - board.half_moves as i32) / 200;
         (eval).clamp(-NEAR_CHECKMATE, NEAR_CHECKMATE)
@@ -194,7 +195,7 @@ impl Board {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AccumulatorStack {
     pub(crate) stack: Vec<Accumulator>,
     /// Top points to the active accumulator, not the space above it
@@ -262,7 +263,6 @@ impl AccumulatorStack {
     pub fn evaluate(&mut self, board: &Board) -> i32 {
         self.force_updates(board);
         assert_eq!(self.stack[self.top].correct, [true; 2]);
-        // assert_eq!(self.top().vals, board.new_accumulator().vals);
         self.top().scaled_evaluate(board)
     }
 
@@ -297,20 +297,54 @@ mod acc_test {
     use super::AccumulatorStack;
     use crate::{board::Board, chess_move::Move};
 
+    macro_rules! make_move_nnue {
+        ($board:ident, $stack:ident, $mv_str:literal) => {{
+            let m = Move::from_san($mv_str, &$board);
+            $stack.update_stack(m, $board.capture(m));
+            assert!($board.make_move(m));
+        }};
+    }
+
+    macro_rules! assert_correct {
+        ($board:ident, $stack:ident) => {
+            $stack.evaluate(&$board);
+            assert_eq!($stack.top().vals, $board.new_accumulator().vals);
+        };
+    }
+
     #[test]
     fn lazy_updates() {
-        let mut b = Board::from_fen("r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14");
-        let mut stack = AccumulatorStack::new(&b.new_accumulator());
-        let m1 = Move::from_san("e1g1", &b);
-        assert!(b.make_move(m1));
-        stack.update_stack(m1, b.capture(m1));
+        let mut board = Board::from_fen("r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14");
+        let mut stack = AccumulatorStack::new(&board.new_accumulator());
+        make_move_nnue!(board, stack, "e1g1");
 
-        let mut stack = AccumulatorStack::new(&b.new_accumulator());
+        make_move_nnue!(board, stack, "e8d8");
+        assert_correct!(board, stack);
+    }
 
-        let m2 = Move::from_san("e8d8", &b);
-        assert!(b.make_move(m2));
-        dbg!(m2.piece_moving(), m2.from(), m2.to());
-        stack.update_stack(m2, b.capture(m2));
-        stack.evaluate(&b);
+    #[test]
+    fn deeper_error() {
+        let mut board = Board::from_fen("8/8/1p2k1p1/3p3p/1p1P1P1P/1P2PK2/8/8 w - - 3 54");
+
+        let mut stack = AccumulatorStack::new(&board.new_accumulator());
+        make_move_nnue!(board, stack, "e3e4");
+        make_move_nnue!(board, stack, "e6e7");
+        make_move_nnue!(board, stack, "f3e3");
+        make_move_nnue!(board, stack, "e7f7");
+        make_move_nnue!(board, stack, "f4f5");
+        make_move_nnue!(board, stack, "d5e4");
+        make_move_nnue!(board, stack, "e3e4");
+        make_move_nnue!(board, stack, "g6f5");
+        make_move_nnue!(board, stack, "e4f5");
+        make_move_nnue!(board, stack, "f7e7");
+        make_move_nnue!(board, stack, "f5g5");
+        make_move_nnue!(board, stack, "e7d6");
+        make_move_nnue!(board, stack, "g5h5");
+        make_move_nnue!(board, stack, "d6d5");
+        make_move_nnue!(board, stack, "h5g5");
+        make_move_nnue!(board, stack, "d5d4");
+        make_move_nnue!(board, stack, "g5f4");
+        make_move_nnue!(board, stack, "d4c3");
+        assert_correct!(board, stack);
     }
 }

@@ -115,6 +115,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
         td.accumulators.update_stack(m, board.piece_at(m.to()));
         td.hash_history.push(new_b.zobrist_hash);
         td.stack[td.ply].played_move = m;
+        td.moves.push(m.to_san());
         td.nodes.increment();
         moves_searched += 1;
         td.ply += 1;
@@ -123,6 +124,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
 
         td.ply -= 1;
         td.hash_history.pop();
+        td.moves.pop();
         td.accumulators.pop();
 
         if eval > best_score {
