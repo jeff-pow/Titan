@@ -55,7 +55,6 @@ impl Accumulator {
     /// Credit to viridithas for these values and concepts
     pub fn scaled_evaluate(&self, board: &Board) -> i32 {
         let raw = self.raw_evaluate(board.stm);
-        let raw = board.new_accumulator().raw_evaluate(board.stm);
         let eval = raw * board.mat_scale() / 1024;
         let eval = eval * (200 - board.half_moves as i32) / 200;
         (eval).clamp(-NEAR_CHECKMATE, NEAR_CHECKMATE)
@@ -122,10 +121,12 @@ impl Accumulator {
 
     pub(crate) fn lazy_update(&mut self, old: &Accumulator, side: Color, board: &Board) {
         let m = self.m;
+        let from = if side == Color::Black { m.from().flip_vertical() } else { m.from() };
+        let to = if side == Color::Black { m.to().flip_vertical() } else { m.to() };
         assert!(
             m.piece_moving().name() != PieceName::King
                 || m.piece_moving().color() != side
-                || BUCKETS[m.to()] == BUCKETS[m.from()]
+                || BUCKETS[from] == BUCKETS[to]
         );
         let piece_moving = m.promotion().unwrap_or(m.piece_moving());
         let king = board.king_square(side);
@@ -244,7 +245,6 @@ impl AccumulatorStack {
             let from = if side == Color::Black { m.from().flip_vertical() } else { m.from() };
             let to = if side == Color::Black { m.to().flip_vertical() } else { m.to() };
 
-            //dbg!(m.piece_moving().color(), m.piece_moving().name(), BUCKETS[m.from()], BUCKETS[m.to()]);
             if m.piece_moving().color() == side
                 && m.piece_moving().name() == PieceName::King
                 && BUCKETS[from] != BUCKETS[to]
@@ -325,26 +325,18 @@ mod acc_test {
     #[test]
     fn deeper_error() {
         let mut board = Board::from_fen("8/8/1p2k1p1/3p3p/1p1P1P1P/1P2PK2/8/8 w - - 3 54");
-
         let mut stack = AccumulatorStack::new(&board.new_accumulator());
+
         make_move_nnue!(board, stack, "e3e4");
         make_move_nnue!(board, stack, "e6e7");
-        make_move_nnue!(board, stack, "f3e3");
-        make_move_nnue!(board, stack, "e7f7");
-        make_move_nnue!(board, stack, "f4f5");
-        make_move_nnue!(board, stack, "d5e4");
-        make_move_nnue!(board, stack, "e3e4");
-        make_move_nnue!(board, stack, "g6f5");
-        make_move_nnue!(board, stack, "e4f5");
-        make_move_nnue!(board, stack, "f7e7");
-        make_move_nnue!(board, stack, "f5g5");
-        make_move_nnue!(board, stack, "e7d6");
-        make_move_nnue!(board, stack, "g5h5");
-        make_move_nnue!(board, stack, "d6d5");
-        make_move_nnue!(board, stack, "h5g5");
-        make_move_nnue!(board, stack, "d5d4");
-        make_move_nnue!(board, stack, "g5f4");
-        make_move_nnue!(board, stack, "d4c3");
+        make_move_nnue!(board, stack, "e4e5");
+        make_move_nnue!(board, stack, "e7e6");
+        make_move_nnue!(board, stack, "f3g3");
+        make_move_nnue!(board, stack, "e6f5");
+        make_move_nnue!(board, stack, "g3h3");
+        make_move_nnue!(board, stack, "f5f4");
+        make_move_nnue!(board, stack, "e5e6");
+        make_move_nnue!(board, stack, "f4e3");
         assert_correct!(board, stack);
     }
 }

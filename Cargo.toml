@@ -23,4 +23,4 @@ incremental = true
 
 [profile.dev]
 overflow-checks = false
- opt-level = 1
+# opt-level = 1
