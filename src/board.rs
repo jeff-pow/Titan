@@ -50,6 +50,14 @@ impl Board {
         self.bitboards[piece]
     }
 
+    pub fn piece_bbs(&self) -> [Bitboard; 6] {
+        self.bitboards
+    }
+
+    pub fn color_bbs(&self) -> [Bitboard; 2] {
+        self.color_occupancies
+    }
+
     pub fn color(&self, color: Color) -> Bitboard {
         self.color_occupancies[color]
     }
