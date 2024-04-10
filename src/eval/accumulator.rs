@@ -3,13 +3,13 @@ use crate::{
     chess_move::{Direction, Move},
     search::search::{MAX_SEARCH_DEPTH, NEAR_CHECKMATE},
     types::{
-        pieces::{Color, Piece, PieceName, NUM_PIECES},
-        square::{Square, NUM_SQUARES},
+        pieces::{Color, Piece, PieceName},
+        square::Square,
     },
 };
 
 use super::{
-    network::{flatten, NORMALIZATION_FACTOR, QAB, SCALE},
+    network::{flatten, Network, BUCKETS, NORMALIZATION_FACTOR, QAB, SCALE},
     Align64, Block, NET,
 };
 use std::ops::{Index, IndexMut};
@@ -119,15 +119,23 @@ impl Accumulator {
         }
     }
 
-    pub(crate) fn lazy_update(&mut self, old: &Accumulator, side: Color) {
+    pub(crate) fn lazy_update(&mut self, old: &Accumulator, side: Color, board: &Board) {
         let m = self.m;
+        let from = if side == Color::Black { m.from().flip_vertical() } else { m.from() };
+        let to = if side == Color::Black { m.to().flip_vertical() } else { m.to() };
+        assert!(
+            m.piece_moving().name() != PieceName::King
+                || m.piece_moving().color() != side
+                || BUCKETS[from] == BUCKETS[to]
+        );
         let piece_moving = m.promotion().unwrap_or(m.piece_moving());
-        let a1 = feature_idx_lazy(piece_moving, m.to(), side);
-        let s1 = feature_idx_lazy(m.piece_moving(), m.from(), side);
+        let king = board.king_square(side);
+        let a1 = Network::feature_idx(piece_moving, m.to(), king, side);
+        let s1 = Network::feature_idx(m.piece_moving(), m.from(), king, side);
         if m.is_castle() {
             let rook = Piece::new(PieceName::Rook, m.piece_moving().color());
-            let a2 = feature_idx_lazy(rook, m.castle_type().rook_to(), side);
-            let s2 = feature_idx_lazy(rook, m.castle_type().rook_from(), side);
+            let a2 = Network::feature_idx(rook, m.castle_type().rook_to(), king, side);
+            let s2 = Network::feature_idx(rook, m.castle_type().rook_from(), king, side);
 
             self.add_add_sub_sub(old, a1, a2, s1, s2, side);
         } else if self.capture != Piece::None || m.is_en_passant() {
@@ -141,16 +149,16 @@ impl Accumulator {
             };
             let capture =
                 if m.is_en_passant() { Piece::new(PieceName::Pawn, !m.piece_moving().color()) } else { self.capture };
-            let s2 = feature_idx_lazy(capture, cap_square, side);
+            let s2 = Network::feature_idx(capture, cap_square, king, side);
             self.add_sub_sub(old, a1, s1, s2, side);
         } else {
             self.add_sub(old, a1, s1, side);
         }
     }
 
-    pub fn add_feature(&mut self, piece: PieceName, color: Color, sq: Square) {
-        let white_idx = feature_idx(color, piece, sq);
-        let black_idx = feature_idx(!color, piece, sq.flip_vertical());
+    pub fn add_feature(&mut self, piece: Piece, sq: Square, white_king: Square, black_king: Square) {
+        let white_idx = Network::feature_idx(piece, sq, white_king, Color::White);
+        let black_idx = Network::feature_idx(piece, sq, black_king, Color::Black);
         self.activate(&NET.feature_weights[white_idx], Color::White);
         self.activate(&NET.feature_weights[black_idx], Color::Black);
     }
@@ -171,24 +179,8 @@ impl Accumulator {
         self.vals[view] = NET.feature_bias;
         for sq in board.occupancies() {
             let p = board.piece_at(sq);
-            let idx = feature_idx_lazy(p, sq, view);
+            let idx = Network::feature_idx(p, sq, board.king_square(view), view);
             self.activate(&NET.feature_weights[idx], view);
-        }
-    }
-}
-
-const COLOR_OFFSET: usize = NUM_SQUARES * NUM_PIECES;
-const PIECE_OFFSET: usize = NUM_SQUARES;
-
-const fn feature_idx(color: Color, piece: PieceName, sq: Square) -> usize {
-    color.idx() * COLOR_OFFSET + piece.idx() * PIECE_OFFSET + sq.idx()
-}
-
-fn feature_idx_lazy(piece: Piece, sq: Square, view: Color) -> usize {
-    match view {
-        Color::White => piece.color().idx() * COLOR_OFFSET + piece.name().idx() * PIECE_OFFSET + sq.idx(),
-        Color::Black => {
-            (!piece.color()).idx() * COLOR_OFFSET + piece.name().idx() * PIECE_OFFSET + sq.flip_vertical().idx()
         }
     }
 }
@@ -196,20 +188,18 @@ fn feature_idx_lazy(piece: Piece, sq: Square, view: Color) -> usize {
 impl Board {
     pub fn new_accumulator(&self) -> Accumulator {
         let mut acc = Accumulator::default();
-        for c in Color::iter() {
-            for p in PieceName::iter() {
-                for sq in self.piece_color(c, p) {
-                    acc.add_feature(p, c, sq);
-                }
-            }
+        for sq in self.occupancies() {
+            let p = self.piece_at(sq);
+            acc.add_feature(p, sq, self.king_square(Color::White), self.king_square(Color::Black));
         }
         acc
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AccumulatorStack {
     pub(crate) stack: Vec<Accumulator>,
+    /// Top points to the active accumulator, not the space above it
     pub top: usize,
 }
 
@@ -219,12 +209,9 @@ impl AccumulatorStack {
         self.stack[self.top].m = m;
         self.stack[self.top].capture = capture;
         self.stack[self.top].correct = [false; 2];
-        // let (bottom, top) = self.stack.split_at_mut(self.top);
-        // top[0].lazy_update(bottom.last().unwrap(), Color::White);
-        // top[0].lazy_update(bottom.last().unwrap(), Color::Black);
     }
 
-    fn all_lazy_updates(&mut self, side: Color) {
+    fn all_lazy_updates(&mut self, board: &Board, side: Color) {
         let mut curr = self.top;
         while !self.stack[curr].correct[side] {
             curr -= 1;
@@ -232,7 +219,7 @@ impl AccumulatorStack {
 
         while curr < self.top {
             let (bottom, top) = self.stack.split_at_mut(curr + 1);
-            top[0].lazy_update(bottom.last().unwrap(), side);
+            top[0].lazy_update(bottom.last().unwrap(), side, board);
             top[0].correct[side] = true;
             curr += 1;
         }
@@ -242,7 +229,7 @@ impl AccumulatorStack {
         for color in Color::iter() {
             if !self.stack[self.top].correct[color] {
                 if self.can_efficiently_update(color) {
-                    self.all_lazy_updates(color)
+                    self.all_lazy_updates(board, color)
                 } else {
                     self.stack[self.top].refresh(board, color);
                     self.stack[self.top].correct[color] = true;
@@ -254,11 +241,22 @@ impl AccumulatorStack {
     fn can_efficiently_update(&mut self, side: Color) -> bool {
         let mut curr = self.top;
         loop {
-            curr -= 1;
+            let m = self.stack[curr].m;
+            let from = if side == Color::Black { m.from().flip_vertical() } else { m.from() };
+            let to = if side == Color::Black { m.to().flip_vertical() } else { m.to() };
+
+            if m.piece_moving().color() == side
+                && m.piece_moving().name() == PieceName::King
+                && BUCKETS[from] != BUCKETS[to]
+            {
+                return false;
+            }
 
             if self.stack[curr].correct[side.idx()] {
                 return true;
             }
+
+            curr -= 1;
         }
     }
 
@@ -291,5 +289,54 @@ impl AccumulatorStack {
         let mut vec = vec![Accumulator::default(); MAX_SEARCH_DEPTH as usize + 50];
         vec[0] = *base_accumulator;
         Self { stack: vec, top: 0 }
+    }
+}
+
+#[cfg(test)]
+mod acc_test {
+    use super::AccumulatorStack;
+    use crate::{board::Board, chess_move::Move};
+
+    macro_rules! make_move_nnue {
+        ($board:ident, $stack:ident, $mv_str:literal) => {{
+            let m = Move::from_san($mv_str, &$board);
+            $stack.update_stack(m, $board.capture(m));
+            assert!($board.make_move(m));
+        }};
+    }
+
+    macro_rules! assert_correct {
+        ($board:ident, $stack:ident) => {
+            $stack.evaluate(&$board);
+            assert_eq!($stack.top().vals, $board.new_accumulator().vals);
+        };
+    }
+
+    #[test]
+    fn lazy_updates() {
+        let mut board = Board::from_fen("r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14");
+        let mut stack = AccumulatorStack::new(&board.new_accumulator());
+        make_move_nnue!(board, stack, "e1g1");
+
+        make_move_nnue!(board, stack, "e8d8");
+        assert_correct!(board, stack);
+    }
+
+    #[test]
+    fn deeper_error() {
+        let mut board = Board::from_fen("8/8/1p2k1p1/3p3p/1p1P1P1P/1P2PK2/8/8 w - - 3 54");
+        let mut stack = AccumulatorStack::new(&board.new_accumulator());
+
+        make_move_nnue!(board, stack, "e3e4");
+        make_move_nnue!(board, stack, "e6e7");
+        make_move_nnue!(board, stack, "e4e5");
+        make_move_nnue!(board, stack, "e7e6");
+        make_move_nnue!(board, stack, "f3g3");
+        make_move_nnue!(board, stack, "e6f5");
+        make_move_nnue!(board, stack, "g3h3");
+        make_move_nnue!(board, stack, "f5f4");
+        make_move_nnue!(board, stack, "e5e6");
+        make_move_nnue!(board, stack, "f4e3");
+        assert_correct!(board, stack);
     }
 }

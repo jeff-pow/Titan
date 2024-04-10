@@ -1,6 +1,9 @@
 use super::{Align64, Block, INPUT_SIZE};
 
-use crate::board::Board;
+use crate::types::{
+    pieces::{Color, Piece, NUM_PIECES},
+    square::{Square, NUM_SQUARES},
+};
 /**
 * When changing activation functions, both the normalization factor and QA may need to change
 * alongside changing the crelu calls to screlu in simd and serial code.
@@ -14,16 +17,53 @@ pub(super) const RELU_MAX: i16 = QA as i16;
 
 pub(super) const SCALE: i32 = 400;
 
+pub const NUM_BUCKETS: usize = 9;
+
+#[rustfmt::skip]
+pub static BUCKETS: [usize; 64] = [
+    0, 1, 2, 3, 12, 11, 10, 9,
+    4, 4, 5, 5, 14, 14, 13, 13,
+    6, 6, 6, 6, 15, 15, 15, 15,
+    7, 7, 7, 7, 16, 16, 16, 16,
+    8, 8, 8, 8, 17, 17, 17, 17,
+    8, 8, 8, 8, 17, 17, 17, 17,
+    8, 8, 8, 8, 17, 17, 17, 17,
+    8, 8, 8, 8, 17, 17, 17, 17,
+];
+
 #[derive(Debug)]
 #[repr(C, align(64))]
 pub(super) struct Network {
-    pub feature_weights: [Align64<Block>; INPUT_SIZE],
+    pub feature_weights: [Align64<Block>; INPUT_SIZE * NUM_BUCKETS],
     pub feature_bias: Align64<Block>,
     pub output_weights: [Align64<Block>; 2],
     pub output_bias: i16,
 }
 
-impl Board {}
+impl Network {
+    pub fn feature_idx(piece: Piece, mut sq: Square, mut king: Square, view: Color) -> usize {
+        const COLOR_OFFSET: usize = NUM_SQUARES * NUM_PIECES;
+        const PIECE_OFFSET: usize = NUM_SQUARES;
+        if king.file() > 3 {
+            king = king.flip_horizontal();
+            sq = sq.flip_horizontal();
+        }
+        match view {
+            Color::White => {
+                BUCKETS[king] * INPUT_SIZE
+                    + piece.color().idx() * COLOR_OFFSET
+                    + piece.name().idx() * PIECE_OFFSET
+                    + sq.idx()
+            }
+            Color::Black => {
+                BUCKETS[king.flip_vertical()] * INPUT_SIZE
+                    + (!piece.color()).idx() * COLOR_OFFSET
+                    + piece.name().idx() * PIECE_OFFSET
+                    + sq.flip_vertical().idx()
+            }
+        }
+    }
+}
 
 #[cfg(all(not(target_feature = "avx2"), not(feature = "avx512")))]
 fn screlu(i: i16) -> i32 {

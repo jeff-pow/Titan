@@ -22,4 +22,5 @@ panic = "abort"
 incremental = true
 
 [profile.dev]
-opt-level = 1
+overflow-checks = false
+# opt-level = 1

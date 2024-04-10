@@ -1,4 +1,7 @@
-use core::ops::{Index, IndexMut};
+use core::{
+    fmt,
+    ops::{Index, IndexMut},
+};
 use std::fmt::Display;
 
 use super::{bitboard::Bitboard, pieces::Color};
@@ -7,7 +10,7 @@ use crate::{
     chess_move::Direction,
 };
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Square(pub u32);
 
 pub const NUM_SQUARES: usize = 64;
@@ -44,6 +47,10 @@ impl Square {
 
     pub const fn flip_vertical(self) -> Self {
         Self(self.0 ^ 56)
+    }
+
+    pub const fn flip_horizontal(self) -> Self {
+        Self(self.0 ^ 7)
     }
 
     pub const fn relative_flip_vertical(self, view: Color) -> Self {
@@ -179,6 +186,12 @@ pub static SQUARE_NAMES: [&str; 64] = [
     "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", 
     "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8",
 ];
+
+impl fmt::Debug for Square {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(SQUARE_NAMES[self.0 as usize])
+    }
+}
 
 impl<T, const N: usize> Index<Square> for [T; N] {
     type Output = T;
