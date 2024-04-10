@@ -91,17 +91,16 @@ impl Board {
     }
 
     pub fn hash_after(&self, m: Move) -> u64 {
-        let mut hash = self.zobrist_hash ^ ZOBRIST.turn_hash;
+        let mut hash = self.zobrist_hash ^ ZOBRIST.turn;
 
         if m == Move::NULL {
             return hash;
         }
 
-        hash ^= ZOBRIST.piece_square_hashes[m.piece_moving().color()][m.piece_moving().name()][m.from()]
-            ^ ZOBRIST.piece_square_hashes[m.piece_moving().color()][m.piece_moving().name()][m.to()];
+        hash ^= ZOBRIST.piece[m.piece_moving()][m.from()] ^ ZOBRIST.piece[m.piece_moving()][m.to()];
 
         if self.piece_at(m.to()) != Piece::None {
-            hash ^= ZOBRIST.piece_square_hashes[!self.stm][self.piece_at(m.to()).name()][m.to()];
+            hash ^= ZOBRIST.piece[self.piece_at(m.to())][m.to()];
         }
 
         hash
@@ -140,12 +139,10 @@ impl Board {
     }
 
     pub fn place_piece(&mut self, piece: Piece, sq: Square) {
-        let color = piece.color();
-        let name = piece.name();
         self.mailbox[sq] = piece;
         self.bitboards[piece.name()] ^= sq.bitboard();
-        self.color_occupancies[color] ^= sq.bitboard();
-        self.zobrist_hash ^= ZOBRIST.piece_square_hashes[color][name][sq];
+        self.color_occupancies[piece.color()] ^= sq.bitboard();
+        self.zobrist_hash ^= ZOBRIST.piece[piece][sq];
     }
 
     fn remove_piece(&mut self, sq: Square) {
@@ -154,7 +151,7 @@ impl Board {
             self.mailbox[sq] = Piece::None;
             self.bitboards[piece.name()] ^= sq.bitboard();
             self.color_occupancies[piece.color()] ^= sq.bitboard();
-            self.zobrist_hash ^= ZOBRIST.piece_square_hashes[piece.color()][piece.name()][sq];
+            self.zobrist_hash ^= ZOBRIST.piece[piece][sq];
         }
     }
 
@@ -412,7 +409,7 @@ impl Board {
         self.zobrist_hash ^= ZOBRIST.castling[self.castling_rights as usize];
 
         self.stm = !self.stm;
-        self.zobrist_hash ^= ZOBRIST.turn_hash;
+        self.zobrist_hash ^= ZOBRIST.turn;
 
         self.num_moves += 1;
 
@@ -425,7 +422,7 @@ impl Board {
 
     pub fn make_null_move(&mut self) {
         self.stm = !self.stm;
-        self.zobrist_hash ^= ZOBRIST.turn_hash;
+        self.zobrist_hash ^= ZOBRIST.turn;
         self.num_moves += 1;
         self.half_moves += 1;
         if let Some(sq) = self.en_passant_square {
