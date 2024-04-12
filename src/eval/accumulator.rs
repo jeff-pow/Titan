@@ -222,6 +222,41 @@ impl Accumulator {
     }
 }
 
+pub fn update(acc: &mut Align64<Block>, adds: &[u16], subs: &[u16]) {
+    const REGS: usize = 8;
+    const PER: usize = REGS * 16;
+
+    let mut regs = [0i16; PER];
+
+    for i in 0..HIDDEN_SIZE / PER {
+        let offset = PER * i;
+
+        for (j, reg) in regs.iter_mut().enumerate() {
+            *reg = acc[offset + j];
+        }
+
+        for &add in adds {
+            let weights = &NET.feature_weights[usize::from(add)];
+
+            for (j, reg) in regs.iter_mut().enumerate() {
+                *reg += weights[offset + j];
+            }
+        }
+
+        for &sub in subs {
+            let weights = &NET.feature_weights[usize::from(sub)];
+
+            for (j, reg) in regs.iter_mut().enumerate() {
+                *reg -= weights[offset + j];
+            }
+        }
+
+        for (j, reg) in regs.iter().enumerate() {
+            acc[offset + j] = *reg;
+        }
+    }
+}
+
 impl Board {
     pub fn new_accumulator(&self) -> Accumulator {
         let mut acc = Accumulator::default();
@@ -270,7 +305,6 @@ impl AccumulatorStack {
                     self.all_lazy_updates(board, color)
                 } else {
                     self.acc_cache.update_acc(board, &mut self.stack[self.top], color);
-                    assert_eq!(self.stack[self.top].vals[color], board.new_accumulator().vals[color]);
                     self.stack[self.top].correct[color] = true;
                 }
             }
@@ -345,8 +379,8 @@ impl Default for TableEntry {
 }
 
 #[derive(Clone, Debug, Default)]
-struct AccumulatorCache {
-    entries: Box<[[[TableEntry; 2]; NUM_BUCKETS * 2]; NUM_BUCKETS * 2]>,
+pub struct AccumulatorCache {
+    entries: Box<[[TableEntry; 2]; NUM_BUCKETS * 2]>,
 }
 
 impl AccumulatorCache {
@@ -356,8 +390,7 @@ impl AccumulatorCache {
         let mut num_adds = 0;
         let mut num_subs = 0;
         let king = board.king_square(view);
-        let entry =
-            &mut self.entries[BUCKETS[board.king_square(Color::White)]][BUCKETS[board.king_square(Color::Black)]][view];
+        let entry = &mut self.entries[Network::bucket(view, king)][view];
 
         for piece in Piece::iter() {
             let prev = entry.pieces[piece.name()] & entry.color[piece.color()];
@@ -379,6 +412,7 @@ impl AccumulatorCache {
         entry.pieces = board.piece_bbs();
         entry.color = board.color_bbs();
 
+        // update(&mut entry.acc, &adds, &subs);
         acc.vals[view] = entry.acc;
         acc.update_multi(&adds, &subs, view);
         entry.acc = acc.vals[view];
