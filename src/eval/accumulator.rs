@@ -3,11 +3,15 @@ use crate::{
     chess_move::{Direction, Move},
     eval::HIDDEN_SIZE,
     search::search::{MAX_SEARCH_DEPTH, NEAR_CHECKMATE},
-    types::pieces::{Color, Piece, PieceName},
+    types::{
+        bitboard::Bitboard,
+        pieces::{Color, Piece, PieceName},
+        square::Square,
+    },
 };
 
 use super::{
-    network::{flatten, Network, BUCKETS, NORMALIZATION_FACTOR, QAB, SCALE},
+    network::{flatten, Network, BUCKETS, NORMALIZATION_FACTOR, NUM_BUCKETS, QAB, SCALE},
     Align64, Block, NET,
 };
 use arrayvec::ArrayVec;
@@ -200,6 +204,76 @@ pub fn update(acc: &mut Align64<Block>, adds: &[u16], subs: &[u16]) {
             *a = r;
         }
     }
+
+    pub fn update_multi(&mut self, adds: &[u16], subs: &[u16], side: Color) {
+        const REGS: usize = 8;
+        const PER: usize = REGS * 16;
+
+        let mut regs = [0i16; PER];
+
+        for i in 0..HIDDEN_SIZE / PER {
+            let offset = PER * i;
+
+            for (j, reg) in regs.iter_mut().enumerate() {
+                *reg = self.vals[side][offset + j];
+            }
+
+            for &add in adds {
+                let weights = &NET.feature_weights[usize::from(add)];
+
+                for (j, reg) in regs.iter_mut().enumerate() {
+                    *reg += weights[offset + j];
+                }
+            }
+
+            for &sub in subs {
+                let weights = &NET.feature_weights[usize::from(sub)];
+
+                for (j, reg) in regs.iter_mut().enumerate() {
+                    *reg -= weights[offset + j];
+                }
+            }
+
+            for (j, reg) in regs.iter().enumerate() {
+                self.vals[side][offset + j] = *reg;
+            }
+        }
+    }
+}
+
+pub fn update(acc: &mut Align64<Block>, adds: &[u16], subs: &[u16]) {
+    const REGS: usize = 8;
+    const PER: usize = REGS * 16;
+
+    let mut regs = [0i16; PER];
+
+    for i in 0..HIDDEN_SIZE / PER {
+        let offset = PER * i;
+
+        for (j, reg) in regs.iter_mut().enumerate() {
+            *reg = acc[offset + j];
+        }
+
+        for &add in adds {
+            let weights = &NET.feature_weights[usize::from(add)];
+
+            for (j, reg) in regs.iter_mut().enumerate() {
+                *reg += weights[offset + j];
+            }
+        }
+
+        for &sub in subs {
+            let weights = &NET.feature_weights[usize::from(sub)];
+
+            for (j, reg) in regs.iter_mut().enumerate() {
+                *reg -= weights[offset + j];
+            }
+        }
+
+        for (j, reg) in regs.iter().enumerate() {
+            acc[offset + j] = *reg;
+        }
+    }
 }
 
 impl Board {
@@ -224,6 +298,7 @@ pub struct AccumulatorStack {
     pub(crate) stack: Vec<Accumulator>,
     /// Top points to the active accumulator, not the space above it
     pub top: usize,
+    acc_cache: AccumulatorCache,
 }
 
 impl AccumulatorStack {
@@ -254,7 +329,7 @@ impl AccumulatorStack {
                 if self.can_efficiently_update(color) {
                     self.all_lazy_updates(board, color)
                 } else {
-                    self.stack[self.top].refresh(board, color);
+                    self.acc_cache.update_acc(board, &mut self.stack[self.top], color);
                     self.stack[self.top].correct[color] = true;
                 }
             }
@@ -311,7 +386,61 @@ impl AccumulatorStack {
     pub fn new(base_accumulator: &Accumulator) -> Self {
         let mut vec = vec![Accumulator::default(); MAX_SEARCH_DEPTH as usize + 50];
         vec[0] = *base_accumulator;
-        Self { stack: vec, top: 0 }
+        Self { stack: vec, top: 0, acc_cache: AccumulatorCache::default() }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+struct TableEntry {
+    acc: Align64<Block>,
+    pieces: [Bitboard; 6],
+    color: [Bitboard; 2],
+}
+
+impl Default for TableEntry {
+    fn default() -> Self {
+        Self { acc: NET.feature_bias, pieces: [Bitboard::EMPTY; 6], color: [Bitboard::EMPTY; 2] }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct AccumulatorCache {
+    entries: Box<[[TableEntry; 2]; NUM_BUCKETS * 2]>,
+}
+
+impl AccumulatorCache {
+    pub fn update_acc(&mut self, board: &Board, acc: &mut Accumulator, view: Color) {
+        let mut adds = [0; 32];
+        let mut subs = [0; 32];
+        let mut num_adds = 0;
+        let mut num_subs = 0;
+        let king = board.king_square(view);
+        let entry = &mut self.entries[Network::bucket(view, king)][view];
+
+        for piece in Piece::iter() {
+            let prev = entry.pieces[piece.name()] & entry.color[piece.color()];
+            let curr = board.piece_color(piece.color(), piece.name());
+
+            let added = curr & !prev;
+            let removed = prev & !curr;
+
+            for sq in added {
+                adds[num_adds] = Network::feature_idx(piece, sq, king, view) as u16;
+                num_adds += 1;
+            }
+            for sq in removed {
+                subs[num_subs] = Network::feature_idx(piece, sq, king, view) as u16;
+                num_subs += 1;
+            }
+        }
+
+        entry.pieces = board.piece_bbs();
+        entry.color = board.color_bbs();
+
+        update(&mut entry.acc, &adds, &subs);
+        acc.vals[view] = entry.acc;
+        // acc.update_multi(&adds, &subs, view);
+        // entry.acc = acc.vals[view];
     }
 }
 

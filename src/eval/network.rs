@@ -63,6 +63,13 @@ impl Network {
             }
         }
     }
+
+    pub fn bucket(view: Color, mut sq: Square) -> usize {
+        if view == Color::Black {
+            sq = sq.flip_vertical();
+        }
+        BUCKETS[sq]
+    }
 }
 
 #[cfg(all(not(target_feature = "avx2"), not(feature = "avx512")))]

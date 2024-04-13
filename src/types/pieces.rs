@@ -177,7 +177,7 @@ impl Piece {
         }
     }
 
-    pub fn iter() -> impl Iterator<Item = Piece> {
+    pub fn iter() -> impl Iterator<Item = Self> {
         [
             Self::WhitePawn,
             Self::BlackPawn,

@@ -6,7 +6,6 @@ use crate::{
 };
 use std::{
     mem::{size_of, transmute},
-    ptr::from_ref,
     sync::atomic::{AtomicI16, AtomicU16, AtomicU64, AtomicU8, Ordering},
 };
 
@@ -166,7 +165,7 @@ impl TranspositionTable {
         unsafe {
             let index = index(hash, self.vec.len());
             let entry = self.vec.get_unchecked(index);
-            _mm_prefetch(from_ref::<InternalEntry>(entry).cast::<i8>(), _MM_HINT_T0);
+            _mm_prefetch::<_MM_HINT_T0>((entry as *const InternalEntry).cast());
         }
     }
 
