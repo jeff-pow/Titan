@@ -3,10 +3,7 @@ use crate::{
     chess_move::{Direction, Move},
     eval::HIDDEN_SIZE,
     search::search::{MAX_SEARCH_DEPTH, NEAR_CHECKMATE},
-    types::{
-        pieces::{Color, Piece, PieceName},
-        square::Square,
-    },
+    types::pieces::{Color, Piece, PieceName},
 };
 
 use super::{
@@ -158,25 +155,6 @@ impl Accumulator {
         }
     }
 
-    pub fn add_feature(&mut self, piece: Piece, sq: Square, white_king: Square, black_king: Square) {
-        let white_idx = Network::feature_idx(piece, sq, white_king, Color::White);
-        let black_idx = Network::feature_idx(piece, sq, black_king, Color::Black);
-        self.activate(&NET.feature_weights[white_idx], Color::White);
-        self.activate(&NET.feature_weights[black_idx], Color::Black);
-    }
-
-    fn activate(&mut self, weights: &Block, color: Color) {
-        #[cfg(feature = "avx512")]
-        unsafe {
-            self.avx512_activate(weights, color);
-        }
-
-        #[cfg(not(feature = "avx512"))]
-        self[color].iter_mut().zip(weights).for_each(|(i, &d)| {
-            *i += d;
-        });
-    }
-
     fn refresh(&mut self, board: &Board, view: Color) {
         self.vals[view] = NET.feature_bias;
         let mut vec: ArrayVec<u16, 32> = ArrayVec::new();
@@ -184,43 +162,42 @@ impl Accumulator {
             let p = board.piece_at(sq);
             let idx = Network::feature_idx(p, sq, board.king_square(view), view);
             vec.push(idx as u16);
-            // self.activate(&NET.feature_weights[idx], view);
         }
         update(&mut self.vals[view], &vec, &[]);
     }
 }
 
 pub fn update(acc: &mut Align64<Block>, adds: &[u16], subs: &[u16]) {
-    const REGS: usize = 8;
-    const PER: usize = REGS * 16;
+    const REGISTERS: usize = 8;
+    const ELEMENTS_PER_LOOP: usize = REGISTERS * 256 / 16;
 
-    let mut regs = [0i16; PER];
+    let mut regs = [0i16; ELEMENTS_PER_LOOP];
 
-    for i in 0..HIDDEN_SIZE / PER {
-        let offset = PER * i;
+    for i in 0..HIDDEN_SIZE / ELEMENTS_PER_LOOP {
+        let offset = ELEMENTS_PER_LOOP * i;
 
-        for (j, reg) in regs.iter_mut().enumerate() {
-            *reg = acc[offset + j];
+        for (reg, &j) in regs.iter_mut().zip(acc[offset..].iter()) {
+            *reg = j;
         }
 
         for &add in adds {
             let weights = &NET.feature_weights[usize::from(add)];
 
-            for (j, reg) in regs.iter_mut().enumerate() {
-                *reg += weights[offset + j];
+            for (reg, &w) in regs.iter_mut().zip(weights[offset..].iter()) {
+                *reg += w;
             }
         }
 
         for &sub in subs {
             let weights = &NET.feature_weights[usize::from(sub)];
 
-            for (j, reg) in regs.iter_mut().enumerate() {
-                *reg -= weights[offset + j];
+            for (reg, &w) in regs.iter_mut().zip(weights[offset..].iter()) {
+                *reg -= w;
             }
         }
 
-        for (j, reg) in regs.iter().enumerate() {
-            acc[offset + j] = *reg;
+        for (a, &r) in acc[offset..].iter_mut().zip(regs.iter()) {
+            *a = r;
         }
     }
 }
@@ -228,9 +205,15 @@ pub fn update(acc: &mut Align64<Block>, adds: &[u16], subs: &[u16]) {
 impl Board {
     pub fn new_accumulator(&self) -> Accumulator {
         let mut acc = Accumulator::default();
-        for sq in self.occupancies() {
-            let p = self.piece_at(sq);
-            acc.add_feature(p, sq, self.king_square(Color::White), self.king_square(Color::Black));
+        for view in Color::iter() {
+            acc.vals[view] = NET.feature_bias;
+            let mut vec: ArrayVec<u16, 32> = ArrayVec::new();
+            for sq in self.occupancies() {
+                let p = self.piece_at(sq);
+                let idx = Network::feature_idx(p, sq, self.king_square(view), view);
+                vec.push(idx as u16);
+            }
+            update(&mut acc.vals[view], &vec, &[]);
         }
         acc
     }
