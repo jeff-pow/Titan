@@ -1,6 +1,7 @@
 use crate::{
     board::Board,
     chess_move::{Direction, Move},
+    eval::HIDDEN_SIZE,
     search::search::{MAX_SEARCH_DEPTH, NEAR_CHECKMATE},
     types::{
         pieces::{Color, Piece, PieceName},
@@ -12,6 +13,7 @@ use super::{
     network::{flatten, Network, BUCKETS, NORMALIZATION_FACTOR, QAB, SCALE},
     Align64, Block, NET,
 };
+use arrayvec::ArrayVec;
 use std::ops::{Index, IndexMut};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -177,10 +179,48 @@ impl Accumulator {
 
     fn refresh(&mut self, board: &Board, view: Color) {
         self.vals[view] = NET.feature_bias;
+        let mut vec: ArrayVec<u16, 32> = ArrayVec::new();
         for sq in board.occupancies() {
             let p = board.piece_at(sq);
             let idx = Network::feature_idx(p, sq, board.king_square(view), view);
-            self.activate(&NET.feature_weights[idx], view);
+            vec.push(idx as u16);
+            // self.activate(&NET.feature_weights[idx], view);
+        }
+        update(&mut self.vals[view], &vec, &[]);
+    }
+}
+
+pub fn update(acc: &mut Align64<Block>, adds: &[u16], subs: &[u16]) {
+    const REGS: usize = 8;
+    const PER: usize = REGS * 16;
+
+    let mut regs = [0i16; PER];
+
+    for i in 0..HIDDEN_SIZE / PER {
+        let offset = PER * i;
+
+        for (j, reg) in regs.iter_mut().enumerate() {
+            *reg = acc[offset + j];
+        }
+
+        for &add in adds {
+            let weights = &NET.feature_weights[usize::from(add)];
+
+            for (j, reg) in regs.iter_mut().enumerate() {
+                *reg += weights[offset + j];
+            }
+        }
+
+        for &sub in subs {
+            let weights = &NET.feature_weights[usize::from(sub)];
+
+            for (j, reg) in regs.iter_mut().enumerate() {
+                *reg -= weights[offset + j];
+            }
+        }
+
+        for (j, reg) in regs.iter().enumerate() {
+            acc[offset + j] = *reg;
         }
     }
 }
