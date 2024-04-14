@@ -560,6 +560,8 @@ fn extension<const IS_PV: bool>(
         }
     } else if entry.search_score() >= beta {
         -2 + i32::from(IS_PV)
+    } else if cut_node {
+        -2
     } else if entry.search_score() <= alpha {
         -1
     } else {
