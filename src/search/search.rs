@@ -384,7 +384,7 @@ fn negamax<const IS_PV: bool>(
         // negative extensions
         let extension = extension::<IS_PV>(entry, alpha, beta, m, depth, board, td, tt, cut_node);
 
-        let new_depth = depth + extension - 1;
+        let mut new_depth = depth + extension - 1;
 
         td.nodes.increment();
         let pre_search_nodes = td.nodes.local_count();
@@ -426,8 +426,11 @@ fn negamax<const IS_PV: bool>(
             // If eval would raise alpha and calculated reduced depth is actually less than our
             // full depth search (including extensions), search again
             if eval > alpha && d < new_depth {
-                // TODO: Deeper shallower search
-                eval = -negamax::<false>(new_depth, -alpha - 1, -alpha, &mut node_pv, td, tt, &new_b, !cut_node);
+                new_depth += i32::from(eval > best_score + 40);
+                new_depth -= i32::from(eval < best_score + new_depth);
+                if new_depth > d {
+                    eval = -negamax::<false>(new_depth, -alpha - 1, -alpha, &mut node_pv, td, tt, &new_b, !cut_node);
+                }
             }
         }
         // If LMR was not performed, conduct a zero window full depth search on the first move of
