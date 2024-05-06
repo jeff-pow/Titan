@@ -42,6 +42,14 @@ impl Default for Board {
 }
 
 impl Board {
+    pub fn piece_bbs(&self) -> [Bitboard; 6] {
+        self.bitboards
+    }
+
+    pub fn color_bbs(&self) -> [Bitboard; 2] {
+        self.color_occupancies
+    }
+
     pub fn piece_color(&self, side: Color, piece: PieceName) -> Bitboard {
         self.piece(piece) & self.color(side)
     }

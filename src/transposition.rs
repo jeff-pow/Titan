@@ -166,7 +166,7 @@ impl TranspositionTable {
         unsafe {
             let index = index(hash, self.vec.len());
             let entry = self.vec.get_unchecked(index);
-            _mm_prefetch(from_ref::<InternalEntry>(entry).cast::<i8>(), _MM_HINT_T0);
+            _mm_prefetch::<_MM_HINT_T0>((entry as *const InternalEntry).cast())
         }
     }
 
