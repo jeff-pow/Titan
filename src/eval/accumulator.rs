@@ -157,17 +157,6 @@ impl Accumulator {
             self.add_sub(old, a1, s1, side);
         }
     }
-
-    fn refresh(&mut self, board: &Board, view: Color) {
-        self.vals[view] = NET.feature_bias;
-        let mut vec: ArrayVec<u16, 32> = ArrayVec::new();
-        for sq in board.occupancies() {
-            let p = board.piece_at(sq);
-            let idx = Network::feature_idx(p, sq, board.king_square(view), view);
-            vec.push(idx as u16);
-        }
-        update(&mut self.vals[view], &vec, &[]);
-    }
 }
 
 pub fn update(acc: &mut Align64<Block>, adds: &[u16], subs: &[u16]) {
@@ -258,7 +247,6 @@ impl AccumulatorStack {
                 if self.can_efficiently_update(color) {
                     self.all_lazy_updates(board, color)
                 } else {
-                    // self.stack[self.top].refresh(board, color);
                     self.acc_cache.update_acc(board, &mut self.stack[self.top], color);
                     self.stack[self.top].correct[color] = true;
                 }

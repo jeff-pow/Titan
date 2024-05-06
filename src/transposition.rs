@@ -6,7 +6,6 @@ use crate::{
 };
 use std::{
     mem::{size_of, transmute},
-    ptr::from_ref,
     sync::atomic::{AtomicI16, AtomicU16, AtomicU64, AtomicU8, Ordering},
 };
 
