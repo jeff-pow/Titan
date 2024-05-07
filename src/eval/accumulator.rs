@@ -159,6 +159,8 @@ impl Accumulator {
     }
 }
 
+// Credit to akimbo. This function streamlines the assembly generated and prevents unnecessary
+// redundant loads and stores to the same simd vectors.
 pub fn update(acc: &mut Align64<Block>, adds: &[u16], subs: &[u16]) {
     const REGISTERS: usize = 8;
     const ELEMENTS_PER_LOOP: usize = REGISTERS * 256 / 16;
@@ -328,10 +330,8 @@ pub struct AccumulatorCache {
 
 impl AccumulatorCache {
     pub fn update_acc(&mut self, board: &Board, acc: &mut Accumulator, view: Color) {
-        let mut adds = [0; 32];
-        let mut subs = [0; 32];
-        let mut num_adds = 0;
-        let mut num_subs = 0;
+        let mut adds = ArrayVec::<_, 32>::new();
+        let mut subs = ArrayVec::<_, 32>::new();
         let king = board.king_square(view);
         let entry = &mut self.entries[Network::bucket(view, king)][view];
 
@@ -343,19 +343,17 @@ impl AccumulatorCache {
             let removed = prev & !curr;
 
             for sq in added {
-                adds[num_adds] = Network::feature_idx(piece, sq, king, view) as u16;
-                num_adds += 1;
+                adds.push(Network::feature_idx(piece, sq, king, view) as u16);
             }
             for sq in removed {
-                subs[num_subs] = Network::feature_idx(piece, sq, king, view) as u16;
-                num_subs += 1;
+                subs.push(Network::feature_idx(piece, sq, king, view) as u16);
             }
         }
 
         entry.pieces = board.piece_bbs();
         entry.color = board.color_bbs();
 
-        update(&mut entry.acc, &adds[0..num_adds], &subs[0..num_subs]);
+        update(&mut entry.acc, &adds, &subs);
         acc.vals[view] = entry.acc;
     }
 }
