@@ -12,6 +12,7 @@ use crate::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
 use crate::{board::Board, search::game_time::Clock, types::pieces::Color};
 
 pub const ENGINE_NAME: &str = "Titan";
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
@@ -23,7 +24,7 @@ pub fn main_loop() -> ! {
     let halt = AtomicBool::new(false);
     let global_nodes = AtomicU64::new(0);
     let mut thread_pool = ThreadPool::new(&halt, Vec::new(), &consts, &global_nodes);
-    println!("{ENGINE_NAME} by {}", env!("CARGO_PKG_AUTHORS"));
+    println!("{ENGINE_NAME} v{VERSION} by {}", env!("CARGO_PKG_AUTHORS"));
 
     loop {
         let input = msg.as_ref().map_or_else(
@@ -95,9 +96,9 @@ pub fn main_loop() -> ! {
 }
 
 fn uci_opts() {
-    println!("id name {ENGINE_NAME}");
+    println!("id name {ENGINE_NAME} {VERSION}");
     println!("id author {}", env!("CARGO_PKG_AUTHORS"));
-    println!("option name Threads type spin default 1 min 1 max 64");
+    println!("option name Threads type spin default 1 min 1 max 1");
     println!("option name Hash type spin default 16 min 1 max 8388608");
     println!("uciok");
 }
