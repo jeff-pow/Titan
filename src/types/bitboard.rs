@@ -9,6 +9,10 @@ pub struct Bitboard(pub u64);
 impl Bitboard {
     pub const EMPTY: Self = Self(0);
 
+    pub fn is_empty(self) -> bool {
+        self == Bitboard::EMPTY
+    }
+
     /// Returns the index of the lowest bit of a bitboard, and modifies the bitboard to exclude
     /// that bit
     pub fn pop_lsb(&mut self) -> Square {
