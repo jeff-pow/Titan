@@ -21,7 +21,7 @@ mod types;
 mod uci;
 mod zobrist;
 
-use crate::{bench::bench, board::Board};
+use crate::bench::bench;
 use std::env;
 use uci::main_loop;
 
