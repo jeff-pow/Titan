@@ -1,14 +1,16 @@
-EXE = Titan
-LXE = titan
+OS := $(shell uname)
 
-ifeq ($(OS),Windows_NT)
-	NAME := $(EXE).exe
+ifeq ($(OS),Linux)
+    DEFAULT_EXE = titan
 else
-	NAME := $(LXE)
+    DEFAULT_EXE = Titan.exe
 endif
 
+# Allow user to override the executable name
+EXE ?= $(DEFAULT_EXE)
+
 openbench:
-	cargo rustc --release -- -C target-cpu=native --emit link=$(NAME)
+	cargo rustc --release -- -C target-cpu=native --emit link=$(EXE)
 
 release:
 	cargo rustc --release -- -C target-cpu=x86-64 --emit link=titan-x64_64-linux-v1
@@ -21,11 +23,11 @@ release:
 	cargo rustc --release --target=x86_64-pc-windows-gnu -- -C target-feature=+crt-static -C target-cpu=x86-64-v4 --emit link=Titan-x86_64-windows-v4.exe
 
 avx512:
-	cargo rustc --release --features avx512 -- -C target-cpu=native --emit link=$(NAME)
+	cargo rustc --release --features avx512 -- -C target-cpu=native --emit link=$(EXE)
 
 bench:
-	cargo rustc --release -- -C target-cpu=native --emit link=$(NAME)
-	./$(NAME) bench
+	cargo rustc --release -- -C target-cpu=native --emit link=$(EXE)
+	./$(EXE) bench
 
 ancient:
-	cargo rustc --release -- -C target-cpu=x86-64 --emit link=$(NAME)
+	cargo rustc --release -- -C target-cpu=x86-64 --emit link=$(EXE)
