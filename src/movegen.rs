@@ -1,9 +1,7 @@
 use crate::{
+    attack_boards::{valid_pinned_moves, BETWEEN_SQUARES},
     board::Board,
-    chess_move::{
-        Direction,
-        Direction::{North, NorthEast, NorthWest, South, SouthEast, SouthWest},
-    },
+    chess_move::Direction::{self, North, NorthEast, NorthWest, South, SouthEast, SouthWest},
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName},
@@ -30,25 +28,33 @@ pub enum MoveGenerationType {
 impl Board {
     /// Generates all pseudolegal moves
     pub fn generate_moves(&self, gen_type: MGT, moves: &mut MoveList) {
-        let destinations = match gen_type {
+        let mut dests = match gen_type {
             MoveGenerationType::CapturesOnly => self.color(!self.stm),
             MoveGenerationType::QuietsOnly => !self.occupancies(),
             MoveGenerationType::All => !self.color(self.stm),
         };
 
-        let knights = self.piece_color(self.stm, PieceName::Knight);
         let kings = self.piece_color(self.stm, PieceName::King);
-        let bishops = self.piece_color(self.stm, PieceName::Bishop) | self.piece_color(self.stm, PieceName::Queen);
-        let rooks = self.piece_color(self.stm, PieceName::Rook) | self.piece_color(self.stm, PieceName::Queen);
+        let knights = self.piece_color(self.stm, PieceName::Knight);
+        let diags = self.diags(self.stm);
+        let orthos = self.orthos(self.stm);
 
-        self.jumper_moves(knights, destinations, moves, knight_attacks);
-        self.jumper_moves(kings, destinations & !self.threats(), moves, king_attacks);
-        self.magic_moves(rooks, destinations, moves, rook_attacks);
-        self.magic_moves(bishops, destinations, moves, bishop_attacks);
-        self.pawn_moves(gen_type, moves);
-        if gen_type == MGT::QuietsOnly || gen_type == MGT::All {
+        self.jumper_moves(kings, dests & !self.threats(), moves, king_attacks);
+
+        if self.checkers().count_bits() > 1 {
+            return;
+        } else if self.checkers().count_bits() == 0 && (gen_type == MGT::QuietsOnly || gen_type == MGT::All) {
             self.castling_moves(moves);
         }
+
+        if !self.checkers().is_empty() {
+            dests &= BETWEEN_SQUARES[self.checkers().lsb()][self.king_square(self.stm)] | self.checkers();
+        }
+
+        self.jumper_moves(knights, dests, moves, knight_attacks);
+        self.magic_moves(orthos, dests, moves, rook_attacks);
+        self.magic_moves(diags, dests, moves, bishop_attacks);
+        self.pawn_moves(gen_type, moves);
     }
 
     fn castling_moves(&self, moves: &mut MoveList) {
@@ -173,7 +179,12 @@ impl Board {
         attack_fn: impl Fn(Square, Bitboard) -> Bitboard,
     ) {
         for src in pieces {
-            for dest in attack_fn(src, self.occupancies()) & destinations {
+            let x = if self.pinned().contains(src) {
+                destinations & valid_pinned_moves(self.king_square(self.stm), src)
+            } else {
+                destinations
+            };
+            for dest in attack_fn(src, self.occupancies()) & x {
                 moves.push(Move::new(src, dest, MoveType::Normal, self.piece_at(src)));
             }
         }
@@ -187,7 +198,12 @@ impl Board {
         attack_fn: impl Fn(Square) -> Bitboard,
     ) {
         for src in pieces {
-            for dest in attack_fn(src) & destinations {
+            let x = if self.pinned().contains(src) {
+                destinations & valid_pinned_moves(self.king_square(self.stm), src)
+            } else {
+                destinations
+            };
+            for dest in attack_fn(src) & x {
                 moves.push(Move::new(src, dest, MoveType::Normal, self.piece_at(src)));
             }
         }

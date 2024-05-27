@@ -31,4 +31,3 @@ bench:
 
 ancient:
 	cargo rustc --release -- -C target-cpu=x86-64 --emit link=$(EXE)
-

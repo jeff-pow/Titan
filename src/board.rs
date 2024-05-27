@@ -194,6 +194,10 @@ impl Board {
         self.checkers
     }
 
+    pub const fn pinned(&self) -> Bitboard {
+        self.pinned
+    }
+
     pub(super) fn pinned_and_checkers(&mut self) {
         self.pinned = Bitboard::EMPTY;
         let attacker = !self.stm;
