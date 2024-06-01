@@ -34,7 +34,7 @@ impl Clock {
 
     /// Calculates a recommended amount of time to spend on a given search.
     pub fn recommended_time(&mut self, side: Color) {
-        let clock = self.time_remaining[side] - GUI_DELAY;
+        let clock = (self.time_remaining[side].saturating_sub(GUI_DELAY)).max(GUI_DELAY);
         let time = clock / 20 + self.time_inc[side] * 3 / 4;
         self.rec_time = time.mul_f64(TIME_FRACTION);
         self.max_time = (time * 2).min(self.time_remaining[side]);

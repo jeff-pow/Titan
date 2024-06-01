@@ -135,20 +135,20 @@ pub fn parse_time(buff: &[&str]) -> Clock {
     while let Some(uci_opt) = iter.next() {
         match *uci_opt {
             "wtime" => {
-                game_time.time_remaining[Color::White] =
-                    Duration::from_millis(iter.next().unwrap().parse::<u64>().expect("Valid u64"));
+                let raw_time = iter.next().unwrap().parse::<i64>().expect("Valid i64").max(1);
+                game_time.time_remaining[Color::White] = Duration::from_millis(raw_time as u64);
             }
             "btime" => {
-                game_time.time_remaining[Color::Black] =
-                    Duration::from_millis(iter.next().unwrap().parse::<u64>().expect("Valid u64"));
+                let raw_time = iter.next().unwrap().parse::<i64>().expect("Valid i64").max(1);
+                game_time.time_remaining[Color::Black] = Duration::from_millis(raw_time as u64);
             }
             "winc" => {
-                game_time.time_inc[Color::White] =
-                    Duration::from_millis(iter.next().unwrap().parse::<u64>().expect("Valid u64"));
+                let raw_time = iter.next().unwrap().parse::<i64>().expect("Valid i64").max(1);
+                game_time.time_inc[Color::White] = Duration::from_millis(raw_time as u64);
             }
             "binc" => {
-                game_time.time_inc[Color::Black] =
-                    Duration::from_millis(iter.next().unwrap().parse::<u64>().expect("Valid u64"));
+                let raw_time = iter.next().unwrap().parse::<i64>().expect("Valid i64").max(1);
+                game_time.time_inc[Color::Black] = Duration::from_millis(raw_time as u64);
             }
             "movestogo" => game_time.movestogo = iter.next().unwrap().parse::<i32>().expect("Valid i32"),
             _ => return game_time,

@@ -51,7 +51,6 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
         prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt);
 
         assert_eq!(0, td.accumulators.top);
-        assert!(!pv.line.is_empty());
         td.best_move = pv.line[0];
 
         if print_uci {
