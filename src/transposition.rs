@@ -6,6 +6,7 @@ use crate::{
 };
 use std::{
     mem::{size_of, transmute},
+    ptr::from_ref,
     sync::atomic::{AtomicI16, AtomicU16, AtomicU64, AtomicU8, Ordering},
 };
 
@@ -80,6 +81,52 @@ impl TableEntry {
     }
 }
 
+impl InternalEntry {
+    pub fn static_eval(&self) -> i32 {
+        self.static_eval.load(Ordering::Relaxed) as i32
+    }
+
+    pub fn key(&self) -> u16 {
+        self.key.load(Ordering::Relaxed)
+    }
+
+    pub fn depth(&self) -> i32 {
+        self.depth.load(Ordering::Relaxed) as i32
+    }
+
+    pub fn flag(&self) -> EntryFlag {
+        match self.age_pv_bound.load(Ordering::Relaxed) & 0b11 {
+            0 => EntryFlag::None,
+            1 => EntryFlag::AlphaUnchanged,
+            2 => EntryFlag::BetaCutOff,
+            3 => EntryFlag::Exact,
+            _ => unreachable!(),
+        }
+    }
+
+    fn age(&self) -> u64 {
+        u64::from(self.age_pv_bound.load(Ordering::Relaxed)) >> 3
+    }
+
+    pub fn was_pv(&self) -> bool {
+        (self.age_pv_bound.load(Ordering::Relaxed) & 0b0000_0100) != 0
+    }
+
+    pub fn search_score(&self) -> i32 {
+        i32::from(self.search_score.load(Ordering::Relaxed))
+    }
+
+    pub fn best_move(&self, b: &Board) -> Move {
+        let m = Move(u32::from(self.best_move.load(Ordering::Relaxed)));
+        if b.piece_at(m.from()) == Piece::None {
+            Move::NULL
+        } else {
+            let p = b.piece_at(m.from()) as u32;
+            Move(u32::from(self.best_move.load(Ordering::Relaxed)) | p << 16)
+        }
+    }
+}
+
 impl From<TableEntry> for InternalEntry {
     fn from(value: TableEntry) -> Self {
         unsafe { transmute(value) }
@@ -149,14 +196,15 @@ impl Clone for InternalEntry {
 
 #[derive(Clone)]
 pub struct TranspositionTable {
-    vec: Box<[InternalEntry]>,
+    vec: Box<[TTBucket]>,
     age: U64Wrapper,
 }
 
 pub const TARGET_TABLE_SIZE_MB: usize = 16;
 const BYTES_PER_MB: usize = 1024 * 1024;
 const ENTRY_SIZE: usize = size_of::<TableEntry>();
-const MAX_AGE: u64 = (1 << 5) - 1;
+const MAX_AGE: u64 = 1 << 5;
+const AGE_MASK: u64 = MAX_AGE - 1;
 
 impl TranspositionTable {
     pub fn prefetch(&self, hash: u64) {
@@ -165,18 +213,18 @@ impl TranspositionTable {
         unsafe {
             let index = index(hash, self.vec.len());
             let entry = self.vec.get_unchecked(index);
-            _mm_prefetch::<_MM_HINT_T0>((entry as *const InternalEntry).cast())
+            _mm_prefetch(from_ref::<TTBucket>(entry).cast::<i8>(), _MM_HINT_T0);
         }
     }
 
     pub fn new(mb: usize) -> Self {
         let target_size = mb * BYTES_PER_MB;
-        let table_capacity = target_size / ENTRY_SIZE;
-        Self { vec: vec![InternalEntry::default(); table_capacity].into_boxed_slice(), age: U64Wrapper::default() }
+        let table_capacity = target_size / BUCKET_SIZE;
+        Self { vec: vec![TTBucket::default(); table_capacity].into_boxed_slice(), age: U64Wrapper::default() }
     }
 
     pub fn clear(&self) {
-        self.vec.iter().for_each(|x| {
+        self.vec.iter().flat_map(|b| &b.entries).for_each(|x| {
             x.depth.store(0, Ordering::Relaxed);
             x.age_pv_bound.store(0, Ordering::Relaxed);
             x.key.store(0, Ordering::Relaxed);
@@ -193,7 +241,7 @@ impl TranspositionTable {
 
     pub fn age_up(&self) {
         // Keep age under 31 b/c that is the max age that fits in a table entry
-        self.age.0.store((self.age() + 1) & MAX_AGE, Ordering::Relaxed);
+        self.age.0.store((self.age() + 1) & AGE_MASK, Ordering::Relaxed);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -211,16 +259,33 @@ impl TranspositionTable {
         let idx = index(hash, self.vec.len());
         let key = hash as u16;
 
-        let old_entry = unsafe { TableEntry::from(self.vec.get_unchecked(idx).clone()) };
+        let bucket = unsafe { self.vec.get_unchecked(idx) };
+
+        let mut old_entry = &bucket.entries[0];
+        for entry in &bucket.entries {
+            if entry.key() == key {
+                old_entry = entry;
+                break;
+            }
+
+            if old_entry.depth() as u64 - ((MAX_AGE + self.age() - old_entry.age()) & AGE_MASK) * 4
+                > entry.depth() as u64 - ((MAX_AGE + self.age() - entry.age()) & AGE_MASK) * 4
+            {
+                old_entry = entry;
+            }
+        }
+
+        if m != Move::NULL || key != old_entry.key() {
+            old_entry.best_move.store(m.as_u16(), Ordering::Relaxed);
+        }
 
         // Conditions from Alexandria
         if old_entry.age() != self.age()
             || old_entry.key() != key
             || flag == EntryFlag::Exact
-            || depth as usize + 5 + 2 * usize::from(is_pv) > old_entry.depth as usize
+            || depth as usize + 5 + 2 * usize::from(is_pv) > old_entry.depth() as usize
         {
             // Don't overwrite a best move with a null move
-            let best_m = if m == Move::NULL && key == old_entry.key { old_entry.best_move } else { m.as_u16() };
 
             if score > NEAR_CHECKMATE {
                 score += ply;
@@ -229,14 +294,12 @@ impl TranspositionTable {
             }
 
             let age_pv_bound = (self.age() << 3) as u8 | u8::from(is_pv) << 2 | flag as u8;
-            unsafe {
-                self.vec.get_unchecked(idx).key.store(key, Ordering::Relaxed);
-                self.vec.get_unchecked(idx).depth.store(depth as u8, Ordering::Relaxed);
-                self.vec.get_unchecked(idx).age_pv_bound.store(age_pv_bound, Ordering::Relaxed);
-                self.vec.get_unchecked(idx).search_score.store(score as i16, Ordering::Relaxed);
-                self.vec.get_unchecked(idx).best_move.store(best_m, Ordering::Relaxed);
-                self.vec.get_unchecked(idx).static_eval.store(static_eval as i16, Ordering::Relaxed);
-            }
+
+            old_entry.key.store(key, Ordering::Relaxed);
+            old_entry.depth.store(depth as u8, Ordering::Relaxed);
+            old_entry.age_pv_bound.store(age_pv_bound, Ordering::Relaxed);
+            old_entry.search_score.store(score as i16, Ordering::Relaxed);
+            old_entry.static_eval.store(static_eval as i16, Ordering::Relaxed);
         }
     }
 
@@ -244,35 +307,49 @@ impl TranspositionTable {
         let idx = index(hash, self.vec.len());
         let key = hash as u16;
 
-        let mut entry = unsafe { TableEntry::from(self.vec.get_unchecked(idx).clone()) };
+        let bucket = unsafe { self.vec.get_unchecked(idx) };
+        for e in &bucket.entries {
+            if e.key() != key {
+                continue;
+            }
+            let entry = e.clone();
+            if entry.search_score() > NEAR_CHECKMATE {
+                entry.search_score.fetch_sub(ply as i16, Ordering::Relaxed);
+            } else if entry.search_score() < -NEAR_CHECKMATE {
+                entry.search_score.fetch_add(ply as i16, Ordering::Relaxed);
+            }
 
-        if entry.key != key {
-            return None;
+            return Some(entry.into());
         }
-
-        if entry.search_score > NEAR_CHECKMATE as i16 {
-            entry.search_score -= ply as i16;
-        } else if entry.search_score < -NEAR_CHECKMATE as i16 {
-            entry.search_score += ply as i16;
-        }
-
-        Some(entry)
+        None
     }
 
     pub(crate) fn permille_usage(&self) -> usize {
         self.vec
             .iter()
             .take(1000)
+            .map(|b| &b.entries)
+            .flatten()
             .map(|e| TableEntry::from(e.clone()))
             // We only consider entries meaningful if their age is current (due to age based overwrites)
             // and their depth is > 0. 0 depth entries are from qsearch and should not be counted.
             .filter(|e| e.depth() > 0 && e.age() == self.age())
             .count()
+            / ENTRIES_PER_BUCKET
     }
 }
 
 fn index(hash: u64, table_capacity: usize) -> usize {
     ((u128::from(hash) * (table_capacity as u128)) >> 64) as usize
+}
+
+const ENTRIES_PER_BUCKET: usize = 3;
+const BUCKET_SIZE: usize = size_of::<TTBucket>();
+#[repr(C, align(32))]
+#[derive(Clone, Default)]
+struct TTBucket {
+    entries: [InternalEntry; ENTRIES_PER_BUCKET],
+    _padding: [u8; 2],
 }
 
 #[cfg(test)]
