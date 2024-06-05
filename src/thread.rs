@@ -198,7 +198,7 @@ impl<'a> ThreadPool<'a> {
         consts: &'a LmrTable,
         global_nodes: &'a AtomicU64,
     ) {
-        self.threads.clear();
+        self.threads= vec![ThreadData::new(self.halt, hash_history.to_owned(), 0, consts, global_nodes)];
         for i in 1..threads {
             self.threads.push(ThreadData::new(self.halt, hash_history.to_owned(), i, consts, global_nodes));
         }
