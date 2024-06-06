@@ -98,6 +98,10 @@ fn aspiration_windows(
         assert_eq!(0, td.ply);
         let score = negamax::<true>(depth, alpha, beta, pv, td, tt, board, false);
 
+        if td.halt.load(Ordering::Relaxed) {
+            return score;
+        }
+
         if score <= alpha {
             beta = (alpha + beta) / 2;
             alpha = max(score - delta, -INFINITY);
@@ -146,12 +150,6 @@ fn negamax<const IS_PV: bool>(
 
     // Stop if we have reached hard time limit or decided else where it is time to stop
     if td.halt.load(Ordering::Relaxed) {
-        td.halt.store(true, Ordering::Relaxed);
-        return 0;
-    }
-
-    if td.hard_stop() {
-        td.halt.store(true, Ordering::Relaxed);
         return 0;
     }
 
@@ -163,6 +161,11 @@ fn negamax<const IS_PV: bool>(
 
     // Don't prune at root to ensure we have a best move
     if !is_root {
+        if td.thread_id == 0 && td.hard_stop() {
+            td.halt.store(true, Ordering::Relaxed);
+            return 0;
+        }
+
         if board.is_draw() || td.is_repetition(board) {
             return STALEMATE;
         }
@@ -303,6 +306,9 @@ fn negamax<const IS_PV: bool>(
         td.hash_history.pop();
         td.moves.pop();
         td.ply -= 1;
+        if td.halt.load(Ordering::Relaxed) {
+            return 0;
+        }
         // TODO: NMP verification search
 
         if null_eval >= beta {
@@ -454,6 +460,10 @@ fn negamax<const IS_PV: bool>(
         td.moves.pop();
         td.accumulators.pop();
         td.ply -= 1;
+
+        if td.halt.load(Ordering::Relaxed) {
+            return 0;
+        }
 
         best_score = eval.max(best_score);
 
