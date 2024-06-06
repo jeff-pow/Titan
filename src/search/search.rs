@@ -20,7 +20,6 @@ pub const INFINITY: i32 = 30000;
 pub const MAX_SEARCH_DEPTH: i32 = 100;
 
 pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &TranspositionTable) -> Move {
-    println!("Thread {} starting", td.thread_id);
     td.search_start = Instant::now();
     td.nodes_table = [[0; 64]; 64];
     td.nodes.reset();
@@ -58,7 +57,7 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
             td.print_search_stats(prev_score, &pv, tt);
         }
 
-        if td.thread_id == 0 && td.soft_stop(depth, prev_score) {
+        if td.soft_stop(depth, prev_score) {
             break;
         }
 

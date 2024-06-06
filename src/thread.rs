@@ -106,9 +106,7 @@ impl<'a> ThreadData<'a> {
     pub(super) fn hard_stop(&mut self) -> bool {
         match self.search_type {
             SearchType::Mate(_) | SearchType::Depth(_) | SearchType::Infinite => self.halt.load(Ordering::Relaxed),
-            SearchType::Time(time) => {
-                self.nodes.check_time() && self.thread_id == 0 && time.hard_termination(self.search_start)
-            }
+            SearchType::Time(time) => self.nodes.check_time() && time.hard_termination(self.search_start),
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
         }
     }
@@ -198,7 +196,7 @@ impl<'a> ThreadPool<'a> {
         consts: &'a LmrTable,
         global_nodes: &'a AtomicU64,
     ) {
-        self.threads= vec![ThreadData::new(self.halt, hash_history.to_owned(), 0, consts, global_nodes)];
+        self.threads = vec![ThreadData::new(self.halt, hash_history.to_owned(), 0, consts, global_nodes)];
         for i in 1..threads {
             self.threads.push(ThreadData::new(self.halt, hash_history.to_owned(), i, consts, global_nodes));
         }
@@ -234,7 +232,9 @@ impl<'a> ThreadPool<'a> {
             let mut clock = parse_time(buffer);
             clock.recommended_time(board.stm);
 
-            self.threads[0].search_type = SearchType::Time(clock);
+            for t in &mut self.threads {
+                t.search_type = SearchType::Time(clock);
+            }
         } else if buffer.contains(&"mate") {
             let mut iter = buffer.iter().skip(2);
             let ply = iter.next().unwrap().parse::<i32>().unwrap();
@@ -251,8 +251,8 @@ impl<'a> ThreadPool<'a> {
             for t in &mut self.threads {
                 s.spawn(|| {
                     start_search(t, t.thread_id == 0, *board, tt);
+                    self.halt.store(true, Ordering::Relaxed);
                     if t.thread_id == 0 {
-                        self.halt.store(true, Ordering::Relaxed);
                         println!("bestmove {}", t.best_move.to_san());
                     }
                 });
