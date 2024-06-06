@@ -75,7 +75,6 @@ impl<'a> ThreadData<'a> {
     }
 
     pub(super) fn node_tm_stop(&mut self, game_time: Clock, depth: i32) -> bool {
-        assert_eq!(0, self.thread_id);
         let m = self.best_move;
         let frac = self.nodes_table[m.from()][m.to()] as f64 / self.nodes.global_count() as f64;
         let time_scale = if depth > 9 { (1.44 - frac) * 1.62 } else { 1.28 };
