@@ -22,11 +22,10 @@ pub(super) fn quiescence<const IS_PV: bool>(
 ) -> i32 {
     // Stop if we have reached hard time limit or decided else where it is time to stop
     if td.halt.load(Ordering::Relaxed) {
-        td.halt.store(true, Ordering::Relaxed);
         return 0;
     }
 
-    if td.hard_stop() {
+    if td.thread_id == 0 && td.hard_stop() {
         td.halt.store(true, Ordering::Relaxed);
         return 0;
     }
@@ -126,6 +125,10 @@ pub(super) fn quiescence<const IS_PV: bool>(
         td.hash_history.pop();
         td.moves.pop();
         td.accumulators.pop();
+
+        if td.halt.load(Ordering::Relaxed) {
+            return 0;
+        }
 
         if eval > best_score {
             best_score = eval;

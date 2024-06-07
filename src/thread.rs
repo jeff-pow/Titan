@@ -75,7 +75,6 @@ impl<'a> ThreadData<'a> {
     }
 
     pub(super) fn node_tm_stop(&mut self, game_time: Clock, depth: i32) -> bool {
-        assert_eq!(0, self.thread_id);
         let m = self.best_move;
         let frac = self.nodes_table[m.from()][m.to()] as f64 / self.nodes.global_count() as f64;
         let time_scale = if depth > 9 { (1.44 - frac) * 1.62 } else { 1.28 };
@@ -89,7 +88,9 @@ impl<'a> ThreadData<'a> {
     pub(super) fn soft_stop(&mut self, depth: i32, prev_score: i32) -> bool {
         match self.search_type {
             SearchType::Depth(d) => depth >= d,
-            SearchType::Time(time) => self.node_tm_stop(time, depth) || time.soft_termination(self.search_start),
+            SearchType::Time(time) => {
+                self.thread_id == 0 && self.node_tm_stop(time, depth) || time.soft_termination(self.search_start)
+            }
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
             SearchType::Infinite => self.halt.load(Ordering::Relaxed),
             SearchType::Mate(d) => {
@@ -106,9 +107,7 @@ impl<'a> ThreadData<'a> {
     pub(super) fn hard_stop(&mut self) -> bool {
         match self.search_type {
             SearchType::Mate(_) | SearchType::Depth(_) | SearchType::Infinite => self.halt.load(Ordering::Relaxed),
-            SearchType::Time(time) => {
-                self.nodes.check_time() && self.thread_id == 0 && time.hard_termination(self.search_start)
-            }
+            SearchType::Time(time) => self.nodes.check_time() && time.hard_termination(self.search_start),
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
         }
     }
@@ -198,7 +197,7 @@ impl<'a> ThreadPool<'a> {
         consts: &'a LmrTable,
         global_nodes: &'a AtomicU64,
     ) {
-        self.threads.clear();
+        self.threads = vec![ThreadData::new(self.halt, hash_history.to_owned(), 0, consts, global_nodes)];
         for i in 1..threads {
             self.threads.push(ThreadData::new(self.halt, hash_history.to_owned(), i, consts, global_nodes));
         }
@@ -216,6 +215,7 @@ impl<'a> ThreadPool<'a> {
         self.halt.store(false, Ordering::Relaxed);
         for t in &mut self.threads {
             hash_history.clone_into(&mut t.hash_history);
+            t.nodes.reset();
         }
 
         if buffer.contains(&"depth") {
@@ -234,6 +234,9 @@ impl<'a> ThreadPool<'a> {
             let mut clock = parse_time(buffer);
             clock.recommended_time(board.stm);
 
+            for t in &mut self.threads {
+                t.search_type = SearchType::Infinite;
+            }
             self.threads[0].search_type = SearchType::Time(clock);
         } else if buffer.contains(&"mate") {
             let mut iter = buffer.iter().skip(2);
@@ -251,8 +254,8 @@ impl<'a> ThreadPool<'a> {
             for t in &mut self.threads {
                 s.spawn(|| {
                     start_search(t, t.thread_id == 0, *board, tt);
+                    self.halt.store(true, Ordering::Relaxed);
                     if t.thread_id == 0 {
-                        self.halt.store(true, Ordering::Relaxed);
                         println!("bestmove {}", t.best_move.to_san());
                     }
                 });
