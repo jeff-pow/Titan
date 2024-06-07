@@ -39,9 +39,9 @@ pub struct ThreadData<'a> {
 
     // pub game_time: GameTime,
     pub search_start: Instant,
-    pub thread_id: usize,
+    thread_id: usize,
     pub search_type: SearchType,
-    pub halt: &'a AtomicBool,
+    halt: &'a AtomicBool,
     pub lmr: &'a LmrTable,
     pub moves: Vec<String>,
 }
@@ -74,12 +74,19 @@ impl<'a> ThreadData<'a> {
         }
     }
 
+    pub fn set_halt(&self, x: bool) {
+        self.halt.store(x, Ordering::Relaxed)
+    }
+
+    pub fn halt(&self) -> bool {
+        self.halt.load(Ordering::Relaxed)
+    }
+
     pub(super) fn node_tm_stop(&mut self, game_time: Clock, depth: i32) -> bool {
         let m = self.best_move;
         let frac = self.nodes_table[m.from()][m.to()] as f64 / self.nodes.global_count() as f64;
         let time_scale = if depth > 9 { (1.44 - frac) * 1.62 } else { 1.28 };
         if self.search_start.elapsed().as_millis() as f64 >= game_time.rec_time.as_millis() as f64 * time_scale {
-            self.halt.store(true, Ordering::Relaxed);
             return true;
         }
         false
@@ -89,7 +96,7 @@ impl<'a> ThreadData<'a> {
         match self.search_type {
             SearchType::Depth(d) => depth >= d,
             SearchType::Time(time) => {
-                self.thread_id == 0 && self.node_tm_stop(time, depth) || time.soft_termination(self.search_start)
+                self.main_thread() && self.node_tm_stop(time, depth) || time.soft_termination(self.search_start)
             }
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
             SearchType::Infinite => self.halt.load(Ordering::Relaxed),
@@ -149,7 +156,7 @@ impl<'a> ThreadData<'a> {
         }
 
         let mut reps = 2;
-        for &hash in self.hash_history.iter().rev().take(board.half_moves + 1) {
+        for &hash in self.hash_history.iter().rev().take(board.half_moves + 1).step_by(2) {
             reps -= u32::from(hash == board.zobrist_hash);
             if reps == 0 {
                 return true;
@@ -157,12 +164,14 @@ impl<'a> ThreadData<'a> {
         }
         false
     }
+
+    pub fn main_thread(&self) -> bool {
+        self.thread_id == 0
+    }
 }
 
 pub struct ThreadPool<'a> {
     pub threads: Vec<ThreadData<'a>>,
-    pub halt: &'a AtomicBool,
-    pub searching: AtomicBool,
 }
 
 impl<'a> ThreadPool<'a> {
@@ -172,10 +181,16 @@ impl<'a> ThreadPool<'a> {
         consts: &'a LmrTable,
         global_nodes: &'a AtomicU64,
     ) -> Self {
-        Self {
-            threads: vec![ThreadData::new(halt, hash_history, 0, consts, global_nodes)],
-            halt,
-            searching: AtomicBool::new(false),
+        Self { threads: vec![ThreadData::new(halt, hash_history, 0, consts, global_nodes)] }
+    }
+
+    /// This thread creates a number of workers equal to threads - 1. If 4 threads are requested,
+    /// the main thread counts as one and then the remaining three are placed in the worker queue.
+    pub fn add_workers(&mut self, threads: usize) {
+        // Might as well use whatever history values the main thread has if any.
+        self.threads = vec![self.threads[0].clone(); threads];
+        for (idx, t) in self.threads.iter_mut().enumerate() {
+            t.thread_id = idx;
         }
     }
 
@@ -183,23 +198,6 @@ impl<'a> ThreadPool<'a> {
         for t in &mut self.threads {
             t.history = HistoryTable::default();
             t.nodes.reset();
-        }
-        self.halt.store(false, Ordering::Relaxed);
-        self.searching.store(false, Ordering::Relaxed);
-    }
-
-    /// This thread creates a number of workers equal to threads - 1. If 4 threads are requested,
-    /// the main thread counts as one and then the remaining three are placed in the worker queue.
-    pub fn add_workers(
-        &mut self,
-        threads: usize,
-        hash_history: &[u64],
-        consts: &'a LmrTable,
-        global_nodes: &'a AtomicU64,
-    ) {
-        self.threads = vec![ThreadData::new(self.halt, hash_history.to_owned(), 0, consts, global_nodes)];
-        for i in 1..threads {
-            self.threads.push(ThreadData::new(self.halt, hash_history.to_owned(), i, consts, global_nodes));
         }
     }
 
@@ -212,7 +210,7 @@ impl<'a> ThreadPool<'a> {
         hash_history: &[u64],
         tt: &TranspositionTable,
     ) {
-        self.halt.store(false, Ordering::Relaxed);
+        halt.store(false, Ordering::Relaxed);
         for t in &mut self.threads {
             hash_history.clone_into(&mut t.hash_history);
             t.nodes.reset();
@@ -253,9 +251,9 @@ impl<'a> ThreadPool<'a> {
         thread::scope(|s| {
             for t in &mut self.threads {
                 s.spawn(|| {
-                    start_search(t, t.thread_id == 0, *board, tt);
-                    self.halt.store(true, Ordering::Relaxed);
-                    if t.thread_id == 0 {
+                    start_search(t, t.main_thread(), *board, tt);
+                    halt.store(true, Ordering::Relaxed);
+                    if t.main_thread() {
                         println!("bestmove {}", t.best_move.to_san());
                     }
                 });

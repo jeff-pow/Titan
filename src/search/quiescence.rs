@@ -21,12 +21,12 @@ pub(super) fn quiescence<const IS_PV: bool>(
     board: &Board,
 ) -> i32 {
     // Stop if we have reached hard time limit or decided else where it is time to stop
-    if td.halt.load(Ordering::Relaxed) {
+    if td.halt() {
         return 0;
     }
 
-    if td.thread_id == 0 && td.hard_stop() {
-        td.halt.store(true, Ordering::Relaxed);
+    if td.main_thread() && td.hard_stop() {
+        td.set_halt(true);
         return 0;
     }
 
@@ -126,7 +126,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
         td.moves.pop();
         td.accumulators.pop();
 
-        if td.halt.load(Ordering::Relaxed) {
+        if td.halt() {
             return 0;
         }
 

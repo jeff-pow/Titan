@@ -63,11 +63,6 @@ pub fn main_loop() -> ! {
                 board.debug_bitboards();
             }
             "bench" => bench(),
-            "clear" => {
-                println!("Engine state cleared");
-                thread_pool.reset();
-                transpos_table.clear();
-            }
             "go" => {
                 thread_pool.handle_go(&input, &board, &halt, &mut msg, &hash_history, &transpos_table);
             }
@@ -85,9 +80,7 @@ pub fn main_loop() -> ! {
                     transpos_table = TranspositionTable::new(x.parse().unwrap());
                 }
                 ["setoption", "name", "Clear", "Hash"] => transpos_table.clear(),
-                ["setoption", "name", "Threads", "value", x] => {
-                    thread_pool.add_workers(x.parse().unwrap(), &hash_history, &consts, &global_nodes)
-                }
+                ["setoption", "name", "Threads", "value", x] => thread_pool.add_workers(x.parse().unwrap()),
                 _ => println!("Option not recognized"),
             },
             _ => (),

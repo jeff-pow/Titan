@@ -19,15 +19,14 @@ pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
 pub const INFINITY: i32 = 30000;
 pub const MAX_SEARCH_DEPTH: i32 = 100;
 
-pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &TranspositionTable) -> Move {
+pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &TranspositionTable) {
     td.search_start = Instant::now();
     td.nodes_table = [[0; 64]; 64];
+    td.best_move = Move::NULL;
     td.stack = SearchStack::default();
     td.accumulators.clear(&board.new_accumulator());
 
-    let best_move = iterative_deepening(td, &board, print_uci, tt);
-    assert_ne!(best_move, Move::NULL);
-    best_move
+    iterative_deepening(td, &board, print_uci, tt);
 }
 
 /// Rather than sticking to a fixed depth for search, gradually ramping up the search depth by one
@@ -35,7 +34,7 @@ pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &Tra
 /// finishing quickly, building up important structures like transposition and history tables along
 /// the way. As a result, for more expensive depths, we already have a good idea of the best move
 /// and can maximize the efficacy of alpha beta pruning.
-pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, tt: &TranspositionTable) -> Move {
+pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, tt: &TranspositionTable) {
     let mut pv = PV::default();
     let mut prev_score = -INFINITY;
     let mut depth = 1;
@@ -50,6 +49,12 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
         prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt);
 
         assert_eq!(0, td.accumulators.top);
+
+        if td.halt() {
+            break;
+        }
+
+        // Only update best move if the search wasn't aborted
         td.best_move = pv.line[0];
 
         if print_uci {
@@ -57,19 +62,14 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
         }
 
         if td.soft_stop(depth, prev_score) {
-            td.halt.store(true, Ordering::Relaxed);
+            td.set_halt(true);
             break;
         }
 
-        if td.halt.load(Ordering::Relaxed) {
-            break;
-        }
         depth += 1;
     }
 
     assert_ne!(td.best_move, Move::NULL);
-
-    td.best_move
 }
 
 /// Aspiration windows place a bound around the likely range the score for a search will fall
@@ -98,7 +98,7 @@ fn aspiration_windows(
         assert_eq!(0, td.ply);
         let score = negamax::<true>(depth, alpha, beta, pv, td, tt, board, false);
 
-        if td.halt.load(Ordering::Relaxed) {
+        if td.halt() {
             return score;
         }
 
@@ -148,8 +148,8 @@ fn negamax<const IS_PV: bool>(
 
     td.sel_depth = td.sel_depth.max(td.ply);
 
-    if td.thread_id == 0 && td.hard_stop() {
-        td.halt.store(true, Ordering::Relaxed);
+    if td.main_thread() && td.hard_stop() {
+        td.set_halt(true);
         return 0;
     }
 
@@ -162,7 +162,7 @@ fn negamax<const IS_PV: bool>(
     // Don't prune at root to ensure we have a best move
     if !is_root {
         // Stop if we have reached hard time limit or decided else where it is time to stop
-        if td.halt.load(Ordering::Relaxed) {
+        if td.halt() {
             return 0;
         }
 
@@ -306,7 +306,7 @@ fn negamax<const IS_PV: bool>(
         td.hash_history.pop();
         td.moves.pop();
         td.ply -= 1;
-        if td.halt.load(Ordering::Relaxed) {
+        if td.halt() {
             return 0;
         }
         // TODO: NMP verification search
@@ -461,7 +461,7 @@ fn negamax<const IS_PV: bool>(
         td.accumulators.pop();
         td.ply -= 1;
 
-        if td.halt.load(Ordering::Relaxed) {
+        if td.halt() {
             return 0;
         }
 
