@@ -22,7 +22,6 @@ pub const MAX_SEARCH_DEPTH: i32 = 100;
 pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &TranspositionTable) -> Move {
     td.search_start = Instant::now();
     td.nodes_table = [[0; 64]; 64];
-    td.nodes.reset();
     td.stack = SearchStack::default();
     td.accumulators.clear(&board.new_accumulator());
 
@@ -57,7 +56,8 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
             td.print_search_stats(prev_score, &pv, tt);
         }
 
-        if td.thread_id == 0 && td.soft_stop(depth, prev_score) {
+        if td.soft_stop(depth, prev_score) {
+            td.halt.store(true, Ordering::Relaxed);
             break;
         }
 
@@ -97,6 +97,10 @@ fn aspiration_windows(
     loop {
         assert_eq!(0, td.ply);
         let score = negamax::<true>(depth, alpha, beta, pv, td, tt, board, false);
+
+        if td.halt.load(Ordering::Relaxed) {
+            return score;
+        }
 
         if score <= alpha {
             beta = (alpha + beta) / 2;
@@ -144,13 +148,7 @@ fn negamax<const IS_PV: bool>(
 
     td.sel_depth = td.sel_depth.max(td.ply);
 
-    // Stop if we have reached hard time limit or decided else where it is time to stop
-    if td.halt.load(Ordering::Relaxed) {
-        td.halt.store(true, Ordering::Relaxed);
-        return 0;
-    }
-
-    if td.hard_stop() {
+    if td.thread_id == 0 && td.hard_stop() {
         td.halt.store(true, Ordering::Relaxed);
         return 0;
     }
@@ -163,6 +161,11 @@ fn negamax<const IS_PV: bool>(
 
     // Don't prune at root to ensure we have a best move
     if !is_root {
+        // Stop if we have reached hard time limit or decided else where it is time to stop
+        if td.halt.load(Ordering::Relaxed) {
+            return 0;
+        }
+
         if board.is_draw() || td.is_repetition(board) {
             return STALEMATE;
         }
@@ -303,6 +306,9 @@ fn negamax<const IS_PV: bool>(
         td.hash_history.pop();
         td.moves.pop();
         td.ply -= 1;
+        if td.halt.load(Ordering::Relaxed) {
+            return 0;
+        }
         // TODO: NMP verification search
 
         if null_eval >= beta {
@@ -454,6 +460,10 @@ fn negamax<const IS_PV: bool>(
         td.moves.pop();
         td.accumulators.pop();
         td.ply -= 1;
+
+        if td.halt.load(Ordering::Relaxed) {
+            return 0;
+        }
 
         best_score = eval.max(best_score);
 

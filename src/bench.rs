@@ -1,5 +1,5 @@
 use std::{
-    sync::atomic::{AtomicBool, AtomicU64},
+    sync::atomic::{AtomicBool, AtomicU64, Ordering},
     time::Instant,
 };
 
@@ -30,6 +30,7 @@ pub fn bench() {
         nodes += thread.nodes.local_count();
         transpos_table.age_up();
         thread.nodes.reset();
+        halt.store(false, Ordering::Relaxed);
     }
 
     let time = start.elapsed().as_secs_f64();
