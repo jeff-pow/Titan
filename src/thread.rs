@@ -88,7 +88,9 @@ impl<'a> ThreadData<'a> {
     pub(super) fn soft_stop(&mut self, depth: i32, prev_score: i32) -> bool {
         match self.search_type {
             SearchType::Depth(d) => depth >= d,
-            SearchType::Time(time) => self.node_tm_stop(time, depth) || time.soft_termination(self.search_start),
+            SearchType::Time(time) => {
+                self.thread_id == 0 && self.node_tm_stop(time, depth) || time.soft_termination(self.search_start)
+            }
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
             SearchType::Infinite => self.halt.load(Ordering::Relaxed),
             SearchType::Mate(d) => {
@@ -213,6 +215,7 @@ impl<'a> ThreadPool<'a> {
         self.halt.store(false, Ordering::Relaxed);
         for t in &mut self.threads {
             hash_history.clone_into(&mut t.hash_history);
+            t.nodes.reset();
         }
 
         if buffer.contains(&"depth") {
@@ -232,8 +235,9 @@ impl<'a> ThreadPool<'a> {
             clock.recommended_time(board.stm);
 
             for t in &mut self.threads {
-                t.search_type = SearchType::Time(clock);
+                t.search_type = SearchType::Infinite;
             }
+            self.threads[0].search_type = SearchType::Time(clock);
         } else if buffer.contains(&"mate") {
             let mut iter = buffer.iter().skip(2);
             let ply = iter.next().unwrap().parse::<i32>().unwrap();

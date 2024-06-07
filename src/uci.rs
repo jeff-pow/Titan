@@ -48,7 +48,7 @@ pub fn main_loop() -> ! {
             "ucinewgame" => {
                 transpos_table.clear();
                 halt.store(false, Ordering::Relaxed);
-                thread_pool = ThreadPool::new(&halt, Vec::new(), &consts, &global_nodes);
+                thread_pool.reset();
             }
             "eval" => {
                 let acc = board.new_accumulator();
