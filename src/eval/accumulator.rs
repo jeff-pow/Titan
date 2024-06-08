@@ -222,7 +222,7 @@ pub struct AccumulatorStack {
 }
 
 impl AccumulatorStack {
-    pub fn update_stack(&mut self, m: Move, capture: Piece) {
+    pub fn push_move(&mut self, m: Move, capture: Piece) {
         self.top += 1;
         self.stack[self.top].m = m;
         self.stack[self.top].capture = capture;
@@ -366,7 +366,7 @@ mod acc_test {
     macro_rules! make_move_nnue {
         ($board:ident, $stack:ident, $mv_str:literal) => {{
             let m = Move::from_san($mv_str, &$board);
-            $stack.update_stack(m, $board.capture(m));
+            $stack.push_move(m, $board.capture(m));
             assert!($board.make_move(m));
         }};
     }

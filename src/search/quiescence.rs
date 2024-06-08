@@ -1,5 +1,3 @@
-use std::sync::atomic::Ordering;
-
 use crate::board::Board;
 use crate::chess_move::Move;
 use crate::movelist::MoveListEntry;
@@ -111,7 +109,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
         if !new_b.make_move(m) {
             continue;
         }
-        td.accumulators.update_stack(m, board.piece_at(m.to()));
+        td.accumulators.push_move(m, board.piece_at(m.to()));
         td.hash_history.push(new_b.zobrist_hash);
         td.stack[td.ply].played_move = m;
         td.moves.push(m.to_san());

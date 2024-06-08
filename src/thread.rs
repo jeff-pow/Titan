@@ -24,7 +24,6 @@ use crate::{
 #[derive(Clone)]
 pub struct ThreadData<'a> {
     pub ply: i32,
-    // pub max_depth: i32,
     pub iter_max_depth: i32,
     /// Max depth reached by search (include qsearch)
     pub sel_depth: i32,
@@ -51,7 +50,7 @@ impl<'a> ThreadData<'a> {
         halt: &'a AtomicBool,
         hash_history: Vec<u64>,
         thread_idx: usize,
-        consts: &'a LmrTable,
+        lmr: &'a LmrTable,
         global_nodes: &'a AtomicU64,
     ) -> Self {
         Self {
@@ -68,7 +67,7 @@ impl<'a> ThreadData<'a> {
             search_type: SearchType::default(),
             hash_history,
             thread_id: thread_idx,
-            lmr: consts,
+            lmr,
             search_start: Instant::now(),
             moves: Vec::new(),
         }
@@ -175,13 +174,8 @@ pub struct ThreadPool<'a> {
 }
 
 impl<'a> ThreadPool<'a> {
-    pub fn new(
-        halt: &'a AtomicBool,
-        hash_history: Vec<u64>,
-        consts: &'a LmrTable,
-        global_nodes: &'a AtomicU64,
-    ) -> Self {
-        Self { threads: vec![ThreadData::new(halt, hash_history, 0, consts, global_nodes)] }
+    pub fn new(halt: &'a AtomicBool, hash_history: Vec<u64>, lmr: &'a LmrTable, global_nodes: &'a AtomicU64) -> Self {
+        Self { threads: vec![ThreadData::new(halt, hash_history, 0, lmr, global_nodes)] }
     }
 
     /// This thread creates a number of workers equal to threads - 1. If 4 threads are requested,
