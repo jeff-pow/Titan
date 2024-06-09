@@ -15,10 +15,10 @@ pub fn bench() {
 
     let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
     let halt = AtomicBool::new(false);
-    let consts = LmrTable::new();
+    let lmr = LmrTable::new();
     let global_nodes = AtomicU64::new(0);
 
-    let mut thread = ThreadData::new(&halt, Vec::new(), 0, &consts, &global_nodes);
+    let mut thread = ThreadData::new(&halt, Vec::new(), 0, &lmr, &global_nodes);
 
     thread.search_type = SearchType::Depth(14);
 

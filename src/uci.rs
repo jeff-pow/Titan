@@ -18,12 +18,12 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub fn main_loop() -> ! {
     let mut transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
     let mut board = Board::from_fen(STARTING_FEN);
-    let consts = LmrTable::new();
+    let lmr = LmrTable::new();
     let mut msg: Option<String> = None;
     let mut hash_history = Vec::new();
     let halt = AtomicBool::new(false);
     let global_nodes = AtomicU64::new(0);
-    let mut thread_pool = ThreadPool::new(&halt, Vec::new(), &consts, &global_nodes);
+    let mut thread_pool = ThreadPool::new(&halt, Vec::new(), &lmr, &global_nodes);
     println!("{ENGINE_NAME} v{VERSION} by {}", env!("CARGO_PKG_AUTHORS"));
 
     loop {
@@ -63,11 +63,6 @@ pub fn main_loop() -> ! {
                 board.debug_bitboards();
             }
             "bench" => bench(),
-            "clear" => {
-                println!("Engine state cleared");
-                thread_pool.reset();
-                transpos_table.clear();
-            }
             "go" => {
                 thread_pool.handle_go(&input, &board, &halt, &mut msg, &hash_history, &transpos_table);
             }
@@ -85,9 +80,7 @@ pub fn main_loop() -> ! {
                     transpos_table = TranspositionTable::new(x.parse().unwrap());
                 }
                 ["setoption", "name", "Clear", "Hash"] => transpos_table.clear(),
-                ["setoption", "name", "Threads", "value", x] => {
-                    thread_pool.add_workers(x.parse().unwrap(), &hash_history, &consts, &global_nodes)
-                }
+                ["setoption", "name", "Threads", "value", x] => thread_pool.add_workers(x.parse().unwrap()),
                 _ => println!("Option not recognized"),
             },
             _ => (),

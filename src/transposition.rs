@@ -9,16 +9,6 @@ use std::{
     sync::atomic::{AtomicI16, AtomicU16, AtomicU64, AtomicU8, Ordering},
 };
 
-/**
-* The transposition table stores a list of previously seen results from searches in the chess
-* engine. In the desire to support parallel searches, the table is made thread safe by storing data
-* in AtomicU64s. Since each entry takes up two AtomicU64s, write races could occur. This is
-* resolved by using a method where the two AtomicU64s that are related to each other are xor-ed
-* before being stored or retrieved from the table, and since xor loses no information, if after
-* reading from the table the hash from the table entry matches the board hash being looked at, the
-* rest of the information in the entry is known to be valid as well.
-**/
-
 #[derive(Clone, Copy, Debug, Default)]
 #[repr(C)]
 /// Storing a 32 bit move in the transposition table is a waste of space, as 16 bits contains all
