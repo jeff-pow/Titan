@@ -1,5 +1,3 @@
-use std::sync::atomic::Ordering;
-
 use crate::board::Board;
 use crate::chess_move::Move;
 use crate::movelist::MoveListEntry;
@@ -21,12 +19,12 @@ pub(super) fn quiescence<const IS_PV: bool>(
     board: &Board,
 ) -> i32 {
     // Stop if we have reached hard time limit or decided else where it is time to stop
-    if td.halt.load(Ordering::Relaxed) {
+    if td.halt() {
         return 0;
     }
 
-    if td.thread_id == 0 && td.hard_stop() {
-        td.halt.store(true, Ordering::Relaxed);
+    if td.main_thread() && td.hard_stop() {
+        td.set_halt(true);
         return 0;
     }
 
@@ -111,7 +109,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
         if !new_b.make_move(m) {
             continue;
         }
-        td.accumulators.update_stack(m, board.piece_at(m.to()));
+        td.accumulators.push_move(m, board.piece_at(m.to()));
         td.hash_history.push(new_b.zobrist_hash);
         td.stack[td.ply].played_move = m;
         td.moves.push(m.to_san());
@@ -126,7 +124,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
         td.moves.pop();
         td.accumulators.pop();
 
-        if td.halt.load(Ordering::Relaxed) {
+        if td.halt() {
             return 0;
         }
 

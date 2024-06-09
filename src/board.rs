@@ -18,7 +18,6 @@ use crate::{
 };
 
 #[derive(Copy, Clone, PartialEq, Eq)]
-// TODO: Fit boards within 192 bytes since cpus copy in chunks of 64 bytes
 pub struct Board {
     bitboards: [Bitboard; NUM_PIECES],
     color_occupancies: [Bitboard; 2],

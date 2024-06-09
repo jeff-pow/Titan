@@ -1,6 +1,6 @@
 [package]
 name = "titan"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 authors = ["Jeff Powell"]
 
@@ -23,4 +23,3 @@ incremental = true
 
 [profile.dev]
 overflow-checks = false
-# opt-level = 1
