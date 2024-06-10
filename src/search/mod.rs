@@ -17,7 +17,7 @@ pub struct PlyEntry {
     pub cutoffs: u32,
     pub singular: Move,
     /// Double extensions
-    pub dbl_extns: i32,
+    pub multi_extns: i32,
 }
 
 #[derive(Default)]
@@ -35,7 +35,7 @@ impl PV {
 
 #[derive(Clone)]
 pub struct SearchStack {
-    stack: [PlyEntry; MAX_SEARCH_DEPTH as usize],
+    stack: [PlyEntry; MAX_SEARCH_DEPTH as usize + 5],
 }
 
 impl SearchStack {
@@ -46,7 +46,7 @@ impl SearchStack {
 
 impl Default for SearchStack {
     fn default() -> Self {
-        Self { stack: [PlyEntry::default(); MAX_SEARCH_DEPTH as usize] }
+        Self { stack: [PlyEntry::default(); MAX_SEARCH_DEPTH as usize + 5] }
     }
 }
 

@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use crate::board::Board;
 use crate::chess_move::Move;
-use crate::movelist::MoveListEntry;
+use crate::movelist::{MoveListEntry, MAX_LEN};
 use crate::movepicker::MovePicker;
 use crate::search::SearchStack;
 use crate::thread::ThreadData;
@@ -250,16 +250,11 @@ fn negamax<const IS_PV: bool>(
     };
 
     // TODO: Killers should probably be reset here
-    // TODO: Just make search stack longer to allow for slight over indexing on the right side
     // td.stack[td.ply + 1].killers = [Move::NULL; 2];
-    if td.ply < MAX_SEARCH_DEPTH - 1 {
-        td.stack[td.ply + 1].singular = Move::NULL;
-    }
-    if td.ply < MAX_SEARCH_DEPTH - 2 {
-        td.stack[td.ply + 2].cutoffs = 0;
-    }
+    td.stack[td.ply + 1].singular = Move::NULL;
+    td.stack[td.ply + 2].cutoffs = 0;
     if !is_root {
-        td.stack[td.ply].dbl_extns = td.stack[td.ply - 1].dbl_extns;
+        td.stack[td.ply].multi_extns = td.stack[td.ply - 1].multi_extns;
     }
 
     // Pre-move loop pruning
@@ -321,11 +316,11 @@ fn negamax<const IS_PV: bool>(
     let mut moves_searched = 0;
     let mut picker = MovePicker::new(tt_move, td, -197, false);
 
-    let mut quiets_tried = ArrayVec::<_, 218>::new();
-    let mut tacticals_tried = ArrayVec::<_, 218>::new();
+    let mut quiets_tried = ArrayVec::<_, MAX_LEN>::new();
+    let mut tacticals_tried = ArrayVec::<_, MAX_LEN>::new();
 
     // Start of search
-    while let Some(MoveListEntry { m, score: _hist_score }) = picker.next(board, td) {
+    while let Some(MoveListEntry { m, .. }) = picker.next(board, td) {
         // Don't consider the singular move in a verification search
         if m == singular_move {
             continue;
@@ -471,7 +466,9 @@ fn negamax<const IS_PV: bool>(
 
         alpha = eval;
         best_move = m;
-        pv.update(best_move, node_pv);
+        if IS_PV {
+            pv.update(best_move, node_pv);
+        }
 
         if eval < beta {
             continue;
@@ -561,8 +558,8 @@ fn extension<const IS_PV: bool>(
     td.accumulators.push(prev);
 
     if ext_score < ext_beta {
-        if td.stack[td.ply].dbl_extns < 10 && !IS_PV && ext_score < ext_beta - 18 {
-            td.stack[td.ply].dbl_extns += 1;
+        if td.stack[td.ply].multi_extns < 10 && !IS_PV && ext_score < ext_beta - 18 {
+            td.stack[td.ply].multi_extns += 1;
             2 + i32::from(!tt_move.is_tactical(board) && ext_score < ext_beta - 224)
         } else {
             1

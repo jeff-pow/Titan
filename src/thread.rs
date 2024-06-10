@@ -36,7 +36,6 @@ pub struct ThreadData<'a> {
     pub hash_history: Vec<u64>,
     pub accumulators: AccumulatorStack,
 
-    // pub game_time: GameTime,
     pub search_start: Instant,
     thread_id: usize,
     pub search_type: SearchType,

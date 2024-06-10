@@ -98,13 +98,6 @@ pub(super) fn quiescence<const IS_PV: bool>(
         let mut node_pv = PV::default();
         let mut new_b = *board;
 
-        // Static exchange pruning - If we fail to immediately recapture a depth dependent
-        // threshold, don't bother searching the move. Ensure we either have a legal evasion or
-        // aren't in check before pruning
-        // if (!in_check || moves_searched > 1) && !board.see(m, 1) {
-        //     continue;
-        // }
-
         tt.prefetch(board.hash_after(m));
         if !new_b.make_move(m) {
             continue;
@@ -134,7 +127,9 @@ pub(super) fn quiescence<const IS_PV: bool>(
             if eval > alpha {
                 best_move = m;
                 alpha = eval;
-                pv.update(best_move, node_pv);
+                if IS_PV {
+                    pv.update(best_move, node_pv);
+                }
             }
 
             if alpha >= beta {
