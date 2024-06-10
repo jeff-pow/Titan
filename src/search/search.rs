@@ -217,7 +217,7 @@ fn negamax<const IS_PV: bool>(
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
 
-    let static_eval = if in_check {
+    let static_eval = if board.in_check() {
         -INFINITY
     } else if let Some(entry) = entry {
         // Get static eval from transposition table if possible
@@ -232,7 +232,9 @@ fn negamax<const IS_PV: bool>(
         }
         eval
     } else {
-        td.accumulators.evaluate(board)
+        let eval = td.accumulators.evaluate(board);
+        tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, -INFINITY, td.ply, tt_pv, eval);
+        eval
     };
 
     td.stack[td.ply].static_eval = static_eval;
@@ -268,7 +270,7 @@ fn negamax<const IS_PV: bool>(
         && depth < 9
         && static_eval.abs() < NEAR_CHECKMATE
     {
-        // Make sure this returns a score < checkmate
+        // TODO: Make sure this returns a score < checkmate
         return (static_eval + beta) / 2;
     }
 

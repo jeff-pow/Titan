@@ -56,7 +56,6 @@ pub(super) fn quiescence<const IS_PV: bool>(
         table_move = e.best_move(board);
     }
 
-    // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
     let stand_pat = if board.in_check() {
         -INFINITY
     } else if let Some(entry) = entry {
@@ -72,13 +71,14 @@ pub(super) fn quiescence<const IS_PV: bool>(
         }
         eval
     } else {
-        td.accumulators.evaluate(board)
+        let eval = td.accumulators.evaluate(board);
+        // TODO: Store 0 depth here
+        tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, -INFINITY, td.ply, tt_pv, eval);
+        eval
     };
     td.stack[td.ply].static_eval = stand_pat;
-    // Store eval in tt if it wasn't previously found in tt
-    if entry.is_none() && !board.in_check() {
-        tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, INFINITY, td.ply, tt_pv, stand_pat);
-    }
+
+    // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
     if stand_pat >= beta {
         return stand_pat;
     }
