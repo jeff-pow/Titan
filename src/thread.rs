@@ -24,7 +24,6 @@ use crate::{
 #[derive(Clone)]
 pub struct ThreadData<'a> {
     pub ply: i32,
-    pub iter_max_depth: i32,
     /// Max depth reached by search (include qsearch)
     pub sel_depth: i32,
     pub best_move: Move,
@@ -54,7 +53,6 @@ impl<'a> ThreadData<'a> {
     ) -> Self {
         Self {
             ply: 0,
-            iter_max_depth: 0,
             stack: SearchStack::default(),
             sel_depth: 0,
             best_move: Move::NULL,
@@ -117,12 +115,12 @@ impl<'a> ThreadData<'a> {
         }
     }
 
-    pub(super) fn print_search_stats(&self, eval: i32, pv: &PV, tt: &TranspositionTable) {
+    pub(super) fn print_search_stats(&self, eval: i32, pv: &PV, tt: &TranspositionTable, depth: i32) {
         let nodes = self.nodes.global_count();
         print!(
             "info time {} depth {} seldepth {} nodes {} nps {} score ",
             self.search_start.elapsed().as_millis(),
-            self.iter_max_depth,
+            depth,
             self.sel_depth,
             nodes,
             (nodes as f64 / self.search_start.elapsed().as_secs_f64()) as i64,

@@ -40,13 +40,12 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
     let mut depth = 1;
 
     loop {
-        td.iter_max_depth = depth;
-        td.ply = 0;
         td.sel_depth = 0;
 
+        assert_eq!(0, td.ply);
         assert_eq!(0, td.accumulators.top);
 
-        prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt);
+        prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt, depth);
 
         assert_eq!(0, td.accumulators.top);
 
@@ -58,7 +57,7 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
         td.best_move = pv.line[0];
 
         if print_uci {
-            td.print_search_stats(prev_score, &pv, tt);
+            td.print_search_stats(prev_score, &pv, tt, depth);
         }
 
         if td.soft_stop(depth, prev_score) {
@@ -81,15 +80,16 @@ fn aspiration_windows(
     prev_score: i32,
     board: &Board,
     tt: &TranspositionTable,
+    iter_depth: i32,
 ) -> i32 {
     let mut alpha = -INFINITY;
     let mut beta = INFINITY;
     // Asp window should start wider if score is more extreme
     let mut delta = 5 + prev_score * prev_score / 9534;
 
-    let mut depth = td.iter_max_depth;
+    let mut depth = iter_depth;
 
-    if td.iter_max_depth >= 2 {
+    if depth >= 2 {
         alpha = alpha.max(prev_score - delta);
         beta = beta.min(prev_score + delta);
     }
@@ -107,7 +107,7 @@ fn aspiration_windows(
             alpha = max(score - delta, -INFINITY);
             // If move/position proves to not be as good as we thought, we need to do a full depth
             // search to get the best idea possible of its actual score.
-            depth = td.iter_max_depth;
+            depth = iter_depth;
         } else if score >= beta {
             beta = min(score + delta, INFINITY);
             // If window is better than beta, we have a potentially untrustworthy best move that we
@@ -364,8 +364,8 @@ fn negamax<const IS_PV: bool>(
         }
 
         let mut new_b = *board;
-        // Make move filters out illegal moves by returning false if a move was illegal
         tt.prefetch(board.hash_after(m));
+        // Make move filters out illegal moves by returning false if a move was illegal
         if !new_b.make_move(m) {
             continue;
         }

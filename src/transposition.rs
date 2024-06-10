@@ -151,11 +151,11 @@ const MAX_AGE: u64 = (1 << 5) - 1;
 impl TranspositionTable {
     pub fn prefetch(&self, hash: u64) {
         #[cfg(target_arch = "x86_64")]
-        use std::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
+        use std::arch::x86_64::{_mm_prefetch, _MM_HINT_ET0};
         unsafe {
             let index = index(hash, self.vec.len());
             let entry = self.vec.get_unchecked(index);
-            _mm_prefetch::<_MM_HINT_T0>((entry as *const InternalEntry).cast())
+            _mm_prefetch::<_MM_HINT_ET0>((entry as *const InternalEntry).cast())
         }
     }
 
