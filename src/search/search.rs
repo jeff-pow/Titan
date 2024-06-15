@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use crate::board::Board;
 use crate::chess_move::Move;
-use crate::movelist::MoveListEntry;
+use crate::movelist::{MoveListEntry, MAX_LEN};
 use crate::movepicker::MovePicker;
 use crate::search::SearchStack;
 use crate::thread::ThreadData;
@@ -40,13 +40,12 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
     let mut depth = 1;
 
     loop {
-        td.iter_max_depth = depth;
-        td.ply = 0;
         td.sel_depth = 0;
 
+        assert_eq!(0, td.ply);
         assert_eq!(0, td.accumulators.top);
 
-        prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt);
+        prev_score = aspiration_windows(td, &mut pv, prev_score, board, tt, depth);
 
         assert_eq!(0, td.accumulators.top);
 
@@ -58,7 +57,7 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
         td.best_move = pv.line[0];
 
         if print_uci {
-            td.print_search_stats(prev_score, &pv, tt);
+            td.print_search_stats(prev_score, &pv, tt, depth);
         }
 
         if td.soft_stop(depth, prev_score) {
@@ -81,15 +80,16 @@ fn aspiration_windows(
     prev_score: i32,
     board: &Board,
     tt: &TranspositionTable,
+    iter_depth: i32,
 ) -> i32 {
     let mut alpha = -INFINITY;
     let mut beta = INFINITY;
     // Asp window should start wider if score is more extreme
     let mut delta = 5 + prev_score * prev_score / 9534;
 
-    let mut depth = td.iter_max_depth;
+    let mut depth = iter_depth;
 
-    if td.iter_max_depth >= 2 {
+    if depth >= 2 {
         alpha = alpha.max(prev_score - delta);
         beta = beta.min(prev_score + delta);
     }
@@ -107,7 +107,7 @@ fn aspiration_windows(
             alpha = max(score - delta, -INFINITY);
             // If move/position proves to not be as good as we thought, we need to do a full depth
             // search to get the best idea possible of its actual score.
-            depth = td.iter_max_depth;
+            depth = iter_depth;
         } else if score >= beta {
             beta = min(score + delta, INFINITY);
             // If window is better than beta, we have a potentially untrustworthy best move that we
@@ -217,7 +217,7 @@ fn negamax<const IS_PV: bool>(
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
 
-    let static_eval = if in_check {
+    let static_eval = if board.in_check() {
         -INFINITY
     } else if let Some(entry) = entry {
         // Get static eval from transposition table if possible
@@ -232,7 +232,9 @@ fn negamax<const IS_PV: bool>(
         }
         eval
     } else {
-        td.accumulators.evaluate(board)
+        let eval = td.accumulators.evaluate(board);
+        tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, -INFINITY, td.ply, tt_pv, eval);
+        eval
     };
 
     td.stack[td.ply].static_eval = static_eval;
@@ -250,16 +252,11 @@ fn negamax<const IS_PV: bool>(
     };
 
     // TODO: Killers should probably be reset here
-    // TODO: Just make search stack longer to allow for slight over indexing on the right side
     // td.stack[td.ply + 1].killers = [Move::NULL; 2];
-    if td.ply < MAX_SEARCH_DEPTH - 1 {
-        td.stack[td.ply + 1].singular = Move::NULL;
-    }
-    if td.ply < MAX_SEARCH_DEPTH - 2 {
-        td.stack[td.ply + 2].cutoffs = 0;
-    }
+    td.stack[td.ply + 1].singular = Move::NULL;
+    td.stack[td.ply + 2].cutoffs = 0;
     if !is_root {
-        td.stack[td.ply].dbl_extns = td.stack[td.ply - 1].dbl_extns;
+        td.stack[td.ply].multi_extns = td.stack[td.ply - 1].multi_extns;
     }
 
     // Pre-move loop pruning
@@ -273,7 +270,7 @@ fn negamax<const IS_PV: bool>(
         && depth < 9
         && static_eval.abs() < NEAR_CHECKMATE
     {
-        // Make sure this returns a score < checkmate
+        // TODO: Make sure this returns a score < checkmate
         return (static_eval + beta) / 2;
     }
 
@@ -321,11 +318,11 @@ fn negamax<const IS_PV: bool>(
     let mut moves_searched = 0;
     let mut picker = MovePicker::new(tt_move, td, -197, false);
 
-    let mut quiets_tried = ArrayVec::<_, 218>::new();
-    let mut tacticals_tried = ArrayVec::<_, 218>::new();
+    let mut quiets_tried = ArrayVec::<_, MAX_LEN>::new();
+    let mut tacticals_tried = ArrayVec::<_, MAX_LEN>::new();
 
     // Start of search
-    while let Some(MoveListEntry { m, score: _hist_score }) = picker.next(board, td) {
+    while let Some(MoveListEntry { m, .. }) = picker.next(board, td) {
         // Don't consider the singular move in a verification search
         if m == singular_move {
             continue;
@@ -369,8 +366,8 @@ fn negamax<const IS_PV: bool>(
         }
 
         let mut new_b = *board;
-        // Make move filters out illegal moves by returning false if a move was illegal
         tt.prefetch(board.hash_after(m));
+        // Make move filters out illegal moves by returning false if a move was illegal
         if !new_b.make_move(m) {
             continue;
         }
@@ -471,7 +468,9 @@ fn negamax<const IS_PV: bool>(
 
         alpha = eval;
         best_move = m;
-        pv.update(best_move, node_pv);
+        if IS_PV {
+            pv.update(best_move, node_pv);
+        }
 
         if eval < beta {
             continue;
@@ -561,8 +560,8 @@ fn extension<const IS_PV: bool>(
     td.accumulators.push(prev);
 
     if ext_score < ext_beta {
-        if td.stack[td.ply].dbl_extns < 10 && !IS_PV && ext_score < ext_beta - 18 {
-            td.stack[td.ply].dbl_extns += 1;
+        if td.stack[td.ply].multi_extns < 10 && !IS_PV && ext_score < ext_beta - 18 {
+            td.stack[td.ply].multi_extns += 1;
             2 + i32::from(!tt_move.is_tactical(board) && ext_score < ext_beta - 224)
         } else {
             1
