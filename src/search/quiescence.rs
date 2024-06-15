@@ -56,7 +56,6 @@ pub(super) fn quiescence<const IS_PV: bool>(
         table_move = e.best_move(board);
     }
 
-    // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
     let stand_pat = if board.in_check() {
         -INFINITY
     } else if let Some(entry) = entry {
@@ -72,13 +71,14 @@ pub(super) fn quiescence<const IS_PV: bool>(
         }
         eval
     } else {
-        td.accumulators.evaluate(board)
+        let eval = td.accumulators.evaluate(board);
+        // TODO: Store 0 depth here
+        tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, -INFINITY, td.ply, tt_pv, eval);
+        eval
     };
     td.stack[td.ply].static_eval = stand_pat;
-    // Store eval in tt if it wasn't previously found in tt
-    if entry.is_none() && !board.in_check() {
-        tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, INFINITY, td.ply, tt_pv, stand_pat);
-    }
+
+    // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
     if stand_pat >= beta {
         return stand_pat;
     }
@@ -97,13 +97,6 @@ pub(super) fn quiescence<const IS_PV: bool>(
     while let Some(MoveListEntry { m, .. }) = picker.next(board, td) {
         let mut node_pv = PV::default();
         let mut new_b = *board;
-
-        // Static exchange pruning - If we fail to immediately recapture a depth dependent
-        // threshold, don't bother searching the move. Ensure we either have a legal evasion or
-        // aren't in check before pruning
-        // if (!in_check || moves_searched > 1) && !board.see(m, 1) {
-        //     continue;
-        // }
 
         tt.prefetch(board.hash_after(m));
         if !new_b.make_move(m) {
@@ -134,7 +127,9 @@ pub(super) fn quiescence<const IS_PV: bool>(
             if eval > alpha {
                 best_move = m;
                 alpha = eval;
-                pv.update(best_move, node_pv);
+                if IS_PV {
+                    pv.update(best_move, node_pv);
+                }
             }
 
             if alpha >= beta {
