@@ -49,7 +49,7 @@ impl Board {
             'b' => Color::Black,
             _ => panic!("Invalid turn"),
         };
-        board.zobrist_hash = board.generate_hash();
+        (board.zobrist_hash, board.pawn_hash) = board.generate_hashes();
         board.calculate_threats();
         board.pinned_and_checkers();
 
@@ -64,7 +64,7 @@ impl Board {
         if let Some(idx) = en_passant_idx {
             board.en_passant_square = Some(Square(idx));
         }
-        board.zobrist_hash = board.generate_hash();
+        (board.zobrist_hash, board.pawn_hash) = board.generate_hashes();
 
         let half_moves = iter.next();
         if let Some(half_moves) = half_moves {

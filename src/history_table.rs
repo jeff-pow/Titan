@@ -1,5 +1,6 @@
 use crate::{board::Board, chess_move::Move, types::pieces::PieceName};
 
+use crate::correction::CorrectionTable;
 use crate::search::SearchStack;
 
 pub const MAX_HIST_VAL: i32 = 16384;
@@ -26,7 +27,8 @@ impl Default for HistoryEntry {
 
 #[derive(Clone)]
 pub struct HistoryTable {
-    search_history: Box<[[HistoryEntry; 64]; 12]>,
+    search_hist: Box<[[HistoryEntry; 64]; 12]>,
+    pub corr_hist: Box<CorrectionTable>,
 }
 
 fn update_history(score: &mut i32, bonus: i32) {
@@ -91,39 +93,39 @@ impl HistoryTable {
     }
 
     fn update_quiet_history(&mut self, m: Move, bonus: i32) {
-        let i = &mut self.search_history[m.piece_moving()][m.to()].score;
+        let i = &mut self.search_hist[m.piece_moving()][m.to()].score;
         update_history(i, bonus);
     }
 
     pub(crate) fn quiet_history(&self, m: Move, stack: &SearchStack, ply: i32) -> i32 {
-        self.search_history[m.piece_moving()][m.to()].score + self.cont_hist(m, stack, ply)
+        self.search_hist[m.piece_moving()][m.to()].score + self.cont_hist(m, stack, ply)
     }
 
     fn set_counter(&mut self, prev: Move, m: Move) {
-        self.search_history[prev.piece_moving()][prev.to()].counter = m;
+        self.search_hist[prev.piece_moving()][prev.to()].counter = m;
     }
 
     pub fn get_counter(&self, m: Move) -> Move {
         if m == Move::NULL {
             Move::NULL
         } else {
-            self.search_history[m.piece_moving()][m.to()].counter
+            self.search_hist[m.piece_moving()][m.to()].counter
         }
     }
 
     fn update_capt_hist(&mut self, m: Move, capture: PieceName, bonus: i32) {
-        let i = &mut self.search_history[m.piece_moving()][m.to()].capt_hist[capture];
+        let i = &mut self.search_hist[m.piece_moving()][m.to()].capt_hist[capture];
         update_history(i, bonus);
     }
 
     pub fn capt_hist(&self, m: Move, board: &Board) -> i32 {
         let cap = capthist_capture(board, m);
-        self.search_history[m.piece_moving()][m.to()].capt_hist[cap]
+        self.search_hist[m.piece_moving()][m.to()].capt_hist[cap]
     }
 
     fn update_cont_hist(&mut self, m: Move, stack: &SearchStack, ply: i32, bonus: i32) {
         let prevs = [stack.prev_move(ply - 1), stack.prev_move(ply - 2), stack.prev_move(ply - 4)];
-        let entry = &mut self.search_history[m.piece_moving()][m.to()].cont_hist;
+        let entry = &mut self.search_hist[m.piece_moving()][m.to()].cont_hist;
         for prev in prevs {
             if prev != Move::NULL {
                 let i = &mut entry[prev.piece_moving().name()][prev.to()];
@@ -135,7 +137,7 @@ impl HistoryTable {
     pub(crate) fn cont_hist(&self, m: Move, stack: &SearchStack, ply: i32) -> i32 {
         let mut score = 0;
         let prevs = [stack.prev_move(ply - 1), stack.prev_move(ply - 2), stack.prev_move(ply - 4)];
-        let entry = &self.search_history[m.piece_moving()][m.to()];
+        let entry = &self.search_hist[m.piece_moving()][m.to()];
         for prev in prevs {
             if prev != Move::NULL {
                 score += entry.cont_hist[prev.piece_moving().name()][prev.to()];
@@ -147,6 +149,9 @@ impl HistoryTable {
 
 impl Default for HistoryTable {
     fn default() -> Self {
-        Self { search_history: Box::new([[HistoryEntry::default(); 64]; 12]) }
+        Self {
+            search_hist: Box::new([[HistoryEntry::default(); 64]; 12]),
+            corr_hist: Box::new(CorrectionTable::default()),
+        }
     }
 }

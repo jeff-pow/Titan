@@ -13,7 +13,7 @@ pub mod search;
 pub struct PlyEntry {
     pub killer_move: Move,
     pub played_move: Move,
-    pub static_eval: i32,
+    pub estimated_eval: i32,
     pub cutoffs: u32,
     pub singular: Move,
     /// Double extensions

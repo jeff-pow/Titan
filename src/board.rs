@@ -17,6 +17,10 @@ use crate::{
     zobrist::ZOBRIST,
 };
 
+const _: () = const {
+    assert!(std::mem::size_of::<Board>() <= 192, "If the board exceeds this size, its above three 64 byte cache lines.")
+};
+
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Board {
     bitboards: [Bitboard; NUM_PIECES],
@@ -26,9 +30,10 @@ pub struct Board {
     pub stm: Color,
     pub castling_rights: u32,
     pub en_passant_square: Option<Square>,
-    pub num_moves: usize,
-    pub half_moves: usize,
+    pub num_moves: u16,
+    pub half_moves: u16,
     pub zobrist_hash: u64,
+    pub pawn_hash: u64,
     threats: Bitboard,
     checkers: Bitboard,
     pinned: Bitboard,
@@ -150,6 +155,9 @@ impl Board {
         self.bitboards[piece.name()] ^= sq.bitboard();
         self.color_occupancies[piece.color()] ^= sq.bitboard();
         self.zobrist_hash ^= ZOBRIST.piece[piece][sq];
+        if piece.name() == PieceName::Pawn {
+            self.pawn_hash ^= ZOBRIST.piece[piece][sq];
+        }
     }
 
     fn remove_piece(&mut self, sq: Square) {
@@ -159,6 +167,9 @@ impl Board {
             self.bitboards[piece.name()] ^= sq.bitboard();
             self.color_occupancies[piece.color()] ^= sq.bitboard();
             self.zobrist_hash ^= ZOBRIST.piece[piece][sq];
+            if piece.name() == PieceName::Pawn {
+                self.pawn_hash ^= ZOBRIST.piece[piece][sq];
+            }
         }
     }
 
@@ -388,6 +399,7 @@ impl Board {
         // Xor out the old en passant square hash
         if let Some(sq) = self.en_passant_square {
             self.zobrist_hash ^= ZOBRIST.en_passant[sq];
+            self.pawn_hash ^= ZOBRIST.en_passant[sq];
         }
         // If the end index of a move is 16 squares from the start (and a pawn moved), an en passant is possible
         self.en_passant_square = None;
@@ -404,6 +416,7 @@ impl Board {
         // Xor in the new en passant square hash
         if let Some(sq) = self.en_passant_square {
             self.zobrist_hash ^= ZOBRIST.en_passant[sq];
+            self.pawn_hash ^= ZOBRIST.en_passant[sq];
         }
 
         // If a piece isn't captured and a pawn isn't moved, increment the half move clock.
@@ -421,6 +434,7 @@ impl Board {
 
         self.stm = !self.stm;
         self.zobrist_hash ^= ZOBRIST.turn;
+        self.pawn_hash ^= ZOBRIST.turn;
 
         self.num_moves += 1;
 
@@ -434,10 +448,12 @@ impl Board {
     pub fn make_null_move(&mut self) {
         self.stm = !self.stm;
         self.zobrist_hash ^= ZOBRIST.turn;
+        self.pawn_hash ^= ZOBRIST.turn;
         self.num_moves += 1;
         self.half_moves += 1;
         if let Some(sq) = self.en_passant_square {
             self.zobrist_hash ^= ZOBRIST.en_passant[sq];
+            self.pawn_hash ^= ZOBRIST.en_passant[sq];
         }
         self.en_passant_square = None;
         self.calculate_threats();
@@ -473,6 +489,7 @@ impl Board {
             num_moves: 0,
             half_moves: 0,
             zobrist_hash: 0,
+            pawn_hash: 0,
             threats: Bitboard::EMPTY,
             checkers: Bitboard::EMPTY,
             pinned: Bitboard::EMPTY,
