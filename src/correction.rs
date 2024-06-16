@@ -24,7 +24,7 @@ impl CorrectionTable {
     pub(crate) fn update_table(&mut self, depth: i32, corrected_eval: i32, search_score: i32, board: &Board) {
         let entry = &mut self.table[board.stm][(board.pawn_hash % TABLE_SIZE as u64) as usize];
         let scaled_error = (search_score - corrected_eval) * GRAIN;
-        let new_weight = (depth * depth + depth + 1).min(64);
+        let new_weight = (depth + 1).min(16);
         let updated_val = *entry * (WEIGHT_SCALE - new_weight) + scaled_error * new_weight;
         *entry = (updated_val / WEIGHT_SCALE).clamp(-MAX, MAX);
     }

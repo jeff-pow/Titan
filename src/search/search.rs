@@ -512,7 +512,6 @@ fn negamax<const IS_PV: bool>(
         if !singular_search && !in_check {
             if let Some(entry) = entry {
                 if (!best_move.is_tactical(board) || best_move == Move::NULL)
-                    && depth >= 1
                     && (entry.flag() == EntryFlag::AlphaUnchanged && best_score <= estimated_eval
                         || entry.flag() == EntryFlag::BetaCutOff && best_score >= estimated_eval
                         || entry.flag() == EntryFlag::Exact)
