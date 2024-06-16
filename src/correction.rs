@@ -13,8 +13,8 @@ impl Default for CorrectionTable {
 
 const GRAIN: i32 = 256;
 const TABLE_SIZE: usize = 16384;
-const MAX: i32 = 12288;
-const WEIGHT_SCALE: i32 = 512;
+const MAX: i32 = 8192;
+const WEIGHT_SCALE: i32 = 256;
 impl CorrectionTable {
     pub(crate) fn corrected_eval(&self, board: &Board, raw_eval: i32) -> i32 {
         let entry = self.table[board.stm][(board.pawn_hash % TABLE_SIZE as u64) as usize];
