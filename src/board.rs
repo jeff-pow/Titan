@@ -399,7 +399,6 @@ impl Board {
         // Xor out the old en passant square hash
         if let Some(sq) = self.en_passant_square {
             self.zobrist_hash ^= ZOBRIST.en_passant[sq];
-            self.pawn_hash ^= ZOBRIST.en_passant[sq];
         }
         // If the end index of a move is 16 squares from the start (and a pawn moved), an en passant is possible
         self.en_passant_square = None;
@@ -416,7 +415,6 @@ impl Board {
         // Xor in the new en passant square hash
         if let Some(sq) = self.en_passant_square {
             self.zobrist_hash ^= ZOBRIST.en_passant[sq];
-            self.pawn_hash ^= ZOBRIST.en_passant[sq];
         }
 
         // If a piece isn't captured and a pawn isn't moved, increment the half move clock.
@@ -434,7 +432,6 @@ impl Board {
 
         self.stm = !self.stm;
         self.zobrist_hash ^= ZOBRIST.turn;
-        self.pawn_hash ^= ZOBRIST.turn;
 
         self.num_moves += 1;
 
@@ -448,12 +445,10 @@ impl Board {
     pub fn make_null_move(&mut self) {
         self.stm = !self.stm;
         self.zobrist_hash ^= ZOBRIST.turn;
-        self.pawn_hash ^= ZOBRIST.turn;
         self.num_moves += 1;
         self.half_moves += 1;
         if let Some(sq) = self.en_passant_square {
             self.zobrist_hash ^= ZOBRIST.en_passant[sq];
-            self.pawn_hash ^= ZOBRIST.en_passant[sq];
         }
         self.en_passant_square = None;
         self.calculate_threats();

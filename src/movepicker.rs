@@ -42,7 +42,7 @@ pub struct MovePicker {
 impl MovePicker {
     pub fn new(tt_move: Move, td: &ThreadData, margin: i32, skip_quiets: bool) -> Self {
         let prev = td.stack.prev_move(td.ply - 1);
-        let counter_move = td.history.get_counter(prev);
+        let counter_move = td.history.counter(prev);
         Self {
             moves: MoveList::default(),
             index: 0,

@@ -105,7 +105,7 @@ impl HistoryTable {
         self.search_hist[prev.piece_moving()][prev.to()].counter = m;
     }
 
-    pub fn get_counter(&self, m: Move) -> Move {
+    pub fn counter(&self, m: Move) -> Move {
         if m == Move::NULL {
             Move::NULL
         } else {

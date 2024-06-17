@@ -55,14 +55,12 @@ impl Board {
 
         if let Some(x) = self.en_passant_square {
             zobrist_hash ^= ZOBRIST.en_passant[x];
-            pawn_hash ^= ZOBRIST.en_passant[x];
         }
 
         zobrist_hash ^= ZOBRIST.castling[self.castling_rights as usize];
 
         if self.stm == Color::Black {
             zobrist_hash ^= ZOBRIST.turn;
-            pawn_hash ^= ZOBRIST.turn;
         }
 
         (zobrist_hash, pawn_hash)
