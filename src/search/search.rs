@@ -290,7 +290,6 @@ fn negamax<const IS_PV: bool>(
         tt.prefetch(board.hash_after(Move::NULL));
         new_b.make_null_move();
         td.stack[td.ply].played_move = Move::NULL;
-        td.moves.push(Move::NULL.to_san());
         td.hash_history.push(new_b.zobrist_hash);
         td.ply += 1;
 
@@ -299,7 +298,6 @@ fn negamax<const IS_PV: bool>(
         let mut null_eval = -negamax::<false>(depth - r, -beta, -beta + 1, &mut node_pv, td, tt, &new_b, !cut_node);
 
         td.hash_history.pop();
-        td.moves.pop();
         td.ply -= 1;
         if td.halt() {
             return 0;
@@ -389,7 +387,6 @@ fn negamax<const IS_PV: bool>(
         td.nodes.increment();
         let pre_search_nodes = td.nodes.local_count();
         td.stack[td.ply].played_move = m;
-        td.moves.push(m.to_san());
         td.hash_history.push(new_b.zobrist_hash);
         td.ply += 1;
         let mut node_pv = PV::default();
@@ -452,7 +449,6 @@ fn negamax<const IS_PV: bool>(
         }
         moves_searched += 1;
         td.hash_history.pop();
-        td.moves.pop();
         td.accumulators.pop();
         td.ply -= 1;
 
