@@ -506,26 +506,28 @@ fn negamax<const IS_PV: bool>(
             }
         }
 
-        if !(singular_search
-            || in_check
-            || best_move.is_tactical(board)
-            || best_score >= beta && best_score <= corrected_eval
-            || best_move == Move::NULL && best_score >= corrected_eval)
-        {
-            td.history.corr_hist.update_table(depth, corrected_eval, best_score, board);
-        }
-        // if !singular_search {
+        // if !in_check && !singular_search && (best_move == Move::NULL || !best_move.is_tactical(board)) {
         //     if let Some(entry) = entry {
-        //         if !in_check
-        //             && !best_move.is_tactical(board)
-        //             && (entry.flag() == EntryFlag::AlphaUnchanged && best_score <= estimated_eval
-        //                 || entry.flag() == EntryFlag::BetaCutOff && best_score >= estimated_eval
-        //                 || entry.flag() == EntryFlag::Exact)
+        //         if entry.flag() == EntryFlag::AlphaUnchanged && best_score < estimated_eval
+        //             || entry.flag() == EntryFlag::BetaCutOff && best_score > estimated_eval
+        //             || entry.flag() == EntryFlag::Exact
         //         {
         //             td.history.corr_hist.update_table(depth, corrected_eval, best_score, board);
         //         }
         //     }
         // }
+        if !singular_search {
+            if let Some(entry) = entry {
+                if !in_check
+                    && !best_move.is_tactical(board)
+                    && (entry.flag() == EntryFlag::AlphaUnchanged && best_score < estimated_eval
+                        || entry.flag() == EntryFlag::BetaCutOff && best_score > estimated_eval
+                        || entry.flag() == EntryFlag::Exact)
+                {
+                    td.history.corr_hist.update_table(depth, corrected_eval, best_score, board);
+                }
+            }
+        }
         // Update history tables on a beta cutoff
         td.history.update_histories(m, &quiets_tried, &tacticals_tried, board, depth, &td.stack, td.ply);
         break;
