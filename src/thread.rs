@@ -40,7 +40,6 @@ pub struct ThreadData<'a> {
     pub search_type: SearchType,
     halt: &'a AtomicBool,
     pub lmr: &'a LmrTable,
-    pub moves: Vec<String>,
 }
 
 impl<'a> ThreadData<'a> {
@@ -66,7 +65,6 @@ impl<'a> ThreadData<'a> {
             thread_id: thread_idx,
             lmr,
             search_start: Instant::now(),
-            moves: Vec::new(),
         }
     }
 
