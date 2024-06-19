@@ -520,8 +520,8 @@ fn negamax<const IS_PV: bool>(
             if let Some(entry) = entry {
                 if !in_check
                     && !best_move.is_tactical(board)
-                    && (entry.flag() == EntryFlag::AlphaUnchanged && best_score < estimated_eval
-                        || entry.flag() == EntryFlag::BetaCutOff && best_score > estimated_eval
+                    && (entry.flag() == EntryFlag::AlphaUnchanged && best_score < corrected_eval
+                        || entry.flag() == EntryFlag::BetaCutOff && best_score > corrected_eval
                         || entry.flag() == EntryFlag::Exact)
                 {
                     td.history.corr_hist.update_table(depth, corrected_eval, best_score, board);
