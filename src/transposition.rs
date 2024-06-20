@@ -115,6 +115,10 @@ impl InternalEntry {
             Move(u32::from(self.best_move.load(Ordering::Relaxed)) | p << 16)
         }
     }
+
+    fn relative_age(&self, gen8: u8) -> u8 {
+        ((GENERATION_CYCLE + gen8 as i32 - self.depth.load(Ordering::Relaxed) as i32) & GENERATION_MASK) as u8
+    }
 }
 
 impl From<TableEntry> for InternalEntry {
@@ -192,9 +196,13 @@ pub struct TranspositionTable {
 
 pub const TARGET_TABLE_SIZE_MB: usize = 16;
 const BYTES_PER_MB: usize = 1024 * 1024;
-const ENTRY_SIZE: usize = size_of::<TableEntry>();
 const MAX_AGE: u64 = 1 << 5;
 const AGE_MASK: u64 = MAX_AGE - 1;
+const DEPTH_OFFSET: i32 = -3;
+const GENERATION_BITS: i32 = 3;
+const GENERATION_DELTA: i32 = 1 << GENERATION_BITS;
+const GENERATION_CYCLE: i32 = 255 + GENERATION_DELTA;
+const GENERATION_MASK: i32 = (0xFF << GENERATION_BITS) & 0xFF;
 
 impl TranspositionTable {
     pub fn prefetch(&self, hash: u64) {
@@ -218,9 +226,9 @@ impl TranspositionTable {
             x.depth.store(0, Ordering::Relaxed);
             x.age_pv_bound.store(0, Ordering::Relaxed);
             x.key.store(0, Ordering::Relaxed);
-            x.search_score.store(0, Ordering::Relaxed);
+            x.search_score.store(-INFINITY as i16, Ordering::Relaxed);
             x.best_move.store(0, Ordering::Relaxed);
-            x.static_eval.store(0, Ordering::Relaxed);
+            x.static_eval.store(-INFINITY as i16, Ordering::Relaxed);
         });
         self.age.0.store(0, Ordering::Relaxed);
     }
@@ -270,11 +278,14 @@ impl TranspositionTable {
         }
 
         // Conditions from Alexandria
-        if old_entry.age() != self.age()
+        if old_entry.relative_age(self.age() as u8) != 0
             || old_entry.key() != key
             || flag == EntryFlag::Exact
-            || depth as usize + 5 + 2 * usize::from(is_pv) > old_entry.depth() as usize
+            || depth - DEPTH_OFFSET + 2 * i32::from(is_pv) > old_entry.depth() as i32 - 4
         {
+            assert!(depth > DEPTH_OFFSET);
+            assert!(depth < 256 + DEPTH_OFFSET);
+
             // Don't overwrite a best move with a null move
 
             if score > NEAR_CHECKMATE {
@@ -286,7 +297,7 @@ impl TranspositionTable {
             let age_pv_bound = (self.age() << 3) as u8 | u8::from(is_pv) << 2 | flag as u8;
 
             old_entry.key.store(key, Ordering::Relaxed);
-            old_entry.depth.store(depth as u8, Ordering::Relaxed);
+            old_entry.depth.store((depth - DEPTH_OFFSET) as u8, Ordering::Relaxed);
             old_entry.age_pv_bound.store(age_pv_bound, Ordering::Relaxed);
             old_entry.search_score.store(score as i16, Ordering::Relaxed);
             old_entry.static_eval.store(static_eval as i16, Ordering::Relaxed);
@@ -318,8 +329,7 @@ impl TranspositionTable {
         self.vec
             .iter()
             .take(1000)
-            .map(|b| &b.entries)
-            .flatten()
+            .flat_map(|b| &b.entries)
             .map(|e| TableEntry::from(e.clone()))
             // We only consider entries meaningful if their age is current (due to age based overwrites)
             // and their depth is > 0. 0 depth entries are from qsearch and should not be counted.
