@@ -217,34 +217,38 @@ fn negamax<const IS_PV: bool>(
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
 
-    let static_eval = if board.in_check() {
-        -INFINITY
+    let raw_eval;
+    let estimated_eval;
+    if board.in_check() {
+        raw_eval = -INFINITY;
+        estimated_eval = -INFINITY;
     } else if let Some(entry) = entry {
         // Get static eval from transposition table if possible
-        let mut eval =
-            if entry.static_eval() != -INFINITY { entry.static_eval() } else { td.accumulators.evaluate(board) };
+        raw_eval = if entry.static_eval() != -INFINITY { entry.static_eval() } else { td.accumulators.evaluate(board) };
         if entry.search_score() != -INFINITY
-            && (entry.flag() == EntryFlag::AlphaUnchanged && entry.search_score() < eval
-                || entry.flag() == EntryFlag::BetaCutOff && entry.search_score() > eval
+            && (entry.flag() == EntryFlag::AlphaUnchanged && entry.search_score() < raw_eval
+                || entry.flag() == EntryFlag::BetaCutOff && entry.search_score() > raw_eval
                 || entry.flag() == EntryFlag::Exact)
         {
-            eval = entry.search_score();
+            estimated_eval = entry.search_score();
+        } else {
+            estimated_eval = raw_eval;
         }
-        eval
     } else {
         let eval = td.accumulators.evaluate(board);
         tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, -INFINITY, td.ply, tt_pv, eval);
-        eval
+        raw_eval = eval;
+        estimated_eval = eval;
     };
 
-    td.stack[td.ply].static_eval = static_eval;
+    td.stack[td.ply].static_eval = estimated_eval;
     let improving = {
         if in_check {
             false
         } else if td.ply > 1 && td.stack[td.ply - 2].static_eval != -INFINITY {
-            static_eval > td.stack[td.ply - 2].static_eval
+            estimated_eval > td.stack[td.ply - 2].static_eval
         } else if td.ply > 3 && td.stack[td.ply - 4].static_eval != -INFINITY {
-            static_eval > td.stack[td.ply - 4].static_eval
+            estimated_eval > td.stack[td.ply - 4].static_eval
         } else {
             // This could be true or false, could experiment with it in the future
             false
@@ -265,13 +269,13 @@ fn negamax<const IS_PV: bool>(
     // Reverse futility pruning (RFP) - If we are below beta by a certain amount, we are unlikely to
     // raise it, so we can prune the nodes that would have followed
     if can_prune
-        && static_eval - 93 * depth + i32::from(improving) * 30 * depth >= beta
-        && static_eval >= beta
+        && estimated_eval - 93 * depth + i32::from(improving) * 30 * depth >= beta
+        && estimated_eval >= beta
         && depth < 9
-        && static_eval.abs() < NEAR_CHECKMATE
+        && estimated_eval.abs() < NEAR_CHECKMATE
     {
         // TODO: Make sure this returns a score < checkmate
-        return (static_eval + beta) / 2;
+        return (estimated_eval + beta) / 2;
     }
 
     // Null move pruning (NMP) - If we can give the opponent a free move and they still can't
@@ -280,7 +284,7 @@ fn negamax<const IS_PV: bool>(
     if can_prune
         && board.has_non_pawns(board.stm)
         && depth >= 2
-        && static_eval >= beta
+        && estimated_eval >= beta
         && td.stack[td.ply - 1].played_move != Move::NULL
         && beta > -NEAR_CHECKMATE
     {
@@ -294,7 +298,7 @@ fn negamax<const IS_PV: bool>(
         td.ply += 1;
 
         // Reduction
-        let r = 4 + depth / 4 + min((static_eval - beta) / 173, 7);
+        let r = 4 + depth / 4 + min((estimated_eval - beta) / 173, 7);
         let mut null_eval = -negamax::<false>(depth - r, -beta, -beta + 1, &mut node_pv, td, tt, &new_b, !cut_node);
 
         td.hash_history.pop();
@@ -348,7 +352,7 @@ fn negamax<const IS_PV: bool>(
                 if !singular_search
                     && !in_check
                     && lmr_depth < 11
-                    && static_eval + 199 + 69 * lmr_depth <= alpha
+                    && estimated_eval + 199 + 69 * lmr_depth <= alpha
                     && alpha < NEAR_CHECKMATE
                 {
                     break;
@@ -406,7 +410,7 @@ fn negamax<const IS_PV: bool>(
             // prior.
             r -= i32::from(td.stack[td.ply].cutoffs < 4);
 
-            r += ((alpha - static_eval) / 337).clamp(0, 2);
+            r += ((alpha - estimated_eval) / 337).clamp(0, 2);
 
             r -= history / 9698;
 
@@ -514,7 +518,7 @@ fn negamax<const IS_PV: bool>(
 
     // Don't save to TT while in a singular extension verification search
     if !singular_search {
-        tt.store(board.zobrist_hash, best_move, depth, entry_flag, best_score, td.ply, tt_pv, static_eval);
+        tt.store(board.zobrist_hash, best_move, depth, entry_flag, best_score, td.ply, tt_pv, raw_eval);
     }
 
     best_score
