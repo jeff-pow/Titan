@@ -4,7 +4,7 @@ use crate::movelist::MoveListEntry;
 use crate::movepicker::MovePicker;
 use crate::search::search::STALEMATE;
 use crate::thread::ThreadData;
-use crate::transposition::{EntryFlag, TranspositionTable};
+use crate::transposition::{Bound, TranspositionTable};
 
 use super::search::MAX_SEARCH_DEPTH;
 use super::search::{CHECKMATE, INFINITY};
@@ -45,10 +45,10 @@ pub(super) fn quiescence<const IS_PV: bool>(
     let mut tt_pv = IS_PV;
     if let Some(e) = entry {
         if match e.flag() {
-            EntryFlag::None => false,
-            EntryFlag::AlphaUnchanged => e.search_score() <= alpha,
-            EntryFlag::BetaCutOff => e.search_score() >= beta,
-            EntryFlag::Exact => true,
+            Bound::None => false,
+            Bound::Upper => e.search_score() <= alpha,
+            Bound::Lower => e.search_score() >= beta,
+            Bound::Exact => true,
         } {
             return e.search_score();
         }
@@ -67,9 +67,9 @@ pub(super) fn quiescence<const IS_PV: bool>(
         raw_eval = if entry.static_eval() != -INFINITY { entry.static_eval() } else { td.accumulators.evaluate(board) };
         let corrected_eval = td.history.corr_hist.corrected_eval(board, raw_eval);
         if entry.search_score() != -INFINITY
-            && (entry.flag() == EntryFlag::AlphaUnchanged && entry.search_score() < raw_eval
-                || entry.flag() == EntryFlag::BetaCutOff && entry.search_score() > raw_eval
-                || entry.flag() == EntryFlag::Exact)
+            && (entry.flag() == Bound::Upper && entry.search_score() < raw_eval
+                || entry.flag() == Bound::Lower && entry.search_score() > raw_eval
+                || entry.flag() == Bound::Exact)
         {
             estimated_eval = entry.search_score();
         } else {
@@ -77,7 +77,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
         }
     } else {
         raw_eval = td.accumulators.evaluate(board);
-        tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, -INFINITY, td.ply, tt_pv, raw_eval);
+        tt.store(board.zobrist_hash, Move::NULL, 0, Bound::None, -INFINITY, td.ply, tt_pv, raw_eval);
         estimated_eval = td.history.corr_hist.corrected_eval(board, raw_eval);
     };
     td.stack[td.ply].estimated_eval = estimated_eval;
@@ -141,11 +141,11 @@ pub(super) fn quiescence<const IS_PV: bool>(
     }
 
     let entry_flag = if best_score >= beta {
-        EntryFlag::BetaCutOff
+        Bound::Lower
     } else if best_score > original_alpha {
-        EntryFlag::Exact
+        Bound::Exact
     } else {
-        EntryFlag::AlphaUnchanged
+        Bound::Upper
     };
 
     tt.store(board.zobrist_hash, best_move, 0, entry_flag, best_score, td.ply, tt_pv, raw_eval);

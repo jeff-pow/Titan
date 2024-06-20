@@ -7,7 +7,7 @@ use crate::movelist::{MoveListEntry, MAX_LEN};
 use crate::movepicker::MovePicker;
 use crate::search::SearchStack;
 use crate::thread::ThreadData;
-use crate::transposition::{EntryFlag, TableEntry, TranspositionTable};
+use crate::transposition::{Bound, TableEntry, TranspositionTable};
 
 use super::quiescence::quiescence;
 use super::PV;
@@ -197,10 +197,10 @@ fn negamax<const IS_PV: bool>(
             && !IS_PV
             && depth <= entry.depth()
             && match tt_flag {
-                EntryFlag::None => false,
-                EntryFlag::Exact => true,
-                EntryFlag::AlphaUnchanged => tt_score <= alpha,
-                EntryFlag::BetaCutOff => tt_score >= beta,
+                Bound::None => false,
+                Bound::Exact => true,
+                Bound::Upper => tt_score <= alpha,
+                Bound::Lower => tt_score >= beta,
             }
         {
             return tt_score;
@@ -240,9 +240,9 @@ fn negamax<const IS_PV: bool>(
         raw_eval = if entry.static_eval() != -INFINITY { entry.static_eval() } else { td.accumulators.evaluate(board) };
         corrected_eval = td.history.corr_hist.corrected_eval(board, raw_eval);
         if entry.search_score() != -INFINITY
-            && (entry.flag() == EntryFlag::AlphaUnchanged && entry.search_score() < raw_eval
-                || entry.flag() == EntryFlag::BetaCutOff && entry.search_score() > raw_eval
-                || entry.flag() == EntryFlag::Exact)
+            && (entry.flag() == Bound::Upper && entry.search_score() < raw_eval
+                || entry.flag() == Bound::Lower && entry.search_score() > raw_eval
+                || entry.flag() == Bound::Exact)
         {
             estimated_eval = entry.search_score();
         } else {
@@ -250,7 +250,7 @@ fn negamax<const IS_PV: bool>(
         }
     } else {
         raw_eval = td.accumulators.evaluate(board);
-        tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, -INFINITY, td.ply, tt_pv, raw_eval);
+        tt.store(board.zobrist_hash, Move::NULL, 0, Bound::None, -INFINITY, td.ply, tt_pv, raw_eval);
         corrected_eval = td.history.corr_hist.corrected_eval(board, raw_eval);
         estimated_eval = corrected_eval;
     };
@@ -506,27 +506,8 @@ fn negamax<const IS_PV: bool>(
             }
         }
 
-        // if !in_check && !singular_search && (best_move == Move::NULL || !best_move.is_tactical(board)) {
-        //     if let Some(entry) = entry {
-        //         if entry.flag() == EntryFlag::AlphaUnchanged && best_score < estimated_eval
-        //             || entry.flag() == EntryFlag::BetaCutOff && best_score > estimated_eval
-        //             || entry.flag() == EntryFlag::Exact
-        //         {
-        //             td.history.corr_hist.update_table(depth, corrected_eval, best_score, board);
-        //         }
-        //     }
-        // }
-        if !singular_search {
-            if let Some(entry) = entry {
-                if !in_check
-                    && !best_move.is_tactical(board)
-                    && (entry.flag() == EntryFlag::AlphaUnchanged && best_score <= corrected_eval
-                        || entry.flag() == EntryFlag::BetaCutOff && best_score >= corrected_eval
-                        || entry.flag() == EntryFlag::Exact)
-                {
-                    td.history.corr_hist.update_table(depth, corrected_eval, best_score, board);
-                }
-            }
+        if !singular_search && !in_check && !best_move.is_tactical(board) {
+            td.history.corr_hist.update_table(depth, corrected_eval, best_score, board);
         }
         // Update history tables on a beta cutoff
         td.history.update_histories(m, &quiets_tried, &tacticals_tried, board, depth, &td.stack, td.ply);
@@ -546,11 +527,11 @@ fn negamax<const IS_PV: bool>(
     }
 
     let entry_flag = if best_score >= beta {
-        EntryFlag::BetaCutOff
+        Bound::Lower
     } else if best_score > original_alpha {
-        EntryFlag::Exact
+        Bound::Exact
     } else {
-        EntryFlag::AlphaUnchanged
+        Bound::Upper
     };
 
     // Don't save to TT while in a singular extension verification search
@@ -576,7 +557,7 @@ fn extension<const IS_PV: bool>(
     let Some(entry) = tt_entry else { return 0 };
     let tt_move = entry.best_move(board);
     if entry.depth() < depth - 3
-        || matches!(entry.flag(), EntryFlag::AlphaUnchanged | EntryFlag::None)
+        || matches!(entry.flag(), Bound::Upper | Bound::None)
         || m != tt_move
         || depth < 7
         || td.ply == 0
