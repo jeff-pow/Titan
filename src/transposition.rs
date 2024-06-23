@@ -193,7 +193,7 @@ impl TranspositionTable {
         m: Move,
         depth: i32,
         flag: EntryFlag,
-        mut score: i32,
+        mut search_score: i32,
         ply: i32,
         is_pv: bool,
         static_eval: i32,
@@ -212,10 +212,10 @@ impl TranspositionTable {
             // Don't overwrite a best move with a null move
             let best_m = if m == Move::NULL && key == old_entry.key { old_entry.best_move } else { m.as_u16() };
 
-            if score > NEAR_CHECKMATE {
-                score += ply;
-            } else if score < -NEAR_CHECKMATE {
-                score -= ply;
+            if search_score > NEAR_CHECKMATE {
+                search_score += ply;
+            } else if search_score < -NEAR_CHECKMATE {
+                search_score -= ply;
             }
 
             let age_pv_bound = (self.age() << 3) as u8 | u8::from(is_pv) << 2 | flag as u8;
@@ -223,7 +223,7 @@ impl TranspositionTable {
                 self.vec.get_unchecked(idx).key.store(key, Ordering::Relaxed);
                 self.vec.get_unchecked(idx).depth.store(depth as u8, Ordering::Relaxed);
                 self.vec.get_unchecked(idx).age_pv_bound.store(age_pv_bound, Ordering::Relaxed);
-                self.vec.get_unchecked(idx).search_score.store(score as i16, Ordering::Relaxed);
+                self.vec.get_unchecked(idx).search_score.store(search_score as i16, Ordering::Relaxed);
                 self.vec.get_unchecked(idx).best_move.store(best_m, Ordering::Relaxed);
                 self.vec.get_unchecked(idx).static_eval.store(static_eval as i16, Ordering::Relaxed);
             }

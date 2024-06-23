@@ -56,40 +56,43 @@ pub(super) fn quiescence<const IS_PV: bool>(
         table_move = e.best_move(board);
     }
 
-    let stand_pat = if board.in_check() {
-        -INFINITY
+    let raw_eval;
+    let estimated_eval;
+    if board.in_check() {
+        raw_eval = -INFINITY;
+        estimated_eval = -INFINITY;
     } else if let Some(entry) = entry {
         // Get static eval from transposition table if possible
-        let mut eval =
-            if entry.static_eval() != -INFINITY { entry.static_eval() } else { td.accumulators.evaluate(board) };
+        raw_eval = if entry.static_eval() != -INFINITY { entry.static_eval() } else { td.accumulators.evaluate(board) };
         if entry.search_score() != -INFINITY
-            && (entry.flag() == EntryFlag::AlphaUnchanged && entry.search_score() < eval
-                || entry.flag() == EntryFlag::BetaCutOff && entry.search_score() > eval
+            && (entry.flag() == EntryFlag::AlphaUnchanged && entry.search_score() < raw_eval
+                || entry.flag() == EntryFlag::BetaCutOff && entry.search_score() > raw_eval
                 || entry.flag() == EntryFlag::Exact)
         {
-            eval = entry.search_score();
+            estimated_eval = entry.search_score();
+        } else {
+            estimated_eval = raw_eval;
         }
-        eval
     } else {
-        let eval = td.accumulators.evaluate(board);
+        raw_eval = td.accumulators.evaluate(board);
         // TODO: Store 0 depth here
-        tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, -INFINITY, td.ply, tt_pv, eval);
-        eval
+        tt.store(board.zobrist_hash, Move::NULL, 0, EntryFlag::None, -INFINITY, td.ply, tt_pv, raw_eval);
+        estimated_eval = raw_eval;
     };
-    td.stack[td.ply].static_eval = stand_pat;
+    td.stack[td.ply].static_eval = estimated_eval;
 
     // Give the engine the chance to stop capturing here if it results in a better end result than continuing the chain of capturing
-    if stand_pat >= beta {
-        return stand_pat;
+    if estimated_eval >= beta {
+        return estimated_eval;
     }
     let original_alpha = alpha;
-    alpha = alpha.max(stand_pat);
+    alpha = alpha.max(estimated_eval);
 
     let in_check = board.in_check();
     // Try to find an evasion if we are in check, otherwise just generate captures
     let mut picker = MovePicker::new(table_move, td, 1, !in_check);
 
-    let mut best_score = if in_check { -CHECKMATE } else { stand_pat };
+    let mut best_score = if in_check { -CHECKMATE } else { estimated_eval };
 
     let mut best_move = Move::NULL;
     let mut moves_searched = 0;
@@ -144,7 +147,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
         EntryFlag::AlphaUnchanged
     };
 
-    tt.store(board.zobrist_hash, best_move, 0, entry_flag, best_score, td.ply, tt_pv, stand_pat);
+    tt.store(board.zobrist_hash, best_move, 0, entry_flag, best_score, td.ply, tt_pv, raw_eval);
 
     if in_check && moves_searched == 0 {
         return -CHECKMATE + td.ply;
