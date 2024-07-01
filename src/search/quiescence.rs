@@ -40,7 +40,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
     }
 
     // Probe transposition table for best move and eval
-    let mut table_move = Move::NULL;
+    let mut table_move = None;
     let entry = tt.get(board.zobrist_hash, td.ply);
     let mut tt_pv = IS_PV;
     if let Some(e) = entry {
@@ -94,20 +94,20 @@ pub(super) fn quiescence<const IS_PV: bool>(
 
     let mut best_score = if in_check { -CHECKMATE } else { estimated_eval };
 
-    let mut best_move = Move::NULL;
+    let mut best_move = None;
     let mut moves_searched = 0;
 
     while let Some(MoveListEntry { m, .. }) = picker.next(board, td) {
         let mut node_pv = PV::default();
         let mut new_b = *board;
 
-        tt.prefetch(board.hash_after(m));
+        tt.prefetch(board.hash_after(Some(m)));
         if !new_b.make_move(m) {
             continue;
         }
         td.accumulators.push_move(m, board.piece_at(m.to()));
         td.hash_history.push(new_b.zobrist_hash);
-        td.stack[td.ply].played_move = m;
+        td.stack[td.ply].played_move = Some(m);
         td.nodes.increment();
         moves_searched += 1;
         td.ply += 1;
@@ -126,7 +126,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
             best_score = eval;
 
             if eval > alpha {
-                best_move = m;
+                best_move = Some(m);
                 alpha = eval;
                 if IS_PV {
                     pv.update(best_move, node_pv);

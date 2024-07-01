@@ -6,6 +6,7 @@ use crate::{
 };
 use std::{
     mem::{size_of, transmute},
+    num::NonZeroU32,
     sync::atomic::{AtomicI16, AtomicU16, AtomicU64, AtomicU8, Ordering},
 };
 
@@ -59,13 +60,13 @@ impl TableEntry {
         i32::from(self.search_score)
     }
 
-    pub fn best_move(self, b: &Board) -> Move {
-        let m = Move(u32::from(self.best_move));
+    pub fn best_move(self, b: &Board) -> Option<Move> {
+        let m = Move(NonZeroU32::new(u32::from(self.best_move))?);
         if b.piece_at(m.from()) == Piece::None {
             Move::NULL
         } else {
             let p = b.piece_at(m.from()) as u32;
-            Move(u32::from(self.best_move) | p << 16)
+            unsafe { Some(Move(NonZeroU32::new_unchecked(u32::from(self.best_move) | p << 16))) }
         }
     }
 }
@@ -118,7 +119,7 @@ impl Default for InternalEntry {
             age_pv_bound: AtomicU8::new(0),
             key: AtomicU16::new(0),
             search_score: AtomicI16::new(-INFINITY as i16),
-            best_move: AtomicU16::new(Move::NULL.as_u16()),
+            best_move: AtomicU16::new(0),
             static_eval: AtomicI16::new(-INFINITY as i16),
         }
     }
@@ -190,7 +191,7 @@ impl TranspositionTable {
     pub fn store(
         &self,
         hash: u64,
-        m: Move,
+        m: Option<Move>,
         depth: i32,
         flag: EntryFlag,
         mut search_score: i32,
@@ -210,7 +211,13 @@ impl TranspositionTable {
             || depth as usize + 5 + 2 * usize::from(is_pv) > old_entry.depth as usize
         {
             // Don't overwrite a best move with a null move
-            let best_m = if m == Move::NULL && key == old_entry.key { old_entry.best_move } else { m.as_u16() };
+            let best_m = if m.is_none() && key == old_entry.key {
+                old_entry.best_move
+            } else if m.is_none() {
+                0
+            } else {
+                m.unwrap().as_u16()
+            };
 
             if search_score > NEAR_CHECKMATE {
                 search_score += ply;
@@ -283,10 +290,10 @@ mod transpos_tests {
         assert!(entry.is_none());
 
         let m = Move::new(Square(12), Square(28), MoveType::Normal, Piece::WhitePawn);
-        table.store(b.zobrist_hash, m, 0, EntryFlag::Exact, 25, 4, false, 25);
+        table.store(b.zobrist_hash, Some(m), 0, EntryFlag::Exact, 25, 4, false, 25);
         let entry = table.get(b.zobrist_hash, 2);
         assert_eq!(25, entry.unwrap().static_eval());
-        assert_eq!(m, entry.unwrap().best_move(&b));
+        assert_eq!(m, entry.unwrap().best_move(&b).unwrap());
     }
 
     #[test]
@@ -295,21 +302,21 @@ mod transpos_tests {
         let table = TranspositionTable::new(64);
 
         let search_score = 37;
-        table.store(0, m, 0, EntryFlag::Exact, search_score, 4, false, 25);
+        table.store(0, Some(m), 0, EntryFlag::Exact, search_score, 4, false, 25);
         let entry = table.get(0, 2);
         assert_eq!(search_score, entry.unwrap().search_score());
 
         table.clear();
         let ply = 15;
         let mated_score = -CHECKMATE + ply;
-        table.store(0, m, 0, EntryFlag::Exact, mated_score, ply, false, 25);
+        table.store(0, Some(m), 0, EntryFlag::Exact, mated_score, ply, false, 25);
         let entry = table.get(0, 2);
         assert_eq!(-CHECKMATE + 2, entry.unwrap().search_score());
 
         table.clear();
         let ply = 12;
         let found_mate = CHECKMATE - ply;
-        table.store(0, m, 0, EntryFlag::Exact, found_mate, ply, false, 25);
+        table.store(0, Some(m), 0, EntryFlag::Exact, found_mate, ply, false, 25);
         let entry = table.get(0, 4);
         assert_eq!(CHECKMATE - 4, entry.unwrap().search_score());
     }

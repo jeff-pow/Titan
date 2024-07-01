@@ -26,7 +26,7 @@ pub struct ThreadData<'a> {
     pub ply: i32,
     /// Max depth reached by search (include qsearch)
     pub sel_depth: i32,
-    pub best_move: Move,
+    pub best_move: Option<Move>,
 
     pub nodes_table: [[u64; 64]; 64],
     pub nodes: AtomicCounter<'a>,
@@ -77,7 +77,7 @@ impl<'a> ThreadData<'a> {
     }
 
     pub(super) fn node_tm_stop(&mut self, game_time: Clock, depth: i32) -> bool {
-        let m = self.best_move;
+        let Some(m) = self.best_move else { return false };
         let frac = self.nodes_table[m.from()][m.to()] as f64 / self.nodes.global_count() as f64;
         let time_scale = if depth > 9 { (1.44 - frac) * 1.62 } else { 1.28 };
         if self.search_start.elapsed().as_millis() as f64 >= game_time.rec_time.as_millis() as f64 * time_scale {
@@ -139,7 +139,7 @@ impl<'a> ThreadData<'a> {
         print!(" hashfull {} pv ", tt.permille_usage());
 
         for m in pv.line.iter().take(pv.line.len()) {
-            print!("{} ", m.to_san());
+            print!("{} ", m.unwrap().to_san());
         }
         println!();
     }
@@ -243,7 +243,7 @@ impl<'a> ThreadPool<'a> {
                     start_search(t, t.main_thread(), *board, tt);
                     halt.store(true, Ordering::Relaxed);
                     if t.main_thread() {
-                        println!("bestmove {}", t.best_move.to_san());
+                        println!("bestmove {}", t.best_move.unwrap().to_san());
                     }
                 });
             }

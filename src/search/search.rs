@@ -326,7 +326,7 @@ fn negamax<const IS_PV: bool>(
     // Start of search
     while let Some(MoveListEntry { m, .. }) = picker.next(board, td) {
         // Don't consider the singular move in a verification search
-        if m == singular_move {
+        if Some(m) == singular_move {
             continue;
         }
         let is_quiet = !m.is_tactical(board);
@@ -368,7 +368,7 @@ fn negamax<const IS_PV: bool>(
         }
 
         let mut new_b = *board;
-        tt.prefetch(board.hash_after(m));
+        tt.prefetch(board.hash_after(Some(m)));
         // Make move filters out illegal moves by returning false if a move was illegal
         if !new_b.make_move(m) {
             continue;
@@ -390,7 +390,7 @@ fn negamax<const IS_PV: bool>(
 
         td.nodes.increment();
         let pre_search_nodes = td.nodes.local_count();
-        td.stack[td.ply].played_move = m;
+        td.stack[td.ply].played_move = Some(m);
         td.hash_history.push(new_b.zobrist_hash);
         td.ply += 1;
         let mut node_pv = PV::default();
@@ -467,7 +467,7 @@ fn negamax<const IS_PV: bool>(
         }
 
         alpha = eval;
-        best_move = m;
+        best_move = Some(m);
         if IS_PV {
             pv.update(best_move, node_pv);
         }
@@ -487,8 +487,8 @@ fn negamax<const IS_PV: bool>(
             // We don't want to store tactical moves in our killer moves, because they are obviously already
             // good.
             // Also don't store killers that we have already stored
-            if td.stack[td.ply].killer_move != m {
-                td.stack[td.ply].killer_move = m;
+            if td.stack[td.ply].killer_move != Some(m) {
+                td.stack[td.ply].killer_move = Some(m);
             }
         }
         // Update history tables on a beta cutoff
@@ -540,20 +540,20 @@ fn extension<const IS_PV: bool>(
     let tt_move = entry.best_move(board);
     if entry.depth() < depth - 3
         || matches!(entry.flag(), EntryFlag::AlphaUnchanged | EntryFlag::None)
-        || m != tt_move
+        || Some(m) != tt_move
         || depth < 7
         || td.ply == 0
-        || tt_move == Move::NULL
     {
         return 0;
     }
+    let Some(tt_move) = tt_move else { return 0 };
 
     let ext_beta = (entry.search_score() - 21 * depth / 16).max(-CHECKMATE);
     let ext_depth = (depth - 1) / 2;
     let mut node_pv = PV::default();
     let npv = &mut node_pv;
 
-    td.stack[td.ply].singular = m;
+    td.stack[td.ply].singular = Some(m);
     let prev = td.accumulators.pop();
     let ext_score = negamax::<false>(ext_depth, ext_beta - 1, ext_beta, npv, td, tt, board, cut_node);
     td.stack[td.ply].singular = Move::NULL;

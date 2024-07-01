@@ -7,7 +7,7 @@ pub const MAX_HIST_VAL: i32 = 16384;
 #[derive(Clone, Copy)]
 pub struct HistoryEntry {
     score: i32,
-    counter: Move,
+    counter: Option<Move>,
     // King can't be captured, so it doesn't need an entry
     capt_hist: [i32; 5],
     cont_hist: [[i32; 64]; 6],
@@ -15,12 +15,7 @@ pub struct HistoryEntry {
 
 impl Default for HistoryEntry {
     fn default() -> Self {
-        Self {
-            score: Default::default(),
-            counter: Move::default(),
-            capt_hist: Default::default(),
-            cont_hist: [[0; 64]; 6],
-        }
+        Self { score: Default::default(), counter: None, capt_hist: Default::default(), cont_hist: [[0; 64]; 6] }
     }
 }
 
@@ -57,13 +52,12 @@ impl HistoryTable {
         ply: i32,
     ) {
         let bonus = (238 * depth).min(2095);
-        assert_ne!(best_move, Move::NULL);
         if best_move.is_tactical(board) {
             let cap = capthist_capture(board, best_move);
             self.update_capt_hist(best_move, cap, bonus);
         } else {
-            if stack.prev_move(ply - 1) != Move::NULL {
-                self.set_counter(stack.prev_move(ply - 1), best_move);
+            if let Some(prev_move) = stack.prev_move(ply - 1) {
+                self.set_counter(prev_move, best_move);
             }
             if depth > 3 || quiets_tried.len() > 1 {
                 self.update_quiet_history(best_move, bonus);
@@ -84,7 +78,6 @@ impl HistoryTable {
             if *m == best_move {
                 continue;
             }
-            assert_ne!(m, &Move::NULL);
             let cap = capthist_capture(board, *m);
             self.update_capt_hist(*m, cap, -bonus);
         }
@@ -100,14 +93,14 @@ impl HistoryTable {
     }
 
     fn set_counter(&mut self, prev: Move, m: Move) {
-        self.search_history[prev.piece_moving()][prev.to()].counter = m;
+        self.search_history[prev.piece_moving()][prev.to()].counter = Some(m);
     }
 
-    pub fn get_counter(&self, m: Move) -> Move {
-        if m == Move::NULL {
-            Move::NULL
-        } else {
+    pub fn get_counter(&self, m: Option<Move>) -> Option<Move> {
+        if let Some(m) = m {
             self.search_history[m.piece_moving()][m.to()].counter
+        } else {
+            None
         }
     }
 
@@ -124,11 +117,9 @@ impl HistoryTable {
     fn update_cont_hist(&mut self, m: Move, stack: &SearchStack, ply: i32, bonus: i32) {
         let prevs = [stack.prev_move(ply - 1), stack.prev_move(ply - 2), stack.prev_move(ply - 4)];
         let entry = &mut self.search_history[m.piece_moving()][m.to()].cont_hist;
-        for prev in prevs {
-            if prev != Move::NULL {
-                let i = &mut entry[prev.piece_moving().name()][prev.to()];
-                update_history(i, bonus);
-            }
+        for prev in prevs.into_iter().flatten() {
+            let i = &mut entry[prev.piece_moving().name()][prev.to()];
+            update_history(i, bonus);
         }
     }
 
@@ -136,10 +127,8 @@ impl HistoryTable {
         let mut score = 0;
         let prevs = [stack.prev_move(ply - 1), stack.prev_move(ply - 2), stack.prev_move(ply - 4)];
         let entry = &self.search_history[m.piece_moving()][m.to()];
-        for prev in prevs {
-            if prev != Move::NULL {
-                score += entry.cont_hist[prev.piece_moving().name()][prev.to()];
-            }
+        for prev in prevs.into_iter().flatten() {
+            score += entry.cont_hist[prev.piece_moving().name()][prev.to()];
         }
         score
     }

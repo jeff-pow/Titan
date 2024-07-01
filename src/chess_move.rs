@@ -1,5 +1,8 @@
 use core::fmt;
-use std::fmt::Display;
+use std::{
+    fmt::Display,
+    num::{NonZero, NonZeroU32},
+};
 
 use crate::{
     board::Board,
@@ -30,6 +33,8 @@ pub enum MoveType {
     EnPassant = 7,
 }
 
+const _: () = assert!(std::mem::size_of::<Move>() == std::mem::size_of::<Option<Move>>());
+
 /// A move needs 16 bits to be stored, but extra information is stored in more bits
 ///
 /// bit  0-5: origin square (from 0 to 63)
@@ -37,15 +42,15 @@ pub enum MoveType {
 /// bit 12-15: special move flag: normal move(0), promotion (1), en passant (2), castling (3)
 /// bit 16-19: piece moving - useful in continuation history
 /// NOTE: en passant bit is set only when a pawn can be captured
-#[derive(Clone, Copy, Default, PartialEq, Eq)]
-pub struct Move(pub u32);
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct Move(pub NonZeroU32);
 
 impl Move {
-    pub const NULL: Self = Self(0);
+    pub const NULL: Option<Self> = None;
 
     pub const fn new(origin: Square, destination: Square, move_type: MoveType, piece_moving: Piece) -> Self {
         let m = origin.0 | (destination.0 << 6) | ((move_type as u32) << 12) | ((piece_moving as u32) << 16);
-        Self(m)
+        unsafe { Self(NonZero::new_unchecked(m)) }
     }
 
     pub fn is_capture(self, board: &Board) -> bool {
@@ -57,12 +62,12 @@ impl Move {
     }
 
     pub fn piece_moving(self) -> Piece {
-        let piece_flag = (self.0 >> 16) & 0b1111;
+        let piece_flag = (self.0.get() >> 16) & 0b1111;
         Piece::from_u32(piece_flag)
     }
 
     pub fn flag(self) -> MoveType {
-        unsafe { std::mem::transmute((self.0 >> 12) as u8 & 0b1111) }
+        unsafe { std::mem::transmute((self.0.get() >> 12) as u8 & 0b1111) }
     }
 
     pub fn is_en_passant(self) -> bool {
@@ -80,20 +85,19 @@ impl Move {
     }
 
     pub const fn from(self) -> Square {
-        Square(self.0 & 0b11_1111)
+        Square(self.0.get() & 0b11_1111)
     }
 
     pub const fn to(self) -> Square {
-        Square(self.0 >> 6 & 0b11_1111)
+        Square(self.0.get() >> 6 & 0b11_1111)
     }
 
     pub fn is_tactical(self, board: &Board) -> bool {
-        (self.promotion().is_some() || self.is_en_passant() || board.occupancies().occupied(self.to()))
-            && self != Self::NULL
+        self.promotion().is_some() || self.is_en_passant() || board.occupancies().occupied(self.to())
     }
 
     pub const fn as_u16(self) -> u16 {
-        self.0 as u16
+        self.0.get() as u16
     }
 
     /// To Short Algebraic Notation
