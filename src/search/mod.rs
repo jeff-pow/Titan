@@ -11,22 +11,22 @@ pub mod search;
 
 #[derive(Clone, Copy, Default)]
 pub struct PlyEntry {
-    pub killer_move: Move,
-    pub played_move: Move,
+    pub killer_move: Option<Move>,
+    pub played_move: Option<Move>,
     pub static_eval: i32,
     pub cutoffs: u32,
-    pub singular: Move,
+    pub singular: Option<Move>,
     /// Double extensions
     pub multi_extns: i32,
 }
 
 #[derive(Default)]
 pub struct PV {
-    pub line: ArrayVec<Move, { MAX_SEARCH_DEPTH as usize }>,
+    pub line: ArrayVec<Option<Move>, { MAX_SEARCH_DEPTH as usize }>,
 }
 
 impl PV {
-    fn update(&mut self, m: Move, other: Self) {
+    fn update(&mut self, m: Option<Move>, other: Self) {
         self.line.clear();
         self.line.push(m);
         self.line.extend(other.line);
@@ -39,8 +39,8 @@ pub struct SearchStack {
 }
 
 impl SearchStack {
-    pub fn prev_move(&self, ply: i32) -> Move {
-        self.stack.get(ply as usize).map_or(Move::NULL, |e| e.played_move)
+    pub fn prev_move(&self, ply: i32) -> Option<Move> {
+        self.stack.get(ply as usize).map(|e| e.played_move)?
     }
 }
 

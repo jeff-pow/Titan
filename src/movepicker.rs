@@ -34,13 +34,13 @@ pub struct MovePicker {
     moves: MoveList,
     index: usize,
 
-    tt_move: Move,
-    killer_move: Move,
-    counter_move: Move,
+    tt_move: Option<Move>,
+    killer_move: Option<Move>,
+    counter_move: Option<Move>,
 }
 
 impl MovePicker {
-    pub fn new(tt_move: Move, td: &ThreadData, margin: i32, skip_quiets: bool) -> Self {
+    pub fn new(tt_move: Option<Move>, td: &ThreadData, margin: i32, skip_quiets: bool) -> Self {
         let prev = td.stack.prev_move(td.ply - 1);
         let counter_move = td.history.get_counter(prev);
         Self {
@@ -59,11 +59,13 @@ impl MovePicker {
     pub fn next(&mut self, board: &Board, td: &ThreadData) -> Option<MoveListEntry> {
         if self.phase == MovePickerPhase::TTMove {
             self.phase = MovePickerPhase::CapturesInit;
-            if board.occupancies().empty(self.tt_move.to()) && self.skip_quiets {
-                return self.next(board, td);
-            }
-            if board.is_pseudo_legal(self.tt_move) {
-                return Some(MoveListEntry { m: self.tt_move, score: TT_MOVE_SCORE });
+            if let Some(tt_move) = self.tt_move {
+                if board.occupancies().empty(tt_move.to()) && self.skip_quiets {
+                    return self.next(board, td);
+                }
+                if board.is_pseudo_legal(self.tt_move) {
+                    return Some(MoveListEntry { m: tt_move, score: TT_MOVE_SCORE });
+                }
             }
         }
 
@@ -88,19 +90,23 @@ impl MovePicker {
 
         if self.phase == MovePickerPhase::Killer {
             self.phase = MovePickerPhase::Counter;
-            if !self.skip_quiets && self.killer_move != self.tt_move && board.is_pseudo_legal(self.killer_move) {
-                return Some(MoveListEntry { m: self.killer_move, score: FIRST_KILLER_SCORE });
+            if let Some(killer) = self.killer_move {
+                if !self.skip_quiets && self.killer_move != self.tt_move && board.is_pseudo_legal(self.killer_move) {
+                    return Some(MoveListEntry { m: killer, score: FIRST_KILLER_SCORE });
+                }
             }
         }
 
         if self.phase == MovePickerPhase::Counter {
             self.phase = MovePickerPhase::QuietsInit;
-            if !self.skip_quiets
-                && self.counter_move != self.tt_move
-                && self.counter_move != self.killer_move
-                && board.is_pseudo_legal(self.counter_move)
-            {
-                return Some(MoveListEntry { m: self.counter_move, score: COUNTER_MOVE_SCORE });
+            if let Some(counter_move) = self.counter_move {
+                if !self.skip_quiets
+                    && self.counter_move != self.tt_move
+                    && self.counter_move != self.killer_move
+                    && board.is_pseudo_legal(self.counter_move)
+                {
+                    return Some(MoveListEntry { m: counter_move, score: COUNTER_MOVE_SCORE });
+                }
             }
         }
 
@@ -146,6 +152,7 @@ impl MovePicker {
 
     /// Determines if a move is stored as a special move by the move picker
     fn is_cached(&self, m: Move) -> bool {
+        let m = Some(m);
         m == self.tt_move || m == self.killer_move || m == self.counter_move
     }
 }

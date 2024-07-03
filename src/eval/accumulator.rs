@@ -14,7 +14,10 @@ use super::{
     Align64, Block, NET,
 };
 use arrayvec::ArrayVec;
-use std::ops::{Index, IndexMut};
+use std::{
+    num::NonZeroU32,
+    ops::{Index, IndexMut},
+};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C, align(64))]
@@ -27,7 +30,12 @@ pub struct Accumulator {
 
 impl Default for Accumulator {
     fn default() -> Self {
-        Self { vals: [NET.feature_bias; 2], correct: [true; 2], m: Move::NULL, capture: Piece::None }
+        Self {
+            vals: [NET.feature_bias; 2],
+            correct: [true; 2],
+            m: Move(NonZeroU32::new(1).unwrap()),
+            capture: Piece::None,
+        }
     }
 }
 

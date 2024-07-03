@@ -97,12 +97,10 @@ impl Board {
         false
     }
 
-    pub fn hash_after(&self, m: Move) -> u64 {
+    pub fn hash_after(&self, m: Option<Move>) -> u64 {
         let mut hash = self.zobrist_hash ^ ZOBRIST.turn;
 
-        if m == Move::NULL {
-            return hash;
-        }
+        let Some(m) = m else { return hash };
 
         hash ^= ZOBRIST.piece[m.piece_moving()][m.from()] ^ ZOBRIST.piece[m.piece_moving()][m.to()];
 
@@ -252,10 +250,8 @@ impl Board {
         self.threats = threats;
     }
 
-    pub(crate) fn is_pseudo_legal(&self, m: Move) -> bool {
-        if m == Move::NULL {
-            return false;
-        }
+    pub(crate) fn is_pseudo_legal(&self, m: Option<Move>) -> bool {
+        let Some(m) = m else { return false };
 
         let from = m.from();
         let to = m.to();
