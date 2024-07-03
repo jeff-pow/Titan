@@ -171,9 +171,9 @@ impl TranspositionTable {
             x.depth.store(0, Ordering::Relaxed);
             x.age_pv_bound.store(0, Ordering::Relaxed);
             x.key.store(0, Ordering::Relaxed);
-            x.search_score.store(0, Ordering::Relaxed);
+            x.search_score.store(-INFINITY as i16, Ordering::Relaxed);
             x.best_move.store(0, Ordering::Relaxed);
-            x.static_eval.store(0, Ordering::Relaxed);
+            x.static_eval.store(-INFINITY as i16, Ordering::Relaxed);
         });
         self.age.0.store(0, Ordering::Relaxed);
     }

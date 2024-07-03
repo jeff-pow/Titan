@@ -415,7 +415,7 @@ fn negamax<const IS_PV: bool>(
             r -= history / 9698;
 
             if tt_pv {
-                r -= 1 + i32::from(cut_node);
+                r -= 1 + i32::from(cut_node)
             }
 
             // Calculate a reduction and calculate a reduced depth, ensuring we won't drop to depth
@@ -486,10 +486,7 @@ fn negamax<const IS_PV: bool>(
         if is_quiet {
             // We don't want to store tactical moves in our killer moves, because they are obviously already
             // good.
-            // Also don't store killers that we have already stored
-            if td.stack[td.ply].killer_move != Some(m) {
-                td.stack[td.ply].killer_move = Some(m);
-            }
+            td.stack[td.ply].killer_move = Some(m);
         }
         // Update history tables on a beta cutoff
         td.history.update_histories(m, &quiets_tried, &tacticals_tried, board, depth, &td.stack, td.ply);
