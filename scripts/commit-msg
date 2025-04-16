@@ -1,0 +1,16 @@
+!/bin/sh
+
+if ! git diff --exit-code --quiet
+then
+    echo "Working directory is not clean; cannot generate bench" >&2
+    exit 1
+fi
+
+BENCH_OUTPUT="$(make bench)"
+if [ $? -ne 0 ]; then
+    exit 1
+fi
+NODES=$(echo "$BENCH_OUTPUT" | tee /dev/stderr | awk '{v=$1}END{print v}')
+
+echo >>"$1"
+echo "bench: $NODES" >>"$1"

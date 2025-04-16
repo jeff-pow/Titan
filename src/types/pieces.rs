@@ -1,8 +1,5 @@
 use crate::impl_index;
-use std::{
-    mem::transmute,
-    ops::{self, Index, IndexMut},
-};
+use std::ops::{self, Index, IndexMut};
 
 impl_index!(Color);
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -35,14 +32,6 @@ impl Color {
         match self {
             Self::White => 0,
             Self::Black => 1,
-        }
-    }
-
-    fn from_u32(val: u32) -> Self {
-        match val {
-            0 => Self::White,
-            1 => Self::Black,
-            _ => panic!("Unexpected value"),
         }
     }
 
@@ -103,13 +92,22 @@ impl PieceName {
         self as usize
     }
 
-    fn from_u32(val: u32) -> Self {
-        assert!((0..7).contains(&val));
-        unsafe { transmute(val as u8) }
-    }
-
     pub fn iter() -> impl Iterator<Item = Self> {
         [Self::Pawn, Self::Knight, Self::Bishop, Self::Rook, Self::Queen, Self::King].into_iter()
+    }
+}
+impl From<u32> for PieceName {
+    fn from(value: u32) -> Self {
+        match value {
+            0 => Self::Pawn,
+            1 => Self::Knight,
+            2 => Self::Bishop,
+            3 => Self::Rook,
+            4 => Self::Queen,
+            5 => Self::King,
+            6 => Self::None,
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -140,11 +138,11 @@ pub enum Piece {
 
 impl Piece {
     pub(crate) fn new(name: PieceName, color: Color) -> Self {
-        unsafe { transmute(((name as u32) << 1 | color as u32) as u8) }
+        ((name as usize) << 1 | color as usize).into()
     }
 
     pub(crate) fn name(self) -> PieceName {
-        PieceName::from_u32(self as u32 >> 1)
+        PieceName::from(self as u32 >> 1)
     }
 
     pub(crate) fn value(self) -> i32 {
@@ -152,12 +150,7 @@ impl Piece {
     }
 
     pub(crate) fn color(self) -> Color {
-        Color::from_u32(self as u32 & 0b1)
-    }
-
-    pub(crate) fn from_u32(x: u32) -> Self {
-        assert!((0..13).contains(&x));
-        unsafe { transmute(x as u8) }
+        Color::from(self as usize & 0b1)
     }
 
     pub(crate) fn char(self) -> String {
@@ -193,6 +186,27 @@ impl Piece {
             Self::BlackKing,
         ]
         .into_iter()
+    }
+}
+
+impl From<usize> for Piece {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => Self::WhitePawn,
+            1 => Self::BlackPawn,
+            2 => Self::WhiteKnight,
+            3 => Self::BlackKnight,
+            4 => Self::WhiteBishop,
+            5 => Self::BlackBishop,
+            6 => Self::WhiteRook,
+            7 => Self::BlackRook,
+            8 => Self::WhiteQueen,
+            9 => Self::BlackQueen,
+            10 => Self::WhiteKing,
+            11 => Self::BlackKing,
+            12 => Self::None,
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -241,18 +255,18 @@ mod piece_tests {
 
     #[test]
     fn test_piece_index_conversion() {
-        assert_eq!(PieceName::from_u32(0), PieceName::Pawn);
-        assert_eq!(PieceName::from_u32(1), PieceName::Knight);
-        assert_eq!(PieceName::from_u32(2), PieceName::Bishop);
-        assert_eq!(PieceName::from_u32(3), PieceName::Rook);
-        assert_eq!(PieceName::from_u32(4), PieceName::Queen);
-        assert_eq!(PieceName::from_u32(5), PieceName::King);
-        assert_eq!(PieceName::from_u32(6), PieceName::None);
+        assert_eq!(PieceName::from(0), PieceName::Pawn);
+        assert_eq!(PieceName::from(1), PieceName::Knight);
+        assert_eq!(PieceName::from(2), PieceName::Bishop);
+        assert_eq!(PieceName::from(3), PieceName::Rook);
+        assert_eq!(PieceName::from(4), PieceName::Queen);
+        assert_eq!(PieceName::from(5), PieceName::King);
+        assert_eq!(PieceName::from(6), PieceName::None);
     }
 
     #[test]
     fn test_piece_color_conversion() {
-        assert_eq!(Color::from_u32(0), Color::White);
-        assert_eq!(Color::from_u32(1), Color::Black);
+        assert_eq!(Color::from(0), Color::White);
+        assert_eq!(Color::from(1), Color::Black);
     }
 }

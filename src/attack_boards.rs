@@ -70,7 +70,7 @@ pub const PAWN_ATTACKS: [[Bitboard; 64]; 2] = [
     const_array!(|sq, 64| pawn_set_attacks(Bitboard(1 << sq), Color::Black)),
 ];
 
-pub const BETWEEN_SQUARES: [[Bitboard; 64]; 64] = {
+pub static BETWEEN_SQUARES: [[Bitboard; 64]; 64] = {
     let mut arr = [[Bitboard::EMPTY; 64]; 64];
     let mut src = 0;
     while src < 64 {
@@ -166,7 +166,7 @@ pub fn valid_pinned_moves(king: Square, pinned: Square) -> Bitboard {
 }
 
 /// Indexed by PINNED_MOVES[King square][Pinned piece]
-const PINNED_MOVES: [[Bitboard; 64]; 64] = const_array!(|sq1, 64| const_array!(|sq2, 64| pinned_attack(sq1, sq2)));
+static PINNED_MOVES: [[Bitboard; 64]; 64] = const_array!(|sq1, 64| const_array!(|sq2, 64| pinned_attack(sq1, sq2)));
 
 #[macro_export]
 /// Credit for this macro goes to akimbo

@@ -123,10 +123,10 @@ fn aspiration_windows(
 /// Principal variation search - uses reduced alpha beta windows around a likely best move candidate
 /// to refute other variations
 ///
-/// cut_node is a parameter that predicts whether or not a node will fail high or not. If cut_node
+/// `cut_node` is a parameter that predicts whether or not a node will fail high or not. If `cut_node`
 /// is true, we expect a beta cutoff or fail high to occur.
 ///
-/// IS_PV denotes a node's PV status. PV nodes (generally) have a difference between alpha and beta
+/// `IS_PV` denotes a node's PV status. PV nodes (generally) have a difference between alpha and beta
 /// of > 1, while in non-PV nodes the window is always beta - alpha = 1. Once a node loses its PV
 /// status, it can never regain it, so the majority of nodes searched are non-PV.
 #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
@@ -226,7 +226,7 @@ fn negamax<const IS_PV: bool>(
         estimated_eval = -INFINITY;
     } else if let Some(entry) = entry {
         // Get static eval from transposition table if possible
-        raw_eval = if entry.static_eval() != -INFINITY { entry.static_eval() } else { td.accumulators.evaluate(board) };
+        raw_eval = if entry.static_eval() == -INFINITY { td.accumulators.evaluate(board) } else { entry.static_eval() };
         corrected_eval = td.history.corr_hist.correct_score(board.stm, board.pawn_hash, raw_eval);
         if entry.search_score() != -INFINITY
             && (entry.flag() == EntryFlag::AlphaUnchanged && entry.search_score() < raw_eval

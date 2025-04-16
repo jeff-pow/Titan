@@ -99,11 +99,7 @@ impl HistoryTable {
     }
 
     pub fn get_counter(&self, m: Option<Move>) -> Option<Move> {
-        if let Some(m) = m {
-            self.search_history[m.piece_moving()][m.to()].counter
-        } else {
-            None
-        }
+        m.and_then(|m| self.search_history[m.piece_moving()][m.to()].counter)
     }
 
     fn update_capt_hist(&mut self, m: Move, capture: PieceName, bonus: i32) {

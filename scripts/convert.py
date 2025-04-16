@@ -14,6 +14,7 @@ moves = "position fen " + board.fen() + " moves"
 
 for move in game.mainline_moves():
     board.push(move)
+    print(moves)
     moves += " " + move.uci()
 
 print(moves)

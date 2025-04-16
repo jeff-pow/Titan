@@ -62,8 +62,8 @@ impl Move {
     }
 
     pub fn piece_moving(self) -> Piece {
-        let piece_flag = (self.0.get() >> 16) & 0b1111;
-        Piece::from_u32(piece_flag)
+        let piece_flag = (self.0.get() as usize >> 16) & 0b1111;
+        Piece::from(piece_flag)
     }
 
     pub fn flag(self) -> MoveType {
@@ -142,7 +142,7 @@ impl Move {
     }
 
     /// Method converts a san move provided by UCI framework into a Move struct
-    pub fn from_san(str: &str, board: &Board) -> Move {
+    pub fn from_san(str: &str, board: &Board) -> Self {
         let vec: Vec<char> = str.chars().collect();
 
         // Using base 20 allows program to convert letters directly to numbers instead of matching

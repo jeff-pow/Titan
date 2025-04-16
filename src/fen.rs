@@ -14,7 +14,7 @@ pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
 /// Takes in a string in fen notation and returns a board state
 impl Board {
     pub fn from_fen(fen_string: &str) -> Self {
-        let mut board = Board::empty();
+        let mut board = Self::empty();
         let mut row = 7;
         let pieces = fen_string.split(['/', ' ']).collect::<Vec<_>>();
         // FEN strings have 13 entries (if each slash and each space delimit an entry)
@@ -37,7 +37,7 @@ impl Board {
                 let Some(i) = PIECES.chars().position(|x| x == c) else {
                     panic!("Unrecognized char {c}, board could not be made");
                 };
-                board.place_piece(Piece::from_u32(i as u32), square);
+                board.place_piece(Piece::from(i), square);
                 idx += 1;
             }
             start += step;
