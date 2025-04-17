@@ -43,13 +43,13 @@ impl Index<Color> for Accumulator {
     type Output = Block;
 
     fn index(&self, index: Color) -> &Self::Output {
-        &self.vals[index.idx()]
+        &self.vals[usize::from(index)]
     }
 }
 
 impl IndexMut<Color> for Accumulator {
     fn index_mut(&mut self, index: Color) -> &mut Self::Output {
-        &mut self.vals[index.idx()]
+        &mut self.vals[usize::from(index)]
     }
 }
 
@@ -278,7 +278,7 @@ impl AccumulatorStack {
                 return false;
             }
 
-            if self.stack[curr].correct[side.idx()] {
+            if self.stack[curr].correct[usize::from(side)] {
                 return true;
             }
 

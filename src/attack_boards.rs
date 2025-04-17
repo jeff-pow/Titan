@@ -29,7 +29,7 @@ pub fn pawn_attacks(sq: Square, attacker: Color) -> Bitboard {
 
 pub const fn pawn_set_attacks(pawns: Bitboard, side: Color) -> Bitboard {
     let pawns = pawns.0;
-    if side.idx() == Color::White.idx() {
+    if matches!(side, Color::White) {
         Bitboard((pawns & !FILE_A_U64) << 7 | (pawns & !FILE_H_U64) << 9)
     } else {
         Bitboard((pawns & !FILE_A_U64) >> 9 | (pawns & !FILE_H_U64) >> 7)

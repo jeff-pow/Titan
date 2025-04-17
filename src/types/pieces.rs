@@ -28,13 +28,6 @@ macro_rules! impl_index {
 }
 
 impl Color {
-    pub const fn idx(self) -> usize {
-        match self {
-            Self::White => 0,
-            Self::Black => 1,
-        }
-    }
-
     pub fn iter() -> impl Iterator<Item = Self> {
         [Self::White, Self::Black].into_iter()
     }
@@ -57,6 +50,12 @@ impl From<usize> for Color {
             1 => Self::Black,
             _ => panic!("Invalid color index"),
         }
+    }
+}
+
+impl From<Color> for usize {
+    fn from(value: Color) -> Self {
+        value as usize
     }
 }
 
@@ -88,16 +87,13 @@ impl PieceName {
         }
     }
 
-    pub(crate) const fn idx(self) -> usize {
-        self as usize
-    }
-
     pub fn iter() -> impl Iterator<Item = Self> {
         [Self::Pawn, Self::Knight, Self::Bishop, Self::Rook, Self::Queen, Self::King].into_iter()
     }
 }
-impl From<u32> for PieceName {
-    fn from(value: u32) -> Self {
+
+impl From<usize> for PieceName {
+    fn from(value: usize) -> Self {
         match value {
             0 => Self::Pawn,
             1 => Self::Knight,
@@ -108,6 +104,12 @@ impl From<u32> for PieceName {
             6 => Self::None,
             _ => unreachable!(),
         }
+    }
+}
+
+impl From<PieceName> for usize {
+    fn from(value: PieceName) -> Self {
+        value as usize
     }
 }
 
@@ -142,7 +144,7 @@ impl Piece {
     }
 
     pub(crate) fn name(self) -> PieceName {
-        PieceName::from(self as u32 >> 1)
+        PieceName::from(self as usize >> 1)
     }
 
     pub(crate) fn value(self) -> i32 {
@@ -207,6 +209,12 @@ impl From<usize> for Piece {
             12 => Self::None,
             _ => unreachable!(),
         }
+    }
+}
+
+impl From<Piece> for usize {
+    fn from(value: Piece) -> Self {
+        value as usize
     }
 }
 

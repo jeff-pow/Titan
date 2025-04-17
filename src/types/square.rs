@@ -66,10 +66,6 @@ impl Square {
         self.0 & 0b111
     }
 
-    pub const fn idx(self) -> usize {
-        self.0 as usize
-    }
-
     pub const fn rank_bitboard(self) -> Bitboard {
         let x = self.rank();
         RANKS[x as usize]
@@ -186,6 +182,19 @@ pub static SQUARE_NAMES: [&str; 64] = [
     "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", 
     "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8",
 ];
+
+impl From<usize> for Square {
+    fn from(value: usize) -> Self {
+        assert!((0..64).contains(&value));
+        Self(value as u32)
+    }
+}
+
+impl From<Square> for usize {
+    fn from(value: Square) -> Self {
+        value.0 as usize
+    }
+}
 
 impl fmt::Debug for Square {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

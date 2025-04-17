@@ -8,7 +8,7 @@ use crate::types::{
 * When changing activation functions, both the normalization factor and QA may need to change
 * alongside changing the crelu calls to screlu in simd and serial code.
 */
-const QA: i32 = 255; // CHANGES WITH NET QUANZIZATION
+const QA: i32 = 255; // CHANGES WITH NET QUANTIZATION
 const QB: i32 = 64;
 pub(super) const QAB: i32 = QA * QB;
 pub(super) const NORMALIZATION_FACTOR: i32 = QA; // CHANGES WITH SCRELU/CRELU ACTIVATION
@@ -48,20 +48,14 @@ impl Network {
             king = king.flip_horizontal();
             sq = sq.flip_horizontal();
         }
-        match view {
-            Color::White => {
-                BUCKETS[king] * INPUT_SIZE
-                    + piece.color().idx() * COLOR_OFFSET
-                    + piece.name().idx() * PIECE_OFFSET
-                    + sq.idx()
-            }
-            Color::Black => {
-                BUCKETS[king.flip_vertical()] * INPUT_SIZE
-                    + (!piece.color()).idx() * COLOR_OFFSET
-                    + piece.name().idx() * PIECE_OFFSET
-                    + sq.flip_vertical().idx()
-            }
+
+        if view == Color::Black {
+            king = king.flip_vertical();
+            sq = sq.flip_vertical();
         }
+
+        let pov = usize::from(piece.color()) ^ usize::from(view);
+        BUCKETS[king] * INPUT_SIZE + pov * COLOR_OFFSET + usize::from(piece.name()) * PIECE_OFFSET + usize::from(sq)
     }
 
     pub fn bucket(view: Color, mut sq: Square) -> usize {
