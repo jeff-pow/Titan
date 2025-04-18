@@ -296,9 +296,8 @@ impl AccumulatorStack {
         &mut self.stack[self.top]
     }
 
-    pub fn pop(&mut self) -> Accumulator {
+    pub fn pop(&mut self) {
         self.top -= 1;
-        self.stack[self.top + 1]
     }
 
     pub fn push(&mut self, acc: Accumulator) {
