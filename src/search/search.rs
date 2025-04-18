@@ -353,7 +353,7 @@ fn negamax<const IS_PV: bool>(
                     && estimated_eval + 199 + 69 * lmr_depth <= alpha
                     && alpha < NEAR_CHECKMATE
                 {
-                    break;
+                    picker.skip_quiets();
                 }
             }
 
