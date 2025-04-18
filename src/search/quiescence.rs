@@ -104,7 +104,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
         if !new_b.make_move(m) {
             continue;
         }
-        td.accumulators.push_move(m, board.piece_at(m.to()));
+        td.accumulators.push(m, board.piece_at(m.to()));
         td.hash_history.push(new_b.zobrist_hash);
         td.stack[td.ply].played_move = Some(m);
         td.nodes.increment();

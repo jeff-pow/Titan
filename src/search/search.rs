@@ -158,7 +158,10 @@ fn negamax<const IS_PV: bool>(
     }
 
     depth = depth.max(0);
-
+    if td.nodes.local_count() % 1000 == 0 {
+        let acc = board.new_accumulator();
+        assert_eq!(td.accumulators.evaluate(board), acc.scaled_evaluate(board));
+    }
     // Don't prune at root to ensure we have a best move
     if !is_root {
         if td.halt() {
@@ -371,18 +374,19 @@ fn negamax<const IS_PV: bool>(
         if !new_b.make_move(m) {
             continue;
         }
-        td.accumulators.push_move(m, board.piece_at(m.to()));
+
+        // Extensions are the counterpart to late move reductions. We want to explore promising
+        // moves more fully, though in some conditions we also reduce the depth to search at via
+        // negative extensions
+        let extension = extension::<IS_PV>(entry, alpha, beta, m, depth, board, td, tt, cut_node);
+
+        td.accumulators.push(m, board.piece_at(m.to()));
 
         if is_quiet {
             quiets_tried.push(m);
         } else {
             tacticals_tried.push(m);
         };
-
-        // Extensions are the counterpart to late move reductions. We want to explore promising
-        // moves more fully, though in some conditions we also reduce the depth to search at via
-        // negative extensions
-        let extension = extension::<IS_PV>(entry, alpha, beta, m, depth, board, td, tt, cut_node);
 
         let mut new_depth = depth + extension - 1;
 
@@ -557,10 +561,8 @@ fn extension<const IS_PV: bool>(
     let npv = &mut node_pv;
 
     td.stack[td.ply].singular = Some(m);
-    let prev = td.accumulators.pop();
     let ext_score = negamax::<false>(ext_depth, ext_beta - 1, ext_beta, npv, td, tt, board, cut_node);
     td.stack[td.ply].singular = Move::NULL;
-    td.accumulators.push(prev);
 
     if ext_score < ext_beta {
         if td.stack[td.ply].multi_extns < 10 && !IS_PV && ext_score < ext_beta - 18 {
