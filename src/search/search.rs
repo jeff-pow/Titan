@@ -344,13 +344,13 @@ fn negamax<const IS_PV: bool>(
                 picker.skip_quiets();
             }
 
+            let lmr_depth_prediction = (depth - td.lmr.base_reduction(depth, moves_searched)).max(0);
             if is_quiet {
                 // Futility pruning
-                let lmr_depth = (depth - td.lmr.base_reduction(depth, moves_searched)).max(0);
                 if !singular_search
                     && !in_check
-                    && lmr_depth < 11
-                    && estimated_eval + 199 + 69 * lmr_depth <= alpha
+                    && lmr_depth_prediction < 11
+                    && estimated_eval + 199 + 69 * lmr_depth_prediction <= alpha
                     && alpha < NEAR_CHECKMATE
                 {
                     break;
@@ -359,8 +359,8 @@ fn negamax<const IS_PV: bool>(
 
             // Static exchange pruning - If we fail to immediately recapture a depth dependent
             // threshold, don't bother searching the move
-            let margin = if m.is_capture(board) { -93 } else { -41 } * depth;
-            if depth < 12 && !board.see(m, margin) {
+            let margin = if m.is_capture(board) { -93 } else { -25 * lmr_depth_prediction } * lmr_depth_prediction;
+            if !board.see(m, margin) {
                 continue;
             }
         }
