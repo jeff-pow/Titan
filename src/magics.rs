@@ -272,9 +272,9 @@ pub fn gen_magics() {
     write_bin("./bins/bishop_magics.bin", &bishop_magics, size_of::<[MagicEntry; 64]>());
 }
 
-const ROOK_TABLE: [Bitboard; ROOK_M_SIZE] = unsafe { transmute(*include_bytes!("../bins/rook_table.bin")) };
+static ROOK_TABLE: [Bitboard; ROOK_M_SIZE] = unsafe { transmute(*include_bytes!("../bins/rook_table.bin")) };
 const ROOK_MAGICS: [MagicEntry; 64] = unsafe { transmute(*include_bytes!("../bins/rook_magics.bin")) };
-const BISHOP_TABLE: [Bitboard; BISHOP_M_SIZE] = unsafe { transmute(*include_bytes!("../bins/bishop_table.bin")) };
+static BISHOP_TABLE: [Bitboard; BISHOP_M_SIZE] = unsafe { transmute(*include_bytes!("../bins/bishop_table.bin")) };
 const BISHOP_MAGICS: [MagicEntry; 64] = unsafe { transmute(*include_bytes!("../bins/bishop_magics.bin")) };
 
 pub fn write_bin<T>(file: &str, data: &[T], size: usize) {

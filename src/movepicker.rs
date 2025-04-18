@@ -55,6 +55,10 @@ impl MovePicker {
         }
     }
 
+    pub fn skip_quiets(&mut self) {
+        self.skip_quiets = true;
+    }
+
     /// Select the next move to try. Returns None if there are no more moves to try.
     pub fn next(&mut self, board: &Board, td: &ThreadData) -> Option<MoveListEntry> {
         if self.phase == MovePickerPhase::TTMove {
