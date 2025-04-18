@@ -338,9 +338,8 @@ fn negamax<const IS_PV: bool>(
         if !is_root && best_score >= -NEAR_CHECKMATE {
             // Late move pruning (LMP)
             // Good moves are likely to be searched first due to tt move ordering and history
-            // table, so we can prune all the moves that follow as they are very unlikely to be good.
+            // table, so we can prune quiet moves that follow as they are very unlikely to be good.
             let moves_required = (4 + depth * depth) / (3 - (i32::from(improving)));
-            // TODO: Remove depth condition
             if moves_searched > moves_required {
                 picker.skip_quiets();
             }
