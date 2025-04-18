@@ -371,6 +371,47 @@ fn negamax<const IS_PV: bool>(
         if !new_b.make_move(m) {
             continue;
         }
+
+        // Extensions are the counterpart to late move reductions. We want to explore promising
+        // moves more fully, though in some conditions we also reduce the depth to search at via
+        // negative extensions
+        let mut extension = 0;
+        if entry.is_some_and(|e| e.depth() >= depth - 3 && matches!(e.flag(), EntryFlag::Exact | EntryFlag::BetaCutOff))
+            && Some(m) == tt_move
+            && depth >= 6
+            && !is_root
+        {
+            assert!(tt_move.is_some());
+            let entry = entry.unwrap();
+            let ext_beta = (entry.search_score() - 21 * depth / 16).max(-CHECKMATE);
+            let ext_depth = (depth - 1) / 2;
+            let mut node_pv = PV::default();
+            let npv = &mut node_pv;
+
+            td.stack[td.ply].singular = Some(m);
+            let ext_score = negamax::<false>(ext_depth, ext_beta - 1, ext_beta, npv, td, tt, board, cut_node);
+            td.stack[td.ply].singular = Move::NULL;
+
+            extension = if ext_score < ext_beta {
+                if td.stack[td.ply].multi_extns < 10 && !IS_PV && ext_score < ext_beta - 18 {
+                    td.stack[td.ply].multi_extns += 1;
+                    2 + i32::from(!tt_move.unwrap().is_tactical(board) && ext_score < ext_beta - 224)
+                } else {
+                    1
+                }
+            } else if entry.search_score() >= beta {
+                -2 + i32::from(IS_PV)
+            } else if cut_node {
+                -2
+            } else if entry.search_score() <= alpha {
+                -1
+            } else {
+                0
+            }
+        }
+
+        let mut new_depth = depth + extension - 1;
+
         td.accumulators.push_move(m, board.piece_at(m.to()));
 
         if is_quiet {
@@ -378,13 +419,6 @@ fn negamax<const IS_PV: bool>(
         } else {
             tacticals_tried.push(m);
         };
-
-        // Extensions are the counterpart to late move reductions. We want to explore promising
-        // moves more fully, though in some conditions we also reduce the depth to search at via
-        // negative extensions
-        let extension = extension::<IS_PV>(entry, alpha, beta, m, depth, board, td, tt, cut_node);
-
-        let mut new_depth = depth + extension - 1;
 
         td.nodes.increment();
         let pre_search_nodes = td.nodes.local_count();
@@ -525,57 +559,4 @@ fn negamax<const IS_PV: bool>(
     }
 
     best_score
-}
-
-#[allow(clippy::too_many_arguments)]
-fn extension<const IS_PV: bool>(
-    tt_entry: Option<TableEntry>,
-    alpha: i32,
-    beta: i32,
-    m: Move,
-    depth: i32,
-    board: &Board,
-    td: &mut ThreadData,
-    tt: &TranspositionTable,
-    cut_node: bool,
-) -> i32 {
-    let Some(entry) = tt_entry else { return 0 };
-    let tt_move = entry.best_move(board);
-    if entry.depth() < depth - 3
-        || matches!(entry.flag(), EntryFlag::AlphaUnchanged | EntryFlag::None)
-        || Some(m) != tt_move
-        || depth < 7
-        || td.ply == 0
-    {
-        return 0;
-    }
-    let Some(tt_move) = tt_move else { return 0 };
-
-    let ext_beta = (entry.search_score() - 21 * depth / 16).max(-CHECKMATE);
-    let ext_depth = (depth - 1) / 2;
-    let mut node_pv = PV::default();
-    let npv = &mut node_pv;
-
-    td.stack[td.ply].singular = Some(m);
-    let prev = td.accumulators.pop();
-    let ext_score = negamax::<false>(ext_depth, ext_beta - 1, ext_beta, npv, td, tt, board, cut_node);
-    td.stack[td.ply].singular = Move::NULL;
-    td.accumulators.push(prev);
-
-    if ext_score < ext_beta {
-        if td.stack[td.ply].multi_extns < 10 && !IS_PV && ext_score < ext_beta - 18 {
-            td.stack[td.ply].multi_extns += 1;
-            2 + i32::from(!tt_move.is_tactical(board) && ext_score < ext_beta - 224)
-        } else {
-            1
-        }
-    } else if entry.search_score() >= beta {
-        -2 + i32::from(IS_PV)
-    } else if cut_node {
-        -2
-    } else if entry.search_score() <= alpha {
-        -1
-    } else {
-        0
-    }
 }
