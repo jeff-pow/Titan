@@ -230,13 +230,6 @@ pub struct AccumulatorStack {
 }
 
 impl AccumulatorStack {
-    pub fn push_move(&mut self, m: Move, capture: Piece) {
-        self.top += 1;
-        self.stack[self.top].m = m;
-        self.stack[self.top].capture = capture;
-        self.stack[self.top].correct = [false; 2];
-    }
-
     fn all_lazy_updates(&mut self, board: &Board, side: Color) {
         let mut curr = self.top;
         while !self.stack[curr].correct[side] {
@@ -296,14 +289,15 @@ impl AccumulatorStack {
         &mut self.stack[self.top]
     }
 
-    pub fn pop(&mut self) -> Accumulator {
-        self.top -= 1;
-        self.stack[self.top + 1]
+    pub fn push(&mut self, m: Move, capture: Piece) {
+        self.top += 1;
+        self.stack[self.top].m = m;
+        self.stack[self.top].capture = capture;
+        self.stack[self.top].correct = [false; 2];
     }
 
-    pub fn push(&mut self, acc: Accumulator) {
-        self.top += 1;
-        self.stack[self.top] = acc;
+    pub fn pop(&mut self) {
+        self.top -= 1;
     }
 
     pub fn clear(&mut self, base_accumulator: &Accumulator) {
@@ -374,7 +368,7 @@ mod acc_test {
     macro_rules! make_move_nnue {
         ($board:ident, $stack:ident, $mv_str:literal) => {{
             let m = Move::from_san($mv_str, &$board);
-            $stack.push_move(m, $board.capture(m));
+            $stack.push(m, $board.capture(m));
             assert!($board.make_move(m));
         }};
     }
