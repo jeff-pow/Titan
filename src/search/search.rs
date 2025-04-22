@@ -158,10 +158,6 @@ fn negamax<const IS_PV: bool>(
     }
 
     depth = depth.max(0);
-    if td.nodes.local_count() % 1000 == 0 {
-        let acc = board.new_accumulator();
-        assert_eq!(td.accumulators.evaluate(board), acc.scaled_evaluate(board));
-    }
     // Don't prune at root to ensure we have a best move
     if !is_root {
         if td.halt() {
