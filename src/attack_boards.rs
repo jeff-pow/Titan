@@ -160,13 +160,12 @@ const fn pinned_attack(king: usize, pinned: usize) -> Bitboard {
     Bitboard(valid)
 }
 
-#[allow(dead_code)]
 pub fn valid_pinned_moves(king: Square, pinned: Square) -> Bitboard {
     PINNED_MOVES[king][pinned]
 }
 
 /// Indexed by PINNED_MOVES[King square][Pinned piece]
-static PINNED_MOVES: [[Bitboard; 64]; 64] = const_array!(|sq1, 64| const_array!(|sq2, 64| pinned_attack(sq1, sq2)));
+pub static PINNED_MOVES: [[Bitboard; 64]; 64] = const_array!(|sq1, 64| const_array!(|sq2, 64| pinned_attack(sq1, sq2)));
 
 #[macro_export]
 /// Credit for this macro goes to akimbo

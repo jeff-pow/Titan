@@ -300,14 +300,14 @@ impl AccumulatorStack {
         self.top -= 1;
     }
 
-    pub fn clear(&mut self, base_accumulator: &Accumulator) {
-        self.stack[0] = *base_accumulator;
+    pub fn clear(&mut self, base_accumulator: Accumulator) {
+        self.stack[0] = base_accumulator;
         self.top = 0;
     }
 
-    pub fn new(base_accumulator: &Accumulator) -> Self {
+    pub fn new(base_accumulator: Accumulator) -> Self {
         let mut vec = vec![Accumulator::default(); MAX_SEARCH_DEPTH as usize + 50];
-        vec[0] = *base_accumulator;
+        vec[0] = base_accumulator;
         Self { stack: vec, top: 0, acc_cache: AccumulatorCache::default() }
     }
 }
@@ -383,7 +383,7 @@ mod acc_test {
     #[test]
     fn lazy_updates() {
         let mut board = Board::from_fen("r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14");
-        let mut stack = AccumulatorStack::new(&board.new_accumulator());
+        let mut stack = AccumulatorStack::new(board.new_accumulator());
         make_move_nnue!(board, stack, "e1g1");
 
         make_move_nnue!(board, stack, "e8d8");
@@ -393,7 +393,7 @@ mod acc_test {
     #[test]
     fn deeper_error() {
         let mut board = Board::from_fen("8/8/1p2k1p1/3p3p/1p1P1P1P/1P2PK2/8/8 w - - 3 54");
-        let mut stack = AccumulatorStack::new(&board.new_accumulator());
+        let mut stack = AccumulatorStack::new(board.new_accumulator());
 
         make_move_nnue!(board, stack, "e3e4");
         make_move_nnue!(board, stack, "e6e7");

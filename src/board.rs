@@ -2,7 +2,9 @@ use core::fmt;
 
 use super::fen::STARTING_FEN;
 use crate::{
-    attack_boards::{king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, BETWEEN_SQUARES, RANKS},
+    attack_boards::{
+        king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, valid_pinned_moves, BETWEEN_SQUARES, RANKS,
+    },
     chess_move::{
         Castle,
         Direction::{North, South},
@@ -256,6 +258,49 @@ impl Board {
         threats |= king_attacks(self.king_square(attacker));
 
         self.threats = threats;
+    }
+
+    pub(crate) fn is_legal(&self, m: Move) -> bool {
+        assert!(self.is_pseudo_legal(Some(m)));
+
+        let from = m.from();
+        let to = m.to();
+
+        let moved_piece = self.piece_at(from);
+        let king = self.king_square(self.stm);
+
+        if m.flag() == MoveType::EnPassant {
+            let captured_pawn_sq = match self.stm {
+                Color::White => to.shift(South),
+                Color::Black => to.shift(North),
+            };
+            let occ = self.occupancies() ^ from.bitboard() ^ captured_pawn_sq.bitboard() ^ to.bitboard();
+            let ntm = !self.stm;
+            return (bishop_attacks(king, occ) & self.diags(ntm)).is_empty()
+                && (rook_attacks(king, occ) & self.orthos(ntm)).is_empty();
+        }
+        // En Passant gets the brute force treatment as always
+        if m.flag() == MoveType::EnPassant {
+            let mut new_b = *self;
+            return new_b.make_move(m);
+        }
+
+        if moved_piece.name() == PieceName::King {
+            return !self.threats().contains(to);
+        }
+
+        if self.pinned().contains(from) && !valid_pinned_moves(king, from).contains(to) {
+            return false;
+        }
+
+        match self.checkers().count_bits() {
+            0 => true,
+            1 => {
+                let checker = self.checkers().pop_lsb();
+                to == checker || BETWEEN_SQUARES[king][checker].contains(to)
+            }
+            _ => false,
+        }
     }
 
     pub(crate) fn is_pseudo_legal(&self, m: Option<Move>) -> bool {

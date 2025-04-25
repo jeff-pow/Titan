@@ -2,34 +2,38 @@ use std::time::Instant;
 
 use crate::{board::Board, movegen::MGT, movelist::MoveList};
 
-pub fn perft(board: &Board, depth: i32) -> usize {
-    let start = Instant::now();
-    let count = non_bulk_perft::<true>(board, depth);
-    let elapsed = start.elapsed().as_secs_f64();
-    println!("{count} nodes in {elapsed} secs = {} nps", (count as f64 / elapsed) as u64);
-    count
-}
+impl Board {
+    pub fn perft(&self, depth: i32) -> usize {
+        let start = Instant::now();
+        let count = self.non_bulk_perft::<true>(depth);
+        let elapsed = start.elapsed().as_secs_f64();
+        println!("{count} nodes in {elapsed} secs = {} nps", (count as f64 / elapsed) as u64);
+        count
+    }
 
-fn non_bulk_perft<const ROOT: bool>(board: &Board, depth: i32) -> usize {
-    if depth == 0 {
-        return 1;
-    }
-    let mut total = 0;
-    let mut moves = MoveList::default();
-    board.generate_moves(MGT::All, &mut moves);
-    for i in 0..moves.len() {
-        let m = moves[i];
-        let mut new_b = *board;
-        if !new_b.make_move(m) {
-            continue;
+    fn non_bulk_perft<const ROOT: bool>(&self, depth: i32) -> usize {
+        if depth == 0 {
+            return 1;
         }
-        let count = non_bulk_perft::<false>(&new_b, depth - 1);
-        if ROOT {
-            println!("{}: {count}", m.to_san());
+        let mut total = 0;
+        let mut moves = MoveList::default();
+        self.generate_moves(MGT::All, &mut moves);
+        for i in 0..moves.len() {
+            let m = moves[i];
+            let mut new_b = *self;
+            if !new_b.make_move(m) {
+                assert!(!self.is_legal(m), "{m} {self:?}");
+                continue;
+            }
+            assert!(self.is_legal(m), "{m} {self:?}");
+            let count = new_b.non_bulk_perft::<false>(depth - 1);
+            if ROOT {
+                println!("{}: {count}", m.to_san());
+            }
+            total += count;
         }
-        total += count;
+        total
     }
-    total
 }
 
 #[cfg(test)]
@@ -38,7 +42,6 @@ mod movegen_tests {
     use std::{fs::File, io::BufRead, io::BufReader};
 
     use crate::board::Board;
-    use crate::perft::perft;
 
     #[test]
     pub fn epd_perft() {
@@ -56,7 +59,7 @@ mod movegen_tests {
                         let depth = depth[1..].parse::<i32>().unwrap();
                         let nodes = nodes.parse::<usize>().unwrap();
                         eprintln!("test {test_num}: depth {depth} expected {nodes}");
-                        assert_eq!(nodes, perft(&board, depth), "Test number {test_num} failed");
+                        assert_eq!(nodes, board.perft(depth), "Test number {test_num} failed");
                     }
                     eprintln!("{test_num} passed");
                 });
@@ -74,11 +77,12 @@ mod movegen_tests {
                     let fen = iter.next().unwrap();
                     let board = Board::from_fen(fen);
                     for entry in iter {
+                        println!("Fen: {fen}");
                         let (depth, nodes) = entry.split_once(' ').unwrap();
                         let depth = depth[1..].parse::<i32>().unwrap();
                         let nodes = nodes.parse::<usize>().unwrap();
                         eprintln!("test {test_num}: depth {depth} expected {nodes}");
-                        assert_eq!(nodes, perft(&board, depth), "Fen {fen} failed.");
+                        assert_eq!(nodes, board.perft(depth), "Fen {fen} failed.");
                     }
                     eprintln!("{test_num} passed");
                 });
