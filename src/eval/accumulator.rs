@@ -369,7 +369,8 @@ mod acc_test {
         ($board:ident, $stack:ident, $mv_str:literal) => {{
             let m = Move::from_san($mv_str, &$board);
             $stack.push(m, $board.capture(m));
-            assert!($board.make_move(m));
+            assert!($board.is_legal(m));
+            $board.make_move(m);
         }};
     }
 

@@ -189,6 +189,7 @@ impl Board {
         (pawn_attacks | knight_attacks | bishop_attacks | rook_attacks | king_attacks) & self.color(attacker)
     }
 
+    #[expect(dead_code)]
     pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
         self.attackers_for_side(attacker, sq, self.occupancies()) != Bitboard::EMPTY
     }
@@ -278,11 +279,6 @@ impl Board {
             let ntm = !self.stm;
             return (bishop_attacks(king, occ) & self.diags(ntm)).is_empty()
                 && (rook_attacks(king, occ) & self.orthos(ntm)).is_empty();
-        }
-        // En Passant gets the brute force treatment as always
-        if m.flag() == MoveType::EnPassant {
-            let mut new_b = *self;
-            return new_b.make_move(m);
         }
 
         if moved_piece.name() == PieceName::King {
@@ -394,8 +390,7 @@ impl Board {
 
     /// Function makes a move and modifies board state to reflect the move that just happened.
     /// Returns true if a move was legal, and false if it was illegal.
-    #[must_use]
-    pub fn make_move(&mut self, m: Move) -> bool {
+    pub fn make_move(&mut self, m: Move) {
         let piece_moving = m.piece_moving();
         assert_eq!(piece_moving, self.piece_at(m.from()));
         let capture = self.capture(m);
@@ -427,12 +422,7 @@ impl Board {
 
         // If we are in check after all pieces have been moved, this move is illegal and we return
         // false to denote so
-        if !self.king_square(self.stm).is_valid() {
-            return false;
-        }
-        if self.square_under_attack(!self.stm, self.king_square(self.stm)) {
-            return false;
-        }
+        assert!(self.king_square(self.stm).is_valid());
 
         // Xor out the old en passant square hash
         if let Some(sq) = self.en_passant_square {
@@ -475,9 +465,6 @@ impl Board {
 
         self.calculate_threats();
         self.pinned_and_checkers();
-
-        // This move is valid, so we return true to denote this fact
-        true
     }
 
     pub fn make_null_move(&mut self) {

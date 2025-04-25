@@ -330,6 +330,11 @@ fn negamax<const IS_PV: bool>(
         if Some(m) == singular_move {
             continue;
         }
+
+        if !board.is_legal(m) {
+            continue;
+        }
+
         let is_quiet = !m.is_tactical(board);
 
         // Mid-move loop pruning
@@ -365,10 +370,8 @@ fn negamax<const IS_PV: bool>(
 
         let mut new_b = *board;
         tt.prefetch(board.hash_after(Some(m)));
-        // Make move filters out illegal moves by returning false if a move was illegal
-        if !new_b.make_move(m) {
-            continue;
-        }
+
+        new_b.make_move(m);
 
         // Extensions are the counterpart to late move reductions. We want to explore promising
         // moves more fully, though in some conditions we also reduce the depth to search at via
@@ -665,12 +668,14 @@ pub(super) fn quiescence<const IS_PV: bool>(
 
     while let Some(MoveListEntry { m, .. }) = picker.next(board, td) {
         let mut node_pv = PV::default();
-        let mut new_b = *board;
-
-        tt.prefetch(board.hash_after(Some(m)));
-        if !new_b.make_move(m) {
+        if !board.is_legal(m) {
             continue;
         }
+
+        let mut new_b = *board;
+        tt.prefetch(board.hash_after(Some(m)));
+        new_b.make_move(m);
+
         td.accumulators.push(m, board.piece_at(m.to()));
         td.hash_history.push(new_b.zobrist_hash);
         td.stack[td.ply].played_move = Some(m);
