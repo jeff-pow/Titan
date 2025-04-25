@@ -262,8 +262,6 @@ impl Board {
     }
 
     pub(crate) fn is_legal(&self, m: Move) -> bool {
-        assert!(self.is_pseudo_legal(Some(m)));
-
         let from = m.from();
         let to = m.to();
 
