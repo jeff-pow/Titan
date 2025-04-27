@@ -303,24 +303,24 @@ impl Board {
         let from = m.from();
         let to = m.to();
 
-        let moved_piece = self.piece_at(from);
-        let captured_piece = self.piece_at(to);
-        let is_capture = captured_piece != Piece::None;
+        let moving = self.piece_at(from);
+        let capture = self.piece_at(to);
+        let is_capture = capture != Piece::None;
         let is_pawn_double_push = m.flag() == MoveType::DoublePush;
 
-        if moved_piece != m.piece_moving() {
+        if moving != m.piece_moving() {
             return false;
         }
 
-        if moved_piece == Piece::None {
+        if moving == Piece::None {
             return false;
         }
 
-        if moved_piece.color() != self.stm {
+        if moving.color() != self.stm {
             return false;
         }
 
-        if is_capture && captured_piece.color() == self.stm {
+        if is_capture && (capture.color() == self.stm || capture.name() == PieceName::King) {
             return false;
         }
 
@@ -328,7 +328,7 @@ impl Board {
             if self.in_check() {
                 return false;
             }
-            if moved_piece.name() != PieceName::King {
+            if moving.name() != PieceName::King {
                 return false;
             }
             let castle = m.castle_type();
@@ -349,7 +349,7 @@ impl Board {
             return true;
         }
 
-        match moved_piece.name() {
+        match moving.name() {
             PieceName::Pawn => {
                 if is_capture && is_pawn_double_push {
                     return false;
@@ -372,7 +372,7 @@ impl Board {
                     return self.piece_at(one_forward) == Piece::None && to == one_forward.shift(up);
                 }
                 if !is_capture {
-                    return to == from.shift(up) && captured_piece == Piece::None;
+                    return to == from.shift(up) && capture == Piece::None;
                 }
                 // Captures
                 (pawn_attacks(from, self.stm) & to.bitboard()) != Bitboard::EMPTY
