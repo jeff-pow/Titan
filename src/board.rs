@@ -424,7 +424,7 @@ impl Board {
 
         // If we are in check after all pieces have been moved, this move is illegal and we return
         // false to denote so
-        assert!(board.king_square(board.stm).is_valid());
+        assert!(board.king_square(board.stm).is_valid(), "{m} {self:?}");
 
         // Xor out the old en passant square hash
         if let Some(sq) = board.en_passant_square {
