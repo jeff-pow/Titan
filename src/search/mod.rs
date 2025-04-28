@@ -6,7 +6,6 @@ use crate::chess_move::Move;
 
 pub mod game_time;
 pub mod lmr_table;
-pub mod quiescence;
 pub mod search;
 
 #[derive(Clone, Copy, Default)]
