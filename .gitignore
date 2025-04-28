@@ -9,3 +9,4 @@ titan
 dev
 *.net
 .idea/
+*.bin
