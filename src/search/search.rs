@@ -290,10 +290,9 @@ fn negamax<const IS_PV: bool>(
         && beta > -NEAR_CHECKMATE
     {
         let mut node_pv = PV::default();
-        let mut new_b = *board;
+        let new_b = board.make_null_move();
 
         tt.prefetch(board.hash_after(Move::NULL));
-        new_b.make_null_move();
         td.stack[td.ply].played_move = Move::NULL;
         td.hash_history.push(new_b.zobrist_hash);
         td.ply += 1;
@@ -368,10 +367,8 @@ fn negamax<const IS_PV: bool>(
             }
         }
 
-        let mut new_b = *board;
+        let new_b = board.make_move(m);
         tt.prefetch(board.hash_after(Some(m)));
-
-        new_b.make_move(m);
 
         // Extensions are the counterpart to late move reductions. We want to explore promising
         // moves more fully, though in some conditions we also reduce the depth to search at via
@@ -672,9 +669,8 @@ pub(super) fn quiescence<const IS_PV: bool>(
             continue;
         }
 
-        let mut new_b = *board;
+        let new_b = board.make_move(m);
         tt.prefetch(board.hash_after(Some(m)));
-        new_b.make_move(m);
 
         td.accumulators.push(m, board.piece_at(m.to()));
         td.hash_history.push(new_b.zobrist_hash);

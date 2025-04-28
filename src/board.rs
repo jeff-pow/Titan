@@ -390,94 +390,102 @@ impl Board {
 
     /// Function makes a move and modifies board state to reflect the move that just happened.
     /// Returns true if a move was legal, and false if it was illegal.
-    pub fn make_move(&mut self, m: Move) {
+    #[must_use]
+    pub fn make_move(&self, m: Move) -> Self {
+        let mut board = *self;
         let piece_moving = m.piece_moving();
-        assert_eq!(piece_moving, self.piece_at(m.from()));
-        let capture = self.capture(m);
-        self.remove_piece(m.to());
+        assert_eq!(piece_moving, board.piece_at(m.from()));
+        let capture = board.capture(m);
+        board.remove_piece(m.to());
 
         if m.promotion().is_none() {
-            self.place_piece(piece_moving, m.to());
+            board.place_piece(piece_moving, m.to());
         }
 
-        self.remove_piece(m.from());
+        board.remove_piece(m.from());
 
         // Move rooks if a castle move is applied
         if m.is_castle() {
-            let rook = Piece::new(PieceName::Rook, self.stm);
-            self.place_piece(rook, m.castle_type().rook_to());
-            self.remove_piece(m.castle_type().rook_from());
+            let rook = Piece::new(PieceName::Rook, board.stm);
+            board.place_piece(rook, m.castle_type().rook_to());
+            board.remove_piece(m.castle_type().rook_from());
         } else if let Some(p) = m.promotion() {
-            self.place_piece(p, m.to());
+            board.place_piece(p, m.to());
         } else if m.is_en_passant() {
-            match self.stm {
+            match board.stm {
                 Color::White => {
-                    self.remove_piece(m.to().shift(South));
+                    board.remove_piece(m.to().shift(South));
                 }
                 Color::Black => {
-                    self.remove_piece(m.to().shift(North));
+                    board.remove_piece(m.to().shift(North));
                 }
             }
         }
 
         // If we are in check after all pieces have been moved, this move is illegal and we return
         // false to denote so
-        assert!(self.king_square(self.stm).is_valid());
+        assert!(board.king_square(board.stm).is_valid());
 
         // Xor out the old en passant square hash
-        if let Some(sq) = self.en_passant_square {
-            self.zobrist_hash ^= ZOBRIST.en_passant[sq];
+        if let Some(sq) = board.en_passant_square {
+            board.zobrist_hash ^= ZOBRIST.en_passant[sq];
         }
         // If the end index of a move is 16 squares from the start (and a pawn moved), an en passant is possible
-        self.en_passant_square = None;
+        board.en_passant_square = None;
         if m.flag() == MoveType::DoublePush {
-            match self.stm {
+            match board.stm {
                 Color::White => {
-                    self.en_passant_square = Some(m.to().shift(South));
+                    board.en_passant_square = Some(m.to().shift(South));
                 }
                 Color::Black => {
-                    self.en_passant_square = Some(m.to().shift(North));
+                    board.en_passant_square = Some(m.to().shift(North));
                 }
             }
         }
         // Xor in the new en passant square hash
-        if let Some(sq) = self.en_passant_square {
-            self.zobrist_hash ^= ZOBRIST.en_passant[sq];
+        if let Some(sq) = board.en_passant_square {
+            board.zobrist_hash ^= ZOBRIST.en_passant[sq];
         }
 
         // If a piece isn't captured and a pawn isn't moved, increment the half move clock.
         // Otherwise set it to zero
 
         if capture == Piece::None && piece_moving.name() != PieceName::Pawn {
-            self.half_moves += 1;
+            board.half_moves += 1;
         } else {
-            self.half_moves = 0;
+            board.half_moves = 0;
         }
 
-        self.zobrist_hash ^= ZOBRIST.castling[self.castling_rights as usize];
-        self.castling_rights &= CASTLING_RIGHTS[m.from()] & CASTLING_RIGHTS[m.to()];
-        self.zobrist_hash ^= ZOBRIST.castling[self.castling_rights as usize];
+        board.zobrist_hash ^= ZOBRIST.castling[board.castling_rights as usize];
+        board.castling_rights &= CASTLING_RIGHTS[m.from()] & CASTLING_RIGHTS[m.to()];
+        board.zobrist_hash ^= ZOBRIST.castling[board.castling_rights as usize];
 
-        self.stm = !self.stm;
-        self.zobrist_hash ^= ZOBRIST.turn;
+        board.stm = !board.stm;
+        board.zobrist_hash ^= ZOBRIST.turn;
 
-        self.num_moves += 1;
+        board.num_moves += 1;
 
-        self.calculate_threats();
-        self.pinned_and_checkers();
+        board.calculate_threats();
+        board.pinned_and_checkers();
+
+        board
     }
 
-    pub fn make_null_move(&mut self) {
-        self.stm = !self.stm;
-        self.zobrist_hash ^= ZOBRIST.turn;
-        self.num_moves += 1;
-        self.half_moves += 1;
-        if let Some(sq) = self.en_passant_square {
-            self.zobrist_hash ^= ZOBRIST.en_passant[sq];
+    #[must_use]
+    pub fn make_null_move(&self) -> Self {
+        let mut board = *self;
+        board.stm = !board.stm;
+        board.zobrist_hash ^= ZOBRIST.turn;
+        board.num_moves += 1;
+        board.half_moves += 1;
+        if let Some(sq) = board.en_passant_square {
+            board.zobrist_hash ^= ZOBRIST.en_passant[sq];
         }
-        self.en_passant_square = None;
-        self.calculate_threats();
-        self.pinned_and_checkers();
+        board.en_passant_square = None;
+        board.calculate_threats();
+        board.pinned_and_checkers();
+
+        board
     }
 
     pub fn mat_scale(&self) -> i32 {

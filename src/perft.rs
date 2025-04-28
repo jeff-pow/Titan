@@ -23,8 +23,7 @@ impl Board {
             if !self.is_legal(m) {
                 continue;
             }
-            let mut new_b = *self;
-            new_b.make_move(m);
+            let new_b = self.make_move(m);
             assert!(self.is_legal(m), "{m} {self:?}");
             let count = new_b.non_bulk_perft::<false>(depth - 1);
             if ROOT {

@@ -89,15 +89,15 @@ mod hashing_test {
     #[test]
     fn incremental_generation() {
         let board = Board::from_fen("k7/3n4/8/2Q5/4pP2/8/8/K7 b - f3 0 1");
-        let mut en_p = board;
+        let en_p = board;
         let _ = en_p.make_move(Move::from_san("e4f3", &board));
         assert_eq!(en_p.zobrist_hash, en_p.generate_hash());
 
-        let mut capture = board;
+        let capture = board;
         let _ = capture.make_move(Move::from_san("d7c5", &capture));
         assert_eq!(capture.zobrist_hash, capture.generate_hash());
 
-        let mut quiet = board;
+        let quiet = board;
         let _ = quiet.make_move(Move::from_san("a1a2", &quiet));
         assert_eq!(quiet.zobrist_hash, quiet.generate_hash());
     }
