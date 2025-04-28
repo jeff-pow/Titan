@@ -116,7 +116,7 @@ fn position_command(input: &[&str], board: &mut Board, hash_history: &mut Vec<u6
 fn parse_moves(moves: &[&str], board: &mut Board, hash_history: &mut Vec<u64>) {
     for str in moves {
         let m = Move::from_san(str, board);
-        let _ = board.make_move(m);
+        *board = board.make_move(m);
         hash_history.push(board.zobrist_hash);
     }
 }

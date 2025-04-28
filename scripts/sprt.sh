@@ -5,8 +5,8 @@
 # rm nohup.out
 
 /home/jeff/ob/Client/cutechess-ob \
--engine name=dev cmd=./dev \
--engine name=main cmd=./main \
+-engine name=dev cmd=./titan \
+-engine name=main cmd=./titan \
 -games 2 -rounds 250000 \
 -pgnout "pgnout.txt" \
 -sprt elo0=0.0 elo1=3.0 alpha=0.05 beta=0.05 \

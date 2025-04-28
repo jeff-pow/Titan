@@ -24,7 +24,6 @@ impl Board {
                 continue;
             }
             let new_b = self.make_move(m);
-            assert!(self.is_legal(m), "{m} {self:?}");
             let count = new_b.non_bulk_perft::<false>(depth - 1);
             if ROOT {
                 println!("{}: {count}", m.to_san());
