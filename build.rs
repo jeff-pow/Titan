@@ -4,8 +4,8 @@ use std::{
     process::Command,
 };
 
-const REPO_URL: &str = "https://raw.githubusercontent.com/jeff-pow/FileHydrant/main/";
-const NET_NAME: &str = "net01.bin";
+const REPO_URL: &str = "https://raw.githubusercontent.com/jeff-pow/FileHydrant/net01-tune/";
+const NET_NAME: &str = "net02.bin";
 
 fn main() {
     let path = match env::var("EVALFILE") {
