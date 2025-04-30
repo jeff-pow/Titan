@@ -169,7 +169,7 @@ impl Accumulator {
 
 // Credit to akimbo. This function streamlines the assembly generated and prevents unnecessary
 // redundant loads and stores to the same simd vectors.
-pub fn update(acc: &mut Align64<Block>, adds: &[u16], subs: &[u16]) {
+pub fn update(acc: &mut Align64<Block>, adds: &[usize], subs: &[usize]) {
     const REGISTERS: usize = 8;
     const ELEMENTS_PER_LOOP: usize = REGISTERS * 256 / 16;
 
@@ -183,7 +183,7 @@ pub fn update(acc: &mut Align64<Block>, adds: &[u16], subs: &[u16]) {
         }
 
         for &add in adds {
-            let weights = &NET.feature_weights[usize::from(add)];
+            let weights = &NET.feature_weights[add];
 
             for (reg, &w) in regs.iter_mut().zip(weights[offset..].iter()) {
                 *reg += w;
@@ -191,7 +191,7 @@ pub fn update(acc: &mut Align64<Block>, adds: &[u16], subs: &[u16]) {
         }
 
         for &sub in subs {
-            let weights = &NET.feature_weights[usize::from(sub)];
+            let weights = &NET.feature_weights[sub];
 
             for (reg, &w) in regs.iter_mut().zip(weights[offset..].iter()) {
                 *reg -= w;
@@ -209,11 +209,11 @@ impl Board {
         let mut acc = Accumulator::default();
         for view in Color::iter() {
             acc.vals[view] = NET.feature_bias;
-            let mut vec: ArrayVec<u16, 32> = ArrayVec::new();
+            let mut vec: ArrayVec<usize, 32> = ArrayVec::new();
             for sq in self.occupancies() {
                 let p = self.piece_at(sq);
                 let idx = Network::feature_idx(p, sq, self.king_square(view), view);
-                vec.push(idx as u16);
+                vec.push(idx);
             }
             update(&mut acc.vals[view], &vec, &[]);
         }
@@ -345,10 +345,10 @@ impl AccumulatorCache {
             let removed = prev & !curr;
 
             for sq in added {
-                adds.push(Network::feature_idx(piece, sq, king, view) as u16);
+                adds.push(Network::feature_idx(piece, sq, king, view));
             }
             for sq in removed {
-                subs.push(Network::feature_idx(piece, sq, king, view) as u16);
+                subs.push(Network::feature_idx(piece, sq, king, view));
             }
         }
 

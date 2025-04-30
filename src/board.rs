@@ -377,11 +377,11 @@ impl Board {
                 // Captures
                 (pawn_attacks(from, self.stm) & to.bitboard()) != Bitboard::EMPTY
             }
-            PieceName::Knight => to.bitboard() & knight_attacks(from) != Bitboard::EMPTY,
-            PieceName::Bishop => to.bitboard() & bishop_attacks(from, self.occupancies()) != Bitboard::EMPTY,
-            PieceName::Rook => to.bitboard() & rook_attacks(from, self.occupancies()) != Bitboard::EMPTY,
-            PieceName::Queen => to.bitboard() & queen_attacks(from, self.occupancies()) != Bitboard::EMPTY,
-            PieceName::King => to.bitboard() & king_attacks(from) != Bitboard::EMPTY,
+            PieceName::Knight => knight_attacks(from).contains(to),
+            PieceName::Bishop => bishop_attacks(from, self.occupancies()).contains(to),
+            PieceName::Rook => rook_attacks(from, self.occupancies()).contains(to),
+            PieceName::Queen => queen_attacks(from, self.occupancies()).contains(to),
+            PieceName::King => king_attacks(from).contains(to),
             PieceName::None => panic!(),
         }
     }

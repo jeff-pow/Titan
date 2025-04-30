@@ -26,6 +26,12 @@ pub enum MoveGenerationType {
 }
 
 impl Board {
+    pub fn pseudolegal_moves(&self) -> MoveList {
+        let mut moves = MoveList::default();
+        self.generate_moves(MGT::All, &mut moves);
+        moves
+    }
+
     /// Generates all pseudolegal moves
     pub fn generate_moves(&self, gen_type: MGT, moves: &mut MoveList) {
         let mut dests = match gen_type {

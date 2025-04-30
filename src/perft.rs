@@ -1,9 +1,9 @@
 use std::time::Instant;
 
-use crate::{board::Board, movegen::MGT, movelist::MoveList};
+use crate::board::Board;
 
 impl Board {
-    pub fn perft(&self, depth: i32) -> usize {
+    pub fn perft(&self, depth: usize) -> usize {
         let start = Instant::now();
         let count = self.non_bulk_perft::<true>(depth);
         let elapsed = start.elapsed().as_secs_f64();
@@ -11,24 +11,28 @@ impl Board {
         count
     }
 
-    fn non_bulk_perft<const ROOT: bool>(&self, depth: i32) -> usize {
+    fn non_bulk_perft<const ROOT: bool>(&self, depth: usize) -> usize {
         if depth == 0 {
             return 1;
         }
+
         let mut total = 0;
-        let mut moves = MoveList::default();
-        self.generate_moves(MGT::All, &mut moves);
-        for i in 0..moves.len() {
-            let m = moves[i];
+        for m in self.pseudolegal_moves().iter() {
             if !self.is_legal(m) {
                 continue;
             }
-            let new_b = self.make_move(m);
-            let count = new_b.non_bulk_perft::<false>(depth - 1);
-            if ROOT {
-                println!("{}: {count}", m.to_san());
+
+            if depth == 1 {
+                total += 1;
+            } else {
+                let new_b = self.make_move(m);
+                let count = new_b.non_bulk_perft::<false>(depth - 1);
+                total += count;
+
+                if ROOT {
+                    println!("{}: {count}", m.to_san());
+                }
             }
-            total += count;
         }
         total
     }
@@ -54,7 +58,7 @@ mod movegen_tests {
                     let board = Board::from_fen(iter.next().unwrap());
                     for entry in iter {
                         let (depth, nodes) = entry.split_once(' ').unwrap();
-                        let depth = depth[1..].parse::<i32>().unwrap();
+                        let depth = depth[1..].parse::<usize>().unwrap();
                         let nodes = nodes.parse::<usize>().unwrap();
                         eprintln!("test {test_num}: depth {depth} expected {nodes}");
                         assert_eq!(nodes, board.perft(depth), "Test number {test_num} failed");
@@ -77,7 +81,7 @@ mod movegen_tests {
                     for entry in iter {
                         println!("Fen: {fen}");
                         let (depth, nodes) = entry.split_once(' ').unwrap();
-                        let depth = depth[1..].parse::<i32>().unwrap();
+                        let depth = depth[1..].parse::<usize>().unwrap();
                         let nodes = nodes.parse::<usize>().unwrap();
                         eprintln!("test {test_num}: depth {depth} expected {nodes}");
                         assert_eq!(nodes, board.perft(depth), "Fen {fen} failed.");

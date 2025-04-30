@@ -48,6 +48,10 @@ impl MoveList {
         }
         self.arr.swap(max_idx, idx);
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = Move> + '_ {
+        self.arr.iter().map(|entry| entry.m)
+    }
 }
 
 impl Index<usize> for MoveList {
