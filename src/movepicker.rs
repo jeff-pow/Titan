@@ -163,14 +163,12 @@ impl MovePicker {
 
 fn score_quiets(board: &Board, td: &ThreadData, moves: &mut [MoveListEntry]) {
     for MoveListEntry { m, score } in moves {
-        assert_eq!(m.piece_moving(true), board.piece_at(m.from()));
         *score = td.history.quiet_history(*m, board.piece_at(m.from()), &td.stack, td.ply);
     }
 }
 
 fn score_captures(td: &ThreadData, margin: i32, board: &Board, moves: &mut [MoveListEntry]) {
     for MoveListEntry { m, score } in moves {
-        assert_eq!(m.piece_moving(true), board.piece_at(m.from()));
         *score = (if board.see(*m, margin) { GOOD_CAPTURE } else { BAD_CAPTURE })
             + td.history.capt_hist(*m, board.piece_at(m.from()), board);
     }

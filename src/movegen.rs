@@ -63,26 +63,26 @@ impl Board {
                 && self.threats() & Castle::WhiteKing.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::WhiteKing.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(Square::E1, Square::G1, MoveType::CastleMove, Piece::WhiteKing));
+                moves.push(Move::new(Square::E1, Square::G1, MoveType::CastleMove));
             }
             if self.can_castle(Castle::WhiteQueen)
                 && self.threats() & Castle::WhiteQueen.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::WhiteQueen.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(Square::E1, Square::C1, MoveType::CastleMove, Piece::WhiteKing));
+                moves.push(Move::new(Square::E1, Square::C1, MoveType::CastleMove));
             }
         } else {
             if self.can_castle(Castle::BlackKing)
                 && self.threats() & Castle::BlackKing.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::BlackKing.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(Square::E8, Square::G8, MoveType::CastleMove, Piece::BlackKing));
+                moves.push(Move::new(Square::E8, Square::G8, MoveType::CastleMove));
             }
             if self.can_castle(Castle::BlackQueen)
                 && self.threats() & Castle::BlackQueen.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::BlackQueen.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(Square::E8, Square::C8, MoveType::CastleMove, Piece::BlackKing));
+                moves.push(Move::new(Square::E8, Square::C8, MoveType::CastleMove));
             }
         }
     }
@@ -108,11 +108,11 @@ impl Board {
             let push_two = vacancies & (push_one & rank3).shift(up);
             for dest in push_one {
                 let src = dest.shift(up.opp());
-                moves.push(Move::new(src, dest, MoveType::Normal, piece));
+                moves.push(Move::new(src, dest, MoveType::Normal));
             }
             for dest in push_two {
                 let src = dest.shift(up.opp()).shift(up.opp());
-                moves.push(Move::new(src, dest, MoveType::DoublePush, piece));
+                moves.push(Move::new(src, dest, MoveType::DoublePush));
             }
         }
 
@@ -140,11 +140,11 @@ impl Board {
                 let right_captures = non_promotions.shift(right) & enemies;
                 for dest in left_captures {
                     let src = dest.shift(left.opp());
-                    moves.push(Move::new(src, dest, MoveType::Normal, piece));
+                    moves.push(Move::new(src, dest, MoveType::Normal));
                 }
                 for dest in right_captures {
                     let src = dest.shift(right.opp());
-                    moves.push(Move::new(src, dest, MoveType::Normal, piece));
+                    moves.push(Move::new(src, dest, MoveType::Normal));
                 }
             }
 
@@ -166,7 +166,7 @@ impl Board {
         if pawn != Bitboard::EMPTY {
             let dest = self.en_passant_square?;
             let src = dest.checked_shift(dir)?;
-            return Some(Move::new(src, dest, MoveType::EnPassant, piece));
+            return Some(Move::new(src, dest, MoveType::EnPassant));
         }
         None
     }
@@ -185,7 +185,7 @@ impl Board {
                 destinations
             };
             for dest in attack_fn(src, self.occupancies()) & x {
-                moves.push(Move::new(src, dest, MoveType::Normal, self.piece_at(src)));
+                moves.push(Move::new(src, dest, MoveType::Normal));
             }
         }
     }
@@ -204,7 +204,7 @@ impl Board {
                 destinations
             };
             for dest in attack_fn(src) & x {
-                moves.push(Move::new(src, dest, MoveType::Normal, self.piece_at(src)));
+                moves.push(Move::new(src, dest, MoveType::Normal));
             }
         }
     }
@@ -214,6 +214,6 @@ fn gen_promotions(piece: Piece, src: Square, dest: Square, moves: &mut MoveList)
     const PROMOS: [MoveType; 4] =
         [MoveType::QueenPromotion, MoveType::RookPromotion, MoveType::BishopPromotion, MoveType::KnightPromotion];
     for promo in PROMOS {
-        moves.push(Move::new(src, dest, promo, piece));
+        moves.push(Move::new(src, dest, promo));
     }
 }

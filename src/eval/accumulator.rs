@@ -368,7 +368,6 @@ mod acc_test {
     macro_rules! make_move_nnue {
         ($board:ident, $stack:ident, $mv_str:literal) => {{
             let m = Move::from_san($mv_str, &$board);
-            assert_eq!(m.piece_moving(true), $board.piece_at(m.from()));
             $stack.push(m, $board.piece_at(m.from()), $board.capture(m));
             assert!($board.is_legal(m));
             $board = $board.make_move(m);

@@ -65,8 +65,7 @@ impl TableEntry {
         if b.piece_at(m.from()) == Piece::None {
             Move::NULL
         } else {
-            let p = b.piece_at(m.from()) as u32;
-            unsafe { Some(Move(NonZeroU32::new_unchecked(u32::from(self.best_move) | p << 16))) }
+            unsafe { Some(Move(NonZeroU32::new_unchecked(u32::from(self.best_move)))) }
         }
     }
 }
@@ -289,7 +288,7 @@ mod transpos_tests {
         let entry = table.get(b.zobrist_hash, 4);
         assert!(entry.is_none());
 
-        let m = Move::new(Square(12), Square(28), MoveType::Normal, Piece::WhitePawn);
+        let m = Move::new(Square(12), Square(28), MoveType::Normal);
         table.store(b.zobrist_hash, Some(m), 0, EntryFlag::Exact, 25, 4, false, 25);
         let entry = table.get(b.zobrist_hash, 2);
         assert_eq!(25, entry.unwrap().static_eval());
@@ -298,7 +297,7 @@ mod transpos_tests {
 
     #[test]
     fn search_scores() {
-        let m = Move::new(Square(12), Square(28), MoveType::Normal, Piece::WhitePawn);
+        let m = Move::new(Square(12), Square(28), MoveType::Normal);
         let table = TranspositionTable::new(64);
 
         let search_score = 37;
