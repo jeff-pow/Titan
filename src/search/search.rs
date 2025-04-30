@@ -56,16 +56,20 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
         // Only update best move if the search wasn't aborted
         td.best_move = pv.line[0];
 
-        if print_uci {
-            td.print_search_stats(prev_score, &pv, tt, depth);
-        }
-
         if td.soft_stop(depth, prev_score) {
             td.set_halt(true);
             break;
         }
 
+        if print_uci {
+            td.print_search_stats(prev_score, &pv, tt, depth);
+        }
+
         depth += 1;
+    }
+
+    if print_uci {
+        td.print_search_stats(prev_score, &pv, tt, depth);
     }
 
     assert_ne!(td.best_move, Move::NULL);
