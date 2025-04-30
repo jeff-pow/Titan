@@ -106,7 +106,7 @@ impl Board {
         // Return hash right away if the move was a null move
         let Some(m) = m else { return hash };
 
-        hash ^= ZOBRIST.piece[m.piece_moving()][m.from()] ^ ZOBRIST.piece[m.piece_moving()][m.to()];
+        hash ^= ZOBRIST.piece[self.piece_at(m.from())][m.from()] ^ ZOBRIST.piece[self.piece_at(m.from())][m.to()];
 
         if self.piece_at(m.to()) != Piece::None {
             hash ^= ZOBRIST.piece[self.piece_at(m.to())][m.to()];
@@ -310,7 +310,7 @@ impl Board {
         let is_capture = capture != Piece::None;
         let is_pawn_double_push = m.flag() == MoveType::DoublePush;
 
-        if moving != m.piece_moving() {
+        if moving != self.piece_at(m.from()) {
             return false;
         }
 
@@ -393,8 +393,7 @@ impl Board {
     #[must_use]
     pub fn make_move(&self, m: Move) -> Self {
         let mut board = *self;
-        let piece_moving = m.piece_moving();
-        assert_eq!(piece_moving, board.piece_at(m.from()));
+        let piece_moving = board.piece_at(m.from());
         let capture = board.capture(m);
         board.remove_piece(m.to());
 
@@ -410,7 +409,7 @@ impl Board {
             board.place_piece(rook, m.castle_type().rook_to());
             board.remove_piece(m.castle_type().rook_from());
         } else if let Some(p) = m.promotion() {
-            board.place_piece(p, m.to());
+            board.place_piece(Piece::new(p, board.stm), m.to());
         } else if m.is_en_passant() {
             match board.stm {
                 Color::White => {

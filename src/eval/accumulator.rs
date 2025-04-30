@@ -133,26 +133,24 @@ impl Accumulator {
 
     pub(crate) fn lazy_update(&mut self, old: &Accumulator, side: Color, board: &Board) {
         let m = self.m;
+        let piece_moving = self.piece;
+
         let from = if side == Color::Black { m.from().flip_vertical() } else { m.from() };
         let to = if side == Color::Black { m.to().flip_vertical() } else { m.to() };
-        assert!(
-            m.piece_moving().name() != PieceName::King
-                || m.piece_moving().color() != side
-                || BUCKETS[from] == BUCKETS[to]
-        );
-        let piece_moving = m.promotion().unwrap_or(m.piece_moving());
+        assert!(piece_moving.name() != PieceName::King || piece_moving.color() != side || BUCKETS[from] == BUCKETS[to]);
+        let possible_promo = m.promotion().map_or(piece_moving, |promo| Piece::new(promo, piece_moving.color()));
         let king = board.king_square(side);
-        let a1 = Network::feature_idx(piece_moving, m.to(), king, side);
-        let s1 = Network::feature_idx(m.piece_moving(), m.from(), king, side);
+        let a1 = Network::feature_idx(possible_promo, m.to(), king, side);
+        let s1 = Network::feature_idx(piece_moving, m.from(), king, side);
         if m.is_castle() {
-            let rook = Piece::new(PieceName::Rook, m.piece_moving().color());
+            let rook = Piece::new(PieceName::Rook, piece_moving.color());
             let a2 = Network::feature_idx(rook, m.castle_type().rook_to(), king, side);
             let s2 = Network::feature_idx(rook, m.castle_type().rook_from(), king, side);
 
             self.add_add_sub_sub(old, a1, a2, s1, s2, side);
         } else if self.capture != Piece::None || m.is_en_passant() {
             let cap_square = if m.is_en_passant() {
-                match m.piece_moving().color() {
+                match piece_moving.color() {
                     Color::White => m.to().shift(Direction::South),
                     Color::Black => m.to().shift(Direction::North),
                 }
@@ -160,7 +158,7 @@ impl Accumulator {
                 m.to()
             };
             let capture =
-                if m.is_en_passant() { Piece::new(PieceName::Pawn, !m.piece_moving().color()) } else { self.capture };
+                if m.is_en_passant() { Piece::new(PieceName::Pawn, !piece_moving.color()) } else { self.capture };
             let s2 = Network::feature_idx(capture, cap_square, king, side);
             self.add_sub_sub(old, a1, s1, s2, side);
         } else {
@@ -263,13 +261,12 @@ impl AccumulatorStack {
         let mut curr = self.top;
         loop {
             let m = self.stack[curr].m;
+            let piece_moving = self.stack[curr].piece;
+
             let from = if side == Color::Black { m.from().flip_vertical() } else { m.from() };
             let to = if side == Color::Black { m.to().flip_vertical() } else { m.to() };
 
-            if m.piece_moving().color() == side
-                && m.piece_moving().name() == PieceName::King
-                && BUCKETS[from] != BUCKETS[to]
-            {
+            if piece_moving.color() == side && piece_moving.name() == PieceName::King && BUCKETS[from] != BUCKETS[to] {
                 return false;
             }
 
@@ -371,7 +368,8 @@ mod acc_test {
     macro_rules! make_move_nnue {
         ($board:ident, $stack:ident, $mv_str:literal) => {{
             let m = Move::from_san($mv_str, &$board);
-            $stack.push(m, $board.capture(m));
+            assert_eq!(m.piece_moving(true), $board.piece_at(m.from()));
+            $stack.push(m, $board.piece_at(m.from()), $board.capture(m));
             assert!($board.is_legal(m));
             $board = $board.make_move(m);
         }};

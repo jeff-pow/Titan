@@ -53,8 +53,8 @@ pub struct SearchStack {
 }
 
 impl SearchStack {
-    pub fn prev_move(&self, ply: i32) -> Option<Move> {
-        self.stack.get(ply as usize).map(|e| e.played_move)?
+    pub fn prev(&self, ply: i32) -> Option<(Move, Piece)> {
+        self.stack.get(ply as usize).and_then(|e| e.played_move.map(|m| (m, e.moved_piece)))
     }
 }
 

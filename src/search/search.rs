@@ -377,7 +377,7 @@ fn negamax<const IS_PV: bool>(
         // negative extensions
         let extension = extension::<IS_PV>(entry, alpha, beta, m, depth, board, td, tt, cut_node);
 
-        td.accumulators.push(m, board.piece_at(m.to()));
+        td.accumulators.push(m, board.piece_at(m.from()), board.piece_at(m.to()));
 
         if is_quiet {
             quiets_tried.push(m);
@@ -391,13 +391,15 @@ fn negamax<const IS_PV: bool>(
         let pre_search_nodes = td.nodes.local_count();
         td.stack[td.ply].played_move = Some(m);
         td.stack[td.ply].moved_piece = board.piece_at(m.from());
-        assert_eq!(m.piece_moving(), board.piece_at(m.from()));
         td.hash_history.push(new_b.zobrist_hash);
         td.ply += 1;
         let mut node_pv = PV::default();
         let mut eval = -INFINITY;
-        let history =
-            if is_quiet { td.history.quiet_history(m, &td.stack, td.ply) } else { td.history.capt_hist(m, board) };
+        let history = if is_quiet {
+            td.history.quiet_history(m, board.piece_at(m.from()), &td.stack, td.ply)
+        } else {
+            td.history.capt_hist(m, board.piece_at(m.from()), board)
+        };
 
         // Late Move Reductions (LMR) - Search moves after the first with reduced depth and
         // window as they are much less likely to be the best move than the first move
@@ -676,12 +678,10 @@ pub(super) fn quiescence<const IS_PV: bool>(
         let new_b = board.make_move(m);
         tt.prefetch(board.hash_after(Some(m)));
 
-        assert_eq!(m.piece_moving(), board.piece_at(m.from()));
         td.accumulators.push(m, board.piece_at(m.from()), board.piece_at(m.to()));
         td.hash_history.push(new_b.zobrist_hash);
         td.stack[td.ply].played_move = Some(m);
         td.stack[td.ply].moved_piece = board.piece_at(m.from());
-        assert_eq!(m.piece_moving(), board.piece_at(m.from()));
         td.nodes.increment();
         moves_searched += 1;
         td.ply += 1;

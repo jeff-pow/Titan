@@ -41,8 +41,8 @@ pub struct MovePicker {
 
 impl MovePicker {
     pub fn new(tt_move: Option<Move>, td: &ThreadData, margin: i32, skip_quiets: bool) -> Self {
-        let prev = td.stack.prev_move(td.ply - 1);
-        let counter_move = td.history.get_counter(prev);
+        let prev = td.stack.prev(td.ply - 1);
+        let counter_move = prev.and_then(|(m, p)| td.history.get_counter(Some(m), p));
         Self {
             moves: MoveList::default(),
             index: 0,
@@ -121,7 +121,7 @@ impl MovePicker {
                 board.generate_moves(MGT::QuietsOnly, &mut self.moves);
                 let len = self.moves.len();
                 let quiets = &mut self.moves.arr[start..len];
-                score_quiets(td, quiets);
+                score_quiets(board, td, quiets);
             }
         }
 
@@ -161,14 +161,17 @@ impl MovePicker {
     }
 }
 
-fn score_quiets(td: &ThreadData, moves: &mut [MoveListEntry]) {
+fn score_quiets(board: &Board, td: &ThreadData, moves: &mut [MoveListEntry]) {
     for MoveListEntry { m, score } in moves {
-        *score = td.history.quiet_history(*m, &td.stack, td.ply);
+        assert_eq!(m.piece_moving(true), board.piece_at(m.from()));
+        *score = td.history.quiet_history(*m, board.piece_at(m.from()), &td.stack, td.ply);
     }
 }
 
 fn score_captures(td: &ThreadData, margin: i32, board: &Board, moves: &mut [MoveListEntry]) {
     for MoveListEntry { m, score } in moves {
-        *score = (if board.see(*m, margin) { GOOD_CAPTURE } else { BAD_CAPTURE }) + td.history.capt_hist(*m, board);
+        assert_eq!(m.piece_moving(true), board.piece_at(m.from()));
+        *score = (if board.see(*m, margin) { GOOD_CAPTURE } else { BAD_CAPTURE })
+            + td.history.capt_hist(*m, board.piece_at(m.from()), board);
     }
 }

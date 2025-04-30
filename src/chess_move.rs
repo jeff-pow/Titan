@@ -113,7 +113,7 @@ impl Move {
         str += arr[end_letter as usize];
         str += &end_number.to_string();
         if let Some(p) = self.promotion() {
-            match p.name() {
+            match p {
                 PieceName::Queen => str += "q",
                 PieceName::Rook => str += "r",
                 PieceName::Bishop => str += "b",
@@ -342,7 +342,7 @@ mod move_test {
         assert_eq!(promotion_move.to(), Square(25));
         assert!(!promotion_move.is_castle());
         assert!(!promotion_move.is_en_passant());
-        assert_eq!(promotion_move.promotion(), Some(Piece::WhiteQueen));
+        assert_eq!(promotion_move.promotion(), Some(PieceName::Queen));
 
         let castle_move = Move::new(Square(4), Square(2), CastleMove, Piece::WhiteKing);
         assert_eq!(castle_move.from(), Square(4));
@@ -362,15 +362,15 @@ mod move_test {
     #[test]
     fn test_promotion_conversion() {
         let knight_promotion = Move::new(Square(0), Square(7), KnightPromotion, Piece::WhitePawn);
-        assert_eq!(knight_promotion.promotion(), Some(Piece::WhiteKnight));
+        assert_eq!(knight_promotion.promotion(), Some(PieceName::Knight));
 
         let bishop_promotion = Move::new(Square(15), Square(23), BishopPromotion, Piece::WhitePawn);
-        assert_eq!(bishop_promotion.promotion(), Some(Piece::WhiteBishop));
+        assert_eq!(bishop_promotion.promotion(), Some(PieceName::Bishop));
 
         let rook_promotion = Move::new(Square(28), Square(31), RookPromotion, Piece::BlackPawn);
-        assert_eq!(rook_promotion.promotion(), Some(Piece::BlackRook));
+        assert_eq!(rook_promotion.promotion(), Some(PieceName::Rook));
 
         let queen_promotion = Move::new(Square(62), Square(61), QueenPromotion, Piece::BlackPawn);
-        assert_eq!(queen_promotion.promotion(), Some(Piece::BlackQueen));
+        assert_eq!(queen_promotion.promotion(), Some(PieceName::Queen));
     }
 }
