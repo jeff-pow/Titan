@@ -277,7 +277,7 @@ mod transpos_tests {
         chess_move::{Move, MoveType},
         search::search::CHECKMATE,
         transposition::{EntryFlag, TranspositionTable},
-        types::{pieces::Piece, square::Square},
+        types::square::Square,
         {board::Board, fen::STARTING_FEN},
     };
 

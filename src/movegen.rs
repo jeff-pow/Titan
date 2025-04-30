@@ -4,7 +4,7 @@ use crate::{
     chess_move::Direction::{self, North, NorthEast, NorthWest, South, SouthEast, SouthWest},
     types::{
         bitboard::Bitboard,
-        pieces::{Color, Piece, PieceName},
+        pieces::{Color, PieceName},
         square::Square,
     },
 };
@@ -43,7 +43,7 @@ impl Board {
 
         if self.checkers().count_bits() > 1 {
             return;
-        } else if self.checkers().count_bits() == 0 && (gen_type == MGT::QuietsOnly || gen_type == MGT::All) {
+        } else if self.checkers().count_bits() == 0 && matches!(gen_type, MGT::QuietsOnly | MGT::All) {
             self.castling_moves(moves);
         }
 
@@ -88,7 +88,6 @@ impl Board {
     }
 
     fn pawn_moves(&self, gen_type: MGT, moves: &mut MoveList) {
-        let piece = Piece::new(PieceName::Pawn, self.stm);
         let pawns = self.piece_color(self.stm, PieceName::Pawn);
         let vacancies = !self.occupancies();
         let enemies = self.color(!self.stm);
@@ -123,13 +122,13 @@ impl Board {
             let left_capture_promotions = promotions.shift(left) & enemies;
             let right_capture_promotions = promotions.shift(right) & enemies;
             for dest in no_capture_promotions {
-                gen_promotions(piece, dest.shift(up.opp()), dest, moves);
+                gen_promotions(dest.shift(up.opp()), dest, moves);
             }
             for dest in left_capture_promotions {
-                gen_promotions(piece, dest.shift(left.opp()), dest, moves);
+                gen_promotions(dest.shift(left.opp()), dest, moves);
             }
             for dest in right_capture_promotions {
-                gen_promotions(piece, dest.shift(right.opp()), dest, moves);
+                gen_promotions(dest.shift(right.opp()), dest, moves);
             }
         }
 
@@ -150,17 +149,17 @@ impl Board {
 
             // En Passant
             if self.can_en_passant() {
-                if let Some(x) = self.get_en_passant(left.opp(), piece) {
+                if let Some(x) = self.get_en_passant(left.opp()) {
                     moves.push(x);
                 }
-                if let Some(x) = self.get_en_passant(right.opp(), piece) {
+                if let Some(x) = self.get_en_passant(right.opp()) {
                     moves.push(x);
                 }
             }
         }
     }
 
-    fn get_en_passant(&self, dir: Direction, piece: Piece) -> Option<Move> {
+    fn get_en_passant(&self, dir: Direction) -> Option<Move> {
         let sq = self.en_passant_square?.checked_shift(dir)?;
         let pawn = sq.bitboard() & self.piece_color(self.stm, PieceName::Pawn);
         if pawn != Bitboard::EMPTY {
@@ -210,7 +209,7 @@ impl Board {
     }
 }
 
-fn gen_promotions(piece: Piece, src: Square, dest: Square, moves: &mut MoveList) {
+fn gen_promotions(src: Square, dest: Square, moves: &mut MoveList) {
     const PROMOS: [MoveType; 4] =
         [MoveType::QueenPromotion, MoveType::RookPromotion, MoveType::BishopPromotion, MoveType::KnightPromotion];
     for promo in PROMOS {

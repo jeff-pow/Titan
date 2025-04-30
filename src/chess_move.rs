@@ -69,6 +69,10 @@ impl Move {
         self.flag() == EnPassant
     }
 
+    pub fn is_double_push(self) -> bool {
+        self.flag() == DoublePush
+    }
+
     pub fn promotion(self) -> Option<PieceName> {
         match self.flag() {
             QueenPromotion => Some(PieceName::Queen),

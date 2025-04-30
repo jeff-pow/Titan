@@ -308,13 +308,11 @@ impl Board {
         let moving = self.piece_at(from);
         let capture = self.piece_at(to);
         let is_capture = capture != Piece::None;
-        let is_pawn_double_push = m.flag() == MoveType::DoublePush;
-
-        if moving != self.piece_at(m.from()) {
+        if moving == Piece::None {
             return false;
         }
 
-        if moving == Piece::None {
+        if moving.name() != PieceName::Pawn && (m.is_en_passant() || m.promotion().is_some() || m.is_double_push()) {
             return false;
         }
 
@@ -353,7 +351,7 @@ impl Board {
 
         match moving.name() {
             PieceName::Pawn => {
-                if is_capture && is_pawn_double_push {
+                if is_capture && m.is_double_push() {
                     return false;
                 }
                 let bitboard = RANKS[7];
@@ -369,7 +367,7 @@ impl Board {
                 if m.is_en_passant() {
                     return Some(to) == self.en_passant_square;
                 }
-                if is_pawn_double_push {
+                if m.is_double_push() {
                     let one_forward = from.shift(up);
                     return self.piece_at(one_forward) == Piece::None && to == one_forward.shift(up);
                 }
