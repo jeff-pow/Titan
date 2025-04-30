@@ -1,7 +1,7 @@
 use core::fmt;
 use std::{
     fmt::Display,
-    num::{NonZero, NonZeroU32},
+    num::{NonZero, NonZeroU16},
 };
 
 use crate::{
@@ -43,13 +43,13 @@ const _: () = assert!(std::mem::size_of::<Move>() == std::mem::size_of::<Option<
 /// bit 16-19: piece moving - useful in continuation history
 /// NOTE: en passant bit is set only when a pawn can be captured
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct Move(pub NonZeroU32);
+pub struct Move(pub NonZeroU16);
 
 impl Move {
     pub const NULL: Option<Self> = None;
 
     pub const fn new(origin: Square, destination: Square, move_type: MoveType) -> Self {
-        let m = origin.0 | (destination.0 << 6) | ((move_type as u32) << 12);
+        let m = origin.0 as u16 | ((destination.0 as u16) << 6) | ((move_type as u16) << 12);
         unsafe { Self(NonZero::new_unchecked(m)) }
     }
 
@@ -84,19 +84,15 @@ impl Move {
     }
 
     pub const fn from(self) -> Square {
-        Square(self.0.get() & 0b11_1111)
+        Square(self.0.get() as u32 & 0b11_1111)
     }
 
     pub const fn to(self) -> Square {
-        Square(self.0.get() >> 6 & 0b11_1111)
+        Square((self.0.get() as u32) >> 6 & 0b11_1111)
     }
 
     pub fn is_tactical(self, board: &Board) -> bool {
         self.promotion().is_some() || self.is_en_passant() || board.occupancies().occupied(self.to())
-    }
-
-    pub const fn as_u16(self) -> u16 {
-        self.0.get() as u16
     }
 
     /// To Short Algebraic Notation
@@ -210,6 +206,18 @@ impl Move {
             }
         };
         Move::new(origin_sq, dest_sq, move_type)
+    }
+}
+
+impl From<u16> for Move {
+    fn from(value: u16) -> Self {
+        Self(NonZeroU16::new(value).unwrap())
+    }
+}
+
+impl From<Move> for u16 {
+    fn from(value: Move) -> Self {
+        value.0.get()
     }
 }
 

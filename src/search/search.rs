@@ -188,7 +188,7 @@ fn negamax<const IS_PV: bool>(
     if let Some(entry) = entry {
         let tt_flag = entry.flag();
         let tt_score = entry.search_score();
-        tt_move = entry.best_move(board);
+        tt_move = entry.best_move();
         tt_pv |= entry.was_pv();
 
         // Don't do TT cutoffs in verification search for singular moves
@@ -545,7 +545,7 @@ fn extension<const IS_PV: bool>(
     cut_node: bool,
 ) -> i32 {
     let Some(entry) = tt_entry else { return 0 };
-    let tt_move = entry.best_move(board);
+    let tt_move = entry.best_move();
     if entry.depth() < depth - 3
         || matches!(entry.flag(), EntryFlag::AlphaUnchanged | EntryFlag::None)
         || Some(m) != tt_move
@@ -626,7 +626,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
             return e.search_score();
         }
         tt_pv |= e.was_pv();
-        table_move = e.best_move(board);
+        table_move = e.best_move();
     }
 
     let raw_eval;

@@ -190,7 +190,7 @@ impl Board {
     }
 
     #[expect(dead_code)]
-    pub fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
+    fn square_under_attack(&self, attacker: Color, sq: Square) -> bool {
         self.attackers_for_side(attacker, sq, self.occupancies()) != Bitboard::EMPTY
     }
 

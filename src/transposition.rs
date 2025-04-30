@@ -1,12 +1,10 @@
 use crate::{
-    board::Board,
     chess_move::Move,
     search::search::{INFINITY, NEAR_CHECKMATE},
-    types::pieces::Piece,
 };
 use std::{
     mem::{size_of, transmute},
-    num::NonZeroU32,
+    num::NonZeroU16,
     sync::atomic::{AtomicI16, AtomicU16, AtomicU64, AtomicU8, Ordering},
 };
 
@@ -60,12 +58,10 @@ impl TableEntry {
         i32::from(self.search_score)
     }
 
-    pub fn best_move(self, b: &Board) -> Option<Move> {
-        let m = Move(NonZeroU32::new(u32::from(self.best_move))?);
-        if b.piece_at(m.from()) == Piece::None {
-            Move::NULL
-        } else {
-            unsafe { Some(Move(NonZeroU32::new_unchecked(u32::from(self.best_move)))) }
+    pub fn best_move(self) -> Option<Move> {
+        match self.best_move {
+            0 => None,
+            x => Some(Move(NonZeroU16::new(x).unwrap())),
         }
     }
 }
@@ -215,7 +211,7 @@ impl TranspositionTable {
             } else if m.is_none() {
                 0
             } else {
-                m.unwrap().as_u16()
+                m.unwrap().into()
             };
 
             if search_score > NEAR_CHECKMATE {
@@ -292,7 +288,7 @@ mod transpos_tests {
         table.store(b.zobrist_hash, Some(m), 0, EntryFlag::Exact, 25, 4, false, 25);
         let entry = table.get(b.zobrist_hash, 2);
         assert_eq!(25, entry.unwrap().static_eval());
-        assert_eq!(m, entry.unwrap().best_move(&b).unwrap());
+        assert_eq!(m, entry.unwrap().best_move().unwrap());
     }
 
     #[test]

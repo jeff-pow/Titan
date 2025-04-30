@@ -15,7 +15,7 @@ use super::{
 };
 use arrayvec::ArrayVec;
 use std::{
-    num::NonZeroU32,
+    num::NonZeroU16,
     ops::{Index, IndexMut},
 };
 
@@ -34,7 +34,7 @@ impl Default for Accumulator {
         Self {
             vals: [NET.feature_bias; 2],
             correct: [true; 2],
-            m: Move(NonZeroU32::new(1).unwrap()),
+            m: Move(NonZeroU16::new(1).unwrap()),
             piece: Piece::None,
             capture: Piece::None,
         }
