@@ -25,6 +25,7 @@ pub struct Accumulator {
     pub vals: [Align64<Block>; 2],
     pub correct: [bool; 2],
     pub m: Move,
+    pub piece: Piece,
     pub capture: Piece,
 }
 
@@ -34,6 +35,7 @@ impl Default for Accumulator {
             vals: [NET.feature_bias; 2],
             correct: [true; 2],
             m: Move(NonZeroU32::new(1).unwrap()),
+            piece: Piece::None,
             capture: Piece::None,
         }
     }
@@ -289,9 +291,10 @@ impl AccumulatorStack {
         &mut self.stack[self.top]
     }
 
-    pub fn push(&mut self, m: Move, capture: Piece) {
+    pub fn push(&mut self, m: Move, piece: Piece, capture: Piece) {
         self.top += 1;
         self.stack[self.top].m = m;
+        self.stack[self.top].piece = piece;
         self.stack[self.top].capture = capture;
         self.stack[self.top].correct = [false; 2];
     }

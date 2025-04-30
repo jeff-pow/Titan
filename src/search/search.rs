@@ -10,6 +10,7 @@ use crate::thread::ThreadData;
 use crate::transposition::{EntryFlag, TableEntry, TranspositionTable};
 
 use super::PV;
+use crate::types::pieces::Piece;
 use arrayvec::ArrayVec;
 
 pub const CHECKMATE: i32 = 25000;
@@ -294,6 +295,7 @@ fn negamax<const IS_PV: bool>(
 
         tt.prefetch(board.hash_after(Move::NULL));
         td.stack[td.ply].played_move = Move::NULL;
+        td.stack[td.ply].moved_piece = Piece::None;
         td.hash_history.push(new_b.zobrist_hash);
         td.ply += 1;
 
@@ -388,6 +390,8 @@ fn negamax<const IS_PV: bool>(
         td.nodes.increment();
         let pre_search_nodes = td.nodes.local_count();
         td.stack[td.ply].played_move = Some(m);
+        td.stack[td.ply].moved_piece = board.piece_at(m.from());
+        assert_eq!(m.piece_moving(), board.piece_at(m.from()));
         td.hash_history.push(new_b.zobrist_hash);
         td.ply += 1;
         let mut node_pv = PV::default();
@@ -672,9 +676,12 @@ pub(super) fn quiescence<const IS_PV: bool>(
         let new_b = board.make_move(m);
         tt.prefetch(board.hash_after(Some(m)));
 
-        td.accumulators.push(m, board.piece_at(m.to()));
+        assert_eq!(m.piece_moving(), board.piece_at(m.from()));
+        td.accumulators.push(m, board.piece_at(m.from()), board.piece_at(m.to()));
         td.hash_history.push(new_b.zobrist_hash);
         td.stack[td.ply].played_move = Some(m);
+        td.stack[td.ply].moved_piece = board.piece_at(m.from());
+        assert_eq!(m.piece_moving(), board.piece_at(m.from()));
         td.nodes.increment();
         moves_searched += 1;
         td.ply += 1;
