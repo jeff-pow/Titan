@@ -1,6 +1,6 @@
 use crate::const_array;
 
-use crate::chess_move::Direction;
+use crate::magics::{bishop_attacks, rook_attacks};
 use crate::types::bitboard::Bitboard;
 use crate::types::pieces::Color;
 use crate::types::square::Square;
@@ -70,102 +70,40 @@ pub const PAWN_ATTACKS: [[Bitboard; 64]; 2] = [
     const_array!(|sq, 64| pawn_set_attacks(Bitboard(1 << sq), Color::Black)),
 ];
 
-pub static BETWEEN_SQUARES: [[Bitboard; 64]; 64] = {
-    let mut arr = [[Bitboard::EMPTY; 64]; 64];
-    let mut src = 0;
-    while src < 64 {
-        let mut dest = src + 1;
-        while dest < 64 {
-            if Square(src).rank() == Square(dest).rank() {
-                // dest > src, so we always want to shift in a smaller direction,
-                // from dest towards src
-                let mut i = Square(dest).shift(Direction::West);
-                while i.0 > src && i.is_valid() {
-                    arr[src as usize][dest as usize].0 |= i.bitboard().0;
-                    i = i.shift(Direction::West);
-                }
-            } else if Square(src).file() == Square(dest).file() {
-                let mut i = Square(dest).shift(Direction::South);
-                while i.0 > src && i.is_valid() {
-                    arr[src as usize][dest as usize].0 |= i.bitboard().0;
-                    i = i.shift(Direction::South);
-                }
-            } else if (dest - src) % Direction::NorthWest as u32 == 0 && Square(dest).file() < Square(src).file() {
-                let mut i = Square(dest).shift(Direction::SouthEast);
+static BETWEEN: [[Bitboard; 64]; 64] = const_array!(|i, 64| const_array!(|j, 64| {
+    let i = Square(i as u32);
+    let j = Square(j as u32);
 
-                while i.0 > src && i.is_valid() {
-                    arr[src as usize][dest as usize].0 |= i.bitboard().0;
-                    i = i.shift(Direction::SouthEast);
-                }
-            } else if (dest - src) % Direction::NorthEast as u32 == 0 && Square(dest).file() > Square(src).file() {
-                let mut i = Square(dest).shift(Direction::SouthWest);
-
-                while i.0 > src && i.is_valid() {
-                    arr[src as usize][dest as usize].0 |= i.bitboard().0;
-                    i = i.shift(Direction::SouthWest);
-                }
-            }
-            dest += 1;
-        }
-        src += 1;
+    if rook_attacks(i, Bitboard::EMPTY).contains(j) {
+        rook_attacks(i, j.bitboard()).and(rook_attacks(j, i.bitboard()))
+    } else if bishop_attacks(i, Bitboard::EMPTY).contains(j) {
+        bishop_attacks(i, j.bitboard()).and(bishop_attacks(j, i.bitboard()))
+    } else {
+        Bitboard::EMPTY
     }
+}));
 
-    // Copy top half of the triangle over to the bottom half
-    let mut src = 0;
-    while src < 64 {
-        let mut dest = 0;
-        while dest < src {
-            arr[src][dest] = arr[dest][src];
-            dest += 1;
-        }
-        src += 1;
-    }
-    arr
-};
+pub fn between(sq1: Square, sq2: Square) -> Bitboard {
+    BETWEEN[sq1][sq2]
+}
 
-const fn pinned_attack(king: usize, pinned: usize) -> Bitboard {
-    let mut valid = 0;
+/// Indexed by [king square][pinned piece]
+static PINNED_MOVES: [[Bitboard; 64]; 64] = const_array!(|king, 64| const_array!(|pinned, 64| {
     let king = Square(king as u32);
     let pinned = Square(pinned as u32);
-    let Some(dir) = pinned.dir_to(king) else {
-        return Bitboard::EMPTY;
-    };
-    // Draw a line straight towards the attacker
-    'inner: {
-        let Some(mut current) = pinned.checked_shift(dir) else {
-            break 'inner;
-        };
-        loop {
-            valid |= current.bitboard().0;
-            let Some(sq) = current.checked_shift(dir) else {
-                break;
-            };
-            current = sq;
-            if current.0 == king.0 {
-                break;
-            }
-        }
-    }
-    'inner: {
-        // Draw a line the opposite way from the attacker
-        let Some(mut current) = pinned.checked_shift(dir.opp()) else { break 'inner };
-        loop {
-            valid |= current.bitboard().0;
-            let Some(sq) = current.checked_shift(dir.opp()) else {
-                break;
-            };
-            current = sq;
-        }
-    }
-    Bitboard(valid)
-}
 
-pub fn valid_pinned_moves(king: Square, pinned: Square) -> Bitboard {
+    if bishop_attacks(pinned, Bitboard::EMPTY).contains(king) {
+        bishop_attacks(king, Bitboard::EMPTY).and(bishop_attacks(pinned, king.bitboard()))
+    } else if rook_attacks(pinned, Bitboard::EMPTY).contains(king) {
+        rook_attacks(king, Bitboard::EMPTY).and(rook_attacks(pinned, king.bitboard()))
+    } else {
+        Bitboard::EMPTY
+    }
+}));
+
+pub fn pinned_moves(king: Square, pinned: Square) -> Bitboard {
     PINNED_MOVES[king][pinned]
 }
-
-/// Indexed by PINNED_MOVES[King square][Pinned piece]
-pub static PINNED_MOVES: [[Bitboard; 64]; 64] = const_array!(|sq1, 64| const_array!(|sq2, 64| pinned_attack(sq1, sq2)));
 
 #[macro_export]
 /// Credit for this macro goes to akimbo

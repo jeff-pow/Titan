@@ -86,17 +86,17 @@ impl MagicEntry {
 //     }
 // }
 
-pub fn bishop_attacks(sq: Square, occupied: Bitboard) -> Bitboard {
+pub const fn rook_attacks(sq: Square, occupied: Bitboard) -> Bitboard {
     unsafe {
-        let magic = BISHOP_MAGICS.get_unchecked(sq.0 as usize);
-        *BISHOP_TABLE.get_unchecked(magic.index(occupied))
+        let magic = *ROOK_MAGICS.as_ptr().add(sq.0 as usize);
+        *ROOK_TABLE.as_ptr().add(magic.index(occupied))
     }
 }
 
-pub fn rook_attacks(sq: Square, occupied: Bitboard) -> Bitboard {
+pub const fn bishop_attacks(sq: Square, occupied: Bitboard) -> Bitboard {
     unsafe {
-        let magic = ROOK_MAGICS.get_unchecked(sq.0 as usize);
-        *ROOK_TABLE.get_unchecked(magic.index(occupied))
+        let magic = *BISHOP_MAGICS.as_ptr().add(sq.0 as usize);
+        *BISHOP_TABLE.as_ptr().add(magic.index(occupied))
     }
 }
 

@@ -2,9 +2,7 @@ use core::fmt;
 
 use super::fen::STARTING_FEN;
 use crate::{
-    attack_boards::{
-        king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, valid_pinned_moves, BETWEEN_SQUARES, RANKS,
-    },
+    attack_boards::{between, king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, pinned_moves, RANKS},
     chess_move::{
         Castle,
         Direction::{North, South},
@@ -217,7 +215,7 @@ impl Board {
         let sliders_attacks = self.diags(attacker) & bishop_attacks(king_sq, Bitboard::EMPTY)
             | self.orthos(attacker) & rook_attacks(king_sq, Bitboard::EMPTY);
         for sq in sliders_attacks {
-            let blockers = BETWEEN_SQUARES[sq][king_sq] & self.occupancies();
+            let blockers = between(sq, king_sq) & self.occupancies();
             if blockers == Bitboard::EMPTY {
                 // No pieces between attacker and king
                 self.checkers |= sq.bitboard();
@@ -285,7 +283,7 @@ impl Board {
             return !self.threats().contains(to);
         }
 
-        if self.pinned().contains(from) && !valid_pinned_moves(king, from).contains(to) {
+        if self.pinned().contains(from) && !pinned_moves(king, from).contains(to) {
             return false;
         }
 
@@ -293,7 +291,7 @@ impl Board {
             0 => true,
             1 => {
                 let checker = self.checkers().pop_lsb();
-                to == checker || BETWEEN_SQUARES[king][checker].contains(to)
+                to == checker || between(king, checker).contains(to)
             }
             _ => false,
         }

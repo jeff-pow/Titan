@@ -1,5 +1,5 @@
 use crate::{
-    attack_boards::{valid_pinned_moves, BETWEEN_SQUARES},
+    attack_boards::{between, pinned_moves},
     board::Board,
     chess_move::Direction::{self, North, NorthEast, NorthWest, South, SouthEast, SouthWest},
     types::{
@@ -54,7 +54,7 @@ impl Board {
         }
 
         if !self.checkers().is_empty() {
-            dests &= BETWEEN_SQUARES[self.checkers().lsb()][self.king_square(self.stm)] | self.checkers();
+            dests &= between(self.checkers().lsb(), self.king_square(self.stm)) | self.checkers();
         }
 
         self.jumper_moves(knights, dests, moves, knight_attacks);
@@ -185,7 +185,7 @@ impl Board {
     ) {
         for src in pieces {
             let x = if self.pinned().contains(src) {
-                destinations & valid_pinned_moves(self.king_square(self.stm), src)
+                destinations & pinned_moves(self.king_square(self.stm), src)
             } else {
                 destinations
             };
@@ -204,7 +204,7 @@ impl Board {
     ) {
         for src in pieces {
             let x = if self.pinned().contains(src) {
-                destinations & valid_pinned_moves(self.king_square(self.stm), src)
+                destinations & pinned_moves(self.king_square(self.stm), src)
             } else {
                 destinations
             };
