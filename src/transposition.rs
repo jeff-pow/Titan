@@ -1,12 +1,10 @@
 use crate::{
-    board::Board,
     chess_move::Move,
     search::search::{INFINITY, NEAR_CHECKMATE},
-    types::pieces::Piece,
 };
 use std::{
     mem::{size_of, transmute},
-    num::NonZeroU32,
+    num::NonZeroU16,
     sync::atomic::{AtomicI16, AtomicU16, AtomicU64, AtomicU8, Ordering},
 };
 
@@ -60,13 +58,10 @@ impl TableEntry {
         i32::from(self.search_score)
     }
 
-    pub fn best_move(self, b: &Board) -> Option<Move> {
-        let m = Move(NonZeroU32::new(u32::from(self.best_move))?);
-        if b.piece_at(m.from()) == Piece::None {
-            Move::NULL
-        } else {
-            let p = b.piece_at(m.from()) as u32;
-            unsafe { Some(Move(NonZeroU32::new_unchecked(u32::from(self.best_move) | p << 16))) }
+    pub fn best_move(self) -> Option<Move> {
+        match self.best_move {
+            0 => None,
+            x => Some(Move(NonZeroU16::new(x).unwrap())),
         }
     }
 }
@@ -216,7 +211,7 @@ impl TranspositionTable {
             } else if m.is_none() {
                 0
             } else {
-                m.unwrap().as_u16()
+                m.unwrap().into()
             };
 
             if search_score > NEAR_CHECKMATE {
@@ -278,7 +273,7 @@ mod transpos_tests {
         chess_move::{Move, MoveType},
         search::search::CHECKMATE,
         transposition::{EntryFlag, TranspositionTable},
-        types::{pieces::Piece, square::Square},
+        types::square::Square,
         {board::Board, fen::STARTING_FEN},
     };
 
@@ -289,16 +284,16 @@ mod transpos_tests {
         let entry = table.get(b.zobrist_hash, 4);
         assert!(entry.is_none());
 
-        let m = Move::new(Square(12), Square(28), MoveType::Normal, Piece::WhitePawn);
+        let m = Move::new(Square(12), Square(28), MoveType::Normal);
         table.store(b.zobrist_hash, Some(m), 0, EntryFlag::Exact, 25, 4, false, 25);
         let entry = table.get(b.zobrist_hash, 2);
         assert_eq!(25, entry.unwrap().static_eval());
-        assert_eq!(m, entry.unwrap().best_move(&b).unwrap());
+        assert_eq!(m, entry.unwrap().best_move().unwrap());
     }
 
     #[test]
     fn search_scores() {
-        let m = Move::new(Square(12), Square(28), MoveType::Normal, Piece::WhitePawn);
+        let m = Move::new(Square(12), Square(28), MoveType::Normal);
         let table = TranspositionTable::new(64);
 
         let search_score = 37;

@@ -1,10 +1,10 @@
 use crate::{
-    attack_boards::{valid_pinned_moves, BETWEEN_SQUARES},
+    attack_boards::{between, pinned_moves},
     board::Board,
     chess_move::Direction::{self, North, NorthEast, NorthWest, South, SouthEast, SouthWest},
     types::{
         bitboard::Bitboard,
-        pieces::{Color, Piece, PieceName},
+        pieces::{Color, PieceName},
         square::Square,
     },
 };
@@ -26,6 +26,12 @@ pub enum MoveGenerationType {
 }
 
 impl Board {
+    pub fn pseudolegal_moves(&self) -> MoveList {
+        let mut moves = MoveList::default();
+        self.generate_moves(MGT::All, &mut moves);
+        moves
+    }
+
     /// Generates all pseudolegal moves
     pub fn generate_moves(&self, gen_type: MGT, moves: &mut MoveList) {
         let mut dests = match gen_type {
@@ -43,12 +49,12 @@ impl Board {
 
         if self.checkers().count_bits() > 1 {
             return;
-        } else if self.checkers().count_bits() == 0 && (gen_type == MGT::QuietsOnly || gen_type == MGT::All) {
+        } else if self.checkers().count_bits() == 0 && matches!(gen_type, MGT::QuietsOnly | MGT::All) {
             self.castling_moves(moves);
         }
 
         if !self.checkers().is_empty() {
-            dests &= BETWEEN_SQUARES[self.checkers().lsb()][self.king_square(self.stm)] | self.checkers();
+            dests &= between(self.checkers().lsb(), self.king_square(self.stm)) | self.checkers();
         }
 
         self.jumper_moves(knights, dests, moves, knight_attacks);
@@ -63,32 +69,31 @@ impl Board {
                 && self.threats() & Castle::WhiteKing.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::WhiteKing.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(Square::E1, Square::G1, MoveType::CastleMove, Piece::WhiteKing));
+                moves.push(Move::new(Square::E1, Square::G1, MoveType::CastleMove));
             }
             if self.can_castle(Castle::WhiteQueen)
                 && self.threats() & Castle::WhiteQueen.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::WhiteQueen.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(Square::E1, Square::C1, MoveType::CastleMove, Piece::WhiteKing));
+                moves.push(Move::new(Square::E1, Square::C1, MoveType::CastleMove));
             }
         } else {
             if self.can_castle(Castle::BlackKing)
                 && self.threats() & Castle::BlackKing.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::BlackKing.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(Square::E8, Square::G8, MoveType::CastleMove, Piece::BlackKing));
+                moves.push(Move::new(Square::E8, Square::G8, MoveType::CastleMove));
             }
             if self.can_castle(Castle::BlackQueen)
                 && self.threats() & Castle::BlackQueen.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::BlackQueen.empty_squares() == Bitboard::EMPTY
             {
-                moves.push(Move::new(Square::E8, Square::C8, MoveType::CastleMove, Piece::BlackKing));
+                moves.push(Move::new(Square::E8, Square::C8, MoveType::CastleMove));
             }
         }
     }
 
     fn pawn_moves(&self, gen_type: MGT, moves: &mut MoveList) {
-        let piece = Piece::new(PieceName::Pawn, self.stm);
         let pawns = self.piece_color(self.stm, PieceName::Pawn);
         let vacancies = !self.occupancies();
         let enemies = self.color(!self.stm);
@@ -108,11 +113,11 @@ impl Board {
             let push_two = vacancies & (push_one & rank3).shift(up);
             for dest in push_one {
                 let src = dest.shift(up.opp());
-                moves.push(Move::new(src, dest, MoveType::Normal, piece));
+                moves.push(Move::new(src, dest, MoveType::Normal));
             }
             for dest in push_two {
                 let src = dest.shift(up.opp()).shift(up.opp());
-                moves.push(Move::new(src, dest, MoveType::DoublePush, piece));
+                moves.push(Move::new(src, dest, MoveType::DoublePush));
             }
         }
 
@@ -123,13 +128,13 @@ impl Board {
             let left_capture_promotions = promotions.shift(left) & enemies;
             let right_capture_promotions = promotions.shift(right) & enemies;
             for dest in no_capture_promotions {
-                gen_promotions(piece, dest.shift(up.opp()), dest, moves);
+                gen_promotions(dest.shift(up.opp()), dest, moves);
             }
             for dest in left_capture_promotions {
-                gen_promotions(piece, dest.shift(left.opp()), dest, moves);
+                gen_promotions(dest.shift(left.opp()), dest, moves);
             }
             for dest in right_capture_promotions {
-                gen_promotions(piece, dest.shift(right.opp()), dest, moves);
+                gen_promotions(dest.shift(right.opp()), dest, moves);
             }
         }
 
@@ -140,33 +145,33 @@ impl Board {
                 let right_captures = non_promotions.shift(right) & enemies;
                 for dest in left_captures {
                     let src = dest.shift(left.opp());
-                    moves.push(Move::new(src, dest, MoveType::Normal, piece));
+                    moves.push(Move::new(src, dest, MoveType::Normal));
                 }
                 for dest in right_captures {
                     let src = dest.shift(right.opp());
-                    moves.push(Move::new(src, dest, MoveType::Normal, piece));
+                    moves.push(Move::new(src, dest, MoveType::Normal));
                 }
             }
 
             // En Passant
             if self.can_en_passant() {
-                if let Some(x) = self.get_en_passant(left.opp(), piece) {
+                if let Some(x) = self.get_en_passant(left.opp()) {
                     moves.push(x);
                 }
-                if let Some(x) = self.get_en_passant(right.opp(), piece) {
+                if let Some(x) = self.get_en_passant(right.opp()) {
                     moves.push(x);
                 }
             }
         }
     }
 
-    fn get_en_passant(&self, dir: Direction, piece: Piece) -> Option<Move> {
+    fn get_en_passant(&self, dir: Direction) -> Option<Move> {
         let sq = self.en_passant_square?.checked_shift(dir)?;
         let pawn = sq.bitboard() & self.piece_color(self.stm, PieceName::Pawn);
         if pawn != Bitboard::EMPTY {
             let dest = self.en_passant_square?;
             let src = dest.checked_shift(dir)?;
-            return Some(Move::new(src, dest, MoveType::EnPassant, piece));
+            return Some(Move::new(src, dest, MoveType::EnPassant));
         }
         None
     }
@@ -180,12 +185,12 @@ impl Board {
     ) {
         for src in pieces {
             let x = if self.pinned().contains(src) {
-                destinations & valid_pinned_moves(self.king_square(self.stm), src)
+                destinations & pinned_moves(self.king_square(self.stm), src)
             } else {
                 destinations
             };
             for dest in attack_fn(src, self.occupancies()) & x {
-                moves.push(Move::new(src, dest, MoveType::Normal, self.piece_at(src)));
+                moves.push(Move::new(src, dest, MoveType::Normal));
             }
         }
     }
@@ -199,21 +204,21 @@ impl Board {
     ) {
         for src in pieces {
             let x = if self.pinned().contains(src) {
-                destinations & valid_pinned_moves(self.king_square(self.stm), src)
+                destinations & pinned_moves(self.king_square(self.stm), src)
             } else {
                 destinations
             };
             for dest in attack_fn(src) & x {
-                moves.push(Move::new(src, dest, MoveType::Normal, self.piece_at(src)));
+                moves.push(Move::new(src, dest, MoveType::Normal));
             }
         }
     }
 }
 
-fn gen_promotions(piece: Piece, src: Square, dest: Square, moves: &mut MoveList) {
+fn gen_promotions(src: Square, dest: Square, moves: &mut MoveList) {
     const PROMOS: [MoveType; 4] =
         [MoveType::QueenPromotion, MoveType::RookPromotion, MoveType::BishopPromotion, MoveType::KnightPromotion];
     for promo in PROMOS {
-        moves.push(Move::new(src, dest, promo, piece));
+        moves.push(Move::new(src, dest, promo));
     }
 }

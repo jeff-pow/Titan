@@ -47,7 +47,7 @@ impl Board {
 
         let piece_moving = self.piece_at(from);
         assert!(piece_moving != Piece::None);
-        let next = m.promotion().map_or(piece_moving, |promo| promo);
+        let next = m.promotion().map_or(piece_moving, |promo| Piece::new(promo, piece_moving.color()));
 
         score -= next.value();
 

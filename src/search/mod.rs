@@ -2,22 +2,36 @@ use arrayvec::ArrayVec;
 use std::ops::{Index, IndexMut};
 
 use self::{game_time::Clock, search::MAX_SEARCH_DEPTH};
-use crate::chess_move::Move;
+use crate::{chess_move::Move, types::pieces::Piece};
 
 pub mod game_time;
 pub mod lmr_table;
-pub mod quiescence;
 pub mod search;
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 pub struct PlyEntry {
     pub killer_move: Option<Move>,
     pub played_move: Option<Move>,
+    pub moved_piece: Piece,
     pub static_eval: i32,
     pub cutoffs: u32,
     pub singular: Option<Move>,
     /// Double extensions
     pub multi_extns: i32,
+}
+
+impl Default for PlyEntry {
+    fn default() -> Self {
+        Self {
+            killer_move: Default::default(),
+            played_move: Default::default(),
+            moved_piece: Piece::None,
+            static_eval: Default::default(),
+            cutoffs: Default::default(),
+            singular: Default::default(),
+            multi_extns: Default::default(),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -39,8 +53,8 @@ pub struct SearchStack {
 }
 
 impl SearchStack {
-    pub fn prev_move(&self, ply: i32) -> Option<Move> {
-        self.stack.get(ply as usize).map(|e| e.played_move)?
+    pub fn prev(&self, ply: i32) -> Option<(Move, Piece)> {
+        self.stack.get(ply as usize).and_then(|e| e.played_move.map(|m| (m, e.moved_piece)))
     }
 }
 

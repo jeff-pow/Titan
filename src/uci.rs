@@ -5,7 +5,6 @@ use std::{io, time::Duration};
 use crate::bench::bench;
 use crate::chess_move::Move;
 use crate::fen::{parse_fen_from_buffer, STARTING_FEN};
-use crate::perft::perft;
 use crate::search::lmr_table::LmrTable;
 use crate::thread::ThreadPool;
 use crate::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
@@ -67,7 +66,7 @@ pub fn main_loop() -> ! {
                 thread_pool.handle_go(&input, &board, &halt, &mut msg, &hash_history, &transpos_table);
             }
             "perft" => {
-                perft(&board, input[1].parse().unwrap());
+                board.perft(input[1].parse().unwrap());
             }
             "quit" => {
                 exit(0);
@@ -117,7 +116,7 @@ fn position_command(input: &[&str], board: &mut Board, hash_history: &mut Vec<u6
 fn parse_moves(moves: &[&str], board: &mut Board, hash_history: &mut Vec<u64>) {
     for str in moves {
         let m = Move::from_san(str, board);
-        let _ = board.make_move(m);
+        *board = board.make_move(m);
         hash_history.push(board.zobrist_hash);
     }
 }

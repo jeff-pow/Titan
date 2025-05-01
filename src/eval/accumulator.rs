@@ -15,7 +15,7 @@ use super::{
 };
 use arrayvec::ArrayVec;
 use std::{
-    num::NonZeroU32,
+    num::NonZeroU16,
     ops::{Index, IndexMut},
 };
 
@@ -25,6 +25,7 @@ pub struct Accumulator {
     pub vals: [Align64<Block>; 2],
     pub correct: [bool; 2],
     pub m: Move,
+    pub piece: Piece,
     pub capture: Piece,
 }
 
@@ -33,7 +34,8 @@ impl Default for Accumulator {
         Self {
             vals: [NET.feature_bias; 2],
             correct: [true; 2],
-            m: Move(NonZeroU32::new(1).unwrap()),
+            m: Move(NonZeroU16::new(1).unwrap()),
+            piece: Piece::None,
             capture: Piece::None,
         }
     }
@@ -131,26 +133,24 @@ impl Accumulator {
 
     pub(crate) fn lazy_update(&mut self, old: &Accumulator, side: Color, board: &Board) {
         let m = self.m;
+        let piece_moving = self.piece;
+
         let from = if side == Color::Black { m.from().flip_vertical() } else { m.from() };
         let to = if side == Color::Black { m.to().flip_vertical() } else { m.to() };
-        assert!(
-            m.piece_moving().name() != PieceName::King
-                || m.piece_moving().color() != side
-                || BUCKETS[from] == BUCKETS[to]
-        );
-        let piece_moving = m.promotion().unwrap_or(m.piece_moving());
+        assert!(piece_moving.name() != PieceName::King || piece_moving.color() != side || BUCKETS[from] == BUCKETS[to]);
+        let possible_promo = m.promotion().map_or(piece_moving, |promo| Piece::new(promo, piece_moving.color()));
         let king = board.king_square(side);
-        let a1 = Network::feature_idx(piece_moving, m.to(), king, side);
-        let s1 = Network::feature_idx(m.piece_moving(), m.from(), king, side);
+        let a1 = Network::feature_idx(possible_promo, m.to(), king, side);
+        let s1 = Network::feature_idx(piece_moving, m.from(), king, side);
         if m.is_castle() {
-            let rook = Piece::new(PieceName::Rook, m.piece_moving().color());
+            let rook = Piece::new(PieceName::Rook, piece_moving.color());
             let a2 = Network::feature_idx(rook, m.castle_type().rook_to(), king, side);
             let s2 = Network::feature_idx(rook, m.castle_type().rook_from(), king, side);
 
             self.add_add_sub_sub(old, a1, a2, s1, s2, side);
         } else if self.capture != Piece::None || m.is_en_passant() {
             let cap_square = if m.is_en_passant() {
-                match m.piece_moving().color() {
+                match piece_moving.color() {
                     Color::White => m.to().shift(Direction::South),
                     Color::Black => m.to().shift(Direction::North),
                 }
@@ -158,7 +158,7 @@ impl Accumulator {
                 m.to()
             };
             let capture =
-                if m.is_en_passant() { Piece::new(PieceName::Pawn, !m.piece_moving().color()) } else { self.capture };
+                if m.is_en_passant() { Piece::new(PieceName::Pawn, !piece_moving.color()) } else { self.capture };
             let s2 = Network::feature_idx(capture, cap_square, king, side);
             self.add_sub_sub(old, a1, s1, s2, side);
         } else {
@@ -169,7 +169,7 @@ impl Accumulator {
 
 // Credit to akimbo. This function streamlines the assembly generated and prevents unnecessary
 // redundant loads and stores to the same simd vectors.
-pub fn update(acc: &mut Align64<Block>, adds: &[u16], subs: &[u16]) {
+pub fn update(acc: &mut Align64<Block>, adds: &[usize], subs: &[usize]) {
     const REGISTERS: usize = 8;
     const ELEMENTS_PER_LOOP: usize = REGISTERS * 256 / 16;
 
@@ -183,7 +183,7 @@ pub fn update(acc: &mut Align64<Block>, adds: &[u16], subs: &[u16]) {
         }
 
         for &add in adds {
-            let weights = &NET.feature_weights[usize::from(add)];
+            let weights = &NET.feature_weights[add];
 
             for (reg, &w) in regs.iter_mut().zip(weights[offset..].iter()) {
                 *reg += w;
@@ -191,7 +191,7 @@ pub fn update(acc: &mut Align64<Block>, adds: &[u16], subs: &[u16]) {
         }
 
         for &sub in subs {
-            let weights = &NET.feature_weights[usize::from(sub)];
+            let weights = &NET.feature_weights[sub];
 
             for (reg, &w) in regs.iter_mut().zip(weights[offset..].iter()) {
                 *reg -= w;
@@ -209,11 +209,11 @@ impl Board {
         let mut acc = Accumulator::default();
         for view in Color::iter() {
             acc.vals[view] = NET.feature_bias;
-            let mut vec: ArrayVec<u16, 32> = ArrayVec::new();
+            let mut vec: ArrayVec<usize, 32> = ArrayVec::new();
             for sq in self.occupancies() {
                 let p = self.piece_at(sq);
                 let idx = Network::feature_idx(p, sq, self.king_square(view), view);
-                vec.push(idx as u16);
+                vec.push(idx);
             }
             update(&mut acc.vals[view], &vec, &[]);
         }
@@ -261,13 +261,12 @@ impl AccumulatorStack {
         let mut curr = self.top;
         loop {
             let m = self.stack[curr].m;
+            let piece_moving = self.stack[curr].piece;
+
             let from = if side == Color::Black { m.from().flip_vertical() } else { m.from() };
             let to = if side == Color::Black { m.to().flip_vertical() } else { m.to() };
 
-            if m.piece_moving().color() == side
-                && m.piece_moving().name() == PieceName::King
-                && BUCKETS[from] != BUCKETS[to]
-            {
+            if piece_moving.color() == side && piece_moving.name() == PieceName::King && BUCKETS[from] != BUCKETS[to] {
                 return false;
             }
 
@@ -289,9 +288,10 @@ impl AccumulatorStack {
         &mut self.stack[self.top]
     }
 
-    pub fn push(&mut self, m: Move, capture: Piece) {
+    pub fn push(&mut self, m: Move, piece: Piece, capture: Piece) {
         self.top += 1;
         self.stack[self.top].m = m;
+        self.stack[self.top].piece = piece;
         self.stack[self.top].capture = capture;
         self.stack[self.top].correct = [false; 2];
     }
@@ -300,14 +300,14 @@ impl AccumulatorStack {
         self.top -= 1;
     }
 
-    pub fn clear(&mut self, base_accumulator: &Accumulator) {
-        self.stack[0] = *base_accumulator;
+    pub fn clear(&mut self, base_accumulator: Accumulator) {
+        self.stack[0] = base_accumulator;
         self.top = 0;
     }
 
-    pub fn new(base_accumulator: &Accumulator) -> Self {
+    pub fn new(base_accumulator: Accumulator) -> Self {
         let mut vec = vec![Accumulator::default(); MAX_SEARCH_DEPTH as usize + 50];
-        vec[0] = *base_accumulator;
+        vec[0] = base_accumulator;
         Self { stack: vec, top: 0, acc_cache: AccumulatorCache::default() }
     }
 }
@@ -345,10 +345,10 @@ impl AccumulatorCache {
             let removed = prev & !curr;
 
             for sq in added {
-                adds.push(Network::feature_idx(piece, sq, king, view) as u16);
+                adds.push(Network::feature_idx(piece, sq, king, view));
             }
             for sq in removed {
-                subs.push(Network::feature_idx(piece, sq, king, view) as u16);
+                subs.push(Network::feature_idx(piece, sq, king, view));
             }
         }
 
@@ -368,8 +368,9 @@ mod acc_test {
     macro_rules! make_move_nnue {
         ($board:ident, $stack:ident, $mv_str:literal) => {{
             let m = Move::from_san($mv_str, &$board);
-            $stack.push(m, $board.capture(m));
-            assert!($board.make_move(m));
+            $stack.push(m, $board.piece_at(m.from()), $board.capture(m));
+            assert!($board.is_legal(m));
+            $board = $board.make_move(m);
         }};
     }
 
@@ -383,7 +384,7 @@ mod acc_test {
     #[test]
     fn lazy_updates() {
         let mut board = Board::from_fen("r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14");
-        let mut stack = AccumulatorStack::new(&board.new_accumulator());
+        let mut stack = AccumulatorStack::new(board.new_accumulator());
         make_move_nnue!(board, stack, "e1g1");
 
         make_move_nnue!(board, stack, "e8d8");
@@ -393,7 +394,7 @@ mod acc_test {
     #[test]
     fn deeper_error() {
         let mut board = Board::from_fen("8/8/1p2k1p1/3p3p/1p1P1P1P/1P2PK2/8/8 w - - 3 54");
-        let mut stack = AccumulatorStack::new(&board.new_accumulator());
+        let mut stack = AccumulatorStack::new(board.new_accumulator());
 
         make_move_nnue!(board, stack, "e3e4");
         make_move_nnue!(board, stack, "e6e7");

@@ -2,6 +2,7 @@ use crate::{board::Board, chess_move::Move, types::pieces::PieceName};
 
 use crate::correction::CorrectionHistory;
 use crate::search::SearchStack;
+use crate::types::pieces::Piece;
 
 pub const MAX_HIST_VAL: i32 = 16384;
 
@@ -54,24 +55,27 @@ impl HistoryTable {
         ply: i32,
     ) {
         let bonus = (238 * depth).min(2095);
+        let best_piece = board.piece_at(best_move.from());
+
         if best_move.is_tactical(board) {
             let cap = capthist_capture(board, best_move);
-            self.update_capt_hist(best_move, cap, bonus);
+            self.update_capt_hist(best_move, best_piece, cap, bonus);
         } else {
-            if let Some(prev_move) = stack.prev_move(ply - 1) {
-                self.set_counter(prev_move, best_move);
+            if let Some((m, p)) = stack.prev(ply - 1) {
+                self.set_counter(m, p, best_move);
             }
             if depth > 3 || quiets_tried.len() > 1 {
-                self.update_quiet_history(best_move, bonus);
-                self.update_cont_hist(best_move, stack, ply, bonus);
+                self.update_quiet_history(best_move, best_piece, bonus);
+                self.update_cont_hist(best_move, best_piece, stack, ply, bonus);
             }
             // Only penalize quiets if best_move was quiet
             for m in quiets_tried {
                 if *m == best_move {
                     continue;
                 }
-                self.update_quiet_history(*m, -bonus);
-                self.update_cont_hist(*m, stack, ply, -bonus);
+                let p = board.piece_at(m.from());
+                self.update_quiet_history(*m, p, -bonus);
+                self.update_cont_hist(*m, p, stack, ply, -bonus);
             }
         }
 
@@ -80,53 +84,54 @@ impl HistoryTable {
             if *m == best_move {
                 continue;
             }
+            let p = board.piece_at(m.from());
             let cap = capthist_capture(board, *m);
-            self.update_capt_hist(*m, cap, -bonus);
+            self.update_capt_hist(*m, p, cap, -bonus);
         }
     }
 
-    fn update_quiet_history(&mut self, m: Move, bonus: i32) {
-        let i = &mut self.search_history[m.piece_moving()][m.to()].score;
+    fn update_quiet_history(&mut self, m: Move, piece: Piece, bonus: i32) {
+        let i = &mut self.search_history[piece][m.to()].score;
         update_history(i, bonus);
     }
 
-    pub(crate) fn quiet_history(&self, m: Move, stack: &SearchStack, ply: i32) -> i32 {
-        self.search_history[m.piece_moving()][m.to()].score + self.cont_hist(m, stack, ply)
+    pub(crate) fn quiet_history(&self, m: Move, piece: Piece, stack: &SearchStack, ply: i32) -> i32 {
+        self.search_history[piece][m.to()].score + self.cont_hist(m, piece, stack, ply)
     }
 
-    fn set_counter(&mut self, prev: Move, m: Move) {
-        self.search_history[prev.piece_moving()][prev.to()].counter = Some(m);
+    fn set_counter(&mut self, prev: Move, prev_piece: Piece, m: Move) {
+        self.search_history[prev_piece][prev.to()].counter = Some(m);
     }
 
-    pub fn get_counter(&self, m: Option<Move>) -> Option<Move> {
-        m.and_then(|m| self.search_history[m.piece_moving()][m.to()].counter)
+    pub fn get_counter(&self, m: Option<Move>, piece: Piece) -> Option<Move> {
+        m.and_then(|m| self.search_history[piece][m.to()].counter)
     }
 
-    fn update_capt_hist(&mut self, m: Move, capture: PieceName, bonus: i32) {
-        let i = &mut self.search_history[m.piece_moving()][m.to()].capt_hist[capture];
+    fn update_capt_hist(&mut self, m: Move, piece: Piece, capture: PieceName, bonus: i32) {
+        let i = &mut self.search_history[piece][m.to()].capt_hist[capture];
         update_history(i, bonus);
     }
 
-    pub fn capt_hist(&self, m: Move, board: &Board) -> i32 {
+    pub fn capt_hist(&self, m: Move, piece: Piece, board: &Board) -> i32 {
         let cap = capthist_capture(board, m);
-        self.search_history[m.piece_moving()][m.to()].capt_hist[cap]
+        self.search_history[piece][m.to()].capt_hist[cap]
     }
 
-    fn update_cont_hist(&mut self, m: Move, stack: &SearchStack, ply: i32, bonus: i32) {
-        let prevs = [stack.prev_move(ply - 1), stack.prev_move(ply - 2), stack.prev_move(ply - 4)];
-        let entry = &mut self.search_history[m.piece_moving()][m.to()].cont_hist;
-        for prev in prevs.into_iter().flatten() {
-            let i = &mut entry[prev.piece_moving().name()][prev.to()];
+    fn update_cont_hist(&mut self, m: Move, piece: Piece, stack: &SearchStack, ply: i32, bonus: i32) {
+        let prevs = [stack.prev(ply - 1), stack.prev(ply - 2), stack.prev(ply - 4)];
+        let entry = &mut self.search_history[piece][m.to()].cont_hist;
+        for (prev_m, prev_piece) in prevs.into_iter().flatten() {
+            let i = &mut entry[prev_piece.name()][prev_m.to()];
             update_history(i, bonus);
         }
     }
 
-    pub(crate) fn cont_hist(&self, m: Move, stack: &SearchStack, ply: i32) -> i32 {
+    pub(crate) fn cont_hist(&self, m: Move, piece: Piece, stack: &SearchStack, ply: i32) -> i32 {
         let mut score = 0;
-        let prevs = [stack.prev_move(ply - 1), stack.prev_move(ply - 2), stack.prev_move(ply - 4)];
-        let entry = &self.search_history[m.piece_moving()][m.to()];
-        for prev in prevs.into_iter().flatten() {
-            score += entry.cont_hist[prev.piece_moving().name()][prev.to()];
+        let prevs = [stack.prev(ply - 1), stack.prev(ply - 2), stack.prev(ply - 4)];
+        let entry = &self.search_history[piece][m.to()];
+        for (prev_m, prev_piece) in prevs.into_iter().flatten() {
+            score += entry.cont_hist[prev_piece.name()][prev_m.to()];
         }
         score
     }
