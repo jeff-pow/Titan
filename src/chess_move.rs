@@ -92,7 +92,13 @@ impl Move {
     }
 
     pub fn is_tactical(self, board: &Board) -> bool {
-        self.promotion().is_some() || self.is_en_passant() || board.occupancies().occupied(self.to())
+        self.promotion().is_some_and(|p| p == PieceName::Queen)
+            || self.is_en_passant()
+            || board.occupancies().occupied(self.to())
+    }
+
+    pub fn is_quiet(self, board: &Board) -> bool {
+        !self.is_tactical(board)
     }
 
     /// To Short Algebraic Notation

@@ -80,7 +80,7 @@ impl MovePicker {
         }
 
         if self.phase == MovePickerPhase::GoodCaptures {
-            if let Some(m) = self.select_next() {
+            if let Some(m) = self.select_next(board) {
                 if m.score >= GOOD_CAPTURE {
                     return Some(m);
                 }
@@ -126,7 +126,7 @@ impl MovePicker {
         }
 
         if self.phase == MovePickerPhase::Remainders {
-            if let Some(m) = self.select_next() {
+            if let Some(m) = self.select_next(board) {
                 return Some(m);
             }
             self.phase = MovePickerPhase::Finished;
@@ -136,7 +136,7 @@ impl MovePicker {
     }
 
     /// Chooses the next valid move with the next highest score
-    fn select_next(&mut self) -> Option<MoveListEntry> {
+    fn select_next(&mut self, board: &Board) -> Option<MoveListEntry> {
         if self.index >= self.moves.len() {
             return None;
         }
@@ -145,10 +145,10 @@ impl MovePicker {
 
         self.index += 1;
 
-        if self.skip_quiets && entry.score < GOOD_CAPTURE {
+        if self.skip_quiets && entry.m.is_quiet(board) {
             None
         } else if self.is_cached(entry.m) {
-            self.select_next()
+            self.select_next(board)
         } else {
             Some(entry)
         }

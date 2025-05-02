@@ -123,7 +123,8 @@ impl Board {
     }
 
     pub fn is_draw(&self) -> bool {
-        self.half_moves >= 100 || self.is_material_draw()
+        self.half_moves >= 100 && (!self.in_check() || self.pseudolegal_moves().iter().any(|m| self.is_legal(m)))
+            || self.is_material_draw()
     }
 
     pub fn has_non_pawns(&self, side: Color) -> bool {

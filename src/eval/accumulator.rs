@@ -2,7 +2,7 @@ use crate::{
     board::Board,
     chess_move::{Direction, Move},
     eval::HIDDEN_SIZE,
-    search::search::{MAX_PLY, NEAR_CHECKMATE},
+    search::search::{MATED_IN_MAX_PLY, MATE_IN_MAX_PLY, MAX_PLY},
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName},
@@ -61,7 +61,7 @@ impl Accumulator {
         let weights = &NET.output_weights;
         let output = flatten(us, &weights[0]) + flatten(them, &weights[1]);
         ((i32::from(NET.output_bias) + output / NORMALIZATION_FACTOR) * SCALE / QAB)
-            .clamp(-NEAR_CHECKMATE + 1, NEAR_CHECKMATE - 1)
+            .clamp(MATED_IN_MAX_PLY + 1, MATE_IN_MAX_PLY - 1)
     }
 
     /// Credit to viridithas for these values and concepts
@@ -69,7 +69,7 @@ impl Accumulator {
         let raw = self.raw_evaluate(board.stm);
         let eval = raw * board.mat_scale() / 1024;
         let eval = eval * (200 - board.half_moves as i32) / 200;
-        (eval).clamp(-NEAR_CHECKMATE, NEAR_CHECKMATE)
+        eval.clamp(MATED_IN_MAX_PLY + 1, MATE_IN_MAX_PLY - 1)
     }
 
     fn add_sub(&mut self, old: &Accumulator, a1: usize, s1: usize, side: Color) {

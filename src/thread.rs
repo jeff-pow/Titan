@@ -8,14 +8,13 @@ use std::{
 
 use crate::{
     board::Board,
-    chess_move::Move,
     eval::accumulator::{Accumulator, AccumulatorStack},
     history_table::HistoryTable,
     search::{
         game_time::Clock,
         lmr_table::LmrTable,
-        search::{start_search, CHECKMATE, MAX_PLY},
-        SearchStack, SearchType, PV,
+        search::{is_mate, start_search, CHECKMATE, MAX_PLY},
+        PVTable, SearchStack, SearchType,
     },
     transposition::TranspositionTable,
     uci::parse_time,
@@ -23,10 +22,9 @@ use crate::{
 
 #[derive(Clone)]
 pub struct ThreadData<'a> {
-    pub ply: i32,
+    pub ply: usize,
     /// Max depth reached by search (include qsearch)
-    pub sel_depth: i32,
-    pub best_move: Option<Move>,
+    pub sel_depth: usize,
 
     pub nodes_table: [[u64; 64]; 64],
     pub nodes: AtomicCounter<'a>,
@@ -34,6 +32,7 @@ pub struct ThreadData<'a> {
     pub history: HistoryTable,
     pub hash_history: Vec<u64>,
     pub accumulators: AccumulatorStack,
+    pub pv: PVTable,
 
     pub search_start: Instant,
     thread_id: usize,
@@ -54,7 +53,6 @@ impl<'a> ThreadData<'a> {
             ply: 0,
             stack: SearchStack::default(),
             sel_depth: 0,
-            best_move: Move::NULL,
             nodes: AtomicCounter::new(global_nodes),
             history: HistoryTable::default(),
             nodes_table: [[0; 64]; 64],
@@ -65,6 +63,7 @@ impl<'a> ThreadData<'a> {
             thread_id: thread_idx,
             lmr,
             search_start: Instant::now(),
+            pv: PVTable::default(),
         }
     }
 
@@ -77,7 +76,8 @@ impl<'a> ThreadData<'a> {
     }
 
     pub(super) fn node_tm_stop(&mut self, game_time: Clock, depth: i32) -> bool {
-        let Some(m) = self.best_move else { return false };
+        //let Some(m) = self.pv.best_move() else { return false };
+        let m = self.pv.best_move();
         let frac = self.nodes_table[m.from()][m.to()] as f64 / self.nodes.global_count() as f64;
         let time_scale = if depth > 9 { (1.44 - frac) * 1.62 } else { 1.28 };
         if self.search_start.elapsed().as_millis() as f64 >= game_time.rec_time.as_millis() as f64 * time_scale {
@@ -100,7 +100,7 @@ impl<'a> ThreadData<'a> {
                 } else {
                     -(CHECKMATE + prev_score) / 2
                 };
-                dist.abs() <= d.abs() || depth > MAX_PLY
+                dist.abs() <= d.abs() || depth > MAX_PLY as i32
             }
         }
     }
@@ -113,7 +113,7 @@ impl<'a> ThreadData<'a> {
         }
     }
 
-    pub(super) fn print_search_stats(&self, eval: i32, pv: &PV, tt: &TranspositionTable, depth: i32) {
+    pub(super) fn print_search_stats(&self, score: i32, tt: &TranspositionTable, depth: i32) {
         let nodes = self.nodes.global_count();
         print!(
             "info time {} depth {} seldepth {} nodes {} nps {} score ",
@@ -124,9 +124,7 @@ impl<'a> ThreadData<'a> {
             (nodes as f64 / self.search_start.elapsed().as_secs_f64()) as i64,
         );
 
-        let score = eval;
-
-        if score.abs() >= NEAR_CHECKMATE {
+        if is_mate(score) {
             if score.is_positive() {
                 print!("mate {}", (CHECKMATE - score + 1) / 2);
             } else {
@@ -138,24 +136,42 @@ impl<'a> ThreadData<'a> {
 
         print!(" hashfull {} pv ", tt.permille_usage());
 
-        for m in pv.line.iter().take(pv.line.len()) {
-            print!("{} ", m.unwrap().to_san());
+        for m in self.pv.pv() {
+            print!("{} ", m.to_san());
         }
         println!();
     }
 
-    pub(super) fn is_repetition(&self, board: &Board) -> bool {
-        if self.hash_history.len() < 6 {
+    pub(super) fn is_repetition(&self, board: &Board, ply: usize) -> bool {
+        let history_len = self.hash_history.len();
+
+        if history_len < 3 {
             return false;
         }
 
-        let mut reps = 2;
-        for &hash in self.hash_history.iter().rev().take(board.half_moves as usize + 1).step_by(2) {
-            reps -= u32::from(hash == board.zobrist_hash);
-            if reps == 0 {
-                return true;
+        let mut threefold_counter = 0;
+
+        for (dist_back, &hash) in self
+            .hash_history
+            .iter()
+            .rev()
+            .enumerate()
+            .take(board.half_moves as usize + 1) // Limit by 50-move rule count
+            .skip(1)
+            .step_by(2)
+        {
+            if hash == board.zobrist_hash {
+                if dist_back <= ply {
+                    return true;
+                } else {
+                    threefold_counter += 1;
+                    if threefold_counter >= 2 {
+                        return true;
+                    }
+                }
             }
         }
+
         false
     }
 
@@ -243,7 +259,7 @@ impl<'a> ThreadPool<'a> {
                     start_search(t, t.main_thread(), *board, tt);
                     halt.store(true, Ordering::Relaxed);
                     if t.main_thread() {
-                        println!("bestmove {}", t.best_move.unwrap().to_san());
+                        println!("bestmove {}", t.pv.best_move().to_san());
                     }
                 });
             }
@@ -306,5 +322,33 @@ impl<'a> AtomicCounter<'a> {
 
     pub(crate) const fn check_time(&self) -> bool {
         self.batch == 0
+    }
+}
+
+#[cfg(test)]
+mod search_tests {
+    use super::ThreadData;
+    use crate::{
+        board::Board,
+        search::{lmr_table::LmrTable, search::start_search, SearchType},
+        transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB},
+    };
+    use std::sync::atomic::{AtomicBool, AtomicU64};
+
+    #[test]
+    fn go_nodes() {
+        let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
+        let halt = AtomicBool::new(false);
+        let lmr = LmrTable::new();
+        let global_nodes = AtomicU64::new(0);
+
+        let mut thread = ThreadData::new(&halt, Vec::new(), 0, &lmr, &global_nodes);
+
+        thread.search_type = SearchType::Nodes(12345);
+
+        start_search(&mut thread, false, Board::default(), &transpos_table);
+
+        assert_eq!(thread.nodes.local_count(), thread.nodes.global_count());
+        assert_eq!(12345, thread.nodes.global_count());
     }
 }

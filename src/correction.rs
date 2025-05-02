@@ -1,4 +1,7 @@
-use crate::{search::search::NEAR_CHECKMATE, types::pieces::Color};
+use crate::{
+    search::search::{MATED_IN_MAX_PLY, MATE_IN_MAX_PLY},
+    types::pieces::Color,
+};
 
 const NUM_ENTRIES: usize = 16384;
 const CORRECTION_GRAIN: i32 = 256;
@@ -13,7 +16,7 @@ pub struct CorrectionHistory {
 impl CorrectionHistory {
     pub fn correct_score(&self, stm: Color, pawn_hash: u64, raw_eval: i32) -> i32 {
         (raw_eval + self.table[stm][pawn_hash as usize % NUM_ENTRIES] / CORRECTION_GRAIN)
-            .clamp(-NEAR_CHECKMATE + 1, NEAR_CHECKMATE - 1)
+            .clamp(MATED_IN_MAX_PLY + 1, MATE_IN_MAX_PLY - 1)
     }
 
     pub fn update_table(&mut self, stm: Color, pawn_hash: u64, depth: i32, diff: i32) {

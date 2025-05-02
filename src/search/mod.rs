@@ -37,6 +37,7 @@ impl Default for PlyEntry {
     }
 }
 
+#[derive(Clone)]
 pub struct PVTable {
     table: [ArrayVec<Option<Move>, { MAX_PLY + 1 }>; MAX_PLY + 1],
 }
@@ -46,19 +47,25 @@ impl PVTable {
         self.table[0][0].unwrap()
     }
 
-    pub fn pv(&self) -> &[Option<Move>] {
-        &self.table[0]
+    pub fn pv(&self) -> impl Iterator<Item = &Move> {
+        self.table[0].iter().flatten()
     }
 
-    pub fn clear(&mut self) {
+    pub fn clear_depth(&mut self, ply: usize) {
+        self.table[ply].clear();
+    }
+
+    pub fn reset(&mut self) {
         self.table.iter_mut().for_each(|pv| pv.clear());
     }
 
     pub fn append(&mut self, m: Option<Move>, ply: usize) {
         self.table[ply].clear();
         self.table[ply].push(m);
-        let (lower, upper) = self.table.split_at_mut(ply);
-        lower.last_mut().unwrap().extend(upper.first().unwrap());
+        let (lower, upper) = self.table.split_at_mut(ply + 1);
+        if let Some(curr) = upper.first() {
+            lower.last_mut().unwrap().extend(curr.into_iter().copied());
+        }
     }
 }
 
@@ -70,32 +77,32 @@ impl Default for PVTable {
 
 #[derive(Clone)]
 pub struct SearchStack {
-    stack: [PlyEntry; MAX_PLY as usize + 5],
+    stack: [PlyEntry; MAX_PLY + 5],
 }
 
 impl SearchStack {
-    pub fn prev(&self, ply: i32) -> Option<(Move, Piece)> {
-        self.stack.get(ply as usize).and_then(|e| e.played_move.map(|m| (m, e.moved_piece)))
+    pub fn prev(&self, ply: usize) -> Option<(Move, Piece)> {
+        self.stack.get(ply).and_then(|e| e.played_move.map(|m| (m, e.moved_piece)))
     }
 }
 
 impl Default for SearchStack {
     fn default() -> Self {
-        Self { stack: [PlyEntry::default(); MAX_PLY as usize + 5] }
+        Self { stack: [PlyEntry::default(); MAX_PLY + 5] }
     }
 }
 
-impl Index<i32> for SearchStack {
+impl Index<usize> for SearchStack {
     type Output = PlyEntry;
 
-    fn index(&self, index: i32) -> &Self::Output {
-        &self.stack[index as usize]
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.stack[index]
     }
 }
 
-impl IndexMut<i32> for SearchStack {
-    fn index_mut(&mut self, index: i32) -> &mut Self::Output {
-        &mut self.stack[index as usize]
+impl IndexMut<usize> for SearchStack {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.stack[index]
     }
 }
 

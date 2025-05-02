@@ -52,7 +52,7 @@ impl HistoryTable {
         board: &Board,
         depth: i32,
         stack: &SearchStack,
-        ply: i32,
+        ply: usize,
     ) {
         let bonus = (238 * depth).min(2095);
         let best_piece = board.piece_at(best_move.from());
@@ -95,7 +95,7 @@ impl HistoryTable {
         update_history(i, bonus);
     }
 
-    pub(crate) fn quiet_history(&self, m: Move, piece: Piece, stack: &SearchStack, ply: i32) -> i32 {
+    pub(crate) fn quiet_history(&self, m: Move, piece: Piece, stack: &SearchStack, ply: usize) -> i32 {
         self.search_history[piece][m.to()].score + self.cont_hist(m, piece, stack, ply)
     }
 
@@ -117,7 +117,7 @@ impl HistoryTable {
         self.search_history[piece][m.to()].capt_hist[cap]
     }
 
-    fn update_cont_hist(&mut self, m: Move, piece: Piece, stack: &SearchStack, ply: i32, bonus: i32) {
+    fn update_cont_hist(&mut self, m: Move, piece: Piece, stack: &SearchStack, ply: usize, bonus: i32) {
         let prevs = [stack.prev(ply - 1), stack.prev(ply - 2), stack.prev(ply - 4)];
         let entry = &mut self.search_history[piece][m.to()].cont_hist;
         for (prev_m, prev_piece) in prevs.into_iter().flatten() {
@@ -126,7 +126,7 @@ impl HistoryTable {
         }
     }
 
-    pub(crate) fn cont_hist(&self, m: Move, piece: Piece, stack: &SearchStack, ply: i32) -> i32 {
+    pub(crate) fn cont_hist(&self, m: Move, piece: Piece, stack: &SearchStack, ply: usize) -> i32 {
         let mut score = 0;
         let prevs = [stack.prev(ply - 1), stack.prev(ply - 2), stack.prev(ply - 4)];
         let entry = &self.search_history[piece][m.to()];

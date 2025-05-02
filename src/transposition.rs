@@ -1,6 +1,6 @@
 use crate::{
     chess_move::Move,
-    search::search::{INFINITY, NEAR_CHECKMATE},
+    search::search::{is_loss, is_mate, is_win, CHECKMATE, INFINITY},
 };
 use std::{
     mem::{size_of, transmute},
@@ -190,7 +190,7 @@ impl TranspositionTable {
         depth: i32,
         flag: EntryFlag,
         mut search_score: i32,
-        ply: i32,
+        ply: usize,
         is_pv: bool,
         static_eval: i32,
     ) {
@@ -214,10 +214,12 @@ impl TranspositionTable {
                 m.unwrap().into()
             };
 
-            if search_score > NEAR_CHECKMATE {
-                search_score += ply;
-            } else if search_score < -NEAR_CHECKMATE {
-                search_score -= ply;
+            if is_win(search_score) {
+                search_score += ply as i32;
+                assert_eq!(search_score, CHECKMATE);
+            } else if is_loss(search_score) {
+                search_score -= ply as i32;
+                assert_eq!(search_score, -CHECKMATE);
             }
 
             let age_pv_bound = (self.age() << 3) as u8 | u8::from(is_pv) << 2 | flag as u8;
@@ -242,9 +244,9 @@ impl TranspositionTable {
             return None;
         }
 
-        if entry.search_score > NEAR_CHECKMATE as i16 {
+        if is_win(entry.search_score()) {
             entry.search_score -= ply as i16;
-        } else if entry.search_score < -NEAR_CHECKMATE as i16 {
+        } else if is_loss(entry.search_score()) {
             entry.search_score += ply as i16;
         }
 
@@ -303,14 +305,14 @@ mod transpos_tests {
 
         table.clear();
         let ply = 15;
-        let mated_score = -CHECKMATE + ply;
+        let mated_score = -CHECKMATE + ply as i32;
         table.store(0, Some(m), 0, EntryFlag::Exact, mated_score, ply, false, 25);
         let entry = table.get(0, 2);
         assert_eq!(-CHECKMATE + 2, entry.unwrap().search_score());
 
         table.clear();
         let ply = 12;
-        let found_mate = CHECKMATE - ply;
+        let found_mate = CHECKMATE - ply as i32;
         table.store(0, Some(m), 0, EntryFlag::Exact, found_mate, ply, false, 25);
         let entry = table.get(0, 4);
         assert_eq!(CHECKMATE - 4, entry.unwrap().search_score());
