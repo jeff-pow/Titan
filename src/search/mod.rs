@@ -1,7 +1,10 @@
 use arrayvec::ArrayVec;
-use std::ops::{Index, IndexMut};
+use std::{
+    array,
+    ops::{Index, IndexMut},
+};
 
-use self::{game_time::Clock, search::MAX_SEARCH_DEPTH};
+use self::{game_time::Clock, search::MAX_PLY};
 use crate::{chess_move::Move, types::pieces::Piece};
 
 pub mod game_time;
@@ -34,22 +37,40 @@ impl Default for PlyEntry {
     }
 }
 
-#[derive(Default)]
-pub struct PV {
-    pub line: ArrayVec<Option<Move>, { MAX_SEARCH_DEPTH as usize }>,
+pub struct PVTable {
+    table: [ArrayVec<Option<Move>, { MAX_PLY + 1 }>; MAX_PLY + 1],
 }
 
-impl PV {
-    fn update(&mut self, m: Option<Move>, other: Self) {
-        self.line.clear();
-        self.line.push(m);
-        self.line.extend(other.line);
+impl PVTable {
+    pub fn best_move(&self) -> Move {
+        self.table[0][0].unwrap()
+    }
+
+    pub fn pv(&self) -> &[Option<Move>] {
+        &self.table[0]
+    }
+
+    pub fn clear(&mut self) {
+        self.table.iter_mut().for_each(|pv| pv.clear());
+    }
+
+    pub fn append(&mut self, m: Option<Move>, ply: usize) {
+        self.table[ply].clear();
+        self.table[ply].push(m);
+        let (lower, upper) = self.table.split_at_mut(ply);
+        lower.last_mut().unwrap().extend(upper.first().unwrap());
+    }
+}
+
+impl Default for PVTable {
+    fn default() -> Self {
+        Self { table: array::from_fn(|_| ArrayVec::new_const()) }
     }
 }
 
 #[derive(Clone)]
 pub struct SearchStack {
-    stack: [PlyEntry; MAX_SEARCH_DEPTH as usize + 5],
+    stack: [PlyEntry; MAX_PLY as usize + 5],
 }
 
 impl SearchStack {
@@ -60,7 +81,7 @@ impl SearchStack {
 
 impl Default for SearchStack {
     fn default() -> Self {
-        Self { stack: [PlyEntry::default(); MAX_SEARCH_DEPTH as usize + 5] }
+        Self { stack: [PlyEntry::default(); MAX_PLY as usize + 5] }
     }
 }
 

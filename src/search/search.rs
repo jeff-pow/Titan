@@ -13,11 +13,35 @@ use super::PV;
 use crate::types::pieces::Piece;
 use arrayvec::ArrayVec;
 
-pub const CHECKMATE: i32 = 25000;
+pub const MAX_PLY: usize = 128;
+
 pub const STALEMATE: i32 = 0;
-pub const NEAR_CHECKMATE: i32 = CHECKMATE - 1000;
-pub const INFINITY: i32 = 30000;
-pub const MAX_SEARCH_DEPTH: i32 = 100;
+pub const CHECKMATE: i32 = 32000;
+pub const INFINITY: i32 = 32001;
+pub const NONE: i32 = 32002;
+
+pub const MATE_IN_MAX_PLY: i32 = CHECKMATE - MAX_PLY as i32;
+pub const MATED_IN_MAX_PLY: i32 = -CHECKMATE + MAX_PLY as i32;
+
+pub fn mated_in(ply: usize) -> i32 {
+    CHECKMATE + ply as i32
+}
+
+pub fn mate_in(ply: usize) -> i32 {
+    CHECKMATE - ply as i32
+}
+
+pub fn is_mate(score: i32) -> bool {
+    score.abs() >= MATE_IN_MAX_PLY
+}
+
+pub const fn is_win(score: i32) -> bool {
+    score >= MATE_IN_MAX_PLY
+}
+
+pub const fn is_loss(score: i32) -> bool {
+    score <= MATED_IN_MAX_PLY
+}
 
 pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &TranspositionTable) {
     td.search_start = Instant::now();
@@ -172,7 +196,7 @@ fn negamax<const IS_PV: bool>(
             return STALEMATE;
         }
 
-        if td.ply >= MAX_SEARCH_DEPTH - 1 {
+        if td.ply >= MAX_PLY - 1 {
             return if in_check { 0 } else { td.accumulators.evaluate(board) };
         }
 
@@ -612,7 +636,7 @@ pub(super) fn quiescence<const IS_PV: bool>(
     td.sel_depth = td.sel_depth.max(td.ply);
 
     // Halt search if we are going to overflow the search stack
-    if td.ply >= MAX_SEARCH_DEPTH {
+    if td.ply >= MAX_PLY {
         return td.accumulators.evaluate(board);
     }
 

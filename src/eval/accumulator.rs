@@ -2,7 +2,7 @@ use crate::{
     board::Board,
     chess_move::{Direction, Move},
     eval::HIDDEN_SIZE,
-    search::search::{MAX_SEARCH_DEPTH, NEAR_CHECKMATE},
+    search::search::{MAX_PLY, NEAR_CHECKMATE},
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName},
@@ -306,7 +306,7 @@ impl AccumulatorStack {
     }
 
     pub fn new(base_accumulator: Accumulator) -> Self {
-        let mut vec = vec![Accumulator::default(); MAX_SEARCH_DEPTH as usize + 50];
+        let mut vec = vec![Accumulator::default(); MAX_PLY as usize + 50];
         vec[0] = base_accumulator;
         Self { stack: vec, top: 0, acc_cache: AccumulatorCache::default() }
     }

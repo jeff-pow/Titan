@@ -14,7 +14,7 @@ use crate::{
     search::{
         game_time::Clock,
         lmr_table::LmrTable,
-        search::{start_search, CHECKMATE, MAX_SEARCH_DEPTH, NEAR_CHECKMATE},
+        search::{start_search, CHECKMATE, MAX_PLY},
         SearchStack, SearchType, PV,
     },
     transposition::TranspositionTable,
@@ -100,7 +100,7 @@ impl<'a> ThreadData<'a> {
                 } else {
                     -(CHECKMATE + prev_score) / 2
                 };
-                dist.abs() <= d.abs() || depth > MAX_SEARCH_DEPTH
+                dist.abs() <= d.abs() || depth > MAX_PLY
             }
         }
     }
