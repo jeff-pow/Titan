@@ -257,9 +257,5 @@ fn qsearch(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32) -> i32
         break;
     }
 
-    if in_check && moves_searched == 0 {
-        return mated_in(td.ply);
-    }
-
     best_score
 }
