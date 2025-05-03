@@ -1,6 +1,7 @@
 use std::time::Instant;
 
 use crate::board::Board;
+use crate::chess_move::Move;
 use crate::movelist::MoveListEntry;
 use crate::movepicker::MovePicker;
 use crate::search::SearchStack;
@@ -120,7 +121,7 @@ fn negamax(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth:
     }
 
     if depth <= 0 {
-        return td.accumulators.evaluate(board);
+        return qsearch(td, board, alpha, beta);
     }
 
     td.nodes.increment();
@@ -129,7 +130,7 @@ fn negamax(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth:
 
     let mut moves_searched = 0;
     let mut best_score = -INFINITY;
-    let mut best_move = None;
+    let mut best_move = Move::NULL;
     let original_alpha = alpha;
     let mut picker = MovePicker::new(None, td, -CHECKMATE, false);
     while let Some(MoveListEntry { m, .. }) = picker.next(board, td) {
@@ -137,16 +138,16 @@ fn negamax(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth:
             continue;
         };
 
-        let new = board.make_move(m);
+        let copy = board.make_move(m);
 
         td.accumulators.push(m, board.piece_at(m.from()), board.piece_at(m.to()));
-        td.hash_history.push(new.zobrist_hash);
+        td.hash_history.push(copy.zobrist_hash);
         td.stack[td.ply].played_move = Some(m);
         td.stack[td.ply].moved_piece = board.piece_at(m.from());
         moves_searched += 1;
         td.ply += 1;
 
-        let score = -negamax(td, &new, -beta, -alpha, depth - 1);
+        let score = -negamax(td, &copy, -beta, -alpha, depth - 1);
 
         td.ply -= 1;
         td.hash_history.pop();
@@ -176,6 +177,86 @@ fn negamax(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth:
 
     if moves_searched == 0 {
         best_score = if in_check { mated_in(td.ply) } else { STALEMATE }
+    }
+
+    best_score
+}
+
+fn qsearch(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32) -> i32 {
+    let in_check = board.in_check();
+
+    td.pv.clear_depth(td.ply);
+
+    if td.halt() {
+        return 0;
+    }
+
+    if td.main_thread() && td.hard_stop() {
+        td.set_halt(true);
+        return 0;
+    }
+
+    if td.ply >= MAX_PLY {
+        return td.accumulators.evaluate(board);
+    }
+
+    if board.is_draw() || td.is_repetition(board, td.ply) {
+        return STALEMATE;
+    }
+
+    td.sel_depth = td.sel_depth.max(td.ply);
+
+    td.nodes.increment();
+
+    let static_eval = td.accumulators.evaluate(board);
+    if static_eval >= beta {
+        return static_eval;
+    }
+    alpha = alpha.max(static_eval);
+
+    let mut best_score = if in_check { -CHECKMATE } else { static_eval };
+    let mut picker = MovePicker::new(None, td, -INFINITY, true);
+    let mut best_move = Move::NULL;
+    let mut moves_searched = 0;
+
+    while let Some(MoveListEntry { m, .. }) = picker.next(board, td) {
+        if !board.is_legal(m) {
+            continue;
+        }
+        let copy = board.make_move(m);
+
+        td.accumulators.push(m, board.piece_at(m.from()), board.piece_at(m.to()));
+        td.hash_history.push(copy.zobrist_hash);
+        td.stack[td.ply].played_move = Some(m);
+        td.stack[td.ply].moved_piece = board.piece_at(m.from());
+        moves_searched += 1;
+        td.ply += 1;
+
+        let score = -qsearch(td, &copy, -beta, -alpha);
+
+        td.ply -= 1;
+        td.accumulators.pop();
+        td.hash_history.pop();
+
+        if td.halt() {
+            return 0;
+        }
+
+        best_score = best_score.max(score);
+
+        if score <= alpha {
+            continue;
+        }
+
+        best_move = Some(m);
+        alpha = score;
+        td.pv.append(best_move, td.ply);
+
+        if score < beta {
+            continue;
+        }
+
+        break;
     }
 
     best_score
