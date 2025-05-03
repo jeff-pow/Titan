@@ -76,8 +76,7 @@ impl<'a> ThreadData<'a> {
     }
 
     pub(super) fn node_tm_stop(&mut self, game_time: Clock, depth: i32) -> bool {
-        //let Some(m) = self.pv.best_move() else { return false };
-        let m = self.pv.best_move();
+        let Some(m) = self.pv.best_move() else { return false };
         let frac = self.nodes_table[m.from()][m.to()] as f64 / self.nodes.global_count() as f64;
         let time_scale = if depth > 9 { (1.44 - frac) * 1.62 } else { 1.28 };
         if self.search_start.elapsed().as_millis() as f64 >= game_time.rec_time.as_millis() as f64 * time_scale {
@@ -259,7 +258,7 @@ impl<'a> ThreadPool<'a> {
                     start_search(t, t.main_thread(), *board, tt);
                     halt.store(true, Ordering::Relaxed);
                     if t.main_thread() {
-                        println!("bestmove {}", t.pv.best_move().to_san());
+                        println!("bestmove {}", t.pv.best_move().unwrap().to_san());
                     }
                 });
             }
