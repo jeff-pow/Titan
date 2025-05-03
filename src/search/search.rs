@@ -163,7 +163,7 @@ fn negamax<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
         }
 
         if PV && (moves_searched == 0 || score > alpha) {
-            score = -negamax::<true>(td, board, -beta, -alpha, new_depth);
+            score = -negamax::<true>(td, &copy, -beta, -alpha, new_depth);
         }
 
         td.ply -= 1;
