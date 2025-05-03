@@ -93,7 +93,9 @@ fn negamax(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth:
     let in_check = board.in_check();
 
     td.sel_depth = td.sel_depth.max(td.ply);
-    td.pv.clear_depth(td.ply);
+    if !is_root {
+        td.pv.clear_depth(td.ply);
+    }
 
     if td.main_thread() && td.hard_stop() {
         td.set_halt(true);
@@ -170,6 +172,7 @@ fn negamax(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth:
         }
 
         td.stack[td.ply].cutoffs += 1;
+        break;
     }
 
     if moves_searched == 0 {
