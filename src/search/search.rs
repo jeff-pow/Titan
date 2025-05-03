@@ -7,7 +7,7 @@ use crate::movepicker::MovePicker;
 use crate::search::SearchStack;
 use crate::thread::ThreadData;
 use crate::transposition::TranspositionTable;
-use std::cmp::{max, min};
+use std::fmt::format;
 
 pub const MAX_PLY: usize = 128;
 
@@ -43,7 +43,7 @@ pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &Tra
     td.search_start = Instant::now();
     td.nodes_table = [[0; 64]; 64];
     td.stack = SearchStack::default();
-    td.pv.clear_depth(0);
+    td.pv.reset();
     td.accumulators.clear(board.new_accumulator());
 
     iterative_deepening(td, &board, print_uci, tt);
@@ -183,7 +183,9 @@ fn negamax<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
 
         best_move = Some(m);
         alpha = score;
-        td.pv.append(best_move, td.ply);
+        if PV {
+            td.pv.append(best_move, td.ply);
+        }
 
         if score < beta {
             continue;
@@ -273,7 +275,9 @@ fn qsearch<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
 
         best_move = Some(m);
         alpha = score;
-        td.pv.append(best_move, td.ply);
+        if PV {
+            td.pv.append(best_move, td.ply);
+        }
 
         if score < beta {
             continue;

@@ -145,9 +145,7 @@ impl MovePicker {
 
         self.index += 1;
 
-        if self.skip_quiets && entry.m.is_quiet(board) {
-            None
-        } else if self.is_cached(entry.m) {
+        if self.skip_quiets && entry.m.is_quiet(board) || self.is_cached(entry.m) {
             self.select_next(board)
         } else {
             Some(entry)
