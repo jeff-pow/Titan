@@ -121,7 +121,7 @@ fn negamax(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth:
     }
 
     if depth <= 0 {
-        return td.accumulators.evaluate(board);
+        return qsearch(td, board, alpha, beta);
     }
 
     td.nodes.increment();
@@ -213,7 +213,7 @@ fn qsearch(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32) -> i32
     alpha = alpha.max(static_eval);
 
     let mut best_score = if in_check { -CHECKMATE } else { static_eval };
-    let mut picker = MovePicker::new(None, td, -INFINITY, false);
+    let mut picker = MovePicker::new(None, td, -INFINITY, true);
     let mut best_move = Move::NULL;
     let mut moves_searched = 0;
 
@@ -253,6 +253,8 @@ fn qsearch(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32) -> i32
         if score < beta {
             continue;
         }
+
+        break;
     }
 
     if in_check && moves_searched == 0 {
