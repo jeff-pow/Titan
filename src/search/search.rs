@@ -185,6 +185,8 @@ fn negamax(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth:
 fn qsearch(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32) -> i32 {
     let in_check = board.in_check();
 
+    td.pv.clear_depth(td.ply);
+
     if td.halt() {
         return 0;
     }
