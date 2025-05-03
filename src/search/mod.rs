@@ -43,8 +43,8 @@ pub struct PVTable {
 }
 
 impl PVTable {
-    pub fn best_move(&self) -> Move {
-        self.table[0][0].unwrap()
+    pub fn best_move(&self) -> Option<Move> {
+        self.table[0][0]
     }
 
     pub fn pv(&self) -> impl Iterator<Item = &Move> {
