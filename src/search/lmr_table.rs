@@ -23,6 +23,6 @@ impl LmrTable {
     }
 
     pub(crate) fn base_reduction(&self, depth: i32, moves_played: i32) -> i32 {
-        self.lmr_table[(depth as usize).min(64)][(moves_played as usize).min(64)]
+        self.lmr_table[(depth as usize).min(63)][(moves_played as usize).min(63)]
     }
 }
