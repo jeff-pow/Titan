@@ -126,6 +126,7 @@ fn negamax(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth:
 
     td.nodes.increment();
 
+    td.stack[td.ply + 1].killer_move = None;
     td.stack[td.ply + 2].cutoffs = 0;
 
     let mut moves_searched = 0;
@@ -172,6 +173,10 @@ fn negamax(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth:
         }
 
         td.stack[td.ply].cutoffs += 1;
+        if m.is_quiet(board) {
+            td.stack[td.ply].killer_move = Some(m);
+        }
+
         break;
     }
 
