@@ -8,8 +8,9 @@ use std::{
 
 use crate::{
     board::Board,
+    chess_move::Move,
     eval::accumulator::{Accumulator, AccumulatorStack},
-    history_table::HistoryTable,
+    history_table::QuietHistory,
     search::{
         game_time::Clock,
         lmr_table::LmrTable,
@@ -29,10 +30,11 @@ pub struct ThreadData<'a> {
     pub nodes_table: [[u64; 64]; 64],
     pub nodes: AtomicCounter<'a>,
     pub stack: SearchStack,
-    pub history: HistoryTable,
     pub hash_history: Vec<u64>,
     pub accumulators: AccumulatorStack,
     pub pv: PVTable,
+
+    pub quiet_history: QuietHistory,
 
     pub search_start: Instant,
     thread_id: usize,
@@ -54,9 +56,9 @@ impl<'a> ThreadData<'a> {
             stack: SearchStack::default(),
             sel_depth: 0,
             nodes: AtomicCounter::new(global_nodes),
-            history: HistoryTable::default(),
             nodes_table: [[0; 64]; 64],
             accumulators: AccumulatorStack::new(Accumulator::default()),
+            quiet_history: QuietHistory::default(),
             halt,
             search_type: SearchType::default(),
             hash_history,
@@ -109,6 +111,50 @@ impl<'a> ThreadData<'a> {
             SearchType::Mate(_) | SearchType::Depth(_) | SearchType::Infinite => self.halt.load(Ordering::Relaxed),
             SearchType::Time(time) => self.nodes.check_time() && time.hard_termination(self.search_start),
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
+        }
+    }
+
+    pub(crate) fn update_histories(
+        &mut self,
+        best_move: Move,
+        quiets_tried: &[Move],
+        tacticals_tried: &[Move],
+        board: &Board,
+        depth: i32,
+    ) {
+        let bonus = (238 * depth).min(2095);
+        let best_piece = board.piece_at(best_move.from());
+
+        if best_move.is_tactical(board) {
+            //let cap = capthist_capture(board, best_move);
+            //self.update_capt_hist(best_move, best_piece, cap, bonus);
+        } else {
+            //if let Some((m, p)) = stack.prev(ply - 1) {
+            //    self.set_counter(m, p, best_move);
+            //}
+            if depth > 3 || quiets_tried.len() > 1 {
+                self.quiet_history.update(best_move, best_piece, bonus);
+                //self.update_cont_hist(best_move, best_piece, stack, ply, bonus);
+            }
+            // Only penalize quiets if best_move was quiet
+            for m in quiets_tried {
+                if *m == best_move {
+                    continue;
+                }
+                let p = board.piece_at(m.from());
+                self.quiet_history.update(*m, p, -bonus);
+                //self.update_cont_hist(*m, p, stack, ply, -bonus);
+            }
+        }
+
+        // Always penalize tacticals since they should always be good no matter what the position
+        for m in tacticals_tried {
+            if *m == best_move {
+                continue;
+            }
+            //let p = board.piece_at(m.from());
+            //let cap = capthist_capture(board, *m);
+            //self.update_capt_hist(*m, p, cap, -bonus);
         }
     }
 
@@ -200,7 +246,7 @@ impl<'a> ThreadPool<'a> {
 
     pub fn reset(&mut self) {
         for t in &mut self.threads {
-            t.history = HistoryTable::default();
+            t.quiet_history = QuietHistory::default();
             t.nodes.reset();
         }
     }

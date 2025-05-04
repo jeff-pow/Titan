@@ -4,12 +4,12 @@ use std::ops::Index;
 
 use super::chess_move::Move;
 
-pub const MAX_LEN: usize = 218;
+pub const MAX_MOVES: usize = 218;
 #[derive(Clone, Debug, Default)]
 /// Movelist elements contains a move and an i32 where a score can be stored later to be used in move ordering
 /// for efficient search pruning
 pub struct MoveList {
-    pub arr: ArrayVec<MoveListEntry, MAX_LEN>,
+    pub arr: ArrayVec<MoveListEntry, MAX_MOVES>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
