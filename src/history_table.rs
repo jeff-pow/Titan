@@ -60,6 +60,7 @@ impl Default for CaptureHistory {
         Self([[[0; 5]; 64]; 12])
     }
 }
+// TODO: Make sure to reset history tables in threadpool's reset function when adding more histories
 
 #[derive(Clone, Copy)]
 pub struct HistoryEntry {
