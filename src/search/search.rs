@@ -7,6 +7,7 @@ use crate::movepicker::MovePicker;
 use crate::search::SearchStack;
 use crate::thread::ThreadData;
 use crate::transposition::TranspositionTable;
+use std::fmt::format;
 
 pub const MAX_PLY: usize = 128;
 
@@ -42,7 +43,7 @@ pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &Tra
     td.search_start = Instant::now();
     td.nodes_table = [[0; 64]; 64];
     td.stack = SearchStack::default();
-    td.pv.clear_depth(0);
+    td.pv.reset();
     td.accumulators.clear(board.new_accumulator());
 
     iterative_deepening(td, &board, print_uci, tt);
@@ -63,7 +64,7 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
         assert_eq!(0, td.ply);
         assert_eq!(0, td.accumulators.top);
 
-        prev_score = negamax(td, board, -INFINITY, INFINITY, depth);
+        prev_score = negamax::<true>(td, board, -INFINITY, INFINITY, depth);
 
         assert_eq!(0, td.accumulators.top);
 
@@ -88,7 +89,7 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
     }
 }
 
-fn negamax(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth: i32) -> i32 {
+fn negamax<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth: i32) -> i32 {
     let is_root = td.ply == 0;
     let in_check = board.in_check();
 
@@ -121,7 +122,7 @@ fn negamax(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth:
     }
 
     if depth <= 0 {
-        return qsearch(td, board, alpha, beta);
+        return qsearch::<PV>(td, board, alpha, beta);
     }
 
     td.nodes.increment();
@@ -145,14 +146,30 @@ fn negamax(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth:
         td.hash_history.push(copy.zobrist_hash);
         td.stack[td.ply].played_move = Some(m);
         td.stack[td.ply].moved_piece = board.piece_at(m.from());
-        moves_searched += 1;
         td.ply += 1;
 
-        let score = -negamax(td, &copy, -beta, -alpha, depth - 1);
+        let new_depth = depth - 1;
+
+        let mut score = -INFINITY;
+
+        let base_reduction = td.lmr.base_reduction(depth, moves_searched);
+
+        if depth > 2 && moves_searched > 1 + i32::from(is_root) && m.is_quiet(board) {
+            let d = (new_depth - base_reduction).clamp(1, new_depth);
+
+            score = -negamax::<false>(td, &copy, -alpha - 1, -alpha, d);
+        } else if !PV || moves_searched > 0 {
+            score = -negamax::<false>(td, &copy, -alpha - 1, -alpha, new_depth);
+        }
+
+        if PV && (moves_searched == 0 || score > alpha) {
+            score = -negamax::<true>(td, &copy, -beta, -alpha, new_depth);
+        }
 
         td.ply -= 1;
         td.hash_history.pop();
         td.accumulators.pop();
+        moves_searched += 1;
 
         if td.halt() {
             return 0;
@@ -166,14 +183,16 @@ fn negamax(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth:
 
         best_move = Some(m);
         alpha = score;
-        td.pv.append(best_move, td.ply);
+        if PV {
+            td.pv.append(best_move, td.ply);
+        }
 
         if score < beta {
             continue;
         }
 
         td.stack[td.ply].cutoffs += 1;
-      
+
         if m.is_quiet(board) {
             td.stack[td.ply].killer_move = Some(m);
         }
@@ -188,7 +207,7 @@ fn negamax(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth:
     best_score
 }
 
-fn qsearch(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32) -> i32 {
+fn qsearch<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32) -> i32 {
     let in_check = board.in_check();
 
     td.pv.clear_depth(td.ply);
@@ -238,7 +257,7 @@ fn qsearch(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32) -> i32
         moves_searched += 1;
         td.ply += 1;
 
-        let score = -qsearch(td, &copy, -beta, -alpha);
+        let score = -qsearch::<PV>(td, &copy, -beta, -alpha);
 
         td.ply -= 1;
         td.accumulators.pop();
@@ -256,7 +275,9 @@ fn qsearch(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32) -> i32
 
         best_move = Some(m);
         alpha = score;
-        td.pv.append(best_move, td.ply);
+        if PV {
+            td.pv.append(best_move, td.ply);
+        }
 
         if score < beta {
             continue;
