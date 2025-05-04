@@ -141,6 +141,17 @@ fn negamax<const PV: bool>(
     let mut tt_move = Move::NULL;
     if let Some(entry) = tt.get(board.zobrist_hash, td.ply) {
         tt_move = entry.best_move();
+        if !PV
+            && depth <= entry.depth()
+            && match entry.flag() {
+                EntryFlag::None => false,
+                EntryFlag::AlphaUnchanged => entry.search_score() <= alpha,
+                EntryFlag::BetaCutOff => entry.search_score() >= beta,
+                EntryFlag::Exact => true,
+            }
+        {
+            return entry.search_score();
+        }
     }
 
     let static_eval;
@@ -283,6 +294,15 @@ fn qsearch<const PV: bool>(
     let mut tt_move = Move::NULL;
     if let Some(entry) = tt.get(board.zobrist_hash, td.ply) {
         tt_move = entry.best_move();
+
+        if match entry.flag() {
+            EntryFlag::None => false,
+            EntryFlag::AlphaUnchanged => entry.search_score() <= alpha,
+            EntryFlag::BetaCutOff => entry.search_score() >= beta,
+            EntryFlag::Exact => true,
+        } {
+            return entry.search_score();
+        }
     }
 
     let static_eval = td.accumulators.evaluate(board);
