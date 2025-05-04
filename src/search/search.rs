@@ -138,7 +138,7 @@ fn negamax<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
     let mut best_score = -INFINITY;
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
-    let mut picker = MovePicker::new(None, td, -CHECKMATE, false);
+    let mut picker = MovePicker::new(None, td, -197, false);
     while let Some(MoveListEntry { m, .. }) = picker.next(board, td) {
         if !board.is_legal(m) {
             continue;
@@ -250,7 +250,7 @@ fn qsearch<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
     alpha = alpha.max(static_eval);
 
     let mut best_score = if in_check { -CHECKMATE } else { static_eval };
-    let mut picker = MovePicker::new(None, td, -INFINITY, true);
+    let mut picker = MovePicker::new(None, td, -197, true);
     let mut best_move = Move::NULL;
     let mut moves_searched = 0;
 
