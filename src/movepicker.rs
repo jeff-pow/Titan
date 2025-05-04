@@ -41,8 +41,6 @@ pub struct MovePicker {
 
 impl MovePicker {
     pub fn new(tt_move: Option<Move>, td: &ThreadData, margin: i32, skip_quiets: bool) -> Self {
-        let prev = td.stack.prev(td.ply - 1);
-        let counter_move = prev.and_then(|(m, p)| td.history.get_counter(Some(m), p));
         Self {
             moves: MoveList::default(),
             index: 0,
@@ -50,7 +48,7 @@ impl MovePicker {
             margin,
             tt_move,
             killer_move: td.stack[td.ply].killer_move,
-            counter_move,
+            counter_move: None,
             skip_quiets,
         }
     }
@@ -161,13 +159,13 @@ impl MovePicker {
 
 fn score_quiets(board: &Board, td: &ThreadData, moves: &mut [MoveListEntry]) {
     for MoveListEntry { m, score } in moves {
-        *score = td.history.quiet_history(*m, board.piece_at(m.from()), &td.stack, td.ply);
+        *score = td.quiet_history.get(*m, board.piece_at(m.from()))
     }
 }
 
 fn score_captures(td: &ThreadData, margin: i32, board: &Board, moves: &mut [MoveListEntry]) {
     for MoveListEntry { m, score } in moves {
         *score = (if board.see(*m, margin) { GOOD_CAPTURE } else { BAD_CAPTURE })
-            + td.history.capt_hist(*m, board.piece_at(m.from()), board);
+        //+ td.history.capt_hist(*m, board.piece_at(m.from()), board);
     }
 }

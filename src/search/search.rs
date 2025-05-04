@@ -2,11 +2,12 @@ use std::time::Instant;
 
 use crate::board::Board;
 use crate::chess_move::Move;
-use crate::movelist::MoveListEntry;
+use crate::movelist::{MoveListEntry, MAX_MOVES};
 use crate::movepicker::MovePicker;
 use crate::search::SearchStack;
 use crate::thread::ThreadData;
 use crate::transposition::TranspositionTable;
+use arrayvec::ArrayVec;
 use std::fmt::format;
 
 pub const MAX_PLY: usize = 128;
@@ -130,6 +131,9 @@ fn negamax<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
     td.stack[td.ply + 1].killer_move = None;
     td.stack[td.ply + 2].cutoffs = 0;
 
+    let mut tacticals_tried = ArrayVec::<_, { MAX_MOVES }>::new();
+    let mut quiets_tried = ArrayVec::<_, { MAX_MOVES }>::new();
+
     let mut moves_searched = 0;
     let mut best_score = -INFINITY;
     let mut best_move = Move::NULL;
@@ -170,6 +174,11 @@ fn negamax<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
         td.hash_history.pop();
         td.accumulators.pop();
         moves_searched += 1;
+        if m.is_tactical(board) {
+            tacticals_tried.push(m);
+        } else {
+            quiets_tried.push(m);
+        }
 
         if td.halt() {
             return 0;
@@ -196,6 +205,7 @@ fn negamax<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
         if m.is_quiet(board) {
             td.stack[td.ply].killer_move = Some(m);
         }
+        td.update_histories(m, &quiets_tried, &tacticals_tried, board, depth);
 
         break;
     }

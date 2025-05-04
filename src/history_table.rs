@@ -6,6 +6,40 @@ use crate::types::pieces::Piece;
 
 pub const MAX_HIST_VAL: i32 = 16384;
 
+fn update_history(score: &mut i32, bonus: i32) {
+    *score += bonus - *score * bonus.abs() / MAX_HIST_VAL;
+}
+
+pub fn capthist_capture(board: &Board, m: Move) -> PieceName {
+    if m.is_en_passant() || m.promotion().is_some() {
+        // Use Pawn for promotions here because pawns can't be in the back ranks anyways, so these
+        // spaces can't be occupied anyway
+        // Credit to viridithas
+        PieceName::Pawn
+    } else {
+        board.piece_at(m.to()).name()
+    }
+}
+
+#[derive(Clone)]
+pub struct QuietHistory([[i32; 64]; 12]);
+
+impl QuietHistory {
+    pub fn update(&mut self, m: Move, piece: Piece, bonus: i32) {
+        update_history(&mut self.0[piece][m.to()], bonus);
+    }
+
+    pub fn get(&self, m: Move, piece: Piece) -> i32 {
+        self.0[piece][m.to()]
+    }
+}
+
+impl Default for QuietHistory {
+    fn default() -> Self {
+        Self([[0; 64]; 12])
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct HistoryEntry {
     score: i32,
@@ -25,21 +59,6 @@ impl Default for HistoryEntry {
 pub struct HistoryTable {
     search_history: Box<[[HistoryEntry; 64]; 12]>,
     pub corr_hist: CorrectionHistory,
-}
-
-fn update_history(score: &mut i32, bonus: i32) {
-    *score += bonus - *score * bonus.abs() / MAX_HIST_VAL;
-}
-
-pub fn capthist_capture(board: &Board, m: Move) -> PieceName {
-    if m.is_en_passant() || m.promotion().is_some() {
-        // Use Pawn for promotions here because pawns can't be in the back ranks anyways, so these
-        // spaces can't be occupied anyway
-        // Credit to viridithas
-        PieceName::Pawn
-    } else {
-        board.piece_at(m.to()).name()
-    }
 }
 
 impl HistoryTable {
