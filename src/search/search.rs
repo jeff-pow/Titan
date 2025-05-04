@@ -8,6 +8,7 @@ use crate::search::SearchStack;
 use crate::thread::ThreadData;
 use crate::transposition::{EntryFlag, TranspositionTable};
 use arrayvec::ArrayVec;
+use std::os::linux::raw::stat;
 
 pub const MAX_PLY: usize = 128;
 
@@ -37,6 +38,10 @@ pub const fn is_win(score: i32) -> bool {
 
 pub const fn is_loss(score: i32) -> bool {
     score <= MATED_IN_MAX_PLY
+}
+
+pub fn clamp_score(score: i32) -> i32 {
+    score.clamp(MATED_IN_MAX_PLY + 1, MATE_IN_MAX_PLY - 1)
 }
 
 pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &TranspositionTable) {
@@ -161,6 +166,20 @@ fn negamax<const PV: bool>(
         static_eval = td.accumulators.evaluate(board);
     }
     td.stack[td.ply].static_eval = static_eval;
+
+    let can_prune = !PV && !in_check;
+
+    // TODO: Add a conditional check to make sure neither of the previous two ply's moves were null moves
+    let improving = !in_check && td.ply > 1 && static_eval > td.stack[td.ply - 2].static_eval;
+
+    if can_prune
+        && !is_mate(static_eval)
+        && depth < 9
+        && static_eval >= beta
+        && static_eval - 93 * depth + i32::from(improving) * 30 * depth >= beta
+    {
+        return clamp_score((static_eval + beta) / 2);
+    }
 
     td.stack[td.ply + 1].killer_move = None;
     td.stack[td.ply + 2].cutoffs = 0;
