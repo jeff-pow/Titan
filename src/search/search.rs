@@ -7,7 +7,11 @@ use crate::movepicker::MovePicker;
 use crate::search::SearchStack;
 use crate::thread::ThreadData;
 use crate::transposition::{EntryFlag, TranspositionTable};
+use crate::types::pieces::Piece;
 use arrayvec::ArrayVec;
+
+use std::cmp::min;
+
 use std::os::linux::raw::stat;
 
 pub const MAX_PLY: usize = 128;
@@ -69,7 +73,7 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
         assert_eq!(0, td.ply);
         assert_eq!(0, td.accumulators.top);
 
-        prev_score = negamax::<true>(td, tt, board, -INFINITY, INFINITY, depth);
+        prev_score = negamax::<true>(td, tt, board, -INFINITY, INFINITY, depth, false);
 
         assert_eq!(0, td.accumulators.top);
 
@@ -101,6 +105,7 @@ fn negamax<const PV: bool>(
     mut alpha: i32,
     beta: i32,
     depth: i32,
+    cut_node: bool,
 ) -> i32 {
     let is_root = td.ply == 0;
     let in_check = board.in_check();
@@ -181,6 +186,41 @@ fn negamax<const PV: bool>(
         return clamp_score((static_eval + beta) / 2);
     }
 
+    if !in_check
+        && cut_node
+        && depth >= 2
+        && td.stack[td.ply - 1].played_move != Move::NULL
+        && board.has_non_pawns(board.stm)
+        && static_eval >= beta
+        && !is_mate(static_eval)
+    {
+        tt.prefetch(board.hash_after(Move::NULL));
+
+        let r = 4 + depth / 4 + ((static_eval - beta) / 173).min(4);
+        let copy = board.make_null_move();
+
+        td.stack[td.ply].played_move = Move::NULL;
+        td.stack[td.ply].moved_piece = Piece::None;
+        td.ply += 1;
+        td.hash_history.push(copy.zobrist_hash);
+
+        let score = -negamax::<false>(td, tt, &copy, -beta, -beta + 1, depth - r, false);
+
+        td.ply -= 1;
+        td.hash_history.pop();
+
+        if td.halt() {
+            return 0;
+        }
+
+        if score >= beta {
+            if is_mate(score) {
+                return beta;
+            }
+            return score;
+        }
+    }
+
     td.stack[td.ply + 1].killer_move = None;
     td.stack[td.ply + 2].cutoffs = 0;
 
@@ -214,13 +254,13 @@ fn negamax<const PV: bool>(
         if depth > 2 && moves_searched > 1 + i32::from(is_root) && m.is_quiet(board) {
             let d = (new_depth - base_reduction).clamp(1, new_depth);
 
-            score = -negamax::<false>(td, tt, &copy, -alpha - 1, -alpha, d);
+            score = -negamax::<false>(td, tt, &copy, -alpha - 1, -alpha, d, true);
         } else if !PV || moves_searched > 0 {
-            score = -negamax::<false>(td, tt, &copy, -alpha - 1, -alpha, new_depth);
+            score = -negamax::<false>(td, tt, &copy, -alpha - 1, -alpha, new_depth, !cut_node);
         }
 
         if PV && (moves_searched == 0 || score > alpha) {
-            score = -negamax::<true>(td, tt, &copy, -beta, -alpha, new_depth);
+            score = -negamax::<true>(td, tt, &copy, -beta, -alpha, new_depth, false);
         }
 
         td.ply -= 1;
