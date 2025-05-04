@@ -216,10 +216,8 @@ impl TranspositionTable {
 
             if is_win(search_score) {
                 search_score += ply as i32;
-                assert_eq!(search_score, CHECKMATE);
             } else if is_loss(search_score) {
                 search_score -= ply as i32;
-                assert_eq!(search_score, -CHECKMATE);
             }
 
             let age_pv_bound = (self.age() << 3) as u8 | u8::from(is_pv) << 2 | flag as u8;
@@ -234,7 +232,7 @@ impl TranspositionTable {
         }
     }
 
-    pub fn get(&self, hash: u64, ply: i32) -> Option<TableEntry> {
+    pub fn get(&self, hash: u64, ply: usize) -> Option<TableEntry> {
         let idx = index(hash, self.vec.len());
         let key = hash as u16;
 

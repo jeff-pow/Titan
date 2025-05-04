@@ -12,29 +12,23 @@ impl Board {
     }
 
     fn non_bulk_perft<const ROOT: bool>(&self, depth: usize) -> usize {
-        if depth == 0 {
-            return 1;
+        if depth == 1 {
+            return self.pseudolegal_moves().iter().filter(|&m| self.is_legal(m)).count();
         }
 
-        let mut total = 0;
-        for m in self.pseudolegal_moves().iter() {
-            if !self.is_legal(m) {
-                continue;
-            }
-
-            if depth == 1 {
-                total += 1;
-            } else {
-                let new_b = self.make_move(m);
-                let count = new_b.non_bulk_perft::<false>(depth - 1);
-                total += count;
+        self.pseudolegal_moves()
+            .iter()
+            .filter(|&m| self.is_legal(m))
+            .map(|m| {
+                let copy = self.make_move(m);
+                let count = copy.non_bulk_perft::<false>(depth - 1);
 
                 if ROOT {
                     println!("{}: {count}", m.to_san());
                 }
-            }
-        }
-        total
+                count
+            })
+            .sum()
     }
 }
 
