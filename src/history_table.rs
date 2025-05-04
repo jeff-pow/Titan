@@ -40,6 +40,27 @@ impl Default for QuietHistory {
     }
 }
 
+#[derive(Clone)]
+pub struct CaptureHistory([[[i32; 5]; 64]; 12]);
+
+impl CaptureHistory {
+    pub fn update(&mut self, m: Move, piece: Piece, board: &Board, bonus: i32) {
+        let capture = capthist_capture(board, m);
+        update_history(&mut self.0[piece][m.to()][capture], bonus);
+    }
+
+    pub fn get(&self, m: Move, piece: Piece, board: &Board) -> i32 {
+        let capture = capthist_capture(board, m);
+        self.0[piece][m.to()][capture]
+    }
+}
+
+impl Default for CaptureHistory {
+    fn default() -> Self {
+        Self([[[0; 5]; 64]; 12])
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct HistoryEntry {
     score: i32,

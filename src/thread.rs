@@ -10,7 +10,7 @@ use crate::{
     board::Board,
     chess_move::Move,
     eval::accumulator::{Accumulator, AccumulatorStack},
-    history_table::QuietHistory,
+    history_table::{capthist_capture, CaptureHistory, QuietHistory},
     search::{
         game_time::Clock,
         lmr_table::LmrTable,
@@ -35,6 +35,7 @@ pub struct ThreadData<'a> {
     pub pv: PVTable,
 
     pub quiet_history: QuietHistory,
+    pub capture_history: CaptureHistory,
 
     pub search_start: Instant,
     thread_id: usize,
@@ -59,6 +60,7 @@ impl<'a> ThreadData<'a> {
             nodes_table: [[0; 64]; 64],
             accumulators: AccumulatorStack::new(Accumulator::default()),
             quiet_history: QuietHistory::default(),
+            capture_history: CaptureHistory::default(),
             halt,
             search_type: SearchType::default(),
             hash_history,
@@ -126,8 +128,7 @@ impl<'a> ThreadData<'a> {
         let best_piece = board.piece_at(best_move.from());
 
         if best_move.is_tactical(board) {
-            //let cap = capthist_capture(board, best_move);
-            //self.update_capt_hist(best_move, best_piece, cap, bonus);
+            self.capture_history.update(best_move, best_piece, board, bonus);
         } else {
             //if let Some((m, p)) = stack.prev(ply - 1) {
             //    self.set_counter(m, p, best_move);
@@ -152,9 +153,8 @@ impl<'a> ThreadData<'a> {
             if *m == best_move {
                 continue;
             }
-            //let p = board.piece_at(m.from());
-            //let cap = capthist_capture(board, *m);
-            //self.update_capt_hist(*m, p, cap, -bonus);
+            let p = board.piece_at(m.from());
+            self.capture_history.update(*m, p, board, -bonus);
         }
     }
 
@@ -247,6 +247,7 @@ impl<'a> ThreadPool<'a> {
     pub fn reset(&mut self) {
         for t in &mut self.threads {
             t.quiet_history = QuietHistory::default();
+            t.capture_history = CaptureHistory::default();
             t.nodes.reset();
         }
     }

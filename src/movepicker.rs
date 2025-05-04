@@ -166,6 +166,6 @@ fn score_quiets(board: &Board, td: &ThreadData, moves: &mut [MoveListEntry]) {
 fn score_captures(td: &ThreadData, margin: i32, board: &Board, moves: &mut [MoveListEntry]) {
     for MoveListEntry { m, score } in moves {
         *score = (if board.see(*m, margin) { GOOD_CAPTURE } else { BAD_CAPTURE })
-        //+ td.history.capt_hist(*m, board.piece_at(m.from()), board);
+            + td.capture_history.get(*m, board.piece_at(m.from()), board);
     }
 }
