@@ -6,9 +6,8 @@ use crate::movelist::{MoveListEntry, MAX_MOVES};
 use crate::movepicker::MovePicker;
 use crate::search::SearchStack;
 use crate::thread::ThreadData;
-use crate::transposition::TranspositionTable;
+use crate::transposition::{EntryFlag, TranspositionTable};
 use arrayvec::ArrayVec;
-use std::fmt::format;
 
 pub const MAX_PLY: usize = 128;
 
@@ -65,7 +64,7 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
         assert_eq!(0, td.ply);
         assert_eq!(0, td.accumulators.top);
 
-        prev_score = negamax::<true>(td, board, -INFINITY, INFINITY, depth);
+        prev_score = negamax::<true>(td, tt, board, -INFINITY, INFINITY, depth);
 
         assert_eq!(0, td.accumulators.top);
 
@@ -90,13 +89,24 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
     }
 }
 
-fn negamax<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32, depth: i32) -> i32 {
+fn negamax<const PV: bool>(
+    td: &mut ThreadData,
+    tt: &TranspositionTable,
+    board: &Board,
+    mut alpha: i32,
+    beta: i32,
+    depth: i32,
+) -> i32 {
     let is_root = td.ply == 0;
     let in_check = board.in_check();
 
     td.sel_depth = td.sel_depth.max(td.ply);
     if !is_root {
         td.pv.clear_depth(td.ply);
+    }
+
+    if td.halt() {
+        return 0;
     }
 
     if td.main_thread() && td.hard_stop() {
@@ -123,10 +133,23 @@ fn negamax<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
     }
 
     if depth <= 0 {
-        return qsearch::<PV>(td, board, alpha, beta);
+        return qsearch::<PV>(td, tt, board, alpha, beta);
     }
 
     td.nodes.increment();
+
+    let mut tt_move = Move::NULL;
+    if let Some(entry) = tt.get(board.zobrist_hash, td.ply) {
+        tt_move = entry.best_move();
+    }
+
+    let static_eval;
+    if in_check {
+        static_eval = NONE;
+    } else {
+        static_eval = td.accumulators.evaluate(board);
+    }
+    td.stack[td.ply].static_eval = static_eval;
 
     td.stack[td.ply + 1].killer_move = None;
     td.stack[td.ply + 2].cutoffs = 0;
@@ -138,12 +161,12 @@ fn negamax<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
     let mut best_score = -INFINITY;
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
-    let mut picker = MovePicker::new(None, td, -197, false);
+    let mut picker = MovePicker::new(tt_move, td, -197, false);
     while let Some(MoveListEntry { m, .. }) = picker.next(board, td) {
         if !board.is_legal(m) {
             continue;
         };
-
+        tt.prefetch(board.hash_after(Some(m)));
         let copy = board.make_move(m);
 
         td.accumulators.push(m, board.piece_at(m.from()), board.piece_at(m.to()));
@@ -161,13 +184,13 @@ fn negamax<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
         if depth > 2 && moves_searched > 1 + i32::from(is_root) && m.is_quiet(board) {
             let d = (new_depth - base_reduction).clamp(1, new_depth);
 
-            score = -negamax::<false>(td, &copy, -alpha - 1, -alpha, d);
+            score = -negamax::<false>(td, tt, &copy, -alpha - 1, -alpha, d);
         } else if !PV || moves_searched > 0 {
-            score = -negamax::<false>(td, &copy, -alpha - 1, -alpha, new_depth);
+            score = -negamax::<false>(td, tt, &copy, -alpha - 1, -alpha, new_depth);
         }
 
         if PV && (moves_searched == 0 || score > alpha) {
-            score = -negamax::<true>(td, &copy, -beta, -alpha, new_depth);
+            score = -negamax::<true>(td, tt, &copy, -beta, -alpha, new_depth);
         }
 
         td.ply -= 1;
@@ -214,12 +237,28 @@ fn negamax<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
         best_score = if in_check { mated_in(td.ply) } else { STALEMATE }
     }
 
+    let flag = if best_score >= beta {
+        EntryFlag::BetaCutOff
+    } else if best_score > original_alpha {
+        EntryFlag::Exact
+    } else {
+        EntryFlag::AlphaUnchanged
+    };
+    tt.store(board.zobrist_hash, best_move, depth, flag, best_score, td.ply, PV, static_eval);
+
     best_score
 }
 
-fn qsearch<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, beta: i32) -> i32 {
+fn qsearch<const PV: bool>(
+    td: &mut ThreadData,
+    tt: &TranspositionTable,
+    board: &Board,
+    mut alpha: i32,
+    beta: i32,
+) -> i32 {
     let in_check = board.in_check();
 
+    td.sel_depth = td.sel_depth.max(td.ply);
     td.pv.clear_depth(td.ply);
 
     if td.halt() {
@@ -239,9 +278,12 @@ fn qsearch<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
         return STALEMATE;
     }
 
-    td.sel_depth = td.sel_depth.max(td.ply);
-
     td.nodes.increment();
+
+    let mut tt_move = Move::NULL;
+    if let Some(entry) = tt.get(board.zobrist_hash, td.ply) {
+        tt_move = entry.best_move();
+    }
 
     let static_eval = td.accumulators.evaluate(board);
     if static_eval >= beta {
@@ -250,7 +292,7 @@ fn qsearch<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
     alpha = alpha.max(static_eval);
 
     let mut best_score = if in_check { -CHECKMATE } else { static_eval };
-    let mut picker = MovePicker::new(None, td, -197, true);
+    let mut picker = MovePicker::new(tt_move, td, -197, true);
     let mut best_move = Move::NULL;
     let mut moves_searched = 0;
 
@@ -258,20 +300,21 @@ fn qsearch<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
         if !board.is_legal(m) {
             continue;
         }
+        tt.prefetch(board.hash_after(Some(m)));
         let copy = board.make_move(m);
 
         td.accumulators.push(m, board.piece_at(m.from()), board.piece_at(m.to()));
         td.hash_history.push(copy.zobrist_hash);
         td.stack[td.ply].played_move = Some(m);
         td.stack[td.ply].moved_piece = board.piece_at(m.from());
-        moves_searched += 1;
         td.ply += 1;
 
-        let score = -qsearch::<PV>(td, &copy, -beta, -alpha);
+        let score = -qsearch::<PV>(td, tt, &copy, -beta, -alpha);
 
         td.ply -= 1;
         td.accumulators.pop();
         td.hash_history.pop();
+        moves_searched += 1;
 
         if td.halt() {
             return 0;
@@ -295,6 +338,9 @@ fn qsearch<const PV: bool>(td: &mut ThreadData, board: &Board, mut alpha: i32, b
 
         break;
     }
+
+    let flag = if best_score >= beta { EntryFlag::BetaCutOff } else { EntryFlag::AlphaUnchanged };
+    tt.store(board.zobrist_hash, best_move, 0, flag, best_score, td.ply, PV, static_eval);
 
     best_score
 }
