@@ -10,10 +10,6 @@ use crate::transposition::{EntryFlag, TranspositionTable};
 use crate::types::pieces::Piece;
 use arrayvec::ArrayVec;
 
-use std::cmp::min;
-
-use std::os::linux::raw::stat;
-
 pub const MAX_PLY: usize = 128;
 
 pub const STALEMATE: i32 = 0;

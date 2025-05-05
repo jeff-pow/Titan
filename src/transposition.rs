@@ -1,6 +1,6 @@
 use crate::{
     chess_move::Move,
-    search::search::{is_loss, is_mate, is_win, CHECKMATE, INFINITY},
+    search::search::{is_loss, is_win, INFINITY},
 };
 use std::{
     mem::{size_of, transmute},
