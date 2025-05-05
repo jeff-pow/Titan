@@ -236,6 +236,14 @@ fn negamax<const PV: bool>(
         if !board.is_legal(m) {
             continue;
         };
+
+        if !is_root && !is_loss(best_score) {
+            let margin = if m.is_tactical(board) { -93 } else { -41 } * depth;
+            if depth < 12 && !board.see(m, margin) {
+                continue;
+            }
+        }
+
         tt.prefetch(board.hash_after(Some(m)));
         let copy = board.make_move(m);
 
