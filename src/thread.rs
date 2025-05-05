@@ -138,6 +138,7 @@ impl<'a> ThreadData<'a> {
             if depth > 3 || quiets_tried.len() > 1 {
                 self.quiet_hist.update(best_move, best_piece, bonus);
                 self.cont_hist.update(best_move, best_piece, &self.stack, self.ply - 1, bonus);
+                self.cont_hist.update(best_move, best_piece, &self.stack, self.ply - 2, bonus);
             }
             // Only penalize quiets if best_move was quiet
             for m in quiets_tried {
@@ -147,6 +148,7 @@ impl<'a> ThreadData<'a> {
                 let p = board.piece_at(m.from());
                 self.quiet_hist.update(*m, p, -bonus);
                 self.cont_hist.update(*m, p, &self.stack, self.ply - 1, -bonus);
+                self.cont_hist.update(*m, p, &self.stack, self.ply - 2, -bonus);
             }
         }
 
