@@ -189,36 +189,18 @@ impl<'a> ThreadData<'a> {
         println!();
     }
 
-    pub(super) fn is_repetition(&self, board: &Board, ply: usize) -> bool {
-        let history_len = self.hash_history.len();
-
-        if history_len < 3 {
+    pub(super) fn is_repetition(&self, board: &Board) -> bool {
+        if self.hash_history.len() < 6 {
             return false;
         }
 
-        let mut threefold_counter = 0;
-
-        for (dist_back, &hash) in self
-            .hash_history
-            .iter()
-            .rev()
-            .enumerate()
-            .take(board.half_moves as usize + 1) // Limit by 50-move rule count
-            .skip(1)
-            .step_by(2)
-        {
-            if hash == board.zobrist_hash {
-                if dist_back <= ply {
-                    return true;
-                } else {
-                    threefold_counter += 1;
-                    if threefold_counter >= 2 {
-                        return true;
-                    }
-                }
+        let mut reps = 2;
+        for &hash in self.hash_history.iter().rev().take(board.half_moves as usize + 1).step_by(2) {
+            reps -= u32::from(hash == board.zobrist_hash);
+            if reps == 0 {
+                return true;
             }
         }
-
         false
     }
 
