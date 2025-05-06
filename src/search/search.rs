@@ -266,11 +266,11 @@ fn negamax<const PV: bool>(
             let ext_depth = (depth - 1) / 2;
 
             td.stack[td.ply].excluded = Some(m);
-            let ext_score = negamax::<false>(td, tt, board, ext_beta - 1, ext_beta, ext_depth, cut_node);
+            let score = negamax::<false>(td, tt, board, ext_beta - 1, ext_beta, ext_depth, cut_node);
             td.stack[td.ply].excluded = None;
 
-            if ext_score < ext_beta {
-                1
+            if score < ext_beta {
+                1 + i32::from(!PV && score < ext_beta - 18)
             } else {
                 0
             }
