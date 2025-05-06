@@ -26,6 +26,7 @@ pub struct ThreadData<'a> {
     pub ply: usize,
     /// Max depth reached by search (include qsearch)
     pub sel_depth: usize,
+    pub iter_depth: i32,
 
     pub nodes_table: [[u64; 64]; 64],
     pub nodes: AtomicCounter<'a>,
@@ -56,6 +57,7 @@ impl<'a> ThreadData<'a> {
         Self {
             ply: 0,
             stack: SearchStack::default(),
+            iter_depth: 0,
             sel_depth: 0,
             nodes: AtomicCounter::new(global_nodes),
             nodes_table: [[0; 64]; 64],
