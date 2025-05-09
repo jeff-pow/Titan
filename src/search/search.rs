@@ -70,7 +70,7 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
         assert_eq!(0, td.ply);
         assert_eq!(0, td.accumulators.top);
 
-        prev_score = negamax::<true>(td, tt, board, -INFINITY, INFINITY, depth, false);
+        prev_score = aspiration_windows(td, board, tt, prev_score, depth);
 
         assert_eq!(0, td.accumulators.top);
 
@@ -92,6 +92,43 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
 
     if print_uci {
         td.print_search_stats(prev_score, tt, depth);
+    }
+}
+
+pub fn aspiration_windows(
+    td: &mut ThreadData,
+    board: &Board,
+    tt: &TranspositionTable,
+    prev_score: i32,
+    depth: i32,
+) -> i32 {
+    let mut alpha = -INFINITY;
+    let mut beta = INFINITY;
+    let mut delta = 10;
+
+    if depth >= 4 {
+        alpha = (prev_score - delta).max(-CHECKMATE);
+        beta = (prev_score + delta).min(CHECKMATE);
+    }
+
+    loop {
+        assert_eq!(0, td.ply);
+        let score = negamax::<true>(td, tt, board, alpha, beta, depth, false);
+
+        if td.halt() {
+            return score;
+        }
+
+        if score <= alpha {
+            beta = (alpha + beta) / 2;
+            alpha = (score - delta).max(-INFINITY);
+        } else if score >= beta {
+            beta = (score + delta).min(INFINITY);
+        } else {
+            return score;
+        }
+
+        delta += 4 * delta / 9;
     }
 }
 
@@ -259,7 +296,6 @@ fn negamax<const PV: bool>(
                     && matches!(e.flag(), EntryFlag::Exact | EntryFlag::BetaCutOff)
                     && !is_mate(e.search_score())
             }) {
-            let tt_move = tt_move.unwrap();
             let entry = entry.unwrap();
 
             let ext_beta = entry.search_score() - 21 * depth / 16;
