@@ -70,7 +70,7 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
         assert_eq!(0, td.ply);
         assert_eq!(0, td.accumulators.top);
 
-        prev_score = negamax::<true>(td, tt, board, -INFINITY, INFINITY, depth, false);
+        prev_score = aspiration_windows(td, board, tt, prev_score, depth);
 
         assert_eq!(0, td.accumulators.top);
 
