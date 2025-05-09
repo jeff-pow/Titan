@@ -125,7 +125,7 @@ fn negamax<const PV: bool>(
     }
 
     if !is_root {
-        if board.is_draw() || td.is_repetition(board, td.ply) {
+        if board.is_draw() || td.is_repetition(board) {
             return STALEMATE;
         }
 
@@ -348,7 +348,7 @@ fn qsearch<const PV: bool>(
         return td.accumulators.evaluate(board);
     }
 
-    if board.is_draw() || td.is_repetition(board, td.ply) {
+    if board.is_draw() || td.is_repetition(board) {
         return STALEMATE;
     }
 
