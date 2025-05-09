@@ -18,7 +18,7 @@ pub struct PlyEntry {
     pub moved_piece: Piece,
     pub static_eval: i32,
     pub cutoffs: u32,
-    pub singular: Option<Move>,
+    pub excluded: Option<Move>,
     /// Double extensions
     pub multi_extns: i32,
 }
@@ -31,7 +31,7 @@ impl Default for PlyEntry {
             moved_piece: Piece::None,
             static_eval: Default::default(),
             cutoffs: Default::default(),
-            singular: Default::default(),
+            excluded: Default::default(),
             multi_extns: Default::default(),
         }
     }

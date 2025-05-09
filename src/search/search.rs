@@ -65,6 +65,7 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
 
     loop {
         td.sel_depth = 0;
+        td.iter_depth = depth;
 
         assert_eq!(0, td.ply);
         assert_eq!(0, td.accumulators.top);
@@ -106,6 +107,9 @@ fn negamax<const PV: bool>(
     let is_root = td.ply == 0;
     let in_check = board.in_check();
 
+    let excluded_move = td.stack[td.ply].excluded;
+    let singular_search = excluded_move.is_some();
+
     td.sel_depth = td.sel_depth.max(td.ply);
     if !is_root {
         td.pv.clear_depth(td.ply);
@@ -145,9 +149,11 @@ fn negamax<const PV: bool>(
     td.nodes.increment();
 
     let mut tt_move = Move::NULL;
-    if let Some(entry) = tt.get(board.zobrist_hash, td.ply) {
+    let entry = tt.get(board.zobrist_hash, td.ply);
+    if let Some(entry) = entry {
         tt_move = entry.best_move();
         if !PV
+            && !singular_search
             && depth <= entry.depth()
             && match entry.flag() {
                 EntryFlag::None => false,
@@ -168,12 +174,12 @@ fn negamax<const PV: bool>(
     }
     td.stack[td.ply].static_eval = static_eval;
 
-    let can_prune = !PV && !in_check;
-
     // TODO: Add a conditional check to make sure neither of the previous two ply's moves were null moves
     let improving = !in_check && td.ply > 1 && static_eval > td.stack[td.ply - 2].static_eval;
 
-    if can_prune
+    if !PV
+        && !in_check
+        && !singular_search
         && !is_mate(static_eval)
         && depth < 9
         && static_eval >= beta
@@ -184,6 +190,7 @@ fn negamax<const PV: bool>(
 
     if !in_check
         && cut_node
+        && !singular_search
         && depth >= 2
         && td.stack[td.ply - 1].played_move != Move::NULL
         && board.has_non_pawns(board.stm)
@@ -229,7 +236,7 @@ fn negamax<const PV: bool>(
     let original_alpha = alpha;
     let mut picker = MovePicker::new(tt_move, td, -197, false);
     while let Some(MoveListEntry { m, .. }) = picker.next(board, td) {
-        if !board.is_legal(m) {
+        if !board.is_legal(m) || Some(m) == excluded_move {
             continue;
         };
 
@@ -241,6 +248,36 @@ fn negamax<const PV: bool>(
         }
 
         tt.prefetch(board.hash_after(Some(m)));
+
+        let extension = if !is_root
+            && !singular_search
+            && td.ply < 2 * td.iter_depth as usize
+            && Some(m) == tt_move
+            && depth >= 8
+            && entry.is_some_and(|e| {
+                e.depth() >= depth - 3
+                    && matches!(e.flag(), EntryFlag::Exact | EntryFlag::BetaCutOff)
+                    && !is_mate(e.search_score())
+            }) {
+            let tt_move = tt_move.unwrap();
+            let entry = entry.unwrap();
+
+            let ext_beta = entry.search_score() - 21 * depth / 16;
+            let ext_depth = (depth - 1) / 2;
+
+            td.stack[td.ply].excluded = Some(m);
+            let ext_score = negamax::<false>(td, tt, board, ext_beta - 1, ext_beta, ext_depth, cut_node);
+            td.stack[td.ply].excluded = None;
+
+            if ext_score < ext_beta {
+                1
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+
         let copy = board.make_move(m);
 
         td.accumulators.push(m, board.piece_at(m.from()), board.piece_at(m.to()));
@@ -249,7 +286,7 @@ fn negamax<const PV: bool>(
         td.stack[td.ply].moved_piece = board.piece_at(m.from());
         td.ply += 1;
 
-        let new_depth = depth - 1;
+        let new_depth = depth + extension - 1;
 
         let mut score = -INFINITY;
 
@@ -308,6 +345,10 @@ fn negamax<const PV: bool>(
     }
 
     if moves_searched == 0 {
+        if singular_search {
+            return alpha;
+        }
+
         best_score = if in_check { mated_in(td.ply) } else { STALEMATE }
     }
 
@@ -318,7 +359,10 @@ fn negamax<const PV: bool>(
     } else {
         EntryFlag::AlphaUnchanged
     };
-    tt.store(board.zobrist_hash, best_move, depth, flag, best_score, td.ply, PV, static_eval);
+
+    if !singular_search {
+        tt.store(board.zobrist_hash, best_move, depth, flag, best_score, td.ply, PV, static_eval);
+    }
 
     best_score
 }
