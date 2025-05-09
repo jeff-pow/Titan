@@ -160,7 +160,9 @@ impl MovePicker {
 fn score_quiets(board: &Board, td: &ThreadData, moves: &mut [MoveListEntry]) {
     for MoveListEntry { m, score } in moves {
         let p = board.piece_at(m.from());
-        *score = td.quiet_hist.get(*m, p) + td.cont_hist.get(*m, p, &td.stack, td.ply - 1);
+        *score = td.quiet_hist.get(*m, p)
+            + td.cont_hist.get(*m, p, &td.stack, td.ply - 1)
+            + td.cont_hist.get(*m, p, &td.stack, td.ply - 2);
     }
 }
 
