@@ -330,7 +330,7 @@ fn negamax<const PV: bool>(
 
         let base_reduction = td.lmr.base_reduction(depth, moves_searched);
 
-        if depth > 2 && moves_searched > 1 + i32::from(is_root) && m.is_quiet(board) {
+        if depth > 2 && moves_searched > i32::from(is_root) && m.is_quiet(board) {
             let d = (new_depth - base_reduction).clamp(1, new_depth);
 
             score = -negamax::<false>(td, tt, &copy, -alpha - 1, -alpha, d, true);
