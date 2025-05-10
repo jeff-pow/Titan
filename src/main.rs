@@ -10,7 +10,6 @@ mod correction;
 mod eval;
 mod fen;
 mod history_table;
-mod magics;
 mod movegen;
 mod movelist;
 mod movepicker;

@@ -203,12 +203,7 @@ fn negamax<const PV: bool>(
         }
     }
 
-    let static_eval;
-    if in_check {
-        static_eval = NONE;
-    } else {
-        static_eval = td.accumulators.evaluate(board);
-    }
+    let static_eval = if in_check { NONE } else { td.accumulators.evaluate(board) };
     td.stack[td.ply].static_eval = static_eval;
 
     // TODO: Add a conditional check to make sure neither of the previous two ply's moves were null moves

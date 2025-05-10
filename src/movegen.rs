@@ -10,9 +10,9 @@ use crate::{
 };
 
 use super::{
+    attack_boards::{bishop_attacks, rook_attacks},
     attack_boards::{king_attacks, knight_attacks, RANKS},
     chess_move::{Castle, Move, MoveType},
-    magics::{bishop_attacks, rook_attacks},
     movelist::MoveList,
 };
 

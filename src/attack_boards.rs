@@ -1,6 +1,5 @@
 use crate::const_array;
 
-use crate::magics::{bishop_attacks, rook_attacks};
 use crate::types::bitboard::Bitboard;
 use crate::types::pieces::Color;
 use crate::types::square::Square;
@@ -69,6 +68,40 @@ pub const PAWN_ATTACKS: [[Bitboard; 64]; 2] = [
     const_array!(|sq, 64| pawn_set_attacks(Bitboard(1 << sq), Color::White)),
     const_array!(|sq, 64| pawn_set_attacks(Bitboard(1 << sq), Color::Black)),
 ];
+
+include!(concat!(env!("OUT_DIR"), "/magic_tables.rs"));
+
+#[derive(Clone, Copy, Default, Debug)]
+struct MagicEntry {
+    mask: u64,
+    magic: u64,
+    shift: u32,
+    offset: usize,
+}
+
+impl MagicEntry {
+    const fn index(&self, occupied: Bitboard) -> usize {
+        (((occupied.0 & self.mask).wrapping_mul(self.magic)) >> self.shift) as usize + self.offset
+    }
+}
+
+pub const fn rook_attacks(sq: Square, occupied: Bitboard) -> Bitboard {
+    unsafe {
+        let magic = *ROOK_MAGICS.as_ptr().add(sq.0 as usize);
+        *ROOK_TABLE.as_ptr().add(magic.index(occupied))
+    }
+}
+
+pub const fn bishop_attacks(sq: Square, occupied: Bitboard) -> Bitboard {
+    unsafe {
+        let magic = *BISHOP_MAGICS.as_ptr().add(sq.0 as usize);
+        *BISHOP_TABLE.as_ptr().add(magic.index(occupied))
+    }
+}
+
+pub fn queen_attacks(sq: Square, occupied: Bitboard) -> Bitboard {
+    bishop_attacks(sq, occupied) | rook_attacks(sq, occupied)
+}
 
 static BETWEEN: [[Bitboard; 64]; 64] = const_array!(|i, 64| const_array!(|j, 64| {
     let i = Square(i as u32);

@@ -40,11 +40,6 @@ impl Square {
         if this > other { this } else { other }
     }
 
-    /// Rank is the horizontal component of the piece (y-coord)
-    pub const fn rank(self) -> u32 {
-        self.0 >> 3
-    }
-
     pub const fn flip_vertical(self) -> Self {
         Self(self.0 ^ 56)
     }
@@ -59,6 +54,11 @@ impl Square {
         } else {
             self
         }
+    }
+
+    /// Rank is the horizontal component of the piece (y-coord)
+    pub const fn rank(self) -> u32 {
+        self.0 >> 3
     }
 
     /// File is the vertical component of the piece (x-coord)

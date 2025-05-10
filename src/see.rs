@@ -1,7 +1,7 @@
 use crate::{
+    attack_boards::{bishop_attacks, rook_attacks},
     board::Board,
     chess_move::Move,
-    magics::{bishop_attacks, rook_attacks},
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName},

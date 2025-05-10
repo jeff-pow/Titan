@@ -1,9 +1,15 @@
 use crate::{
     board::Board,
     const_array,
-    magics::rand_u64,
     types::pieces::{Color, PieceName},
 };
+
+const fn rand_u64(mut prev: u64) -> u64 {
+    prev ^= prev << 13;
+    prev ^= prev >> 7;
+    prev ^= prev << 17;
+    prev
+}
 
 #[derive(Debug, PartialEq, Eq)]
 /// Contains hashes for each piece square combination, castling possibility, en passant square, and

@@ -3,12 +3,12 @@ use core::fmt;
 use super::fen::STARTING_FEN;
 use crate::{
     attack_boards::{between, king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, pinned_moves, RANKS},
+    attack_boards::{bishop_attacks, queen_attacks, rook_attacks},
     chess_move::{
         Castle,
         Direction::{North, South},
         Move, MoveType, CASTLING_RIGHTS,
     },
-    magics::{bishop_attacks, queen_attacks, rook_attacks},
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName, NUM_PIECES},

@@ -3,7 +3,7 @@ name = "titan"
 version = "1.1.0"
 edition = "2021"
 authors = ["Jeff Powell"]
-build = "build.rs"
+build = "build/build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

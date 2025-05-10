@@ -1,3 +1,6 @@
+mod magics;
+
+use magics::generate_magics;
 use std::{
     env,
     path::{Path, PathBuf},
@@ -8,6 +11,8 @@ const REPO_URL: &str = "https://raw.githubusercontent.com/jeff-pow/FileHydrant/m
 const NET_NAME: &str = "net02.bin";
 
 fn main() {
+    generate_magics();
+
     let path = match env::var("EVALFILE") {
         Ok(evalfile) => {
             if PathBuf::from(&evalfile).is_relative() {
