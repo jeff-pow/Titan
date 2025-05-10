@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     board::Board,
-    search::{lmr_table::LmrTable, search::start_search, SearchType},
+    search::{search::start_search, SearchType},
     thread::ThreadData,
     transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB},
 };
@@ -15,10 +15,9 @@ pub fn bench() {
 
     let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
     let halt = AtomicBool::new(false);
-    let lmr = LmrTable::new();
     let global_nodes = AtomicU64::new(0);
 
-    let mut thread = ThreadData::new(&halt, Vec::new(), 0, &lmr, &global_nodes);
+    let mut thread = ThreadData::new(&halt, Vec::new(), 0, &global_nodes);
 
     thread.search_type = SearchType::Depth(12);
 

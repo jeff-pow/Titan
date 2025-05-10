@@ -43,7 +43,7 @@ pub struct ThreadData<'a> {
     thread_id: usize,
     pub search_type: SearchType,
     halt: &'a AtomicBool,
-    pub lmr: &'a LmrTable,
+    pub lmr: LmrTable,
 }
 
 impl<'a> ThreadData<'a> {
@@ -51,7 +51,6 @@ impl<'a> ThreadData<'a> {
         halt: &'a AtomicBool,
         hash_history: Vec<u64>,
         thread_idx: usize,
-        lmr: &'a LmrTable,
         global_nodes: &'a AtomicU64,
     ) -> Self {
         Self {
@@ -69,7 +68,7 @@ impl<'a> ThreadData<'a> {
             search_type: SearchType::default(),
             hash_history,
             thread_id: thread_idx,
-            lmr,
+            lmr: LmrTable::default(),
             search_start: Instant::now(),
             pv: PVTable::default(),
         }
@@ -218,8 +217,8 @@ pub struct ThreadPool<'a> {
 }
 
 impl<'a> ThreadPool<'a> {
-    pub fn new(halt: &'a AtomicBool, hash_history: Vec<u64>, lmr: &'a LmrTable, global_nodes: &'a AtomicU64) -> Self {
-        Self { threads: vec![ThreadData::new(halt, hash_history, 0, lmr, global_nodes)] }
+    pub fn new(halt: &'a AtomicBool, hash_history: Vec<u64>, global_nodes: &'a AtomicU64) -> Self {
+        Self { threads: vec![ThreadData::new(halt, hash_history, 0, global_nodes)] }
     }
 
     /// This thread creates a number of workers equal to threads - 1. If 4 threads are requested,
@@ -365,7 +364,7 @@ mod search_tests {
     use super::ThreadData;
     use crate::{
         board::Board,
-        search::{lmr_table::LmrTable, search::start_search, SearchType},
+        search::{search::start_search, SearchType},
         transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB},
     };
     use std::sync::atomic::{AtomicBool, AtomicU64};
@@ -374,10 +373,9 @@ mod search_tests {
     fn go_nodes() {
         let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
         let halt = AtomicBool::new(false);
-        let lmr = LmrTable::new();
         let global_nodes = AtomicU64::new(0);
 
-        let mut thread = ThreadData::new(&halt, Vec::new(), 0, &lmr, &global_nodes);
+        let mut thread = ThreadData::new(&halt, Vec::new(), 0, &global_nodes);
 
         thread.search_type = SearchType::Nodes(12345);
 

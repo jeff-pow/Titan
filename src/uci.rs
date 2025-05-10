@@ -17,12 +17,11 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub fn main_loop() -> ! {
     let mut transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
     let mut board = Board::from_fen(STARTING_FEN);
-    let lmr = LmrTable::new();
     let mut msg: Option<String> = None;
     let mut hash_history = Vec::new();
     let halt = AtomicBool::new(false);
     let global_nodes = AtomicU64::new(0);
-    let mut thread_pool = ThreadPool::new(&halt, Vec::new(), &lmr, &global_nodes);
+    let mut thread_pool = ThreadPool::new(&halt, Vec::new(), &global_nodes);
     println!("{ENGINE_NAME} v{VERSION} by {}", env!("CARGO_PKG_AUTHORS"));
 
     loop {
