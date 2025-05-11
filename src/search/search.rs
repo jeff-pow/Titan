@@ -307,6 +307,8 @@ fn negamax<const PV: bool>(
 
             if score < ext_beta {
                 1 + i32::from(!PV && score < ext_beta - 18)
+            } else if entry.search_score() >= beta {
+                -2
             } else {
                 0
             }
