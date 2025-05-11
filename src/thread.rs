@@ -3,7 +3,7 @@ use std::{
     process::exit,
     sync::atomic::{AtomicBool, AtomicU64, Ordering},
     thread,
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use crate::{
@@ -83,11 +83,14 @@ impl<'a> ThreadData<'a> {
     }
 
     pub(super) fn node_tm_stop(&mut self, game_time: Clock, depth: i32) -> bool {
-        let Some(m) = self.pv.best_move() else { return false };
-        let frac = self.nodes_table[m.from()][m.to()] as f64 / self.nodes.global_count() as f64;
-        let time_scale = if depth > 9 { (1.44 - frac) * 1.62 } else { 1.28 };
-        if self.search_start.elapsed().as_millis() as f64 >= game_time.rec_time.as_millis() as f64 * time_scale {
-            return true;
+        if depth > 7 {
+            let Some(m) = self.pv.best_move() else { return false };
+            let mut limit = game_time.rec_time.as_secs_f32();
+            let frac = self.nodes_table[m.from()][m.to()] as f32 / self.nodes.local_count() as f32;
+            limit *= 2.0 - 1.5 * frac;
+            if self.search_start.elapsed() >= Duration::from_secs_f32(limit) {
+                return true;
+            }
         }
         false
     }
@@ -96,7 +99,7 @@ impl<'a> ThreadData<'a> {
         match self.search_type {
             SearchType::Depth(d) => depth >= d,
             SearchType::Time(time) => {
-                self.main_thread() && self.node_tm_stop(time, depth) || time.soft_termination(self.search_start)
+                self.main_thread() && (self.node_tm_stop(time, depth) || time.soft_termination(self.search_start))
             }
             SearchType::Nodes(n) => self.nodes.global_count() >= n,
             SearchType::Infinite => self.halt.load(Ordering::Relaxed),
