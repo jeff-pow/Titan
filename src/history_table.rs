@@ -21,7 +21,7 @@ pub fn capthist_capture(board: &Board, m: Move) -> PieceName {
 }
 
 #[derive(Clone)]
-pub struct QuietHistory([[i32; 64]; 12]);
+pub struct QuietHistory(Box<[[i32; 64]; 12]>);
 
 impl QuietHistory {
     pub fn update(&mut self, m: Move, piece: Piece, bonus: i32) {
@@ -35,12 +35,12 @@ impl QuietHistory {
 
 impl Default for QuietHistory {
     fn default() -> Self {
-        Self([[0; 64]; 12])
+        Self(Box::new([[0; 64]; 12]))
     }
 }
 
 #[derive(Clone)]
-pub struct CaptureHistory([[[i32; 5]; 64]; 12]);
+pub struct CaptureHistory(Box<[[[i32; 5]; 64]; 12]>);
 
 impl CaptureHistory {
     pub fn update(&mut self, m: Move, piece: Piece, board: &Board, bonus: i32) {
@@ -56,12 +56,12 @@ impl CaptureHistory {
 
 impl Default for CaptureHistory {
     fn default() -> Self {
-        Self([[[0; 5]; 64]; 12])
+        Self(Box::new([[[0; 5]; 64]; 12]))
     }
 }
 
 #[derive(Clone)]
-pub struct ContinuationHistory([[[[i32; 64]; 12]; 64]; 12]);
+pub struct ContinuationHistory(Box<[[[[i32; 64]; 12]; 64]; 12]>);
 
 impl ContinuationHistory {
     pub fn update(&mut self, m: Move, piece: Piece, stack: &SearchStack, ply: usize, bonus: i32) {
@@ -79,7 +79,7 @@ impl ContinuationHistory {
 
 impl Default for ContinuationHistory {
     fn default() -> Self {
-        Self([[[[0; 64]; 12]; 64]; 12])
+        Self(Box::new([[[[0; 64]; 12]; 64]; 12]))
     }
 }
 

@@ -305,7 +305,7 @@ impl AccumulatorStack {
     }
 
     pub fn new(base_accumulator: Accumulator) -> Self {
-        let mut vec = vec![Accumulator::default(); MAX_PLY as usize + 50];
+        let mut vec = vec![Accumulator::default(); MAX_PLY + 50];
         vec[0] = base_accumulator;
         Self { stack: vec, top: 0, acc_cache: AccumulatorCache::default() }
     }

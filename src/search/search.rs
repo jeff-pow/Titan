@@ -46,7 +46,7 @@ pub fn clamp_score(score: i32) -> i32 {
 
 pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &TranspositionTable) {
     td.search_start = Instant::now();
-    td.nodes_table = [[0; 64]; 64];
+    td.nodes_table = Box::new([[0; 64]; 64]);
     td.stack = SearchStack::default();
     td.pv.reset();
     td.accumulators.clear(board.new_accumulator());

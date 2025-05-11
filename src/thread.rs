@@ -28,7 +28,7 @@ pub struct ThreadData<'a> {
     pub sel_depth: usize,
     pub iter_depth: i32,
 
-    pub nodes_table: [[u64; 64]; 64],
+    pub nodes_table: Box<[[u64; 64]; 64]>,
     pub nodes: AtomicCounter<'a>,
     pub stack: SearchStack,
     pub hash_history: Vec<u64>,
@@ -59,7 +59,7 @@ impl<'a> ThreadData<'a> {
             iter_depth: 0,
             sel_depth: 0,
             nodes: AtomicCounter::new(global_nodes),
-            nodes_table: [[0; 64]; 64],
+            nodes_table: Box::new([[0; 64]; 64]),
             accumulators: AccumulatorStack::new(Accumulator::default()),
             quiet_hist: QuietHistory::default(),
             capt_hist: CaptureHistory::default(),
