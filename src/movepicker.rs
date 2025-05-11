@@ -4,11 +4,11 @@ use super::{
 };
 use crate::{board::Board, movegen::MGT, thread::ThreadData};
 
-pub const TT_MOVE_SCORE: i32 = i32::MAX - 1000;
-pub const GOOD_CAPTURE: i32 = 10_000_000;
-pub const FIRST_KILLER_SCORE: i32 = 1_000_000;
-pub const COUNTER_MOVE_SCORE: i32 = 800_000;
-pub const BAD_CAPTURE: i32 = -10000;
+const TT_MOVE_SCORE: i32 = i32::MAX - 1000;
+const GOOD_CAPTURE: i32 = 10_000_000;
+const KILLER_SCORE: i32 = 1_000_000;
+const COUNTER_MOVE_SCORE: i32 = 800_000;
+const BAD_CAPTURE: i32 = -10000;
 
 #[derive(PartialEq, PartialOrd, Eq)]
 pub enum MovePickerPhase {
@@ -28,7 +28,7 @@ pub enum MovePickerPhase {
 
 pub struct MovePicker {
     pub phase: MovePickerPhase,
-    skip_quiets: bool,
+    return_quiets: bool,
     margin: i32,
 
     moves: MoveList,
@@ -40,7 +40,7 @@ pub struct MovePicker {
 }
 
 impl MovePicker {
-    pub fn new(tt_move: Option<Move>, td: &ThreadData, margin: i32, skip_quiets: bool) -> Self {
+    pub fn new(tt_move: Option<Move>, td: &ThreadData, margin: i32, return_quiets: bool) -> Self {
         Self {
             moves: MoveList::default(),
             index: 0,
@@ -49,104 +49,113 @@ impl MovePicker {
             tt_move,
             killer_move: td.stack[td.ply].killer_move,
             counter_move: None,
-            skip_quiets,
+            return_quiets,
         }
     }
 
     pub fn skip_quiets(&mut self) {
-        self.skip_quiets = true;
+        self.return_quiets = false;
     }
 
     /// Select the next move to try. Returns None if there are no more moves to try.
     pub fn next(&mut self, board: &Board, td: &ThreadData) -> Option<MoveListEntry> {
-        if self.phase == MovePickerPhase::TTMove {
-            self.phase = MovePickerPhase::CapturesInit;
-            if let Some(tt_move) = self.tt_move {
-                if board.occupancies().empty(tt_move.to()) && self.skip_quiets {
-                    return self.next(board, td);
+        loop {
+            match self.phase {
+                MovePickerPhase::TTMove => {
+                    self.phase = MovePickerPhase::CapturesInit;
+                    if let Some(tt_move) = self.tt_move.filter(|&m| board.is_pseudo_legal(m)) {
+                        return Some(MoveListEntry { m: tt_move, score: TT_MOVE_SCORE });
+                    }
                 }
-                if board.is_pseudo_legal(self.tt_move) {
-                    return Some(MoveListEntry { m: tt_move, score: TT_MOVE_SCORE });
+                MovePickerPhase::CapturesInit => {
+                    self.phase = MovePickerPhase::GoodCaptures;
+                    board.generate_moves(MGT::CapturesOnly, &mut self.moves);
+                    score_captures(td, self.margin, board, &mut self.moves.arr);
                 }
-            }
-        }
+                MovePickerPhase::GoodCaptures => {
+                    while self.index < self.moves.len() {
+                        let picked = self.moves.pick_move(self.index);
 
-        if self.phase == MovePickerPhase::CapturesInit {
-            self.phase = MovePickerPhase::GoodCaptures;
-            board.generate_moves(MGT::CapturesOnly, &mut self.moves);
-            score_captures(td, self.margin, board, &mut self.moves.arr);
-        }
+                        if self.tt_move == Some(picked.m) {
+                            self.index += 1;
+                            continue;
+                        }
 
-        if self.phase == MovePickerPhase::GoodCaptures {
-            if let Some(m) = self.select_next(board) {
-                if m.score >= GOOD_CAPTURE {
-                    return Some(m);
+                        if picked.score >= GOOD_CAPTURE {
+                            self.index += 1;
+                            return Some(picked);
+                        } else {
+                            break;
+                        }
+                    }
+
+                    self.phase = if self.return_quiets { MovePickerPhase::Killer } else { MovePickerPhase::Remainders };
                 }
-                // Move did not win, so we move on to quiet moves, and decrement index to play the
-                // move again later
-                self.index -= 1;
-            }
+                MovePickerPhase::Killer => {
+                    self.phase =
+                        if self.return_quiets { MovePickerPhase::Counter } else { MovePickerPhase::Remainders };
+                    if !self.return_quiets {
+                        continue;
+                    }
 
-            self.phase = if self.skip_quiets { MovePickerPhase::Finished } else { MovePickerPhase::Killer };
-        }
-
-        if self.phase == MovePickerPhase::Killer {
-            self.phase = MovePickerPhase::Counter;
-            if let Some(killer) = self.killer_move {
-                if !self.skip_quiets && self.killer_move != self.tt_move && board.is_pseudo_legal(self.killer_move) {
-                    return Some(MoveListEntry { m: killer, score: FIRST_KILLER_SCORE });
+                    if let Some(killer) = self.killer_move {
+                        if Some(killer) != self.tt_move && board.is_pseudo_legal(killer) {
+                            return Some(MoveListEntry { m: killer, score: KILLER_SCORE });
+                        }
+                    }
                 }
-            }
-        }
+                MovePickerPhase::Counter => {
+                    self.phase =
+                        if self.return_quiets { MovePickerPhase::QuietsInit } else { MovePickerPhase::Remainders };
+                    if !self.return_quiets {
+                        continue;
+                    }
 
-        if self.phase == MovePickerPhase::Counter {
-            self.phase = MovePickerPhase::QuietsInit;
-            if let Some(counter_move) = self.counter_move {
-                if !self.skip_quiets
-                    && self.counter_move != self.tt_move
-                    && self.counter_move != self.killer_move
-                    && board.is_pseudo_legal(self.counter_move)
-                {
-                    return Some(MoveListEntry { m: counter_move, score: COUNTER_MOVE_SCORE });
+                    if let Some(counter) = self.counter_move {
+                        if Some(counter) != self.tt_move
+                            && Some(counter) != self.killer_move
+                            && board.is_pseudo_legal(counter)
+                        {
+                            return Some(MoveListEntry { m: counter, score: COUNTER_MOVE_SCORE });
+                        }
+                    }
                 }
+                MovePickerPhase::QuietsInit => {
+                    self.phase = MovePickerPhase::Remainders;
+                    if !self.return_quiets {
+                        continue;
+                    }
+
+                    let start_quiets = self.moves.len();
+                    board.generate_moves(MGT::QuietsOnly, &mut self.moves);
+                    score_quiets(board, td, &mut self.moves.arr[start_quiets..]);
+                }
+                MovePickerPhase::Remainders => {
+                    if let Some(picked) = self.select_next(board) {
+                        return Some(picked);
+                    }
+
+                    self.phase = MovePickerPhase::Finished;
+                }
+                MovePickerPhase::Finished => return None,
             }
         }
-
-        if self.phase == MovePickerPhase::QuietsInit {
-            self.phase = MovePickerPhase::Remainders;
-            if !self.skip_quiets {
-                let start = self.moves.len();
-                board.generate_moves(MGT::QuietsOnly, &mut self.moves);
-                let len = self.moves.len();
-                let quiets = &mut self.moves.arr[start..len];
-                score_quiets(board, td, quiets);
-            }
-        }
-
-        if self.phase == MovePickerPhase::Remainders {
-            if let Some(m) = self.select_next(board) {
-                return Some(m);
-            }
-            self.phase = MovePickerPhase::Finished;
-        }
-
-        None
     }
 
     /// Chooses the next valid move with the next highest score
     fn select_next(&mut self, board: &Board) -> Option<MoveListEntry> {
-        if self.index >= self.moves.len() {
-            return None;
-        }
+        loop {
+            if self.index >= self.moves.len() {
+                return None;
+            }
 
-        let entry = self.moves.pick_move(self.index);
+            let picked = self.moves.pick_move(self.index);
 
-        self.index += 1;
-
-        if self.skip_quiets && entry.m.is_quiet(board) || self.is_cached(entry.m) {
-            self.select_next(board)
-        } else {
-            Some(entry)
+            self.index += 1;
+            if (!self.return_quiets && picked.m.is_quiet(board)) || self.is_cached(picked.m) {
+                continue;
+            }
+            return Some(picked);
         }
     }
 

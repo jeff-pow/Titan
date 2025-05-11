@@ -165,6 +165,10 @@ fn negamax<const PV: bool>(
         return if in_check { 0 } else { td.accumulators.evaluate(board) };
     }
 
+    if depth <= 0 {
+        return qsearch::<PV>(td, tt, board, alpha, beta);
+    }
+
     if !is_root {
         if board.is_draw() || td.is_repetition(board) {
             return STALEMATE;
@@ -177,10 +181,6 @@ fn negamax<const PV: bool>(
         if alpha >= beta {
             return alpha;
         }
-    }
-
-    if depth <= 0 {
-        return qsearch::<PV>(td, tt, board, alpha, beta);
     }
 
     td.nodes.increment();
@@ -203,12 +203,7 @@ fn negamax<const PV: bool>(
         }
     }
 
-    let static_eval;
-    if in_check {
-        static_eval = NONE;
-    } else {
-        static_eval = td.accumulators.evaluate(board);
-    }
+    let static_eval = if in_check { NONE } else { td.accumulators.evaluate(board) };
     td.stack[td.ply].static_eval = static_eval;
 
     // TODO: Add a conditional check to make sure neither of the previous two ply's moves were null moves
@@ -271,7 +266,7 @@ fn negamax<const PV: bool>(
     let mut best_score = -INFINITY;
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
-    let mut picker = MovePicker::new(tt_move, td, -197, false);
+    let mut picker = MovePicker::new(tt_move, td, -197, true);
     while let Some(MoveListEntry { m, .. }) = picker.next(board, td) {
         if !board.is_legal(m) || Some(m) == excluded_move {
             continue;
@@ -457,7 +452,7 @@ fn qsearch<const PV: bool>(
     alpha = alpha.max(static_eval);
 
     let mut best_score = if in_check { -CHECKMATE } else { static_eval };
-    let mut picker = MovePicker::new(tt_move, td, -197, true);
+    let mut picker = MovePicker::new(tt_move, td, -197, false);
     let mut best_move = Move::NULL;
     let mut moves_searched = 0;
 
