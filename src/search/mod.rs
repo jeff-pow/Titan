@@ -39,7 +39,7 @@ impl Default for PlyEntry {
 
 #[derive(Clone)]
 pub struct PVTable {
-    table: [ArrayVec<Option<Move>, { MAX_PLY + 1 }>; MAX_PLY + 1],
+    table: Box<[ArrayVec<Option<Move>, { MAX_PLY + 1 }>; MAX_PLY + 1]>,
 }
 
 impl PVTable {
@@ -71,7 +71,7 @@ impl PVTable {
 
 impl Default for PVTable {
     fn default() -> Self {
-        Self { table: array::from_fn(|_| ArrayVec::new_const()) }
+        Self { table: Box::new(array::from_fn(|_| ArrayVec::new_const())) }
     }
 }
 
