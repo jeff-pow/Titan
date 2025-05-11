@@ -14,7 +14,7 @@ use crate::{
     search::{
         game_time::Clock,
         lmr_table::LmrTable,
-        search::{is_mate, start_search, CHECKMATE, MAX_PLY},
+        search::{mate_found, start_search, CHECKMATE, MAX_PLY},
         PVTable, SearchStack, SearchType,
     },
     transposition::TranspositionTable,
@@ -177,7 +177,7 @@ impl<'a> ThreadData<'a> {
             (nodes as f64 / self.search_start.elapsed().as_secs_f64()) as i64,
         );
 
-        if is_mate(score) {
+        if mate_found(score) {
             if score.is_positive() {
                 print!("mate {}", (CHECKMATE - score + 1) / 2);
             } else {

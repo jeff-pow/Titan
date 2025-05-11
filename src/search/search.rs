@@ -28,7 +28,7 @@ pub fn mate_in(ply: usize) -> i32 {
     CHECKMATE - ply as i32
 }
 
-pub fn is_mate(score: i32) -> bool {
+pub fn mate_found(score: i32) -> bool {
     score.abs() >= MATE_IN_MAX_PLY
 }
 
@@ -217,7 +217,7 @@ fn negamax<const PV: bool>(
     if !PV
         && !in_check
         && !singular_search
-        && !is_mate(static_eval)
+        && !is_loss(beta)
         && depth < 9
         && static_eval >= beta
         && static_eval - 93 * depth + i32::from(improving) * 30 * depth >= beta
@@ -232,7 +232,7 @@ fn negamax<const PV: bool>(
         && td.stack[td.ply - 1].played_move != Move::NULL
         && board.has_non_pawns(board.stm)
         && static_eval >= beta
-        && !is_mate(static_eval)
+        && !is_loss(beta)
     {
         tt.prefetch(board.hash_after(Move::NULL));
 
@@ -254,7 +254,7 @@ fn negamax<const PV: bool>(
         }
 
         if score >= beta {
-            if is_mate(score) {
+            if mate_found(score) {
                 return beta;
             }
             return score;
@@ -295,7 +295,7 @@ fn negamax<const PV: bool>(
             && entry.is_some_and(|e| {
                 e.depth() >= depth - 3
                     && matches!(e.flag(), EntryFlag::Exact | EntryFlag::BetaCutOff)
-                    && !is_mate(e.search_score())
+                    && !mate_found(e.search_score())
             }) {
             let entry = entry.unwrap();
 
