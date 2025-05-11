@@ -11,9 +11,11 @@ base = chess.engine.SimpleEngine.popen_uci("./titan", debug=True)
 base.configure({"Threads": 1, "Hash": 16})
 
 # Determine which side the engine is playing
-if game.headers["White"] == "titan":
+ENGINE_NAME = "Titan-dev"
+if game.headers["White"] == ENGINE_NAME:
     offset = 0
 else:
+    assert game.headers['Black'] == ENGINE_NAME
     offset = 1
 
 board = game.board()

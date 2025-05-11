@@ -165,10 +165,6 @@ fn negamax<const PV: bool>(
         return if in_check { 0 } else { td.accumulators.evaluate(board) };
     }
 
-    if depth <= 0 {
-        return qsearch::<PV>(td, tt, board, alpha, beta);
-    }
-
     if !is_root {
         if board.is_draw() || td.is_repetition(board) {
             return STALEMATE;
@@ -181,6 +177,10 @@ fn negamax<const PV: bool>(
         if alpha >= beta {
             return alpha;
         }
+    }
+
+    if depth <= 0 {
+        return qsearch::<PV>(td, tt, board, alpha, beta);
     }
 
     td.nodes.increment();
