@@ -88,6 +88,7 @@ impl MovePicker {
                 return Some(picked.m);
             }
             if !self.return_quiets {
+                self.bad_captures.arr.clear();
                 self.phase = Phase::BadCaptures;
             }
             self.phase = Phase::Killer;
