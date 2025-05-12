@@ -298,9 +298,7 @@ impl Board {
         }
     }
 
-    pub(crate) fn is_pseudo_legal(&self, m: Option<Move>) -> bool {
-        let Some(m) = m else { return false };
-
+    pub(crate) fn is_pseudo_legal(&self, m: Move) -> bool {
         let from = m.from();
         let to = m.to();
 

@@ -10,7 +10,7 @@ use crate::{
     board::Board,
     chess_move::Move,
     eval::accumulator::{Accumulator, AccumulatorStack},
-    history_table::{capthist_capture, CaptureHistory, ContinuationHistory, QuietHistory},
+    history_table::{CaptureHistory, ContinuationHistory, QuietHistory},
     search::{
         game_time::Clock,
         lmr_table::LmrTable,
