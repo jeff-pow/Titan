@@ -32,6 +32,10 @@ impl Board {
         moves
     }
 
+    pub fn has_legal_moves(&self) -> bool {
+        self.pseudolegal_moves().iter().any(|m| self.is_legal(m))
+    }
+
     /// Generates all pseudolegal moves
     pub fn generate_moves(&self, gen_type: MGT, moves: &mut MoveList) {
         let mut dests = match gen_type {
