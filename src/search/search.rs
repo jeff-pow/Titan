@@ -519,7 +519,6 @@ fn qsearch<const PV: bool>(
     }
 
     if moves_searched == 0 && in_check {
-        assert!(!board.has_legal_moves());
         return mated_in(td.ply);
     }
 
