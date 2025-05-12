@@ -53,6 +53,10 @@ impl MovePicker {
         self.return_quiets = false;
     }
 
+    pub fn finished_good_captures(&self) -> bool {
+        matches!(self.phase, Phase::Killer | Phase::QuietsInit | Phase::Quiets | Phase::BadCaptures)
+    }
+
     /// Select the next move to try. Returns None if there are no more moves to try.
     pub fn next(&mut self, board: &Board, td: &ThreadData) -> Option<Move> {
         if self.phase == Phase::TTMove {
@@ -87,10 +91,7 @@ impl MovePicker {
 
                 return Some(picked.m);
             }
-            if !self.return_quiets {
-                self.bad_captures.arr.clear();
-                self.phase = Phase::BadCaptures;
-            }
+
             self.phase = Phase::Killer;
         }
 

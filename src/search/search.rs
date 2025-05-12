@@ -3,7 +3,7 @@ use std::time::Instant;
 use crate::board::Board;
 use crate::chess_move::Move;
 use crate::movelist::{MoveListEntry, MAX_MOVES};
-use crate::movepicker::MovePicker;
+use crate::movepicker::{MovePicker, Phase};
 use crate::search::SearchStack;
 use crate::thread::ThreadData;
 use crate::transposition::{EntryFlag, TranspositionTable};
@@ -457,6 +457,9 @@ fn qsearch<const PV: bool>(
     let mut moves_searched = 0;
 
     while let Some(m) = picker.next(board, td) {
+        if picker.finished_good_captures() {
+            break;
+        }
         if !board.is_legal(m) {
             continue;
         }
