@@ -82,7 +82,6 @@ impl MovePicker {
                     continue;
                 }
 
-                assert!(board.is_pseudo_legal(picked.m));
                 return Some(picked.m);
             }
 
@@ -123,7 +122,6 @@ impl MovePicker {
                         continue;
                     }
 
-                    assert!(board.is_pseudo_legal(picked.m));
                     return Some(picked.m);
                 }
             }
@@ -132,9 +130,7 @@ impl MovePicker {
         }
 
         if self.phase == Phase::BadCaptures && !self.bad_captures.is_empty() {
-            let picked = self.bad_captures.arr.pop().unwrap().m;
-            assert!(board.is_pseudo_legal(picked));
-            return Some(picked);
+            return Some(self.bad_captures.arr.pop().unwrap().m);
         }
 
         None
