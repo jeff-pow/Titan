@@ -24,6 +24,7 @@ pub struct TableEntry {
 }
 
 impl TableEntry {
+    #[expect(unused)]
     pub const fn static_eval(self) -> i32 {
         self.static_eval as i32
     }
@@ -50,7 +51,8 @@ impl TableEntry {
         u64::from(self.age_pv_bound) >> 3
     }
 
-    pub fn was_pv(self) -> bool {
+    #[expect(unused)]
+    pub const fn was_pv(self) -> bool {
         (self.age_pv_bound & 0b0000_0100) != 0
     }
 
@@ -58,7 +60,7 @@ impl TableEntry {
         i32::from(self.search_score)
     }
 
-    pub fn best_move(self) -> Option<Move> {
+    pub const fn best_move(self) -> Option<Move> {
         match self.best_move {
             0 => None,
             x => Some(Move(NonZeroU16::new(x).unwrap())),
@@ -151,7 +153,7 @@ impl TranspositionTable {
         unsafe {
             let index = index(hash, self.vec.len());
             let entry = self.vec.get_unchecked(index);
-            _mm_prefetch::<_MM_HINT_T0>((entry as *const InternalEntry).cast())
+            _mm_prefetch::<_MM_HINT_T0>(std::ptr::from_ref::<InternalEntry>(entry).cast());
         }
     }
 

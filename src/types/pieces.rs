@@ -8,25 +8,6 @@ pub enum Color {
     Black,
 }
 
-#[macro_export]
-macro_rules! impl_index {
-    ($enum_name:ident) => {
-        impl<T, const N: usize> Index<$enum_name> for [T; N] {
-            type Output = T;
-
-            fn index(&self, index: $enum_name) -> &Self::Output {
-                &self[index as usize]
-            }
-        }
-
-        impl<T, const N: usize> IndexMut<$enum_name> for [T; N] {
-            fn index_mut(&mut self, index: $enum_name) -> &mut Self::Output {
-                &mut self[index as usize]
-            }
-        }
-    };
-}
-
 impl Color {
     pub fn iter() -> impl Iterator<Item = Self> {
         [Self::White, Self::Black].into_iter()
@@ -55,7 +36,7 @@ impl From<usize> for Color {
 
 impl From<Color> for usize {
     fn from(value: Color) -> Self {
-        value as usize
+        value as Self
     }
 }
 
@@ -109,7 +90,7 @@ impl From<usize> for PieceName {
 
 impl From<PieceName> for usize {
     fn from(value: PieceName) -> Self {
-        value as usize
+        value as Self
     }
 }
 
@@ -214,7 +195,7 @@ impl From<usize> for Piece {
 
 impl From<Piece> for usize {
     fn from(value: Piece) -> Self {
-        value as usize
+        value as Self
     }
 }
 

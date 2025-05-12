@@ -4,9 +4,6 @@ use super::{
 };
 use crate::{board::Board, movegen::MGT, thread::ThreadData};
 
-const GOOD_CAPTURE: i32 = 10_000_000;
-const BAD_CAPTURE: i32 = -10000;
-
 #[derive(PartialEq, PartialOrd, Eq)]
 pub enum Phase {
     TTMove,
@@ -49,11 +46,12 @@ impl MovePicker {
         }
     }
 
-    pub fn skip_quiets(&mut self) {
+    #[expect(unused)]
+    pub const fn skip_quiets(&mut self) {
         self.return_quiets = false;
     }
 
-    pub fn finished_good_captures(&self) -> bool {
+    pub const fn finished_good_captures(&self) -> bool {
         matches!(self.phase, Phase::Killer | Phase::QuietsInit | Phase::Quiets | Phase::BadCaptures)
     }
 
@@ -72,7 +70,7 @@ impl MovePicker {
         if self.phase == Phase::CapturesInit {
             self.phase = Phase::GoodCaptures;
             board.generate_moves(MGT::CapturesOnly, &mut self.moves);
-            score_captures(td, self.margin, board, &mut self.moves.arr);
+            score_captures(td, board, &mut self.moves.arr);
         }
 
         if self.phase == Phase::GoodCaptures {
@@ -161,7 +159,7 @@ fn score_quiets(board: &Board, td: &ThreadData, moves: &mut [MoveListEntry]) {
     }
 }
 
-fn score_captures(td: &ThreadData, margin: i32, board: &Board, moves: &mut [MoveListEntry]) {
+fn score_captures(td: &ThreadData, board: &Board, moves: &mut [MoveListEntry]) {
     for MoveListEntry { m, score } in moves {
         *score = td.capt_hist.get(*m, board.piece_at(m.from()), board);
     }

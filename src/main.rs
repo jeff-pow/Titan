@@ -6,7 +6,6 @@ mod attack_boards;
 mod bench;
 mod board;
 mod chess_move;
-mod correction;
 mod eval;
 mod fen;
 mod history_table;
@@ -21,6 +20,7 @@ mod thread;
 mod transposition;
 mod types;
 mod uci;
+mod utils;
 mod zobrist;
 
 use crate::bench::bench;

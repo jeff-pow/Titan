@@ -1,4 +1,5 @@
 use core::fmt;
+use std::fmt::Write;
 
 use super::fen::STARTING_FEN;
 use crate::{
@@ -42,11 +43,11 @@ impl Default for Board {
 }
 
 impl Board {
-    pub fn piece_bbs(&self) -> [Bitboard; 6] {
+    pub const fn piece_bbs(&self) -> [Bitboard; 6] {
         self.bitboards
     }
 
-    pub fn color_bbs(&self) -> [Bitboard; 2] {
+    pub const fn color_bbs(&self) -> [Bitboard; 2] {
         self.color_occupancies
     }
 
@@ -493,14 +494,14 @@ impl Board {
     pub fn debug_bitboards(&self) {
         for color in Color::iter() {
             for piece in PieceName::iter() {
-                dbg!("{:?} {:?}", color, piece);
+                dbg!("{color:?} {piece:?}");
                 dbg!(self.piece_color(color, piece));
                 dbg!("\n");
             }
         }
     }
 
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self {
             bitboards: [Bitboard::EMPTY; 6],
             color_occupancies: [Bitboard::EMPTY; 2],
@@ -561,25 +562,25 @@ impl fmt::Debug for Board {
         };
         str += &self.to_string();
         str += "threats:\n";
-        str += &format!("{:?}\n", self.threats());
+        writeln!(str, "{:?}", self.threats()).unwrap();
         str += "checkers:\n";
-        str += &format!("{:?}\n", self.checkers);
+        writeln!(str, "{:?}", self.checkers()).unwrap();
         str += "pinned:\n";
-        str += &format!("{:?}\n", self.pinned);
+        writeln!(str, "{:?}", self.pinned()).unwrap();
         str += "\n";
         str += "Castles available: ";
         if self.can_castle(Castle::WhiteKing) {
             str += "K";
-        };
+        }
         if self.can_castle(Castle::WhiteQueen) {
             str += "Q";
-        };
+        }
         if self.can_castle(Castle::BlackKing) {
             str += "k";
-        };
+        }
         if self.can_castle(Castle::BlackQueen) {
             str += "q";
-        };
+        }
         str += "\n";
         str += "En Passant Square: ";
         if let Some(s) = &self.en_passant_square {

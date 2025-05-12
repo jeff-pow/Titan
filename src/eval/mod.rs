@@ -14,7 +14,7 @@ const HIDDEN_SIZE: usize = 1536;
 static NET: Network = unsafe { std::mem::transmute(*include_bytes!(env!("NETWORK"))) };
 
 #[repr(C, align(64))]
-#[derive(Clone, Copy, Debug, PartialOrd, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Eq)]
 pub struct Align64<T>(pub T);
 
 impl<T, const N: usize> Deref for Align64<[T; N]> {

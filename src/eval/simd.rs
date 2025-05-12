@@ -1,6 +1,10 @@
 #[cfg(all(not(feature = "avx512"), target_feature = "avx2"))]
-pub(crate) mod avx2 {
-    use std::arch::x86_64::*;
+pub mod avx2 {
+    use std::arch::x86_64::{
+        __m256i, _mm256_add_epi32, _mm256_castsi256_si128, _mm256_extracti128_si256, _mm256_load_si256,
+        _mm256_madd_epi16, _mm256_max_epi16, _mm256_min_epi16, _mm256_mullo_epi16, _mm256_set1_epi16,
+        _mm256_setzero_si256, _mm_add_epi32, _mm_cvtsi128_si32, _mm_shuffle_epi32, _mm_unpackhi_epi64,
+    };
 
     use crate::eval::network::{RELU_MAX, RELU_MIN};
     use crate::eval::{Block, HIDDEN_SIZE};

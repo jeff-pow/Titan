@@ -19,7 +19,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(C, align(64))]
 pub struct Accumulator {
     pub vals: [Align64<Block>; 2],
@@ -71,7 +71,7 @@ impl Accumulator {
         eval.clamp(MATED_IN_MAX_PLY + 1, MATE_IN_MAX_PLY - 1)
     }
 
-    fn add_sub(&mut self, old: &Accumulator, a1: usize, s1: usize, side: Color) {
+    fn add_sub(&mut self, old: &Self, a1: usize, s1: usize, side: Color) {
         #[cfg(feature = "avx512")]
         unsafe {
             self.avx512_add_sub(old, a1, s1, side);
@@ -88,7 +88,7 @@ impl Accumulator {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn add_sub_sub(&mut self, old: &Accumulator, a1: usize, s1: usize, s2: usize, side: Color) {
+    fn add_sub_sub(&mut self, old: &Self, a1: usize, s1: usize, s2: usize, side: Color) {
         #[cfg(feature = "avx512")]
         unsafe {
             self.avx512_add_sub_sub(old, a1, s1, s2, side);
@@ -109,7 +109,7 @@ impl Accumulator {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn add_add_sub_sub(&mut self, old: &Accumulator, a1: usize, a2: usize, s1: usize, s2: usize, side: Color) {
+    fn add_add_sub_sub(&mut self, old: &Self, a1: usize, a2: usize, s1: usize, s2: usize, side: Color) {
         #[cfg(feature = "avx512")]
         unsafe {
             self.avx512_add_add_sub_sub(old, a1, a2, s1, s2, side);
@@ -130,7 +130,7 @@ impl Accumulator {
         }
     }
 
-    pub(crate) fn lazy_update(&mut self, old: &Accumulator, side: Color, board: &Board) {
+    pub(crate) fn lazy_update(&mut self, old: &Self, side: Color, board: &Board) {
         let m = self.m;
         let piece_moving = self.piece;
 
@@ -247,7 +247,7 @@ impl AccumulatorStack {
         for color in Color::iter() {
             if !self.stack[self.top].correct[color] {
                 if self.can_efficiently_update(color) {
-                    self.all_lazy_updates(board, color)
+                    self.all_lazy_updates(board, color);
                 } else {
                     self.acc_cache.update_acc(board, &mut self.stack[self.top], color);
                     self.stack[self.top].correct[color] = true;
@@ -256,7 +256,7 @@ impl AccumulatorStack {
         }
     }
 
-    fn can_efficiently_update(&mut self, side: Color) -> bool {
+    fn can_efficiently_update(&self, side: Color) -> bool {
         let mut curr = self.top;
         loop {
             let m = self.stack[curr].m;
@@ -295,7 +295,7 @@ impl AccumulatorStack {
         self.stack[self.top].correct = [false; 2];
     }
 
-    pub fn pop(&mut self) {
+    pub const fn pop(&mut self) {
         self.top -= 1;
     }
 

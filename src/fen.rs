@@ -94,14 +94,14 @@ impl Board {
                 let sq = Square(r * 8 + f);
                 let piece = self.piece_at(sq);
 
-                if piece != Piece::None {
+                if piece == Piece::None {
+                    gap += 1;
+                } else {
                     if gap > 0 {
                         str += &gap.to_string();
                     }
                     str += &piece.char();
                     gap = 0;
-                } else {
-                    gap += 1;
                 }
             }
 
