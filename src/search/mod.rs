@@ -19,8 +19,6 @@ pub struct PlyEntry {
     pub static_eval: i32,
     pub cutoffs: u32,
     pub excluded: Option<Move>,
-    /// Double extensions
-    pub multi_extns: i32,
 }
 
 impl Default for PlyEntry {
@@ -32,7 +30,6 @@ impl Default for PlyEntry {
             static_eval: Default::default(),
             cutoffs: Default::default(),
             excluded: Default::default(),
-            multi_extns: Default::default(),
         }
     }
 }

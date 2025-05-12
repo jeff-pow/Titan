@@ -5,7 +5,6 @@ use std::{io, time::Duration};
 use crate::bench::bench;
 use crate::chess_move::Move;
 use crate::fen::{parse_fen_from_buffer, STARTING_FEN};
-use crate::search::lmr_table::LmrTable;
 use crate::thread::ThreadPool;
 use crate::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
 use crate::{board::Board, search::game_time::Clock, types::pieces::Color};

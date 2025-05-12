@@ -104,90 +104,6 @@ pub fn queen_attacks(sq: Square, occupied: Bitboard) -> Bitboard {
     bishop_attacks(sq, occupied) | rook_attacks(sq, occupied)
 }
 
-/// <https://analog-hors.github.io/site/magic-bitboards/>
-// impl Magics {
-//     pub fn bishop_attacks(&self, occupied: Bitboard, sq: Square) -> Bitboard {
-//         let magic = &self.bishop_magics[sq];
-//         self.bishop_table[index(magic, occupied)]
-//     }
-//
-//     pub fn rook_attacks(&self, occupied: Bitboard, sq: Square) -> Bitboard {
-//         let magic = &self.rook_magics[sq];
-//         self.rook_table[index(magic, occupied)]
-//     }
-
-// pub fn new(bishop_magics: [MagicEntry; 64], rook_magics: [MagicEntry; 64]) -> Self {
-//     let mut rook_table = Vec::with_capacity(ROOK_M_SIZE);
-//     let mut bishop_table = Vec::with_capacity(BISHOP_M_SIZE);
-//
-//     for sq in Square::iter() {
-//         let mut table = create_table(sq, R_DELTAS);
-//         rook_table.append(&mut table);
-//
-//         let mut table = create_table(sq, B_DELTAS);
-//         bishop_table.append(&mut table);
-//     }
-//
-//     assert_eq!(ROOK_M_SIZE, rook_table.len());
-//     assert_eq!(BISHOP_M_SIZE, bishop_table.len());
-//
-//     Self { rook_table, rook_magics, bishop_table, bishop_magics }
-// }
-// }
-
-// pub const BISHOP_TABLE: &[Bitboard; BISHOP_M_SIZE] = &table::<BISHOP_M_SIZE, false>();
-// pub const ROOK_TABLE: &[Bitboard; ROOK_M_SIZE] = &table::<ROOK_M_SIZE, true>();
-// pub const ROOK_TABLE: &[Bitboard; ROOK_M_SIZE] = &[Bitboard::EMPTY; ROOK_M_SIZE];
-
-// pub const fn table<const T: usize, const IS_ROOK: bool>() -> [Bitboard; T] {
-//     let mut a = [Bitboard::EMPTY; T];
-//
-//     let deltas = if IS_ROOK { R_DELTAS } else { B_DELTAS };
-//     let magics = if IS_ROOK { ROOK_MAGICS } else { BISHOP_MAGICS };
-//
-//     let mut sq = 0;
-//     while sq < 64 {
-//         let magic_entry = magics[sq];
-//         let mut blockers = Bitboard::EMPTY;
-//         loop {
-//             let moves = sliding_attack(deltas, Square(sq as u32), blockers);
-//             let idx = index(&magic_entry, blockers);
-//
-//             a[idx] = moves;
-//
-//             // Carry-Rippler trick to iterate through all subsections of blockers
-//             blockers.0 = blockers.0.wrapping_sub(magic_entry.mask.0) & magic_entry.mask.0;
-//             if blockers.0 == 0 {
-//                 break;
-//             }
-//         }
-//         sq += 1;
-//     }
-//     a
-// }
-
-/// Extracts move bitboards using known constants
-// fn create_table(sq: Square, deltas: [Direction; 4], magics: &[Magi]) -> Vec<Bitboard> {
-//     let magic_entry =
-//         if deltas[0] == North {  } else { BISHOP_MAGICS[sq] };
-//     let idx_bits = 64 - magic_entry.shift;
-//     let mut table = vec![Bitboard::EMPTY; 1 << idx_bits];
-//     let mut blockers = Bitboard::EMPTY;
-//     loop {
-//         let moves = sliding_attack(deltas, sq, blockers);
-//         let idx = index(&magic_entry, blockers) - magic_entry.offset;
-//
-//         table[idx] = moves;
-//
-//         // Carry-Rippler trick to iterate through all subsections of blockers
-//         blockers.0 = blockers.0.wrapping_sub(magic_entry.mask.0) & magic_entry.mask.0;
-//         if blockers == Bitboard::EMPTY {
-//             break;
-//         }
-//     }
-//     table
-// }
-
 /// Returns a bitboards of sliding attacks given an array of 4 deltas/
 /// Does not include the original position/
 /// Includes occupied bits if it runs into them, but stops before going further.
@@ -216,7 +132,7 @@ const fn sliding_attack(deltas: [Direction; 4], square: Square, occupied: Bitboa
     Bitboard(attack)
 }
 
-#[allow(dead_code)]
+#[expect(unused)]
 /// Function generates magic numbers when they are not known.
 pub fn gen_magics() {
     let mut rng = Rng::default();
