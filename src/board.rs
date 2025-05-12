@@ -71,34 +71,6 @@ impl Board {
         self.mailbox[sq]
     }
 
-    fn is_material_draw(&self) -> bool {
-        // If we have any pawns, checkmate is still possible
-        if self.piece(PieceName::Pawn) != Bitboard::EMPTY {
-            return false;
-        }
-        let piece_count = self.occupancies().count_bits();
-        // King vs King can't checkmate
-        if piece_count == 2
-               // If there's three pieces and a singular knight or bishop, stalemate is impossible
-            || (piece_count == 3 && ((self.piece(PieceName::Knight).count_bits() == 1)
-            || (self.piece(PieceName::Bishop).count_bits() == 1)))
-        {
-            return true;
-        }
-        if piece_count == 4 {
-            // No combination of two knights and a king can checkmate
-            if self.piece(PieceName::Knight).count_bits() == 2 {
-                return true;
-            }
-            // If there is one bishop per side, checkmate is impossible
-            if self.color(Color::White).count_bits() == 2 && self.piece(PieceName::Bishop).count_bits() == 2 {
-                return true;
-            }
-        }
-
-        false
-    }
-
     pub fn hash_after(&self, m: Option<Move>) -> u64 {
         let mut hash = self.zobrist_hash ^ ZOBRIST.turn;
 
@@ -126,6 +98,14 @@ impl Board {
     pub fn is_draw(&self) -> bool {
         self.half_moves >= 100 && (!self.in_check() || self.pseudolegal_moves().iter().any(|m| self.is_legal(m)))
             || self.is_material_draw()
+    }
+
+    fn is_material_draw(&self) -> bool {
+        match self.occupancies().count_bits() {
+            2 => true,
+            3 => !(self.piece(PieceName::Bishop) | self.piece(PieceName::Knight)).is_empty(),
+            _ => false,
+        }
     }
 
     pub fn has_non_pawns(&self, side: Color) -> bool {
