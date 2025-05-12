@@ -214,7 +214,6 @@ fn negamax<const PV: bool>(
     if !PV
         && !in_check
         && !singular_search
-        && !is_loss(beta)
         && depth < 9
         && static_eval >= beta
         && static_eval - 93 * depth + i32::from(improving) * 30 * depth >= beta
@@ -229,7 +228,6 @@ fn negamax<const PV: bool>(
         && td.stack[td.ply - 1].played_move != Move::NULL
         && board.has_non_pawns(board.stm)
         && static_eval >= beta
-        && !is_loss(beta)
     {
         tt.prefetch(board.hash_after(Move::NULL));
 
