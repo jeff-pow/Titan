@@ -33,6 +33,10 @@ impl MoveList {
         self.arr.len()
     }
 
+    pub const fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Sorts next move into position via partial insertion sort and then returns the move's entry
     pub(super) fn pick_move(&mut self, idx: usize) -> MoveListEntry {
         self.sort_next_move(idx);
