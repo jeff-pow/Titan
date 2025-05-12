@@ -447,24 +447,38 @@ fn qsearch<const PV: bool>(
         }
     }
 
-    let static_eval = td.accumulators.evaluate(board);
-    if static_eval >= beta {
-        return static_eval;
-    }
-    alpha = alpha.max(static_eval);
+    let mut best_score = -INFINITY;
+    let mut futility = NONE;
+    let mut raw_eval = NONE;
 
-    let mut best_score = if in_check { -CHECKMATE } else { static_eval };
-    let mut picker = MovePicker::new(tt_move, td, -197, false);
+    if !in_check {
+        let static_eval = td.accumulators.evaluate(board);
+        raw_eval = static_eval;
+        best_score = static_eval;
+
+        if best_score >= beta {
+            return best_score;
+        }
+        alpha = alpha.max(best_score);
+        futility = static_eval + 175;
+    }
+
+    let mut picker = MovePicker::new(tt_move, td, -197, in_check);
     let mut best_move = Move::NULL;
-    let mut _moves_searched = 0;
+    let mut moves_searched = 0;
 
     while let Some(m) = picker.next(board, td) {
-        if picker.finished_good_captures() {
-            break;
-        }
         if !board.is_legal(m) {
             continue;
         }
+        // If we were in check, we know there's at least one legal move so we can skip the remaining quiets
+        picker.skip_quiets();
+
+        if !is_loss(best_score) && m.is_tactical(board) && !in_check && futility <= alpha && !board.see(m, 1) {
+            best_score = best_score.max(futility);
+            continue;
+        }
+
         tt.prefetch(board.hash_after(Some(m)));
         let copy = board.make_move(m);
 
@@ -479,7 +493,7 @@ fn qsearch<const PV: bool>(
         td.ply -= 1;
         td.accumulators.pop();
         td.hash_history.pop();
-        _moves_searched += 1;
+        moves_searched += 1;
 
         if td.halt() {
             return 0;
@@ -504,8 +518,13 @@ fn qsearch<const PV: bool>(
         break;
     }
 
+    if moves_searched == 0 && in_check {
+        assert!(!board.has_legal_moves());
+        return mated_in(td.ply);
+    }
+
     let flag = if best_score >= beta { EntryFlag::BetaCutOff } else { EntryFlag::AlphaUnchanged };
-    tt.store(board.zobrist_hash, best_move, 0, flag, best_score, td.ply, PV, static_eval);
+    tt.store(board.zobrist_hash, best_move, 0, flag, best_score, td.ply, PV, raw_eval);
 
     best_score
 }
