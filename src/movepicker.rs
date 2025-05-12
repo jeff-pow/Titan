@@ -46,13 +46,8 @@ impl MovePicker {
         }
     }
 
-    #[expect(unused)]
     pub const fn skip_quiets(&mut self) {
         self.return_quiets = false;
-    }
-
-    pub const fn finished_good_captures(&self) -> bool {
-        matches!(self.phase, Phase::Killer | Phase::QuietsInit | Phase::Quiets | Phase::BadCaptures)
     }
 
     /// Select the next move to try. Returns None if there are no more moves to try.
@@ -134,11 +129,8 @@ impl MovePicker {
             self.phase = Phase::BadCaptures;
         }
 
-        if self.phase == Phase::BadCaptures {
-            assert_eq!(self.index, self.moves.len());
-            if !self.bad_captures.is_empty() {
-                return Some(self.bad_captures.arr.pop().unwrap().m);
-            }
+        if self.phase == Phase::BadCaptures && !self.bad_captures.is_empty() {
+            return Some(self.bad_captures.arr.pop().unwrap().m);
         }
 
         None
