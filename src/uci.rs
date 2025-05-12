@@ -53,7 +53,7 @@ pub fn main_loop() -> ! {
             }
             "position" => position_command(&input, &mut board, &mut hash_history),
             "d" => {
-                dbg!(&board);
+                println!("{board}");
             }
             "dbg" => {
                 dbg!(&board);
@@ -81,7 +81,7 @@ pub fn main_loop() -> ! {
                 _ => println!("Option not recognized"),
             },
             _ => (),
-        };
+        }
     }
 }
 

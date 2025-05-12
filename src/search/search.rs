@@ -2,12 +2,13 @@ use std::time::Instant;
 
 use crate::board::Board;
 use crate::chess_move::Move;
-use crate::movelist::{MoveListEntry, MAX_MOVES};
-use crate::movepicker::{MovePicker, Phase};
+use crate::movelist::MAX_MOVES;
+use crate::movepicker::MovePicker;
 use crate::search::SearchStack;
 use crate::thread::ThreadData;
 use crate::transposition::{EntryFlag, TranspositionTable};
 use crate::types::pieces::Piece;
+use crate::utils::boxed;
 use arrayvec::ArrayVec;
 
 pub const MAX_PLY: usize = 128;
@@ -20,15 +21,15 @@ pub const NONE: i32 = 32002;
 pub const MATE_IN_MAX_PLY: i32 = CHECKMATE - MAX_PLY as i32;
 pub const MATED_IN_MAX_PLY: i32 = -CHECKMATE + MAX_PLY as i32;
 
-pub fn mated_in(ply: usize) -> i32 {
+pub const fn mated_in(ply: usize) -> i32 {
     -CHECKMATE + ply as i32
 }
 
-pub fn mate_in(ply: usize) -> i32 {
+pub const fn mate_in(ply: usize) -> i32 {
     CHECKMATE - ply as i32
 }
 
-pub fn mate_found(score: i32) -> bool {
+pub const fn mate_found(score: i32) -> bool {
     score.abs() >= MATE_IN_MAX_PLY
 }
 
@@ -46,7 +47,7 @@ pub fn clamp_score(score: i32) -> i32 {
 
 pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &TranspositionTable) {
     td.search_start = Instant::now();
-    td.nodes_table = Box::new([[0; 64]; 64]);
+    td.nodes_table = boxed();
     td.stack = SearchStack::default();
     td.pv.reset();
     td.accumulators.clear(board.new_accumulator());
@@ -120,7 +121,7 @@ pub fn aspiration_windows(
         }
 
         if score <= alpha {
-            beta = (alpha + beta) / 2;
+            beta = i32::midpoint(alpha, beta);
             alpha = (score - delta).max(-INFINITY);
         } else if score >= beta {
             beta = (score + delta).min(INFINITY);
@@ -189,6 +190,7 @@ fn negamax<const PV: bool>(
     let entry = tt.get(board.zobrist_hash, td.ply);
     if let Some(entry) = entry {
         tt_move = entry.best_move();
+
         if !PV
             && !singular_search
             && depth <= entry.depth()
@@ -270,7 +272,7 @@ fn negamax<const PV: bool>(
     while let Some(m) = picker.next(board, td) {
         if !board.is_legal(m) || Some(m) == excluded_move {
             continue;
-        };
+        }
 
         if !is_root && !is_loss(best_score) {
             let margin = if m.is_tactical(board) { -93 } else { -41 } * depth;
@@ -459,7 +461,7 @@ fn qsearch<const PV: bool>(
     let mut best_score = if in_check { -CHECKMATE } else { static_eval };
     let mut picker = MovePicker::new(tt_move, td, -197, false);
     let mut best_move = Move::NULL;
-    let mut moves_searched = 0;
+    let mut _moves_searched = 0;
 
     while let Some(m) = picker.next(board, td) {
         if picker.finished_good_captures() {
@@ -482,7 +484,7 @@ fn qsearch<const PV: bool>(
         td.ply -= 1;
         td.accumulators.pop();
         td.hash_history.pop();
-        moves_searched += 1;
+        _moves_searched += 1;
 
         if td.halt() {
             return 0;

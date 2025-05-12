@@ -192,7 +192,7 @@ impl From<usize> for Square {
 
 impl From<Square> for usize {
     fn from(value: Square) -> Self {
-        value.0 as usize
+        value.0 as Self
     }
 }
 

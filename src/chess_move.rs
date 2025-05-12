@@ -156,17 +156,13 @@ impl Move {
         let end_row = (vec[3].to_digit(10).unwrap() - 1) * 8;
         let dest_sq = Square(end_row + end_column);
 
-        let promotion = if vec.len() > 4 {
-            match vec[4] {
-                'q' => Some(PieceName::Queen),
-                'r' => Some(PieceName::Rook),
-                'b' => Some(PieceName::Bishop),
-                'n' => Some(PieceName::Knight),
-                _ => panic!(),
-            }
-        } else {
-            None
-        };
+        let promotion = vec.get(4).map(|p| match p {
+            'q' => PieceName::Queen,
+            'r' => PieceName::Rook,
+            'b' => PieceName::Bishop,
+            'n' => PieceName::Knight,
+            _ => panic!(),
+        });
         let piece_moving = board.piece_at(origin_sq);
         assert!(piece_moving != Piece::None);
         let captured = board.piece_at(dest_sq);
@@ -211,7 +207,7 @@ impl Move {
                 Normal
             }
         };
-        Move::new(origin_sq, dest_sq, move_type)
+        Self::new(origin_sq, dest_sq, move_type)
     }
 }
 

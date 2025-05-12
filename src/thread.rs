@@ -19,6 +19,7 @@ use crate::{
     },
     transposition::TranspositionTable,
     uci::parse_time,
+    utils::boxed,
 };
 
 #[derive(Clone)]
@@ -59,7 +60,7 @@ impl<'a> ThreadData<'a> {
             iter_depth: 0,
             sel_depth: 0,
             nodes: AtomicCounter::new(global_nodes),
-            nodes_table: Box::new([[0; 64]; 64]),
+            nodes_table: boxed(),
             accumulators: AccumulatorStack::new(Accumulator::default()),
             quiet_hist: QuietHistory::default(),
             capt_hist: CaptureHistory::default(),
@@ -75,14 +76,14 @@ impl<'a> ThreadData<'a> {
     }
 
     pub fn set_halt(&self, x: bool) {
-        self.halt.store(x, Ordering::Relaxed)
+        self.halt.store(x, Ordering::Relaxed);
     }
 
     pub fn halt(&self) -> bool {
         self.halt.load(Ordering::Relaxed)
     }
 
-    pub(super) fn node_tm_stop(&mut self, game_time: Clock, depth: i32) -> bool {
+    pub(super) fn node_tm_stop(&self, game_time: Clock, depth: i32) -> bool {
         if depth > 7 {
             let Some(m) = self.pv.best_move() else { return false };
             let mut limit = game_time.rec_time.as_secs_f32();
@@ -95,7 +96,7 @@ impl<'a> ThreadData<'a> {
         false
     }
 
-    pub(super) fn soft_stop(&mut self, depth: i32, prev_score: i32) -> bool {
+    pub(super) fn soft_stop(&self, depth: i32, prev_score: i32) -> bool {
         match self.search_type {
             SearchType::Depth(d) => depth >= d,
             SearchType::Time(time) => {
@@ -114,7 +115,7 @@ impl<'a> ThreadData<'a> {
         }
     }
 
-    pub(super) fn hard_stop(&mut self) -> bool {
+    pub(super) fn hard_stop(&self) -> bool {
         match self.search_type {
             SearchType::Mate(_) | SearchType::Depth(_) | SearchType::Infinite => self.halt.load(Ordering::Relaxed),
             SearchType::Time(time) => self.nodes.check_time() && time.hard_termination(self.search_start),
@@ -210,7 +211,7 @@ impl<'a> ThreadData<'a> {
         false
     }
 
-    pub fn main_thread(&self) -> bool {
+    pub const fn main_thread(&self) -> bool {
         self.thread_id == 0
     }
 }

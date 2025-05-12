@@ -10,12 +10,12 @@ impl Bitboard {
     pub const EMPTY: Self = Self(0);
 
     pub fn is_empty(self) -> bool {
-        self == Bitboard::EMPTY
+        self == Self::EMPTY
     }
 
     /// Returns the index of the lowest bit of a bitboard, and modifies the bitboard to exclude
     /// that bit
-    pub fn pop_lsb(&mut self) -> Square {
+    pub const fn pop_lsb(&mut self) -> Square {
         let lsb = self.lsb();
         self.0 &= self.0 - 1;
         lsb

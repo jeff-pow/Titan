@@ -2,10 +2,11 @@ use crate::{board::Board, chess_move::Move, types::pieces::PieceName};
 
 use crate::search::SearchStack;
 use crate::types::pieces::Piece;
+use crate::utils::boxed;
 
 pub const MAX_HIST_VAL: i32 = 16384;
 
-fn update_history(score: &mut i32, bonus: i32) {
+const fn update_history(score: &mut i32, bonus: i32) {
     *score += bonus - *score * bonus.abs() / MAX_HIST_VAL;
 }
 
@@ -67,7 +68,7 @@ impl ContinuationHistory {
     pub fn update(&mut self, m: Move, piece: Piece, stack: &SearchStack, ply: usize, bonus: i32) {
         let prev = stack.prev(ply);
         if let Some((prev_m, prev_piece)) = prev {
-            update_history(&mut self.0[piece][m.to()][prev_piece][prev_m.to()], bonus)
+            update_history(&mut self.0[piece][m.to()][prev_piece][prev_m.to()], bonus);
         }
     }
 
@@ -79,7 +80,7 @@ impl ContinuationHistory {
 
 impl Default for ContinuationHistory {
     fn default() -> Self {
-        Self(Box::new([[[[0; 64]; 12]; 64]; 12]))
+        Self(boxed())
     }
 }
 

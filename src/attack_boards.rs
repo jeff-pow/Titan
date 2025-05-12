@@ -105,20 +105,6 @@ pub fn pinned_moves(king: Square, pinned: Square) -> Bitboard {
     PINNED_MOVES[king][pinned]
 }
 
-#[macro_export]
-/// Credit for this macro goes to akimbo
-macro_rules! const_array {
-    (| $i:ident, $size:literal | $($r:tt)+) => {{
-        let mut $i = 0;
-        let mut res = [{$($r)+}; $size];
-        while $i < $size - 1 {
-            $i += 1;
-            res[$i] = {$($r)+};
-        }
-        res
-    }}
-}
-
 #[cfg(test)]
 mod test_attack_boards {
     use crate::{

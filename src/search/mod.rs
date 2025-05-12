@@ -24,12 +24,12 @@ pub struct PlyEntry {
 impl Default for PlyEntry {
     fn default() -> Self {
         Self {
-            killer_move: Default::default(),
-            played_move: Default::default(),
+            killer_move: Option::default(),
+            played_move: Option::default(),
             moved_piece: Piece::None,
             static_eval: Default::default(),
             cutoffs: Default::default(),
-            excluded: Default::default(),
+            excluded: Option::default(),
         }
     }
 }
@@ -53,7 +53,7 @@ impl PVTable {
     }
 
     pub fn reset(&mut self) {
-        self.table.iter_mut().for_each(|pv| pv.clear());
+        self.table.iter_mut().for_each(ArrayVec::clear);
     }
 
     pub fn append(&mut self, m: Option<Move>, ply: usize) {
