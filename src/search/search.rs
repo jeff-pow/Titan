@@ -274,6 +274,11 @@ fn negamax<const PV: bool>(
         }
 
         if !is_root && !is_loss(best_score) {
+            let moves_required = (4 + depth * depth) / (3 - i32::from(improving));
+            if moves_searched > moves_required {
+                picker.skip_quiets();
+            }
+
             let margin = if m.is_tactical(board) { -93 } else { -41 } * depth;
             if depth < 12 && !board.see(m, margin) {
                 continue;
