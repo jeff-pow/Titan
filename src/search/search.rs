@@ -223,7 +223,7 @@ fn negamax<const PV: bool>(
         eval = static_eval;
     } else {
         raw_eval = td.accumulators.evaluate(board);
-        static_eval = raw_eval + td.pawn_corr_hist.get(board.stm, board.pawn_hash());
+        static_eval = raw_eval + correction;
         eval = static_eval;
     }
     td.stack[td.ply].static_eval = static_eval;
