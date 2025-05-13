@@ -225,6 +225,7 @@ fn negamax<const PV: bool>(
         && cut_node
         && !singular_search
         && depth >= 2
+        && !is_loss(beta)
         && td.stack[td.ply - 1].played_move != Move::NULL
         && board.has_non_pawns(board.stm)
         && static_eval >= beta

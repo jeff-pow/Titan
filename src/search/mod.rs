@@ -2,6 +2,7 @@ use arrayvec::ArrayVec;
 use std::{
     array,
     ops::{Index, IndexMut},
+    time::Duration,
 };
 
 use self::{game_time::Clock, search::MAX_PLY};
@@ -113,6 +114,7 @@ pub enum SearchType {
     Nodes(u64),
     /// Search for a mate at the provided depth
     Mate(i32),
+    MoveTime(Duration),
     #[default]
     /// Search forever
     Infinite,
