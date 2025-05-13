@@ -84,54 +84,45 @@ impl<'a> ThreadData<'a> {
     }
 
     pub(super) fn node_tm_stop(&self, game_time: Clock, depth: i32) -> bool {
-        let Some(m) = self.pv.best_move() else { return false };
-        let frac = self.nodes_table[m.from()][m.to()] as f64 / self.nodes.global_count() as f64;
-        let time_scale = if depth > 9 { (1.44 - frac) * 1.62 } else { 1.28 };
-        if self.search_start.elapsed().as_millis() as f64 >= game_time.rec_time.as_millis() as f64 * time_scale {
-            return true;
+        if depth > 7 {
+            let Some(m) = self.pv.best_move() else { return false };
+            let mut limit = game_time.rec_time.as_secs_f32();
+            let frac = self.nodes_table[m.from()][m.to()] as f32 / self.nodes.local_count() as f32;
+            limit *= 2.0 - 1.5 * frac;
+            if self.search_start.elapsed() >= Duration::from_secs_f32(limit) {
+                return true;
+            }
         }
         false
     }
 
     pub(super) fn soft_stop(&self, depth: i32, prev_score: i32) -> bool {
-        for &search_type in &self.search_types {
-            if match search_type {
-                SearchType::Depth(d) => depth >= d,
-                SearchType::Time(time) => {
-                    self.main_thread() && self.node_tm_stop(time, depth) || time.soft_termination(self.search_start)
-                }
-                SearchType::Nodes(n) => self.nodes.global_count() >= n,
-                SearchType::Infinite => self.halt.load(Ordering::Relaxed),
-                SearchType::Mate(d) => {
-                    let dist = if prev_score.is_positive() {
-                        (CHECKMATE - prev_score + 1) / 2
-                    } else {
-                        -(CHECKMATE + prev_score) / 2
-                    };
-                    dist.abs() <= d.abs() || depth > MAX_PLY as i32
-                }
-                SearchType::MoveTime(time) => self.search_start.elapsed() > time,
-            } {
-                return true;
+        self.search_types.iter().any(|&search_type| match search_type {
+            SearchType::Depth(d) => depth >= d,
+            SearchType::Time(time) => {
+                self.main_thread() && self.node_tm_stop(time, depth) || time.soft_termination(self.search_start)
             }
-        }
-
-        false
+            SearchType::Nodes(n) => self.nodes.global_count() >= n,
+            SearchType::Infinite => self.halt.load(Ordering::Relaxed),
+            SearchType::Mate(d) => {
+                let dist = if prev_score.is_positive() {
+                    (CHECKMATE - prev_score + 1) / 2
+                } else {
+                    -(CHECKMATE + prev_score) / 2
+                };
+                dist.abs() <= d.abs() || depth > MAX_PLY as i32
+            }
+            SearchType::MoveTime(time) => self.search_start.elapsed() > time,
+        })
     }
 
     pub(super) fn hard_stop(&self) -> bool {
-        for &search_type in &self.search_types {
-            if match search_type {
-                SearchType::Mate(_) | SearchType::Depth(_) | SearchType::Infinite => self.halt.load(Ordering::Relaxed),
-                SearchType::Time(time) => self.nodes.check_time() && time.hard_termination(self.search_start),
-                SearchType::Nodes(n) => self.nodes.global_count() >= n,
-                SearchType::MoveTime(time) => self.nodes.check_time() && self.search_start.elapsed() > time,
-            } {
-                return true;
-            };
-        }
-
-        false
+        self.search_types.iter().any(|&search_type| match search_type {
+            SearchType::Mate(_) | SearchType::Depth(_) | SearchType::Infinite => self.halt.load(Ordering::Relaxed),
+            SearchType::Time(time) => self.nodes.check_time() && time.hard_termination(self.search_start),
+            SearchType::Nodes(n) => self.nodes.global_count() >= n,
+            SearchType::MoveTime(time) => self.nodes.check_time() && self.search_start.elapsed() > time,
+        })
     }
 
     pub(crate) fn update_histories(

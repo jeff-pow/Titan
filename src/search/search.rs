@@ -281,6 +281,7 @@ fn negamax<const PV: bool>(
         }
 
         tt.prefetch(board.hash_after(Some(m)));
+        let prior_nodes = td.nodes.local_count();
 
         let extension = if !is_root
             && !singular_search
@@ -346,6 +347,10 @@ fn negamax<const PV: bool>(
             tacticals_tried.push(m);
         } else {
             quiets_tried.push(m);
+        }
+
+        if is_root {
+            td.nodes_table[m.from()][m.to()] += td.nodes.local_count() - prior_nodes;
         }
 
         if td.halt() {
