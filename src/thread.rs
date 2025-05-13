@@ -18,7 +18,7 @@ use crate::{
         PVTable, SearchStack, SearchType,
     },
     transposition::TranspositionTable,
-    uci::parse_time,
+    uci::{parse_time, PRETTY_PRINT},
     utils::boxed,
 };
 
@@ -169,31 +169,58 @@ impl<'a> ThreadData<'a> {
 
     pub(super) fn print_search_stats(&self, score: i32, tt: &TranspositionTable, depth: i32) {
         let nodes = self.nodes.global_count();
-        print!(
-            "info time {} depth {} seldepth {} nodes {} nps {} score ",
-            self.search_start.elapsed().as_millis(),
-            depth,
-            self.sel_depth,
-            nodes,
-            (nodes as f64 / self.search_start.elapsed().as_secs_f64()) as i64,
-        );
+        let time_elapsed = self.search_start.elapsed().as_millis();
+        let nps = (nodes as f64 / self.search_start.elapsed().as_secs_f64()) as i64;
+        let hashfull = tt.permille_usage();
+        let pv_line: String = self.pv.pv().map(|m| m.to_san()).collect::<Vec<String>>().join(" ");
 
-        if mate_found(score) {
-            if score.is_positive() {
-                print!("mate {}", (CHECKMATE - score + 1) / 2);
-            } else {
-                print!("mate {}", (-(CHECKMATE + score) / 2));
+        if PRETTY_PRINT.load(Ordering::Relaxed) {
+            if depth == 1 {
+                println!(
+                    "{:<10} {:<9} {:<10} {:<8} {:<9} {:<9} PV",
+                    "Time(ms)", "Depth", "Nodes", "NPS", "Score", "Hashfull",
+                );
+                println!("{:-<10} {:-<9} {:-<10} {:-<8} {:-<9} {:-<9} {:-<20}", "", "", "", "", "", "", "");
             }
+            println!(
+                "{:<10} {:<9} {:<10} {:<8} {:<9} {:<9} {}",
+                time_elapsed,
+                format!("{depth}/{}", self.sel_depth),
+                nodes,
+                nps,
+                {
+                    if mate_found(score) {
+                        if score.is_positive() {
+                            format!("mate {}", (CHECKMATE - score + 1) / 2)
+                        } else {
+                            format!("mate {}", (-(CHECKMATE + score) / 2))
+                        }
+                    } else {
+                        format!("{}{:.2}", if score.is_positive() { "+" } else { "-" }, score as f64 / 100.)
+                    }
+                },
+                format!("{}%", hashfull as f64 / 10.),
+                pv_line,
+            );
         } else {
-            print!("cp {score}");
-        }
+            print!(
+                "info time {} depth {} seldepth {} nodes {} nps {} score ",
+                time_elapsed, depth, self.sel_depth, nodes, nps,
+            );
 
-        print!(" hashfull {} pv ", tt.permille_usage());
+            if mate_found(score) {
+                if score.is_positive() {
+                    print!("mate {}", (CHECKMATE - score + 1) / 2);
+                } else {
+                    print!("mate {}", (-(CHECKMATE + score) / 2));
+                }
+            } else {
+                print!("cp {score}");
+            }
 
-        for m in self.pv.pv() {
-            print!("{} ", m.to_san());
+            print!(" hashfull {} pv {} ", hashfull, pv_line);
+            println!();
         }
-        println!();
     }
 
     pub(super) fn is_repetition(&self, board: &Board) -> bool {

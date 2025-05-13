@@ -11,6 +11,7 @@ use crate::{board::Board, search::game_time::Clock, types::pieces::Color};
 
 pub const ENGINE_NAME: &str = "Titan";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub static PRETTY_PRINT: AtomicBool = AtomicBool::new(true);
 
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
@@ -70,6 +71,7 @@ pub fn main_loop() -> ! {
                 exit(0);
             }
             "uci" => {
+                PRETTY_PRINT.store(false, Ordering::Relaxed);
                 uci_opts();
             }
             "setoption" => match input[..] {
