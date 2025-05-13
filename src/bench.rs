@@ -19,7 +19,7 @@ pub fn bench() {
 
     let mut thread = ThreadData::new(&halt, Vec::new(), 0, &global_nodes);
 
-    thread.search_type = SearchType::Depth(12);
+    thread.search_types = vec![SearchType::Depth(12)];
 
     let mut nodes = 0;
 
