@@ -2,7 +2,7 @@ use crate::{
     board::Board,
     chess_move::{Direction, Move},
     eval::HIDDEN_SIZE,
-    search::search::{clamp_score, MATED_IN_MAX_PLY, MATE_IN_MAX_PLY, MAX_PLY},
+    search::search::{Score, MAX_PLY},
     types::{
         bitboard::Bitboard,
         pieces::{Color, Piece, PieceName},
@@ -60,7 +60,7 @@ impl Accumulator {
         let (us, them) = (&self[stm], &self[!stm]);
         let weights = &NET.output_weights;
         let output = flatten(us, &weights[0]) + flatten(them, &weights[1]);
-        clamp_score((i32::from(NET.output_bias) + output / NORMALIZATION_FACTOR) * SCALE / QAB)
+        Score::clamp_score((i32::from(NET.output_bias) + output / NORMALIZATION_FACTOR) * SCALE / QAB)
     }
 
     /// Credit to viridithas for these values and concepts
@@ -68,66 +68,45 @@ impl Accumulator {
         let raw = self.raw_evaluate(board.stm);
         let eval = raw * board.mat_scale() / 1024;
         let eval = eval * (200 - board.half_moves as i32) / 200;
-        eval.clamp(MATED_IN_MAX_PLY + 1, MATE_IN_MAX_PLY - 1)
+        Score::clamp_score(eval)
     }
 
     fn add_sub(&mut self, old: &Self, a1: usize, s1: usize, side: Color) {
-        #[cfg(feature = "avx512")]
-        unsafe {
-            self.avx512_add_sub(old, a1, s1, side);
-        }
-        #[cfg(not(feature = "avx512"))]
-        {
-            let weights = &NET.feature_weights;
-            self[side].iter_mut().zip(&weights[a1].0).zip(&weights[s1].0).zip(old[side].iter()).for_each(
-                |(((i, &a), &s), &o)| {
-                    *i = o + a - s;
-                },
-            );
-        }
+        let weights = &NET.feature_weights;
+        self[side].iter_mut().zip(&weights[a1].0).zip(&weights[s1].0).zip(old[side].iter()).for_each(
+            |(((i, &a), &s), &o)| {
+                *i = o + a - s;
+            },
+        );
     }
 
     #[allow(clippy::too_many_arguments)]
     fn add_sub_sub(&mut self, old: &Self, a1: usize, s1: usize, s2: usize, side: Color) {
-        #[cfg(feature = "avx512")]
-        unsafe {
-            self.avx512_add_sub_sub(old, a1, s1, s2, side);
-        }
-        #[cfg(not(feature = "avx512"))]
-        {
-            let weights = &NET.feature_weights;
-            self[side]
-                .iter_mut()
-                .zip(&weights[a1].0)
-                .zip(&weights[s1].0)
-                .zip(&weights[s2].0)
-                .zip(old[side].iter())
-                .for_each(|((((i, &a), &s1), &s2), &o)| {
-                    *i = o + a - s1 - s2;
-                });
-        }
+        let weights = &NET.feature_weights;
+        self[side]
+            .iter_mut()
+            .zip(&weights[a1].0)
+            .zip(&weights[s1].0)
+            .zip(&weights[s2].0)
+            .zip(old[side].iter())
+            .for_each(|((((i, &a), &s1), &s2), &o)| {
+                *i = o + a - s1 - s2;
+            });
     }
 
     #[allow(clippy::too_many_arguments)]
     fn add_add_sub_sub(&mut self, old: &Self, a1: usize, a2: usize, s1: usize, s2: usize, side: Color) {
-        #[cfg(feature = "avx512")]
-        unsafe {
-            self.avx512_add_add_sub_sub(old, a1, a2, s1, s2, side);
-        }
-        #[cfg(not(feature = "avx512"))]
-        {
-            let weights = &NET.feature_weights;
-            self[side]
-                .iter_mut()
-                .zip(&weights[a1].0)
-                .zip(&weights[a2].0)
-                .zip(&weights[s1].0)
-                .zip(&weights[s2].0)
-                .zip(old[side].iter())
-                .for_each(|(((((i, &a1), &a2), &s1), &s2), &o)| {
-                    *i = o + a1 + a2 - s1 - s2;
-                });
-        }
+        let weights = &NET.feature_weights;
+        self[side]
+            .iter_mut()
+            .zip(&weights[a1].0)
+            .zip(&weights[a2].0)
+            .zip(&weights[s1].0)
+            .zip(&weights[s2].0)
+            .zip(old[side].iter())
+            .for_each(|(((((i, &a1), &a2), &s1), &s2), &o)| {
+                *i = o + a1 + a2 - s1 - s2;
+            });
     }
 
     pub(crate) fn lazy_update(&mut self, old: &Self, side: Color, board: &Board) {

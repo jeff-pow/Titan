@@ -10,11 +10,11 @@ use crate::{
     board::Board,
     chess_move::Move,
     eval::accumulator::{Accumulator, AccumulatorStack},
-    history_table::{CaptureHistory, ContinuationHistory, QuietHistory},
+    history_table::{CaptureHistory, ContinuationHistory, CorrectionHistory, QuietHistory},
     search::{
         game_time::Clock,
         lmr_table::LmrTable,
-        search::{mate_found, start_search, CHECKMATE, MAX_PLY},
+        search::{start_search, Score, MAX_PLY},
         PVTable, SearchStack, SearchType,
     },
     transposition::TranspositionTable,
@@ -39,6 +39,7 @@ pub struct ThreadData<'a> {
     pub quiet_hist: QuietHistory,
     pub capt_hist: CaptureHistory,
     pub cont_hist: ContinuationHistory,
+    pub pawn_corr_hist: CorrectionHistory,
 
     pub search_start: Instant,
     thread_id: usize,
@@ -65,6 +66,7 @@ impl<'a> ThreadData<'a> {
             quiet_hist: QuietHistory::default(),
             capt_hist: CaptureHistory::default(),
             cont_hist: ContinuationHistory::default(),
+            pawn_corr_hist: CorrectionHistory::default(),
             halt,
             search_types: vec![SearchType::default()],
             hash_history,
@@ -104,9 +106,9 @@ impl<'a> ThreadData<'a> {
                 SearchType::Infinite => self.halt.load(Ordering::Relaxed),
                 SearchType::Mate(d) => {
                     let dist = if prev_score.is_positive() {
-                        (CHECKMATE - prev_score + 1) / 2
+                        (Score::CHECKMATE - prev_score + 1) / 2
                     } else {
-                        -(CHECKMATE + prev_score) / 2
+                        -(Score::CHECKMATE + prev_score) / 2
                     };
                     dist.abs() <= d.abs() || depth > MAX_PLY as i32
                 }
@@ -197,11 +199,11 @@ impl<'a> ThreadData<'a> {
                 nodes,
                 nps,
                 {
-                    if mate_found(score) {
+                    if Score::mate_found(score) {
                         if score.is_positive() {
-                            format!("mate {}", (CHECKMATE - score + 1) / 2)
+                            format!("mate {}", (Score::CHECKMATE - score + 1) / 2)
                         } else {
-                            format!("mate {}", (-(CHECKMATE + score) / 2))
+                            format!("mate {}", (-(Score::CHECKMATE + score) / 2))
                         }
                     } else {
                         format!("{}{:.2}", if score.is_positive() { "+" } else { "-" }, score as f64 / 100.)
@@ -216,11 +218,11 @@ impl<'a> ThreadData<'a> {
                 time_elapsed, depth, self.sel_depth, nodes, nps,
             );
 
-            if mate_found(score) {
+            if Score::mate_found(score) {
                 if score.is_positive() {
-                    print!("mate {}", (CHECKMATE - score + 1) / 2);
+                    print!("mate {}", (Score::CHECKMATE - score + 1) / 2);
                 } else {
-                    print!("mate {}", (-(CHECKMATE + score) / 2));
+                    print!("mate {}", (-(Score::CHECKMATE + score) / 2));
                 }
             } else {
                 print!("cp {score}");
@@ -270,12 +272,11 @@ impl<'a> ThreadPool<'a> {
         }
     }
 
-    pub fn reset(&mut self) {
-        for t in &mut self.threads {
-            t.quiet_hist = QuietHistory::default();
-            t.capt_hist = CaptureHistory::default();
-            t.cont_hist = ContinuationHistory::default();
-            t.nodes.reset();
+    pub fn reset(&mut self, halt: &'a AtomicBool, global_nodes: &'a AtomicU64) {
+        let len = self.threads.len();
+        self.threads.clear();
+        for i in 0..len {
+            self.threads.push(ThreadData::new(halt, vec![], i, global_nodes));
         }
     }
 

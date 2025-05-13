@@ -13,36 +13,39 @@ use arrayvec::ArrayVec;
 
 pub const MAX_PLY: usize = 128;
 
-pub const STALEMATE: i32 = 0;
-pub const CHECKMATE: i32 = 32000;
-pub const INFINITY: i32 = 32001;
-pub const NONE: i32 = 32002;
+pub struct Score;
+impl Score {
+    pub const STALEMATE: i32 = 0;
+    pub const CHECKMATE: i32 = 32000;
+    pub const INFINITY: i32 = 32001;
+    pub const NONE: i32 = 32002;
 
-pub const MATE_IN_MAX_PLY: i32 = CHECKMATE - MAX_PLY as i32;
-pub const MATED_IN_MAX_PLY: i32 = -CHECKMATE + MAX_PLY as i32;
+    pub const MATE_IN_MAX_PLY: i32 = Self::CHECKMATE - MAX_PLY as i32;
+    pub const MATED_IN_MAX_PLY: i32 = -Self::CHECKMATE + MAX_PLY as i32;
 
-pub const fn mated_in(ply: usize) -> i32 {
-    -CHECKMATE + ply as i32
-}
+    pub const fn mated_in(ply: usize) -> i32 {
+        -Self::CHECKMATE + ply as i32
+    }
 
-pub const fn mate_in(ply: usize) -> i32 {
-    CHECKMATE - ply as i32
-}
+    pub const fn mate_in(ply: usize) -> i32 {
+        Self::CHECKMATE - ply as i32
+    }
 
-pub const fn mate_found(score: i32) -> bool {
-    score.abs() >= MATE_IN_MAX_PLY
-}
+    pub const fn mate_found(score: i32) -> bool {
+        score.abs() >= Self::MATE_IN_MAX_PLY
+    }
 
-pub const fn is_win(score: i32) -> bool {
-    score >= MATE_IN_MAX_PLY
-}
+    pub const fn is_win(score: i32) -> bool {
+        score >= Self::MATE_IN_MAX_PLY
+    }
 
-pub const fn is_loss(score: i32) -> bool {
-    score <= MATED_IN_MAX_PLY
-}
+    pub const fn is_loss(score: i32) -> bool {
+        score <= Self::MATED_IN_MAX_PLY
+    }
 
-pub fn clamp_score(score: i32) -> i32 {
-    score.clamp(MATED_IN_MAX_PLY + 1, MATE_IN_MAX_PLY - 1)
+    pub fn clamp_score(score: i32) -> i32 {
+        score.clamp(Self::MATED_IN_MAX_PLY + 1, Self::MATE_IN_MAX_PLY - 1)
+    }
 }
 
 pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &TranspositionTable) {
@@ -61,7 +64,7 @@ pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &Tra
 /// the way. As a result, for more expensive depths, we already have a good idea of the best move
 /// and can maximize the efficacy of alpha beta pruning.
 pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, tt: &TranspositionTable) {
-    let mut prev_score = NONE;
+    let mut prev_score = Score::NONE;
     let mut depth = 1;
 
     loop {
@@ -103,13 +106,13 @@ pub fn aspiration_windows(
     prev_score: i32,
     depth: i32,
 ) -> i32 {
-    let mut alpha = -INFINITY;
-    let mut beta = INFINITY;
+    let mut alpha = -Score::INFINITY;
+    let mut beta = Score::INFINITY;
     let mut delta = 10;
 
     if depth >= 4 {
-        alpha = (prev_score - delta).max(-CHECKMATE);
-        beta = (prev_score + delta).min(CHECKMATE);
+        alpha = (prev_score - delta).max(-Score::CHECKMATE);
+        beta = (prev_score + delta).min(Score::CHECKMATE);
     }
 
     loop {
@@ -122,9 +125,9 @@ pub fn aspiration_windows(
 
         if score <= alpha {
             beta = i32::midpoint(alpha, beta);
-            alpha = (score - delta).max(-INFINITY);
+            alpha = (score - delta).max(-Score::INFINITY);
         } else if score >= beta {
-            beta = (score + delta).min(INFINITY);
+            beta = (score + delta).min(Score::INFINITY);
         } else {
             return score;
         }
@@ -168,13 +171,13 @@ fn negamax<const PV: bool>(
 
     if !is_root {
         if board.is_draw() || td.is_repetition(board) {
-            return STALEMATE;
+            return Score::STALEMATE;
         }
 
         // Mate Distance Pruning - Determines if there is a faster path to checkmate
         // than evaluating the current node, and if there is, it returns early
-        let alpha = alpha.max(mated_in(td.ply));
-        let beta = beta.min(mate_in(td.ply));
+        let alpha = alpha.max(Score::mated_in(td.ply));
+        let beta = beta.min(Score::mate_in(td.ply));
         if alpha >= beta {
             return alpha;
         }
@@ -205,7 +208,22 @@ fn negamax<const PV: bool>(
         }
     }
 
-    let static_eval = if in_check { NONE } else { td.accumulators.evaluate(board) };
+    let raw_eval;
+    let static_eval;
+    let eval;
+    if in_check {
+        raw_eval = Score::NONE;
+        static_eval = Score::NONE;
+        eval = Score::NONE;
+    } else if singular_search {
+        raw_eval = td.stack[td.ply].static_eval;
+        static_eval = raw_eval;
+        eval = static_eval;
+    } else {
+        raw_eval = td.accumulators.evaluate(board);
+        static_eval = raw_eval + td.pawn_corr_hist.get(board.stm, board.pawn_hash());
+        eval = static_eval;
+    }
     td.stack[td.ply].static_eval = static_eval;
 
     // TODO: Add a conditional check to make sure neither of the previous two ply's moves were null moves
@@ -215,20 +233,20 @@ fn negamax<const PV: bool>(
         && !in_check
         && !singular_search
         && depth < 9
-        && static_eval >= beta
+        && eval >= beta
         && static_eval - 93 * depth + i32::from(improving) * 30 * depth >= beta
     {
-        return clamp_score((static_eval + beta) / 2);
+        return Score::clamp_score((static_eval + beta) / 2);
     }
 
     if !in_check
         && cut_node
         && !singular_search
         && depth >= 2
-        && !is_loss(beta)
+        && !Score::is_loss(beta)
         && td.stack[td.ply - 1].played_move != Move::NULL
         && board.has_non_pawns(board.stm)
-        && static_eval >= beta
+        && eval >= beta
     {
         tt.prefetch(board.hash_after(Move::NULL));
 
@@ -250,7 +268,7 @@ fn negamax<const PV: bool>(
         }
 
         if score >= beta {
-            if mate_found(score) {
+            if Score::mate_found(score) {
                 return beta;
             }
             return score;
@@ -264,7 +282,7 @@ fn negamax<const PV: bool>(
     let mut quiets_tried = ArrayVec::<_, { MAX_MOVES }>::new();
 
     let mut moves_searched = 0;
-    let mut best_score = -INFINITY;
+    let mut best_score = -Score::INFINITY;
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
     let mut picker = MovePicker::new(tt_move, td, -197, true);
@@ -273,7 +291,7 @@ fn negamax<const PV: bool>(
             continue;
         }
 
-        if !is_root && !is_loss(best_score) {
+        if !is_root && !Score::is_loss(best_score) {
             let margin = if m.is_tactical(board) { -93 } else { -41 } * depth;
             if depth < 12 && !board.see(m, margin) {
                 continue;
@@ -290,7 +308,7 @@ fn negamax<const PV: bool>(
             && entry.is_some_and(|e| {
                 e.depth() >= depth - 3
                     && matches!(e.flag(), EntryFlag::Exact | EntryFlag::BetaCutOff)
-                    && !mate_found(e.search_score())
+                    && !Score::mate_found(e.search_score())
             }) {
             let entry = entry.unwrap();
 
@@ -322,7 +340,7 @@ fn negamax<const PV: bool>(
 
         let new_depth = depth + extension - 1;
 
-        let mut score = -INFINITY;
+        let mut score = -Score::INFINITY;
 
         let base_reduction = td.lmr.base_reduction(depth, moves_searched);
 
@@ -383,7 +401,7 @@ fn negamax<const PV: bool>(
             return alpha;
         }
 
-        best_score = if in_check { mated_in(td.ply) } else { STALEMATE }
+        best_score = if in_check { Score::mated_in(td.ply) } else { Score::STALEMATE }
     }
 
     let flag = if best_score >= beta {
@@ -395,7 +413,16 @@ fn negamax<const PV: bool>(
     };
 
     if !singular_search {
-        tt.store(board.zobrist_hash, best_move, depth, flag, best_score, td.ply, PV, static_eval);
+        tt.store(board.zobrist_hash, best_move, depth, flag, best_score, td.ply, PV, raw_eval);
+    }
+
+    if !(in_check
+        || best_move.is_some_and(|m| m.is_tactical(board))
+        || Score::mate_found(best_score)
+        || (flag == EntryFlag::BetaCutOff && best_score >= static_eval)
+        || (flag == EntryFlag::AlphaUnchanged && best_score <= static_eval))
+    {
+        td.pawn_corr_hist.update(board.stm, board.pawn_hash(), best_score - static_eval, depth);
     }
 
     best_score
@@ -427,7 +454,7 @@ fn qsearch<const PV: bool>(
     }
 
     if board.is_draw() || td.is_repetition(board) {
-        return STALEMATE;
+        return Score::STALEMATE;
     }
 
     td.nodes.increment();
@@ -446,13 +473,13 @@ fn qsearch<const PV: bool>(
         }
     }
 
-    let mut best_score = -INFINITY;
-    let mut futility = NONE;
-    let mut raw_eval = NONE;
+    let mut best_score = -Score::INFINITY;
+    let mut futility = Score::NONE;
+    let mut raw_eval = Score::NONE;
 
     if !in_check {
-        let static_eval = td.accumulators.evaluate(board);
-        raw_eval = static_eval;
+        raw_eval = td.accumulators.evaluate(board);
+        let static_eval = raw_eval + td.pawn_corr_hist.get(board.stm, board.pawn_hash());
         best_score = static_eval;
 
         if best_score >= beta {
@@ -473,7 +500,7 @@ fn qsearch<const PV: bool>(
         // If we were in check, we know there's at least one legal move so we can skip the remaining quiets
         picker.skip_quiets();
 
-        if !is_loss(best_score) && m.is_tactical(board) && !in_check && futility <= alpha && !board.see(m, 1) {
+        if !Score::is_loss(best_score) && m.is_tactical(board) && !in_check && futility <= alpha && !board.see(m, 1) {
             best_score = best_score.max(futility);
             continue;
         }
@@ -518,7 +545,7 @@ fn qsearch<const PV: bool>(
     }
 
     if moves_searched == 0 && in_check {
-        return mated_in(td.ply);
+        return Score::mated_in(td.ply);
     }
 
     let flag = if best_score >= beta { EntryFlag::BetaCutOff } else { EntryFlag::AlphaUnchanged };

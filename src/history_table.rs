@@ -1,7 +1,7 @@
 use crate::{board::Board, chess_move::Move, types::pieces::PieceName};
 
 use crate::search::SearchStack;
-use crate::types::pieces::Piece;
+use crate::types::pieces::{Color, Piece};
 use crate::utils::boxed;
 
 pub const MAX_HIST_VAL: i32 = 16384;
@@ -79,6 +79,29 @@ impl ContinuationHistory {
 }
 
 impl Default for ContinuationHistory {
+    fn default() -> Self {
+        Self(boxed())
+    }
+}
+
+#[derive(Clone)]
+pub struct CorrectionHistory(Box<[[i32; Self::SIZE]; 2]>);
+
+impl CorrectionHistory {
+    const SIZE: usize = 16384;
+    const LIMIT: i32 = 16384;
+
+    pub fn update(&mut self, stm: Color, key: u64, diff: i32, depth: i32) {
+        let bonus = (diff * depth).clamp(-Self::LIMIT / 4, Self::LIMIT / 4);
+        update_history(&mut self.0[stm][key as usize % Self::SIZE], bonus);
+    }
+
+    pub fn get(&self, stm: Color, key: u64) -> i32 {
+        self.0[stm][key as usize % Self::SIZE] / 100
+    }
+}
+
+impl Default for CorrectionHistory {
     fn default() -> Self {
         Self(boxed())
     }

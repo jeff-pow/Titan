@@ -1,7 +1,4 @@
-use crate::{
-    chess_move::Move,
-    search::search::{is_loss, is_win, INFINITY},
-};
+use crate::{chess_move::Move, search::search::Score};
 use std::{
     mem::{size_of, transmute},
     num::NonZeroU16,
@@ -115,9 +112,9 @@ impl Default for InternalEntry {
             depth: AtomicU8::new(0),
             age_pv_bound: AtomicU8::new(0),
             key: AtomicU16::new(0),
-            search_score: AtomicI16::new(-INFINITY as i16),
+            search_score: AtomicI16::new(-Score::INFINITY as i16),
             best_move: AtomicU16::new(0),
-            static_eval: AtomicI16::new(-INFINITY as i16),
+            static_eval: AtomicI16::new(-Score::INFINITY as i16),
         }
     }
 }
@@ -168,9 +165,9 @@ impl TranspositionTable {
             x.depth.store(0, Ordering::Relaxed);
             x.age_pv_bound.store(0, Ordering::Relaxed);
             x.key.store(0, Ordering::Relaxed);
-            x.search_score.store(-INFINITY as i16, Ordering::Relaxed);
+            x.search_score.store(-Score::INFINITY as i16, Ordering::Relaxed);
             x.best_move.store(0, Ordering::Relaxed);
-            x.static_eval.store(-INFINITY as i16, Ordering::Relaxed);
+            x.static_eval.store(-Score::INFINITY as i16, Ordering::Relaxed);
         });
         self.age.0.store(0, Ordering::Relaxed);
     }
@@ -216,9 +213,9 @@ impl TranspositionTable {
                 m.unwrap().into()
             };
 
-            if is_win(search_score) {
+            if Score::is_win(search_score) {
                 search_score += ply as i32;
-            } else if is_loss(search_score) {
+            } else if Score::is_loss(search_score) {
                 search_score -= ply as i32;
             }
 
@@ -244,9 +241,9 @@ impl TranspositionTable {
             return None;
         }
 
-        if is_win(entry.search_score()) {
+        if Score::is_win(entry.search_score()) {
             entry.search_score -= ply as i16;
-        } else if is_loss(entry.search_score()) {
+        } else if Score::is_loss(entry.search_score()) {
             entry.search_score += ply as i16;
         }
 
@@ -272,11 +269,12 @@ fn index(hash: u64, table_capacity: usize) -> usize {
 #[cfg(test)]
 mod transpos_tests {
     use crate::{
+        board::Board,
         chess_move::{Move, MoveType},
-        search::search::CHECKMATE,
+        fen::STARTING_FEN,
+        search::search::Score,
         transposition::{EntryFlag, TranspositionTable},
         types::square::Square,
-        {board::Board, fen::STARTING_FEN},
     };
 
     #[test]
@@ -305,16 +303,16 @@ mod transpos_tests {
 
         table.clear();
         let ply = 15;
-        let mated_score = -CHECKMATE + ply as i32;
+        let mated_score = -Score::CHECKMATE + ply as i32;
         table.store(0, Some(m), 0, EntryFlag::Exact, mated_score, ply, false, 25);
         let entry = table.get(0, 2);
-        assert_eq!(-CHECKMATE + 2, entry.unwrap().search_score());
+        assert_eq!(-Score::CHECKMATE + 2, entry.unwrap().search_score());
 
         table.clear();
         let ply = 12;
-        let found_mate = CHECKMATE - ply as i32;
+        let found_mate = Score::CHECKMATE - ply as i32;
         table.store(0, Some(m), 0, EntryFlag::Exact, found_mate, ply, false, 25);
         let entry = table.get(0, 4);
-        assert_eq!(CHECKMATE - 4, entry.unwrap().search_score());
+        assert_eq!(Score::CHECKMATE - 4, entry.unwrap().search_score());
     }
 }
