@@ -208,6 +208,8 @@ fn negamax<const PV: bool>(
         }
     }
 
+    let correction = td.pawn_corr_hist.get(board.stm, board.pawn_hash());
+
     let raw_eval;
     let static_eval;
     let eval;
@@ -419,8 +421,8 @@ fn negamax<const PV: bool>(
     if !(in_check
         || best_move.is_some_and(|m| m.is_tactical(board))
         || Score::mate_found(best_score)
-        || (flag == EntryFlag::BetaCutOff && best_score >= static_eval)
-        || (flag == EntryFlag::AlphaUnchanged && best_score <= static_eval))
+        || (flag == EntryFlag::AlphaUnchanged && best_score >= static_eval)
+        || (flag == EntryFlag::BetaCutOff && best_score <= static_eval))
     {
         td.pawn_corr_hist.update(board.stm, board.pawn_hash(), best_score - static_eval, depth);
     }
