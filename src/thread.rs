@@ -189,16 +189,25 @@ impl<'a> ThreadData<'a> {
             if depth == 1 {
                 println!(
                     "{:<10} {:<9} {:<10} {:<8} {:<9} {:<9} PV",
-                    "Time(ms)", "Depth", "Nodes", "NPS", "Score", "Hashfull",
+                    "Time(ms)", "Depth", "Nodes", "kNPS", "Score", "Hashfull",
                 );
                 println!("{:-<10} {:-<9} {:-<10} {:-<8} {:-<9} {:-<9} {:-<20}", "", "", "", "", "", "", "");
             }
+            let formatted_nps = (nps / 1000)
+                .to_string()
+                .as_bytes()
+                .rchunks(3)
+                .rev()
+                .map(std::str::from_utf8)
+                .collect::<Result<Vec<&str>, _>>()
+                .unwrap()
+                .join(",");
             println!(
                 "{:<10} {:<9} {:<10} {:<8} {:<9} {:<9} {}",
                 time_elapsed,
                 format!("{depth}/{}", self.sel_depth),
                 nodes,
-                nps,
+                formatted_nps,
                 {
                     if mate_found(score) {
                         if score.is_positive() {
