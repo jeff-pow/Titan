@@ -3,7 +3,7 @@ use std::{
     process::exit,
     sync::atomic::{AtomicBool, AtomicU64, Ordering},
     thread,
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use crate::{
@@ -42,7 +42,7 @@ pub struct ThreadData<'a> {
 
     pub search_start: Instant,
     thread_id: usize,
-    pub search_type: SearchType,
+    pub search_types: Vec<SearchType>,
     halt: &'a AtomicBool,
     pub lmr: LmrTable,
 }
@@ -66,7 +66,7 @@ impl<'a> ThreadData<'a> {
             capt_hist: CaptureHistory::default(),
             cont_hist: ContinuationHistory::default(),
             halt,
-            search_type: SearchType::default(),
+            search_types: vec![SearchType::default()],
             hash_history,
             thread_id: thread_idx,
             lmr: LmrTable::default(),
@@ -94,30 +94,44 @@ impl<'a> ThreadData<'a> {
     }
 
     pub(super) fn soft_stop(&self, depth: i32, prev_score: i32) -> bool {
-        match self.search_type {
-            SearchType::Depth(d) => depth >= d,
-            SearchType::Time(time) => {
-                self.main_thread() && self.node_tm_stop(time, depth) || time.soft_termination(self.search_start)
-            }
-            SearchType::Nodes(n) => self.nodes.global_count() >= n,
-            SearchType::Infinite => self.halt.load(Ordering::Relaxed),
-            SearchType::Mate(d) => {
-                let dist = if prev_score.is_positive() {
-                    (CHECKMATE - prev_score + 1) / 2
-                } else {
-                    -(CHECKMATE + prev_score) / 2
-                };
-                dist.abs() <= d.abs() || depth > MAX_PLY as i32
+        for &search_type in &self.search_types {
+            if match search_type {
+                SearchType::Depth(d) => depth >= d,
+                SearchType::Time(time) => {
+                    self.main_thread() && self.node_tm_stop(time, depth) || time.soft_termination(self.search_start)
+                }
+                SearchType::Nodes(n) => self.nodes.global_count() >= n,
+                SearchType::Infinite => self.halt.load(Ordering::Relaxed),
+                SearchType::Mate(d) => {
+                    let dist = if prev_score.is_positive() {
+                        (CHECKMATE - prev_score + 1) / 2
+                    } else {
+                        -(CHECKMATE + prev_score) / 2
+                    };
+                    dist.abs() <= d.abs() || depth > MAX_PLY as i32
+                }
+                SearchType::MoveTime(time) => self.search_start.elapsed() > time,
+            } {
+                return true;
             }
         }
+
+        false
     }
 
     pub(super) fn hard_stop(&self) -> bool {
-        match self.search_type {
-            SearchType::Mate(_) | SearchType::Depth(_) | SearchType::Infinite => self.halt.load(Ordering::Relaxed),
-            SearchType::Time(time) => self.nodes.check_time() && time.hard_termination(self.search_start),
-            SearchType::Nodes(n) => self.nodes.global_count() >= n,
+        for &search_type in &self.search_types {
+            if match search_type {
+                SearchType::Mate(_) | SearchType::Depth(_) | SearchType::Infinite => self.halt.load(Ordering::Relaxed),
+                SearchType::Time(time) => self.nodes.check_time() && time.hard_termination(self.search_start),
+                SearchType::Nodes(n) => self.nodes.global_count() >= n,
+                SearchType::MoveTime(time) => self.nodes.check_time() && self.search_start.elapsed() > time,
+            } {
+                return true;
+            };
         }
+
+        false
     }
 
     pub(crate) fn update_histories(
@@ -134,9 +148,6 @@ impl<'a> ThreadData<'a> {
         if best_move.is_tactical(board) {
             self.capt_hist.update(best_move, best_piece, board, bonus);
         } else {
-            //if let Some((m, p)) = stack.prev(ply - 1) {
-            //    self.set_counter(m, p, best_move);
-            //}
             if depth > 3 || quiets_tried.len() > 1 {
                 self.quiet_hist.update(best_move, best_piece, bonus);
                 self.cont_hist.update(best_move, best_piece, &self.stack, self.ply - 1, bonus);
@@ -278,40 +289,65 @@ impl<'a> ThreadPool<'a> {
         tt: &TranspositionTable,
     ) {
         halt.store(false, Ordering::Relaxed);
+
         for t in &mut self.threads {
             hash_history.clone_into(&mut t.hash_history);
+            t.search_types = vec![SearchType::Infinite];
             t.nodes.reset();
         }
 
-        if buffer.contains(&"depth") {
-            let mut iter = buffer.iter().skip(2);
-            let depth = iter.next().unwrap().parse::<i32>().unwrap();
-            for t in &mut self.threads {
-                t.search_type = SearchType::Depth(depth);
-            }
-        } else if buffer.contains(&"nodes") {
-            let mut iter = buffer.iter().skip(2);
-            let nodes = iter.next().unwrap().parse::<u64>().unwrap();
-            for t in &mut self.threads {
-                t.search_type = SearchType::Nodes(nodes);
-            }
-        } else if buffer.contains(&"wtime") {
-            let mut clock = parse_time(buffer);
-            clock.recommended_time(board.stm);
-
-            for t in &mut self.threads {
-                t.search_type = SearchType::Infinite;
-            }
-            self.threads[0].search_type = SearchType::Time(clock);
-        } else if buffer.contains(&"mate") {
-            let mut iter = buffer.iter().skip(2);
-            let ply = iter.next().unwrap().parse::<i32>().unwrap();
-            for t in &mut self.threads {
-                t.search_type = SearchType::Mate(ply);
-            }
-        } else {
-            for t in &mut self.threads {
-                t.search_type = SearchType::Infinite;
+        let mut iter = buffer.iter().skip(1).peekable();
+        while let Some(&limit) = iter.next() {
+            match limit {
+                "depth" => {
+                    if let Some(depth_str) = iter.next() {
+                        if let Ok(depth) = depth_str.parse() {
+                            for t in &mut self.threads {
+                                t.search_types.push(SearchType::Depth(depth));
+                            }
+                        }
+                    }
+                }
+                "nodes" => {
+                    if let Some(nodes_str) = iter.next() {
+                        if let Ok(nodes) = nodes_str.parse() {
+                            for t in &mut self.threads {
+                                t.search_types.push(SearchType::Nodes(nodes));
+                            }
+                        }
+                    }
+                }
+                "wtime" | "btime" | "winc" | "binc" | "movestogo" => {
+                    let mut clock = parse_time(buffer);
+                    clock.recommended_time(board.stm);
+                    for t in &mut self.threads {
+                        t.search_types.push(SearchType::Infinite);
+                    }
+                    self.threads[0].search_types.push(SearchType::Time(clock));
+                    while iter.peek().is_some_and(|t| matches!(**t, "wtime" | "btime" | "winc" | "binc" | "movestogo"))
+                    {
+                        iter.next();
+                    }
+                }
+                "mate" => {
+                    if let Some(ply_str) = iter.next() {
+                        if let Ok(ply) = ply_str.parse() {
+                            for t in &mut self.threads {
+                                t.search_types.push(SearchType::Mate(ply));
+                            }
+                        }
+                    }
+                }
+                "movetime" => {
+                    if let Some(time_str) = iter.next() {
+                        if let Ok(ms) = time_str.parse() {
+                            for t in &mut self.threads {
+                                t.search_types.push(SearchType::MoveTime(Duration::from_millis(ms)));
+                            }
+                        }
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -405,7 +441,7 @@ mod search_tests {
 
         let mut thread = ThreadData::new(&halt, Vec::new(), 0, &global_nodes);
 
-        thread.search_type = SearchType::Nodes(12345);
+        thread.search_types.push(SearchType::Nodes(12345));
 
         start_search(&mut thread, false, Board::default(), &transpos_table);
 
