@@ -279,7 +279,8 @@ fn negamax<const PV: bool>(
                 picker.skip_quiets();
             }
 
-            if !in_check && depth < 11 && m.is_quiet(board) && static_eval + 199 + 93 * depth <= alpha {
+            let lmr_depth = (depth - td.lmr.base_reduction(depth, moves_searched)).max(0);
+            if !in_check && lmr_depth < 10 && m.is_quiet(board) && static_eval + 199 + 93 * lmr_depth <= alpha {
                 picker.skip_quiets();
                 continue;
             }
