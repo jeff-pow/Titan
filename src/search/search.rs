@@ -281,6 +281,7 @@ fn negamax<const PV: bool>(
 
             if !in_check && depth < 11 && m.is_quiet(board) && static_eval + 199 + 93 * depth <= alpha {
                 picker.skip_quiets();
+                continue;
             }
 
             let margin = if m.is_tactical(board) { -93 } else { -41 } * depth;
