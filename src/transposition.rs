@@ -17,13 +17,12 @@ pub struct TableEntry {
     key: u16,
     search_score: i16,
     best_move: u16,
-    static_eval: i16,
+    raw_eval: i16,
 }
 
 impl TableEntry {
-    #[expect(unused)]
-    pub const fn static_eval(self) -> i32 {
-        self.static_eval as i32
+    pub const fn raw_eval(self) -> i32 {
+        self.raw_eval as i32
     }
 
     pub const fn key(self) -> u16 {
@@ -103,7 +102,7 @@ struct InternalEntry {
     key: AtomicU16,
     search_score: AtomicI16,
     best_move: AtomicU16,
-    static_eval: AtomicI16,
+    raw_eval: AtomicI16,
 }
 
 impl Default for InternalEntry {
@@ -112,9 +111,9 @@ impl Default for InternalEntry {
             depth: AtomicU8::new(0),
             age_pv_bound: AtomicU8::new(0),
             key: AtomicU16::new(0),
-            search_score: AtomicI16::new(-Score::INFINITY as i16),
+            search_score: AtomicI16::new(Score::NONE as i16),
             best_move: AtomicU16::new(0),
-            static_eval: AtomicI16::new(-Score::INFINITY as i16),
+            raw_eval: AtomicI16::new(Score::NONE as i16),
         }
     }
 }
@@ -127,7 +126,7 @@ impl Clone for InternalEntry {
             key: AtomicU16::new(self.key.load(Ordering::Relaxed)),
             search_score: AtomicI16::new(self.search_score.load(Ordering::Relaxed)),
             best_move: AtomicU16::new(self.best_move.load(Ordering::Relaxed)),
-            static_eval: AtomicI16::new(self.static_eval.load(Ordering::Relaxed)),
+            raw_eval: AtomicI16::new(self.raw_eval.load(Ordering::Relaxed)),
         }
     }
 }
@@ -165,9 +164,9 @@ impl TranspositionTable {
             x.depth.store(0, Ordering::Relaxed);
             x.age_pv_bound.store(0, Ordering::Relaxed);
             x.key.store(0, Ordering::Relaxed);
-            x.search_score.store(-Score::INFINITY as i16, Ordering::Relaxed);
+            x.search_score.store(Score::NONE as i16, Ordering::Relaxed);
             x.best_move.store(0, Ordering::Relaxed);
-            x.static_eval.store(-Score::INFINITY as i16, Ordering::Relaxed);
+            x.raw_eval.store(Score::NONE as i16, Ordering::Relaxed);
         });
         self.age.0.store(0, Ordering::Relaxed);
     }
@@ -191,7 +190,7 @@ impl TranspositionTable {
         mut search_score: i32,
         ply: usize,
         is_pv: bool,
-        static_eval: i32,
+        raw_eval: i32,
     ) {
         let idx = index(hash, self.vec.len());
         let key = hash as u16;
@@ -226,7 +225,7 @@ impl TranspositionTable {
                 self.vec.get_unchecked(idx).age_pv_bound.store(age_pv_bound, Ordering::Relaxed);
                 self.vec.get_unchecked(idx).search_score.store(search_score as i16, Ordering::Relaxed);
                 self.vec.get_unchecked(idx).best_move.store(best_m, Ordering::Relaxed);
-                self.vec.get_unchecked(idx).static_eval.store(static_eval as i16, Ordering::Relaxed);
+                self.vec.get_unchecked(idx).raw_eval.store(raw_eval as i16, Ordering::Relaxed);
             }
         }
     }
@@ -287,7 +286,7 @@ mod transpos_tests {
         let m = Move::new(Square(12), Square(28), MoveType::Normal);
         table.store(b.zobrist_hash, Some(m), 0, EntryFlag::Exact, 25, 4, false, 25);
         let entry = table.get(b.zobrist_hash, 2);
-        assert_eq!(25, entry.unwrap().static_eval());
+        assert_eq!(25, entry.unwrap().raw_eval());
         assert_eq!(m, entry.unwrap().best_move().unwrap());
     }
 
