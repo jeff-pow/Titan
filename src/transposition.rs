@@ -21,8 +21,12 @@ pub struct TableEntry {
 }
 
 impl TableEntry {
-    pub const fn raw_eval(self) -> i32 {
-        self.raw_eval as i32
+    pub fn raw_eval(self) -> Option<i32> {
+        (self.raw_eval as i32 != Score::NONE).then_some(self.raw_eval as i32)
+    }
+
+    pub fn search_score(self) -> Option<i32> {
+        (self.search_score as i32 != Score::NONE).then_some(self.search_score as i32)
     }
 
     pub const fn key(self) -> u16 {
@@ -50,10 +54,6 @@ impl TableEntry {
     #[expect(unused)]
     pub const fn was_pv(self) -> bool {
         (self.age_pv_bound & 0b0000_0100) != 0
-    }
-
-    pub fn search_score(self) -> i32 {
-        i32::from(self.search_score)
     }
 
     pub const fn best_move(self) -> Option<Move> {
@@ -240,10 +240,12 @@ impl TranspositionTable {
             return None;
         }
 
-        if Score::is_win(entry.search_score()) {
-            entry.search_score -= ply as i16;
-        } else if Score::is_loss(entry.search_score()) {
-            entry.search_score += ply as i16;
+        if entry.search_score().is_some() {
+            if Score::is_win(entry.search_score().unwrap()) {
+                entry.search_score -= ply as i16;
+            } else if Score::is_loss(entry.search_score().unwrap()) {
+                entry.search_score += ply as i16;
+            }
         }
 
         Some(entry)
@@ -286,7 +288,7 @@ mod transpos_tests {
         let m = Move::new(Square(12), Square(28), MoveType::Normal);
         table.store(b.zobrist_hash, Some(m), 0, EntryFlag::Exact, 25, 4, false, 25);
         let entry = table.get(b.zobrist_hash, 2);
-        assert_eq!(25, entry.unwrap().raw_eval());
+        assert_eq!(25, entry.unwrap().raw_eval().unwrap());
         assert_eq!(m, entry.unwrap().best_move().unwrap());
     }
 
@@ -298,20 +300,20 @@ mod transpos_tests {
         let search_score = 37;
         table.store(0, Some(m), 0, EntryFlag::Exact, search_score, 4, false, 25);
         let entry = table.get(0, 2);
-        assert_eq!(search_score, entry.unwrap().search_score());
+        assert_eq!(search_score, entry.unwrap().search_score().unwrap());
 
         table.clear();
         let ply = 15;
         let mated_score = -Score::CHECKMATE + ply as i32;
         table.store(0, Some(m), 0, EntryFlag::Exact, mated_score, ply, false, 25);
         let entry = table.get(0, 2);
-        assert_eq!(-Score::CHECKMATE + 2, entry.unwrap().search_score());
+        assert_eq!(-Score::CHECKMATE + 2, entry.unwrap().search_score().unwrap());
 
         table.clear();
         let ply = 12;
         let found_mate = Score::CHECKMATE - ply as i32;
         table.store(0, Some(m), 0, EntryFlag::Exact, found_mate, ply, false, 25);
         let entry = table.get(0, 4);
-        assert_eq!(Score::CHECKMATE - 4, entry.unwrap().search_score());
+        assert_eq!(Score::CHECKMATE - 4, entry.unwrap().search_score().unwrap());
     }
 }
