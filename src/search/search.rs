@@ -218,7 +218,7 @@ fn negamax<const PV: bool>(
 
     let raw_eval;
     let static_eval;
-    let eval;
+    let mut eval;
     if in_check {
         raw_eval = Score::NONE;
         static_eval = Score::NONE;
@@ -232,6 +232,17 @@ fn negamax<const PV: bool>(
         raw_eval = if let Some(eval) = entry.raw_eval() { eval } else { td.accumulators.evaluate(board) };
         static_eval = Score::draw_adjust(raw_eval, board) + correction;
         eval = static_eval;
+
+        if entry.search_score().is_some()
+            && match entry.flag() {
+                EntryFlag::None => false,
+                EntryFlag::AlphaUnchanged => entry.search_score().unwrap() < static_eval,
+                EntryFlag::BetaCutOff => entry.search_score().unwrap() > static_eval,
+                EntryFlag::Exact => true,
+            }
+        {
+            eval = entry.search_score().unwrap();
+        }
     } else {
         raw_eval = td.accumulators.evaluate(board);
         tt.store(board.zobrist_hash, None, 0, EntryFlag::None, Score::NONE, td.ply, PV, raw_eval);
@@ -519,6 +530,17 @@ fn qsearch<const PV: bool>(
         });
         let static_eval = Score::draw_adjust(raw_eval, board) + td.pawn_corr_hist.get(board.stm, board.pawn_hash());
         best_score = static_eval;
+
+        if entry.is_some_and(|e| e.search_score().is_some())
+            && match entry.unwrap().flag() {
+                EntryFlag::None => false,
+                EntryFlag::AlphaUnchanged => entry.unwrap().search_score().unwrap() < static_eval,
+                EntryFlag::BetaCutOff => entry.unwrap().search_score().unwrap() > static_eval,
+                EntryFlag::Exact => true,
+            }
+        {
+            best_score = entry.unwrap().search_score().unwrap();
+        }
 
         if best_score >= beta {
             return best_score;
