@@ -46,6 +46,10 @@ impl Score {
     pub fn clamp_score(score: i32) -> i32 {
         score.clamp(Self::MATED_IN_MAX_PLY + 1, Self::MATE_IN_MAX_PLY - 1)
     }
+
+    pub fn draw_adjust(score: i32, board: &Board) -> i32 {
+        score * (200 - board.half_moves as i32) / 200
+    }
 }
 
 pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &TranspositionTable) {
@@ -218,12 +222,18 @@ fn negamax<const PV: bool>(
         static_eval = Score::NONE;
         eval = Score::NONE;
     } else if singular_search {
+        // Avoid recalculating from accumulators for no reason
         raw_eval = td.stack[td.ply].static_eval;
         static_eval = raw_eval;
         eval = static_eval;
+    } else if let Some(entry) = entry {
+        raw_eval = if entry.raw_eval() != Score::NONE { entry.raw_eval() } else { td.accumulators.evaluate(board) };
+        static_eval = Score::draw_adjust(raw_eval, board) + correction;
+        eval = static_eval;
     } else {
         raw_eval = td.accumulators.evaluate(board);
-        static_eval = raw_eval + correction;
+        tt.store(board.zobrist_hash, None, 0, EntryFlag::None, Score::NONE, td.ply, PV, raw_eval);
+        static_eval = Score::draw_adjust(raw_eval, board) + correction;
         eval = static_eval;
     }
     td.stack[td.ply].static_eval = static_eval;
@@ -480,7 +490,8 @@ fn qsearch<const PV: bool>(
     td.nodes.increment();
 
     let mut tt_move = Move::NULL;
-    if let Some(entry) = tt.get(board.zobrist_hash, td.ply) {
+    let entry = tt.get(board.zobrist_hash, td.ply);
+    if let Some(entry) = entry {
         tt_move = entry.best_move();
 
         if match entry.flag() {
@@ -498,8 +509,14 @@ fn qsearch<const PV: bool>(
     let mut raw_eval = Score::NONE;
 
     if !in_check {
-        raw_eval = td.accumulators.evaluate(board);
-        let static_eval = raw_eval + td.pawn_corr_hist.get(board.stm, board.pawn_hash());
+        raw_eval = entry
+            .and_then(|e| if e.raw_eval() != Score::NONE { Some(e.raw_eval()) } else { None })
+            .unwrap_or_else(|| {
+                let x = td.accumulators.evaluate(board);
+                tt.store(board.zobrist_hash, None, 0, EntryFlag::None, Score::NONE, td.ply, PV, x);
+                x
+            });
+        let static_eval = Score::draw_adjust(raw_eval, board) + td.pawn_corr_hist.get(board.stm, board.pawn_hash());
         best_score = static_eval;
 
         if best_score >= beta {
