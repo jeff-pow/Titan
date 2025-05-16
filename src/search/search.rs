@@ -6,7 +6,7 @@ use crate::movelist::MAX_MOVES;
 use crate::movepicker::MovePicker;
 use crate::search::SearchStack;
 use crate::thread::ThreadData;
-use crate::transposition::{EntryFlag, TranspositionTable};
+use crate::transposition::{EntryFlag, TableEntry, TranspositionTable};
 use crate::types::pieces::Piece;
 use crate::utils::boxed;
 use arrayvec::ArrayVec;
@@ -198,17 +198,19 @@ fn negamax<const PV: bool>(
     if let Some(entry) = entry {
         tt_move = entry.best_move();
 
-        if !PV
-            && !singular_search
-            && depth <= entry.depth()
-            && match entry.flag() {
-                EntryFlag::None => false,
-                EntryFlag::AlphaUnchanged => entry.search_score() <= alpha,
-                EntryFlag::BetaCutOff => entry.search_score() >= beta,
-                EntryFlag::Exact => true,
+        if let Some(score) = entry.search_score() {
+            if !PV
+                && !singular_search
+                && depth <= entry.depth()
+                && match entry.flag() {
+                    EntryFlag::None => false,
+                    EntryFlag::AlphaUnchanged => score <= alpha,
+                    EntryFlag::BetaCutOff => score >= beta,
+                    EntryFlag::Exact => true,
+                }
+            {
+                return score;
             }
-        {
-            return entry.search_score();
         }
     }
 
@@ -216,7 +218,8 @@ fn negamax<const PV: bool>(
 
     let raw_eval;
     let static_eval;
-    let eval;
+    let mut eval;
+
     if in_check {
         raw_eval = Score::NONE;
         static_eval = Score::NONE;
@@ -227,9 +230,20 @@ fn negamax<const PV: bool>(
         static_eval = raw_eval;
         eval = static_eval;
     } else if let Some(entry) = entry {
-        raw_eval = if entry.raw_eval() != Score::NONE { entry.raw_eval() } else { td.accumulators.evaluate(board) };
+        raw_eval = if let Some(eval) = entry.raw_eval() { eval } else { td.accumulators.evaluate(board) };
         static_eval = Score::draw_adjust(raw_eval, board) + correction;
         eval = static_eval;
+
+        if let Some(score) = entry.search_score() {
+            if match entry.flag() {
+                EntryFlag::None => false,
+                EntryFlag::AlphaUnchanged => score < static_eval,
+                EntryFlag::BetaCutOff => score > static_eval,
+                EntryFlag::Exact => true,
+            } {
+                eval = score;
+            }
+        }
     } else {
         raw_eval = td.accumulators.evaluate(board);
         tt.store(board.zobrist_hash, None, 0, EntryFlag::None, Score::NONE, td.ply, PV, raw_eval);
@@ -303,7 +317,6 @@ fn negamax<const PV: bool>(
             continue;
         }
 
-
         if !is_root && !Score::is_loss(best_score) {
             let moves_required = (4 + depth * depth) / (3 - i32::from(improving));
             if moves_searched > moves_required {
@@ -315,7 +328,6 @@ fn negamax<const PV: bool>(
                 picker.skip_quiets();
                 continue;
             }
-
 
             let margin = if m.is_tactical(board) { -93 } else { -41 } * depth;
             if depth < 12 && !board.see(m, margin) {
@@ -334,11 +346,12 @@ fn negamax<const PV: bool>(
             && entry.is_some_and(|e| {
                 e.depth() >= depth - 3
                     && matches!(e.flag(), EntryFlag::Exact | EntryFlag::BetaCutOff)
-                    && !Score::mate_found(e.search_score())
+                    && !Score::mate_found(e.search_score().unwrap())
             }) {
             let entry = entry.unwrap();
+            let entry_score = entry.search_score().unwrap();
 
-            let ext_beta = entry.search_score() - 21 * depth / 16;
+            let ext_beta = entry_score - 21 * depth / 16;
             let ext_depth = (depth - 1) / 2;
 
             td.stack[td.ply].excluded = Some(m);
@@ -347,7 +360,7 @@ fn negamax<const PV: bool>(
 
             if score < ext_beta {
                 1 + i32::from(!PV && score < ext_beta - 18)
-            } else if entry.search_score() >= beta {
+            } else if entry_score >= beta {
                 -2
             } else {
                 0
@@ -494,13 +507,15 @@ fn qsearch<const PV: bool>(
     if let Some(entry) = entry {
         tt_move = entry.best_move();
 
-        if match entry.flag() {
-            EntryFlag::None => false,
-            EntryFlag::AlphaUnchanged => entry.search_score() <= alpha,
-            EntryFlag::BetaCutOff => entry.search_score() >= beta,
-            EntryFlag::Exact => true,
-        } {
-            return entry.search_score();
+        if let Some(score) = entry.search_score() {
+            if match entry.flag() {
+                EntryFlag::None => false,
+                EntryFlag::AlphaUnchanged => score <= alpha,
+                EntryFlag::BetaCutOff => score >= beta,
+                EntryFlag::Exact => true,
+            } {
+                return score;
+            }
         }
     }
 
@@ -509,15 +524,26 @@ fn qsearch<const PV: bool>(
     let mut raw_eval = Score::NONE;
 
     if !in_check {
-        raw_eval = entry
-            .and_then(|e| if e.raw_eval() != Score::NONE { Some(e.raw_eval()) } else { None })
-            .unwrap_or_else(|| {
-                let x = td.accumulators.evaluate(board);
-                tt.store(board.zobrist_hash, None, 0, EntryFlag::None, Score::NONE, td.ply, PV, x);
-                x
-            });
+        raw_eval = entry.and_then(TableEntry::raw_eval).unwrap_or_else(|| {
+            let x = td.accumulators.evaluate(board);
+            tt.store(board.zobrist_hash, None, 0, EntryFlag::None, Score::NONE, td.ply, PV, x);
+            x
+        });
         let static_eval = Score::draw_adjust(raw_eval, board) + td.pawn_corr_hist.get(board.stm, board.pawn_hash());
         best_score = static_eval;
+
+        if let Some(entry) = entry {
+            if let Some(score) = entry.search_score() {
+                if match entry.flag() {
+                    EntryFlag::None => false,
+                    EntryFlag::AlphaUnchanged => score < static_eval,
+                    EntryFlag::BetaCutOff => score > static_eval,
+                    EntryFlag::Exact => true,
+                } {
+                    best_score = score;
+                }
+            }
+        }
 
         if best_score >= beta {
             return best_score;
