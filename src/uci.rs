@@ -3,8 +3,8 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::{io, time::Duration};
 
 use crate::bench::bench;
+use crate::board::STARTING_FEN;
 use crate::chess_move::Move;
-use crate::fen::{parse_fen_from_buffer, STARTING_FEN};
 use crate::thread::ThreadPool;
 use crate::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
 use crate::{board::Board, search::game_time::Clock, types::pieces::Color};
@@ -50,7 +50,7 @@ pub fn main_loop() -> ! {
             }
             "eval" => {
                 let acc = board.new_accumulator();
-                println!("raw: {} cp, adjusted: {} cp", acc.raw_evaluate(board.stm), acc.scaled_evaluate(&board));
+                println!("raw: {} cp, adjusted: {} cp", acc.raw_evaluate(board.stm()), acc.scaled_evaluate(&board));
             }
             "position" => position_command(&input, &mut board, &mut hash_history),
             "d" => {
@@ -117,7 +117,7 @@ fn parse_moves(moves: &[&str], board: &mut Board, hash_history: &mut Vec<u64>) {
     for str in moves {
         let m = Move::from_san(str, board);
         *board = board.make_move(m);
-        hash_history.push(board.zobrist_hash);
+        hash_history.push(board.hash());
     }
 }
 
@@ -147,4 +147,14 @@ pub fn parse_time(buff: &[&str]) -> Clock {
         }
     }
     game_time
+}
+
+pub fn parse_fen_from_buffer(buf: &[&str]) -> String {
+    let mut vec = buf.to_owned();
+    vec.remove(0);
+    vec.remove(0);
+    for _ in 6..vec.len() {
+        vec.pop();
+    }
+    vec.join(" ")
 }

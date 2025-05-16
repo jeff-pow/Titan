@@ -65,7 +65,7 @@ impl Accumulator {
 
     /// Credit to viridithas for these values and concepts
     pub fn scaled_evaluate(&self, board: &Board) -> i32 {
-        let raw = self.raw_evaluate(board.stm);
+        let raw = self.raw_evaluate(board.stm());
         let eval = raw * board.mat_scale() / 1024;
         Score::clamp_score(eval)
     }

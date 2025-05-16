@@ -1,3 +1,4 @@
+use super::Board;
 use crate::{
     chess_move::Castle,
     types::{
@@ -5,11 +6,6 @@ use crate::{
         square::{Square, SQUARE_NAMES},
     },
 };
-
-use super::board::Board;
-
-/// Fen string for the starting position of a board
-pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 /// Takes in a string in fen notation and returns a board state
 impl Board {
@@ -179,22 +175,14 @@ fn find_en_passant_square(vec: &[char]) -> Option<u32> {
     Some(row + column)
 }
 
-pub fn parse_fen_from_buffer(buf: &[&str]) -> String {
-    let mut vec = buf.to_owned();
-    vec.remove(0);
-    vec.remove(0);
-    for _ in 6..vec.len() {
-        vec.pop();
-    }
-    vec.join(" ")
-}
-
 #[cfg(test)]
 mod fen_tests {
     use crate::{
-        board::Board,
+        board::{
+            fen::{find_en_passant_square, parse_castling},
+            Board,
+        },
         chess_move::Castle,
-        fen::{find_en_passant_square, parse_castling},
     };
 
     #[test]

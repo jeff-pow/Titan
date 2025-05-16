@@ -1,7 +1,6 @@
 use core::fmt;
 use std::fmt::Write;
 
-use super::fen::STARTING_FEN;
 use crate::{
     attack_boards::{between, king_attacks, knight_attacks, pawn_attacks, pawn_set_attacks, pinned_moves, RANKS},
     chess_move::{
@@ -15,8 +14,14 @@ use crate::{
         pieces::{Color, Piece, PieceName, NUM_PIECES},
         square::Square,
     },
-    zobrist::ZOBRIST,
 };
+use zobrist::ZOBRIST;
+
+mod fen;
+mod zobrist;
+
+/// Fen string for the starting position of a board
+pub const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Board {
@@ -24,13 +29,13 @@ pub struct Board {
     color_occupancies: [Bitboard; 2],
     mailbox: [Piece; 64],
     /// Side to move
-    pub stm: Color,
-    pub castling_rights: u32,
-    pub en_passant_square: Option<Square>,
-    pub num_moves: u16,
-    pub half_moves: u16,
-    pub zobrist_hash: u64,
-    pub pawn_hash: u64,
+    stm: Color,
+    castling_rights: u32,
+    en_passant_square: Option<Square>,
+    num_moves: u16,
+    half_moves: u16,
+    zobrist_hash: u64,
+    pawn_hash: u64,
     threats: Bitboard,
     checkers: Bitboard,
     pinned: Bitboard,
@@ -43,6 +48,26 @@ impl Default for Board {
 }
 
 impl Board {
+    pub const fn stm(&self) -> Color {
+        self.stm
+    }
+
+    pub const fn hash(&self) -> u64 {
+        self.zobrist_hash
+    }
+
+    pub const fn half_moves(&self) -> u16 {
+        self.half_moves
+    }
+
+    pub const fn en_passant_square(&self) -> Option<Square> {
+        self.en_passant_square
+    }
+
+    pub const fn castling_rights(&self) -> u32 {
+        self.castling_rights
+    }
+
     pub const fn piece_bbs(&self) -> [Bitboard; 6] {
         self.bitboards
     }

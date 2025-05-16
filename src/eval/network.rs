@@ -101,7 +101,7 @@ pub(super) fn flatten(acc: &Block, weights: &Block) -> i32 {
 mod nnue_tests {
     use std::{hint::black_box, time::Instant};
 
-    use crate::{board::Board, fen::STARTING_FEN};
+    use crate::board::{Board, STARTING_FEN};
 
     #[test]
     fn inference_benchmark() {

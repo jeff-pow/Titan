@@ -57,7 +57,7 @@ impl Board {
 
         let mut occupied = self.occupancies() ^ from.bitboard() ^ to.bitboard();
         if m.is_en_passant() {
-            occupied ^= self.en_passant_square.unwrap().bitboard();
+            occupied ^= self.en_passant_square().unwrap().bitboard();
         }
 
         let mut attackers = self.attackers(to, occupied) & occupied;
@@ -65,7 +65,7 @@ impl Board {
         let bishops = self.piece(PieceName::Bishop) | self.piece(PieceName::Queen);
         let rooks = self.piece(PieceName::Rook) | self.piece(PieceName::Queen);
 
-        let mut to_move = !self.stm;
+        let mut to_move = !self.stm();
 
         loop {
             let my_attackers = attackers & self.color(to_move);
@@ -97,7 +97,7 @@ impl Board {
             }
         }
 
-        to_move != self.stm
+        to_move != self.stm()
     }
 }
 

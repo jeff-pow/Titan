@@ -267,9 +267,8 @@ fn index(hash: u64, table_capacity: usize) -> usize {
 #[cfg(test)]
 mod transpos_tests {
     use crate::{
-        board::Board,
+        board::{Board, STARTING_FEN},
         chess_move::{Move, MoveType},
-        fen::STARTING_FEN,
         search::search::Score,
         transposition::{EntryFlag, TranspositionTable},
         types::square::Square,
@@ -279,12 +278,12 @@ mod transpos_tests {
     fn transpos_table() {
         let b = Board::from_fen(STARTING_FEN);
         let table = TranspositionTable::new(64);
-        let entry = table.get(b.zobrist_hash, 4);
+        let entry = table.get(b.hash(), 4);
         assert!(entry.is_none());
 
         let m = Move::new(Square(12), Square(28), MoveType::Normal);
-        table.store(b.zobrist_hash, Some(m), 0, EntryFlag::Exact, 25, 4, false, 25);
-        let entry = table.get(b.zobrist_hash, 2);
+        table.store(b.hash(), Some(m), 0, EntryFlag::Exact, 25, 4, false, 25);
+        let entry = table.get(b.hash(), 2);
         assert_eq!(25, entry.unwrap().raw_eval().unwrap());
         assert_eq!(m, entry.unwrap().best_move().unwrap());
     }

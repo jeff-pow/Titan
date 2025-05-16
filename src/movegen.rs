@@ -39,15 +39,15 @@ impl Board {
     /// Generates all pseudolegal moves
     pub fn generate_moves(&self, gen_type: MGT, moves: &mut MoveList) {
         let mut dests = match gen_type {
-            MoveGenerationType::CapturesOnly => self.color(!self.stm),
+            MoveGenerationType::CapturesOnly => self.color(!self.stm()),
             MoveGenerationType::QuietsOnly => !self.occupancies(),
-            MoveGenerationType::All => !self.color(self.stm),
+            MoveGenerationType::All => !self.color(self.stm()),
         };
 
-        let kings = self.piece_color(self.stm, PieceName::King);
-        let knights = self.piece_color(self.stm, PieceName::Knight);
-        let diags = self.diags(self.stm);
-        let orthos = self.orthos(self.stm);
+        let kings = self.piece_color(self.stm(), PieceName::King);
+        let knights = self.piece_color(self.stm(), PieceName::Knight);
+        let diags = self.diags(self.stm());
+        let orthos = self.orthos(self.stm());
 
         self.jumper_moves(kings, dests & !self.threats(), moves, king_attacks);
 
@@ -58,7 +58,7 @@ impl Board {
         }
 
         if !self.checkers().is_empty() {
-            dests &= between(self.checkers().lsb(), self.king_square(self.stm)) | self.checkers();
+            dests &= between(self.checkers().lsb(), self.king_square(self.stm())) | self.checkers();
         }
 
         self.jumper_moves(knights, dests, moves, knight_attacks);
@@ -68,7 +68,7 @@ impl Board {
     }
 
     fn castling_moves(&self, moves: &mut MoveList) {
-        if self.stm == Color::White {
+        if self.stm() == Color::White {
             if self.can_castle(Castle::WhiteKing)
                 && self.threats() & Castle::WhiteKing.check_squares() == Bitboard::EMPTY
                 && self.occupancies() & Castle::WhiteKing.empty_squares() == Bitboard::EMPTY
@@ -98,18 +98,18 @@ impl Board {
     }
 
     fn pawn_moves(&self, gen_type: MGT, moves: &mut MoveList) {
-        let pawns = self.piece_color(self.stm, PieceName::Pawn);
+        let pawns = self.piece_color(self.stm(), PieceName::Pawn);
         let vacancies = !self.occupancies();
-        let enemies = self.color(!self.stm);
+        let enemies = self.color(!self.stm());
 
-        let non_promotions = pawns & if self.stm == Color::White { !RANKS[6] } else { !RANKS[1] };
-        let promotions = pawns & if self.stm == Color::White { RANKS[6] } else { RANKS[1] };
+        let non_promotions = pawns & if self.stm() == Color::White { !RANKS[6] } else { !RANKS[1] };
+        let promotions = pawns & if self.stm() == Color::White { RANKS[6] } else { RANKS[1] };
 
-        let up = if self.stm == Color::White { North } else { South };
-        let right = if self.stm == Color::White { NorthEast } else { SouthWest };
-        let left = if self.stm == Color::White { NorthWest } else { SouthEast };
+        let up = if self.stm() == Color::White { North } else { South };
+        let right = if self.stm() == Color::White { NorthEast } else { SouthWest };
+        let left = if self.stm() == Color::White { NorthWest } else { SouthEast };
 
-        let rank3 = if self.stm == Color::White { RANKS[2] } else { RANKS[5] };
+        let rank3 = if self.stm() == Color::White { RANKS[2] } else { RANKS[5] };
 
         if matches!(gen_type, MGT::All | MGT::QuietsOnly) {
             // Single and double pawn pushes w/o captures
@@ -170,10 +170,10 @@ impl Board {
     }
 
     fn get_en_passant(&self, dir: Direction) -> Option<Move> {
-        let sq = self.en_passant_square?.checked_shift(dir)?;
-        let pawn = sq.bitboard() & self.piece_color(self.stm, PieceName::Pawn);
+        let sq = self.en_passant_square()?.checked_shift(dir)?;
+        let pawn = sq.bitboard() & self.piece_color(self.stm(), PieceName::Pawn);
         if pawn != Bitboard::EMPTY {
-            let dest = self.en_passant_square?;
+            let dest = self.en_passant_square()?;
             let src = dest.checked_shift(dir)?;
             return Some(Move::new(src, dest, MoveType::EnPassant));
         }
@@ -189,7 +189,7 @@ impl Board {
     ) {
         for src in pieces {
             let x = if self.pinned().contains(src) {
-                destinations & pinned_moves(self.king_square(self.stm), src)
+                destinations & pinned_moves(self.king_square(self.stm()), src)
             } else {
                 destinations
             };
@@ -208,7 +208,7 @@ impl Board {
     ) {
         for src in pieces {
             let x = if self.pinned().contains(src) {
-                destinations & pinned_moves(self.king_square(self.stm), src)
+                destinations & pinned_moves(self.king_square(self.stm()), src)
             } else {
                 destinations
             };

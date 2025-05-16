@@ -7,7 +7,6 @@ mod bench;
 mod board;
 mod chess_move;
 mod eval;
-mod fen;
 mod history_table;
 mod magics;
 mod movegen;
@@ -21,7 +20,6 @@ mod transposition;
 mod types;
 mod uci;
 mod utils;
-mod zobrist;
 
 use crate::bench::bench;
 use std::env;

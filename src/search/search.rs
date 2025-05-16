@@ -48,7 +48,7 @@ impl Score {
     }
 
     pub fn draw_adjust(score: i32, board: &Board) -> i32 {
-        score * (200 - board.half_moves as i32) / 200
+        score * (200 - board.half_moves() as i32) / 200
     }
 }
 
@@ -194,7 +194,7 @@ fn negamax<const PV: bool>(
     td.nodes.increment();
 
     let mut tt_move = Move::NULL;
-    let entry = tt.get(board.zobrist_hash, td.ply);
+    let entry = tt.get(board.hash(), td.ply);
     if let Some(entry) = entry {
         tt_move = entry.best_move();
 
@@ -214,7 +214,7 @@ fn negamax<const PV: bool>(
         }
     }
 
-    let correction = td.pawn_corr_hist.get(board.stm, board.pawn_hash());
+    let correction = td.pawn_corr_hist.get(board.stm(), board.pawn_hash());
 
     let raw_eval;
     let static_eval;
@@ -246,7 +246,7 @@ fn negamax<const PV: bool>(
         }
     } else {
         raw_eval = td.accumulators.evaluate(board);
-        tt.store(board.zobrist_hash, None, 0, EntryFlag::None, Score::NONE, td.ply, PV, raw_eval);
+        tt.store(board.hash(), None, 0, EntryFlag::None, Score::NONE, td.ply, PV, raw_eval);
         static_eval = Score::draw_adjust(raw_eval, board) + correction;
         eval = static_eval;
     }
@@ -271,7 +271,7 @@ fn negamax<const PV: bool>(
         && depth >= 2
         && !Score::is_loss(beta)
         && td.stack[td.ply - 1].played_move != Move::NULL
-        && board.has_non_pawns(board.stm)
+        && board.has_non_pawns(board.stm())
         && eval >= beta
     {
         tt.prefetch(board.hash_after(Move::NULL));
@@ -282,7 +282,7 @@ fn negamax<const PV: bool>(
         td.stack[td.ply].played_move = Move::NULL;
         td.stack[td.ply].moved_piece = Piece::None;
         td.ply += 1;
-        td.hash_history.push(copy.zobrist_hash);
+        td.hash_history.push(copy.hash());
 
         let score = -negamax::<false>(td, tt, &copy, -beta, -beta + 1, depth - r, false);
 
@@ -372,7 +372,7 @@ fn negamax<const PV: bool>(
         let copy = board.make_move(m);
 
         td.accumulators.push(m, board.piece_at(m.from()), board.piece_at(m.to()));
-        td.hash_history.push(copy.zobrist_hash);
+        td.hash_history.push(copy.hash());
         td.stack[td.ply].played_move = Some(m);
         td.stack[td.ply].moved_piece = board.piece_at(m.from());
         td.ply += 1;
@@ -456,7 +456,7 @@ fn negamax<const PV: bool>(
     };
 
     if !singular_search {
-        tt.store(board.zobrist_hash, best_move, depth, flag, best_score, td.ply, PV, raw_eval);
+        tt.store(board.hash(), best_move, depth, flag, best_score, td.ply, PV, raw_eval);
     }
 
     if !(in_check
@@ -465,7 +465,7 @@ fn negamax<const PV: bool>(
         || (flag == EntryFlag::AlphaUnchanged && best_score >= static_eval)
         || (flag == EntryFlag::BetaCutOff && best_score <= static_eval))
     {
-        td.pawn_corr_hist.update(board.stm, board.pawn_hash(), best_score - static_eval, depth);
+        td.pawn_corr_hist.update(board.stm(), board.pawn_hash(), best_score - static_eval, depth);
     }
 
     best_score
@@ -503,7 +503,7 @@ fn qsearch<const PV: bool>(
     td.nodes.increment();
 
     let mut tt_move = Move::NULL;
-    let entry = tt.get(board.zobrist_hash, td.ply);
+    let entry = tt.get(board.hash(), td.ply);
     if let Some(entry) = entry {
         tt_move = entry.best_move();
 
@@ -526,10 +526,10 @@ fn qsearch<const PV: bool>(
     if !in_check {
         raw_eval = entry.and_then(TableEntry::raw_eval).unwrap_or_else(|| {
             let x = td.accumulators.evaluate(board);
-            tt.store(board.zobrist_hash, None, 0, EntryFlag::None, Score::NONE, td.ply, PV, x);
+            tt.store(board.hash(), None, 0, EntryFlag::None, Score::NONE, td.ply, PV, x);
             x
         });
-        let static_eval = Score::draw_adjust(raw_eval, board) + td.pawn_corr_hist.get(board.stm, board.pawn_hash());
+        let static_eval = Score::draw_adjust(raw_eval, board) + td.pawn_corr_hist.get(board.stm(), board.pawn_hash());
         best_score = static_eval;
 
         if let Some(entry) = entry {
@@ -572,7 +572,7 @@ fn qsearch<const PV: bool>(
         let copy = board.make_move(m);
 
         td.accumulators.push(m, board.piece_at(m.from()), board.piece_at(m.to()));
-        td.hash_history.push(copy.zobrist_hash);
+        td.hash_history.push(copy.hash());
         td.stack[td.ply].played_move = Some(m);
         td.stack[td.ply].moved_piece = board.piece_at(m.from());
         td.ply += 1;
@@ -612,7 +612,7 @@ fn qsearch<const PV: bool>(
     }
 
     let flag = if best_score >= beta { EntryFlag::BetaCutOff } else { EntryFlag::AlphaUnchanged };
-    tt.store(board.zobrist_hash, best_move, 0, flag, best_score, td.ply, PV, raw_eval);
+    tt.store(board.hash(), best_move, 0, flag, best_score, td.ply, PV, raw_eval);
 
     best_score
 }
