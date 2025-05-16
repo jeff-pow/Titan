@@ -56,11 +56,8 @@ impl TableEntry {
         (self.age_pv_bound & 0b0000_0100) != 0
     }
 
-    pub const fn best_move(self) -> Option<Move> {
-        match self.best_move {
-            0 => None,
-            x => Some(Move(NonZeroU16::new(x).unwrap())),
-        }
+    pub fn best_move(self) -> Option<Move> {
+        (self.best_move != 0).then(|| Move(NonZeroU16::new(self.best_move).unwrap()))
     }
 }
 

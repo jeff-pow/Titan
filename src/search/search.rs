@@ -219,6 +219,7 @@ fn negamax<const PV: bool>(
     let raw_eval;
     let static_eval;
     let mut eval;
+
     if in_check {
         raw_eval = Score::NONE;
         static_eval = Score::NONE;
@@ -233,15 +234,15 @@ fn negamax<const PV: bool>(
         static_eval = Score::draw_adjust(raw_eval, board) + correction;
         eval = static_eval;
 
-        if entry.search_score().is_some()
-            && match entry.flag() {
+        if let Some(score) = entry.search_score() {
+            if match entry.flag() {
                 EntryFlag::None => false,
-                EntryFlag::AlphaUnchanged => entry.search_score().unwrap() < static_eval,
-                EntryFlag::BetaCutOff => entry.search_score().unwrap() > static_eval,
+                EntryFlag::AlphaUnchanged => score < static_eval,
+                EntryFlag::BetaCutOff => score > static_eval,
                 EntryFlag::Exact => true,
+            } {
+                eval = score;
             }
-        {
-            eval = entry.search_score().unwrap();
         }
     } else {
         raw_eval = td.accumulators.evaluate(board);
@@ -531,15 +532,17 @@ fn qsearch<const PV: bool>(
         let static_eval = Score::draw_adjust(raw_eval, board) + td.pawn_corr_hist.get(board.stm, board.pawn_hash());
         best_score = static_eval;
 
-        if entry.is_some_and(|e| e.search_score().is_some())
-            && match entry.unwrap().flag() {
-                EntryFlag::None => false,
-                EntryFlag::AlphaUnchanged => entry.unwrap().search_score().unwrap() < static_eval,
-                EntryFlag::BetaCutOff => entry.unwrap().search_score().unwrap() > static_eval,
-                EntryFlag::Exact => true,
+        if let Some(entry) = entry {
+            if let Some(score) = entry.search_score() {
+                if match entry.flag() {
+                    EntryFlag::None => false,
+                    EntryFlag::AlphaUnchanged => score < static_eval,
+                    EntryFlag::BetaCutOff => score > static_eval,
+                    EntryFlag::Exact => true,
+                } {
+                    best_score = score;
+                }
             }
-        {
-            best_score = entry.unwrap().search_score().unwrap();
         }
 
         if best_score >= beta {
