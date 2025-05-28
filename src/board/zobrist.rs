@@ -68,14 +68,22 @@ impl Board {
     }
 
     pub fn pawn_hash(&self) -> u64 {
-        let mut hash = 0;
+        self.piece(PieceName::Pawn).into_iter().fold(0, |hash, sq| hash ^ ZOBRIST.piece[self.piece_at(sq)][sq])
+    }
 
-        for sq in self.piece(PieceName::Pawn) {
-            hash ^= ZOBRIST.piece[self.piece_at(sq)][sq];
+    pub fn is_repetition(&self, hash_history: &[u64]) -> bool {
+        if hash_history.len() < 6 {
+            return false;
         }
-        // TODO: Test adding stm hash and/or king squares
 
-        hash
+        let mut reps = 2;
+        for &hash in hash_history.iter().rev().take(self.half_moves() as usize + 1).step_by(2) {
+            reps -= u32::from(hash == self.hash());
+            if reps == 0 {
+                return true;
+            }
+        }
+        false
     }
 }
 

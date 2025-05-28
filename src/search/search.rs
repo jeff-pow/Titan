@@ -21,7 +21,6 @@ impl Score {
     pub const NONE: i32 = 32002;
 
     pub const MATE_IN_MAX_PLY: i32 = Self::CHECKMATE - MAX_PLY as i32;
-    pub const MATED_IN_MAX_PLY: i32 = -Self::CHECKMATE + MAX_PLY as i32;
 
     pub const fn mated_in(ply: usize) -> i32 {
         -Self::CHECKMATE + ply as i32
@@ -40,11 +39,11 @@ impl Score {
     }
 
     pub const fn is_loss(score: i32) -> bool {
-        score <= Self::MATED_IN_MAX_PLY
+        score <= -Self::MATE_IN_MAX_PLY
     }
 
     pub fn clamp_score(score: i32) -> i32 {
-        score.clamp(Self::MATED_IN_MAX_PLY + 1, Self::MATE_IN_MAX_PLY - 1)
+        score.clamp(-Self::MATE_IN_MAX_PLY + 1, Self::MATE_IN_MAX_PLY - 1)
     }
 
     pub fn draw_adjust(score: i32, board: &Board) -> i32 {
@@ -78,7 +77,10 @@ pub fn iterative_deepening(td: &mut ThreadData, board: &Board, print_uci: bool, 
         assert_eq!(0, td.ply);
         assert_eq!(0, td.accumulators.top);
 
-        prev_score = aspiration_windows(td, board, tt, prev_score, depth);
+        let score = aspiration_windows(td, board, tt, prev_score, depth);
+        if !td.halt() {
+            prev_score = score;
+        }
 
         assert_eq!(0, td.accumulators.top);
 
@@ -164,6 +166,12 @@ fn negamax<const PV: bool>(
         return 0;
     }
 
+    if depth <= 0 {
+        return qsearch::<PV>(td, tt, board, alpha, beta);
+    }
+
+    td.nodes.increment();
+
     if td.main_thread() && td.hard_stop() {
         td.set_halt(true);
         return 0;
@@ -174,7 +182,7 @@ fn negamax<const PV: bool>(
     }
 
     if !is_root {
-        if board.is_draw() || td.is_repetition(board) {
+        if board.is_draw(&td.hash_history) {
             return Score::STALEMATE;
         }
 
@@ -187,17 +195,8 @@ fn negamax<const PV: bool>(
         }
     }
 
-    if depth <= 0 {
-        return qsearch::<PV>(td, tt, board, alpha, beta);
-    }
-
-    td.nodes.increment();
-
-    let mut tt_move = Move::NULL;
     let entry = tt.get(board.hash(), td.ply);
     if let Some(entry) = entry {
-        tt_move = entry.best_move();
-
         if let Some(score) = entry.search_score() {
             if !PV
                 && !singular_search
@@ -213,6 +212,7 @@ fn negamax<const PV: bool>(
             }
         }
     }
+    let tt_move = entry.and_then(TableEntry::best_move);
 
     let correction = td.pawn_corr_hist.get(board.stm(), board.pawn_hash());
 
@@ -230,7 +230,7 @@ fn negamax<const PV: bool>(
         static_eval = raw_eval;
         eval = static_eval;
     } else if let Some(entry) = entry {
-        raw_eval = if let Some(eval) = entry.raw_eval() { eval } else { td.accumulators.evaluate(board) };
+        raw_eval = entry.raw_eval().unwrap_or_else(|| td.accumulators.evaluate(board));
         static_eval = Score::draw_adjust(raw_eval, board) + correction;
         eval = static_eval;
 
@@ -273,6 +273,7 @@ fn negamax<const PV: bool>(
         && td.stack[td.ply - 1].played_move != Move::NULL
         && board.has_non_pawns(board.stm())
         && eval >= beta
+        && eval >= beta - 15 * depth + 420
     {
         tt.prefetch(board.hash_after(Move::NULL));
 
@@ -282,12 +283,10 @@ fn negamax<const PV: bool>(
         td.stack[td.ply].played_move = Move::NULL;
         td.stack[td.ply].moved_piece = Piece::None;
         td.ply += 1;
-        td.hash_history.push(copy.hash());
 
         let score = -negamax::<false>(td, tt, &copy, -beta, -beta + 1, depth - r, false);
 
         td.ply -= 1;
-        td.hash_history.pop();
 
         if td.halt() {
             return 0;
@@ -301,7 +300,7 @@ fn negamax<const PV: bool>(
         }
     }
 
-    td.stack[td.ply + 1].killer_move = None;
+    td.stack[td.ply + 1].killer = None;
     td.stack[td.ply + 2].cutoffs = 0;
 
     let mut tacticals_tried = ArrayVec::<_, { MAX_MOVES }>::new();
@@ -311,9 +310,10 @@ fn negamax<const PV: bool>(
     let mut best_score = -Score::INFINITY;
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
-    let mut picker = MovePicker::new(tt_move, td, -197, true);
+    let mut picker = MovePicker::new(tt_move, td.stack[td.ply].killer, -197, true);
     while let Some(m) = picker.next(board, td) {
-        if !board.is_legal(m) || Some(m) == excluded_move {
+        let s = m.to_san();
+        if Some(m) == excluded_move || !board.is_legal(m) {
             continue;
         }
 
@@ -432,7 +432,7 @@ fn negamax<const PV: bool>(
         td.stack[td.ply].cutoffs += 1;
 
         if m.is_quiet(board) {
-            td.stack[td.ply].killer_move = Some(m);
+            td.stack[td.ply].killer = Some(m);
         }
         td.update_histories(m, &quiets_tried, &tacticals_tried, board, depth);
 
@@ -496,17 +496,14 @@ fn qsearch<const PV: bool>(
         return td.accumulators.evaluate(board);
     }
 
-    if board.is_draw() || td.is_repetition(board) {
+    if board.is_draw(&td.hash_history) {
         return Score::STALEMATE;
     }
 
     td.nodes.increment();
 
-    let mut tt_move = Move::NULL;
     let entry = tt.get(board.hash(), td.ply);
     if let Some(entry) = entry {
-        tt_move = entry.best_move();
-
         if let Some(score) = entry.search_score() {
             if match entry.flag() {
                 EntryFlag::None => false,
@@ -518,6 +515,7 @@ fn qsearch<const PV: bool>(
             }
         }
     }
+    let tt_move = entry.and_then(TableEntry::best_move);
 
     let mut best_score = -Score::INFINITY;
     let mut futility = Score::NONE;
@@ -552,11 +550,12 @@ fn qsearch<const PV: bool>(
         futility = static_eval + 175;
     }
 
-    let mut picker = MovePicker::new(tt_move, td, -197, in_check);
+    let mut picker = MovePicker::new(tt_move, td.stack[td.ply].killer, -197, in_check);
     let mut best_move = Move::NULL;
     let mut moves_searched = 0;
 
     while let Some(m) = picker.next(board, td) {
+        let s = m.to_san();
         if !board.is_legal(m) {
             continue;
         }

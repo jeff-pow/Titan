@@ -33,7 +33,7 @@ pub struct MovePicker {
 }
 
 impl MovePicker {
-    pub fn new(tt_move: Option<Move>, td: &ThreadData, margin: i32, return_quiets: bool) -> Self {
+    pub fn new(tt_move: Option<Move>, killer: Option<Move>, margin: i32, return_quiets: bool) -> Self {
         Self {
             moves: MoveList::default(),
             bad_captures: MoveList::default(),
@@ -41,7 +41,7 @@ impl MovePicker {
             phase: Phase::TTMove,
             margin,
             tt_move,
-            killer_move: td.stack[td.ply].killer_move,
+            killer_move: killer,
             return_quiets,
         }
     }

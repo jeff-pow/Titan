@@ -120,9 +120,10 @@ impl Board {
         }
     }
 
-    pub fn is_draw(&self) -> bool {
+    pub fn is_draw(&self, hash_history: &[u64]) -> bool {
         self.half_moves >= 100 && (!self.in_check() || self.pseudolegal_moves().iter().any(|m| self.is_legal(m)))
             || self.is_material_draw()
+            || self.is_repetition(hash_history)
     }
 
     fn is_material_draw(&self) -> bool {

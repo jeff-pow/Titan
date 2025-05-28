@@ -201,13 +201,7 @@ impl TranspositionTable {
             || depth as usize + 5 + 2 * usize::from(is_pv) > old_entry.depth as usize
         {
             // Don't overwrite a best move with a null move
-            let best_m = if m.is_none() && key == old_entry.key {
-                old_entry.best_move
-            } else if m.is_none() {
-                0
-            } else {
-                m.unwrap().into()
-            };
+            let best_m = if m.is_none() && key == old_entry.key { old_entry.best_move } else { m.map_or(0, u16::from) };
 
             if Score::is_win(search_score) {
                 search_score += ply as i32;
