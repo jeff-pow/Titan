@@ -273,7 +273,6 @@ fn negamax<const PV: bool>(
         && td.stack[td.ply - 1].played_move != Move::NULL
         && board.has_non_pawns(board.stm())
         && eval >= beta
-        && eval >= beta - 15 * depth + 420
     {
         tt.prefetch(board.hash_after(Move::NULL));
 
@@ -312,7 +311,6 @@ fn negamax<const PV: bool>(
     let original_alpha = alpha;
     let mut picker = MovePicker::new(tt_move, td.stack[td.ply].killer, -197, true);
     while let Some(m) = picker.next(board, td) {
-        let s = m.to_san();
         if Some(m) == excluded_move || !board.is_legal(m) {
             continue;
         }
@@ -555,7 +553,6 @@ fn qsearch<const PV: bool>(
     let mut moves_searched = 0;
 
     while let Some(m) = picker.next(board, td) {
-        let s = m.to_san();
         if !board.is_legal(m) {
             continue;
         }

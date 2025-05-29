@@ -29,7 +29,7 @@ impl TableEntry {
         (self.search_score as i32 != Score::NONE).then_some(self.search_score as i32)
     }
 
-    pub const fn key(self) -> u16 {
+    const fn key(self) -> u16 {
         self.key
     }
 

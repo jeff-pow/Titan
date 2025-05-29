@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::{board::Board, chess_move::Move};
+use crate::board::Board;
 
 impl Board {
     pub fn perft(&self, depth: usize) -> usize {
