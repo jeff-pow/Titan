@@ -203,7 +203,7 @@ impl<'a> ThreadData<'a> {
                         if score.is_positive() {
                             format!("mate {}", (Score::CHECKMATE - score + 1) / 2)
                         } else {
-                            format!("mate {}", (-(Score::CHECKMATE + score) / 2))
+                            format!("mate {}", -(Score::CHECKMATE + score) / 2)
                         }
                     } else {
                         format!(
@@ -238,7 +238,7 @@ impl<'a> ThreadData<'a> {
                 print!("cp {score}");
             }
 
-            print!(" hashfull {} pv {} ", hashfull, pv_line);
+            print!(" hashfull {hashfull} pv {pv_line} ");
             println!();
         }
     }
@@ -447,7 +447,7 @@ mod search_tests {
 
     #[test]
     fn go_mate() {
-        let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
+        let tt = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
         let halt = AtomicBool::new(false);
         let global_nodes = AtomicU64::new(0);
 
@@ -456,7 +456,7 @@ mod search_tests {
         thread.search_types.push(SearchType::Mate(2));
         thread.search_types.push(SearchType::Nodes(200000));
 
-        start_search(&mut thread, false, Board::from_fen("4k1K1/3n4/2N5/4N3/8/8/8/8 w - - 0 1"), &transpos_table);
+        start_search(&mut thread, false, Board::from_fen("4k1K1/3n4/2N5/4N3/8/8/8/8 w - - 0 1"), &tt);
 
         assert_eq!("e5g4", thread.pv.best_move().unwrap().to_san());
         let pv = thread.pv.pv().collect::<Vec<_>>();
