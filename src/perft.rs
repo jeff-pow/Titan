@@ -49,7 +49,7 @@ mod movegen_tests {
     #[test]
     pub fn perft() {
         thread::scope(|s| {
-            ETHEREAL_PERFT.iter().for_each(|line| {
+            for line in ETHEREAL_PERFT {
                 s.spawn(|| {
                     let vec = line.split(" ;").collect::<Vec<&str>>();
                     let mut iter = vec.iter();
@@ -64,7 +64,7 @@ mod movegen_tests {
                         assert_eq!(nodes, board.perft(depth), "Fen {fen} failed.");
                     });
                 });
-            });
+            }
         });
     }
 

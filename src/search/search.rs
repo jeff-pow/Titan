@@ -23,7 +23,7 @@ impl Score {
     pub const MATE_IN_MAX_PLY: i32 = Self::CHECKMATE - MAX_PLY as i32;
 
     pub fn is_some(score: i32) -> bool {
-        Self::is_valid(score) && score != Score::NONE
+        Self::is_valid(score) && score != Self::NONE
     }
 
     pub fn is_valid(score: i32) -> bool {
@@ -39,16 +39,16 @@ impl Score {
     }
 
     pub const fn mate_found(score: i32) -> bool {
-        score != Score::NONE && score.abs() >= Self::MATE_IN_MAX_PLY
+        score != Self::NONE && score.abs() >= Self::MATE_IN_MAX_PLY
     }
 
     pub const fn is_win(score: i32) -> bool {
-        assert!(score != Score::NONE);
+        assert!(score != Self::NONE);
         score >= Self::MATE_IN_MAX_PLY
     }
 
     pub const fn is_loss(score: i32) -> bool {
-        assert!(score != Score::NONE);
+        assert!(score != Self::NONE);
         score <= -Self::MATE_IN_MAX_PLY
     }
 
@@ -57,8 +57,8 @@ impl Score {
     }
 
     pub fn draw_adjust(score: i32, board: &Board) -> i32 {
-        assert!(score != Score::NONE);
-        score * (200 - board.half_moves() as i32) / 200
+        assert!(score != Self::NONE);
+        score * (200 - i32::from(board.half_moves())) / 200
     }
 }
 

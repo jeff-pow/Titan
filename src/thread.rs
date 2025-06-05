@@ -90,7 +90,7 @@ impl<'a> ThreadData<'a> {
             let Some(m) = self.pv.best_move() else { return false };
             let mut limit = game_time.rec_time.as_secs_f32();
             let frac = self.nodes_table[m.from()][m.to()] as f32 / self.nodes.local_count() as f32;
-            limit *= 2.0 - 1.5 * frac;
+            limit *= frac.mul_add(-1.5, 2.0);
             if self.search_start.elapsed() >= Duration::from_secs_f32(limit) {
                 return true;
             }
@@ -215,7 +215,7 @@ impl<'a> ThreadData<'a> {
                             } else {
                                 " "
                             },
-                            score as f64 / 100.
+                            f64::from(score) / 100.
                         )
                     }
                 },
@@ -454,7 +454,7 @@ mod search_tests {
         let mut thread = ThreadData::new(&halt, Vec::new(), 0, &global_nodes);
 
         thread.search_types.push(SearchType::Mate(2));
-        thread.search_types.push(SearchType::Nodes(200000));
+        thread.search_types.push(SearchType::Nodes(200_000));
 
         start_search(&mut thread, false, Board::from_fen("4k1K1/3n4/2N5/4N3/8/8/8/8 w - - 0 1"), &tt);
 

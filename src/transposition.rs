@@ -22,11 +22,11 @@ pub struct TableEntry {
 
 impl TableEntry {
     pub fn raw_eval(self) -> Option<i32> {
-        (self.raw_eval as i32 != Score::NONE).then_some(self.raw_eval as i32)
+        (i32::from(self.raw_eval) != Score::NONE).then_some(i32::from(self.raw_eval))
     }
 
     pub fn search_score(self) -> Option<i32> {
-        (self.search_score as i32 != Score::NONE).then_some(self.search_score as i32)
+        (i32::from(self.search_score) != Score::NONE).then_some(i32::from(self.search_score))
     }
 
     const fn key(self) -> u16 {
@@ -242,7 +242,7 @@ impl TranspositionTable {
                 entry.search_score += ply as i16;
             }
         }
-        assert!(Score::is_valid(entry.search_score as i32));
+        assert!(Score::is_valid(i32::from(entry.search_score)));
 
         Some(entry)
     }
