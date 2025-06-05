@@ -284,13 +284,15 @@ fn negamax<const PV: bool>(
         && !Score::is_loss(beta)
         && td.stack[td.ply - 1].played_move != Move::NULL
         && board.has_non_pawns(board.stm())
-        && static_eval >= beta
+        && td.ply >= td.min_nmp_ply
+        && eval >= beta
     {
         tt.prefetch(board.hash_after(Move::NULL));
 
         let r = 4 + depth / 4 + ((static_eval - beta) / 173).min(4);
         let copy = board.make_null_move();
 
+        td.hash_history.push(board.hash());
         td.stack[td.ply].played_move = Move::NULL;
         td.stack[td.ply].moved_piece = Piece::None;
         td.ply += 1;
@@ -298,15 +300,24 @@ fn negamax<const PV: bool>(
         let score = -negamax::<false>(td, tt, &copy, -beta, -beta + 1, depth - r, false);
 
         td.ply -= 1;
+        td.hash_history.pop();
 
         if td.halt() {
             return 0;
         }
 
-        if score >= beta {
-            if Score::mate_found(score) {
-                return beta;
+        if score >= beta && !Score::is_win(score) {
+            if depth < 15 || td.min_nmp_ply > 0 {
+                return if Score::is_win(score) { beta } else { score };
             }
+
+            td.min_nmp_ply = td.ply + (3 * (depth - r) / 4) as usize;
+            let verification_score = negamax::<false>(td, tt, &copy, beta - 1, beta, depth - r, false);
+            td.min_nmp_ply = 0;
+            if verification_score >= beta {
+                return score;
+            }
+
             return score;
         }
     }

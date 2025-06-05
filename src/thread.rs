@@ -25,6 +25,7 @@ use crate::{
 #[derive(Clone)]
 pub struct ThreadData<'a> {
     pub ply: usize,
+    pub min_nmp_ply: usize,
     /// Max depth reached by search (include qsearch)
     pub sel_depth: usize,
     pub iter_depth: i32,
@@ -57,6 +58,7 @@ impl<'a> ThreadData<'a> {
     ) -> Self {
         Self {
             ply: 0,
+            min_nmp_ply: 0,
             stack: SearchStack::default(),
             iter_depth: 0,
             sel_depth: 0,
