@@ -14,7 +14,7 @@ pub mod search;
 
 #[derive(Clone, Copy)]
 pub struct PlyEntry {
-    pub killer_move: Option<Move>,
+    pub killer: Option<Move>,
     pub played_move: Option<Move>,
     pub moved_piece: Piece,
     pub static_eval: i32,
@@ -25,7 +25,7 @@ pub struct PlyEntry {
 impl Default for PlyEntry {
     fn default() -> Self {
         Self {
-            killer_move: Option::default(),
+            killer: Option::default(),
             played_move: Option::default(),
             moved_piece: Piece::None,
             static_eval: Default::default(),

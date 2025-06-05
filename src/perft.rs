@@ -5,23 +5,31 @@ use crate::board::Board;
 impl Board {
     pub fn perft(&self, depth: usize) -> usize {
         let start = Instant::now();
-        let count = self.non_bulk_perft::<true>(depth);
+        let count = if depth == 0 { 1 } else { self.semi_bulk_perft::<true>(depth) };
         let elapsed = start.elapsed().as_secs_f64();
         println!("{count} nodes in {elapsed} secs = {} nps", (count as f64 / elapsed) as u64);
         count
     }
 
-    fn non_bulk_perft<const ROOT: bool>(&self, depth: usize) -> usize {
+    fn semi_bulk_perft<const ROOT: bool>(&self, depth: usize) -> usize {
         if depth == 1 {
-            return self.pseudolegal_moves().iter().filter(|&m| self.is_legal(m)).count();
+            return self
+                .pseudolegal_moves()
+                .iter()
+                .filter(|&m| self.is_legal(m))
+                .inspect(|m| {
+                    if ROOT {
+                        println!("{}: 1", m.to_san());
+                    }
+                })
+                .count();
         }
 
         self.pseudolegal_moves()
             .iter()
             .filter(|&m| self.is_legal(m))
             .map(|m| {
-                let copy = self.make_move(m);
-                let count = copy.non_bulk_perft::<false>(depth - 1);
+                let count = self.make_move(m).semi_bulk_perft::<false>(depth - 1);
 
                 if ROOT {
                     println!("{}: {count}", m.to_san());
@@ -39,23 +47,22 @@ mod movegen_tests {
     use crate::board::Board;
 
     #[test]
-    pub fn berky_perft() {
+    pub fn perft() {
         thread::scope(|s| {
-            ETHEREAL_PERFT.iter().enumerate().for_each(|(test_num, line)| {
-                s.spawn(move || {
+            ETHEREAL_PERFT.iter().for_each(|line| {
+                s.spawn(|| {
                     let vec = line.split(" ;").collect::<Vec<&str>>();
                     let mut iter = vec.iter();
                     let fen = iter.next().unwrap();
                     let board = Board::from_fen(fen);
-                    for entry in iter {
+                    iter.for_each(|entry| {
                         println!("Fen: {fen}");
                         let (depth, nodes) = entry.split_once(' ').unwrap();
-                        let depth = depth[1..].parse::<usize>().unwrap();
+                        let depth = depth[1..].parse().unwrap();
                         let nodes = nodes.parse::<usize>().unwrap();
-                        eprintln!("test {test_num}: depth {depth} expected {nodes}");
+                        eprintln!("fen {fen}: depth {depth} expected {nodes}");
                         assert_eq!(nodes, board.perft(depth), "Fen {fen} failed.");
-                    }
-                    eprintln!("{test_num} passed");
+                    });
                 });
             });
         });

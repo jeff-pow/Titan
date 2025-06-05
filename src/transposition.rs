@@ -29,7 +29,7 @@ impl TableEntry {
         (self.search_score as i32 != Score::NONE).then_some(self.search_score as i32)
     }
 
-    pub const fn key(self) -> u16 {
+    const fn key(self) -> u16 {
         self.key
     }
 
@@ -201,18 +201,16 @@ impl TranspositionTable {
             || depth as usize + 5 + 2 * usize::from(is_pv) > old_entry.depth as usize
         {
             // Don't overwrite a best move with a null move
-            let best_m = if m.is_none() && key == old_entry.key {
-                old_entry.best_move
-            } else if m.is_none() {
-                0
-            } else {
-                m.unwrap().into()
-            };
+            let best_m = if m.is_none() && key == old_entry.key { old_entry.best_move } else { m.map_or(0, u16::from) };
 
-            if Score::is_win(search_score) {
-                search_score += ply as i32;
-            } else if Score::is_loss(search_score) {
-                search_score -= ply as i32;
+            assert!(Score::is_valid(search_score));
+            if search_score != Score::NONE {
+                assert!(Score::is_some(search_score));
+                if Score::is_win(search_score) {
+                    search_score += ply as i32;
+                } else if Score::is_loss(search_score) {
+                    search_score -= ply as i32;
+                }
             }
 
             let age_pv_bound = (self.age() << 3) as u8 | u8::from(is_pv) << 2 | flag as u8;
@@ -244,6 +242,7 @@ impl TranspositionTable {
                 entry.search_score += ply as i16;
             }
         }
+        assert!(Score::is_valid(entry.search_score as i32));
 
         Some(entry)
     }

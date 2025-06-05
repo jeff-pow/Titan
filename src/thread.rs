@@ -203,10 +203,20 @@ impl<'a> ThreadData<'a> {
                         if score.is_positive() {
                             format!("mate {}", (Score::CHECKMATE - score + 1) / 2)
                         } else {
-                            format!("mate {}", (-(Score::CHECKMATE + score) / 2))
+                            format!("mate {}", -(Score::CHECKMATE + score) / 2)
                         }
                     } else {
-                        format!("{}{:.2}", if score.is_positive() { "+" } else { "-" }, score as f64 / 100.)
+                        format!(
+                            "{}{:.2}",
+                            if score.is_positive() {
+                                "+"
+                            } else if score.is_negative() {
+                                "-"
+                            } else {
+                                " "
+                            },
+                            score as f64 / 100.
+                        )
                     }
                 },
                 format!("{}%", hashfull as f64 / 10.),
@@ -228,24 +238,9 @@ impl<'a> ThreadData<'a> {
                 print!("cp {score}");
             }
 
-            print!(" hashfull {} pv {} ", hashfull, pv_line);
+            print!(" hashfull {hashfull} pv {pv_line} ");
             println!();
         }
-    }
-
-    pub(super) fn is_repetition(&self, board: &Board) -> bool {
-        if self.hash_history.len() < 6 {
-            return false;
-        }
-
-        let mut reps = 2;
-        for &hash in self.hash_history.iter().rev().take(board.half_moves() as usize + 1).step_by(2) {
-            reps -= u32::from(hash == board.hash());
-            if reps == 0 {
-                return true;
-            }
-        }
-        false
     }
 
     pub const fn main_thread(&self) -> bool {
@@ -448,5 +443,23 @@ mod search_tests {
 
         assert_eq!(thread.nodes.local_count(), thread.nodes.global_count());
         assert_eq!(12345, thread.nodes.global_count());
+    }
+
+    #[test]
+    fn go_mate() {
+        let tt = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
+        let halt = AtomicBool::new(false);
+        let global_nodes = AtomicU64::new(0);
+
+        let mut thread = ThreadData::new(&halt, Vec::new(), 0, &global_nodes);
+
+        thread.search_types.push(SearchType::Mate(2));
+        thread.search_types.push(SearchType::Nodes(200000));
+
+        start_search(&mut thread, false, Board::from_fen("4k1K1/3n4/2N5/4N3/8/8/8/8 w - - 0 1"), &tt);
+
+        assert_eq!("e5g4", thread.pv.best_move().unwrap().to_san());
+        let pv = thread.pv.pv().collect::<Vec<_>>();
+        assert_eq!("g4f6", pv[2].to_san());
     }
 }
