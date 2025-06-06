@@ -582,9 +582,15 @@ fn qsearch<const PV: bool>(
         // If we were in check, we know there's at least one legal move so we can skip the remaining quiets
         picker.skip_quiets();
 
-        if !Score::is_loss(best_score) && m.is_tactical(board) && !in_check && futility <= alpha && !board.see(m, 1) {
-            best_score = best_score.max(futility);
-            continue;
+        if !Score::is_loss(best_score) {
+            if m.is_tactical(board) && !in_check && futility <= alpha && !board.see(m, 1) {
+                best_score = best_score.max(futility);
+                continue;
+            }
+
+            if !board.see(m, -50) {
+                continue;
+            }
         }
 
         tt.prefetch(board.hash_after(Some(m)));
