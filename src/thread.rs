@@ -298,22 +298,20 @@ impl<'a> ThreadPool<'a> {
         while let Some(&limit) = iter.next() {
             match limit {
                 "depth" => {
-                    if let Some(depth_str) = iter.next() {
-                        if let Ok(depth) = depth_str.parse() {
+                    if let Some(depth_str) = iter.next()
+                        && let Ok(depth) = depth_str.parse() {
                             for t in &mut self.threads {
                                 t.search_types.push(SearchType::Depth(depth));
                             }
                         }
-                    }
                 }
                 "nodes" => {
-                    if let Some(nodes_str) = iter.next() {
-                        if let Ok(nodes) = nodes_str.parse() {
+                    if let Some(nodes_str) = iter.next()
+                        && let Ok(nodes) = nodes_str.parse() {
                             for t in &mut self.threads {
                                 t.search_types.push(SearchType::Nodes(nodes));
                             }
                         }
-                    }
                 }
                 "wtime" | "btime" | "winc" | "binc" | "movestogo" => {
                     let mut clock = parse_time(buffer);
@@ -328,22 +326,20 @@ impl<'a> ThreadPool<'a> {
                     }
                 }
                 "mate" => {
-                    if let Some(ply_str) = iter.next() {
-                        if let Ok(ply) = ply_str.parse() {
+                    if let Some(ply_str) = iter.next()
+                        && let Ok(ply) = ply_str.parse() {
                             for t in &mut self.threads {
                                 t.search_types.push(SearchType::Mate(ply));
                             }
                         }
-                    }
                 }
                 "movetime" => {
-                    if let Some(time_str) = iter.next() {
-                        if let Ok(ms) = time_str.parse() {
+                    if let Some(time_str) = iter.next()
+                        && let Ok(ms) = time_str.parse() {
                             for t in &mut self.threads {
                                 t.search_types.push(SearchType::MoveTime(Duration::from_millis(ms)));
                             }
                         }
-                    }
                 }
                 _ => {}
             }

@@ -65,19 +65,17 @@ impl Board {
         board.pawn_hash = board.pawn_hash();
 
         let half_moves = iter.next();
-        if let Some(half_moves) = half_moves {
-            if let Ok(half_moves) = half_moves.parse() {
+        if let Some(half_moves) = half_moves
+            && let Ok(half_moves) = half_moves.parse() {
                 board.half_moves = half_moves;
             }
-        }
 
         // Full number of moves in the game: starts from 1 and incremented after black's first move
         let full_moves = iter.next();
-        if let Some(full_moves) = full_moves {
-            if let Ok(full_moves) = full_moves.parse() {
+        if let Some(full_moves) = full_moves
+            && let Ok(full_moves) = full_moves.parse() {
                 board.num_moves = full_moves;
             }
-        }
         assert_eq!(iter.next(), None);
         board
     }
@@ -152,7 +150,8 @@ impl Board {
 }
 
 fn parse_castling(buf: &str) -> u32 {
-    let rights = buf.chars().fold(0, |x, ch| {
+    
+    buf.chars().fold(0, |x, ch| {
         x | match ch {
             'K' => Castle::WhiteKing as u32,
             'Q' => Castle::WhiteQueen as u32,
@@ -160,8 +159,7 @@ fn parse_castling(buf: &str) -> u32 {
             'q' => Castle::BlackQueen as u32,
             _ => 0,
         }
-    });
-    rights
+    })
 }
 
 fn find_en_passant_square(vec: &[char]) -> Option<u32> {

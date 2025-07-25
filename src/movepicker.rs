@@ -55,10 +55,10 @@ impl MovePicker {
         if self.phase == Phase::TTMove {
             self.phase = Phase::CapturesInit;
 
-            if let Some(tt_move) = self.tt_move {
-                if board.is_pseudo_legal(tt_move) {
-                    return Some(tt_move);
-                }
+            if let Some(tt_move) = self.tt_move
+                && board.is_pseudo_legal(tt_move)
+            {
+                return Some(tt_move);
             }
         }
 
@@ -91,10 +91,11 @@ impl MovePicker {
         if self.phase == Phase::Killer {
             if self.return_quiets {
                 self.phase = Phase::QuietsInit;
-                if let Some(killer) = self.killer_move {
-                    if board.is_pseudo_legal(killer) && self.killer_move != self.tt_move {
-                        return Some(killer);
-                    }
+                if let Some(killer) = self.killer_move
+                    && board.is_pseudo_legal(killer)
+                    && self.killer_move != self.tt_move
+                {
+                    return Some(killer);
                 }
             } else {
                 self.phase = Phase::BadCaptures;

@@ -14,7 +14,7 @@ pub mod avx2 {
     const REQUIRED_ITERS: usize = HIDDEN_SIZE / CHUNK_SIZE;
 
     #[inline]
-    pub unsafe fn flatten(acc: &Block, weights: &Block) -> i32 {
+    pub unsafe fn flatten(acc: &Block, weights: &Block) -> i32 { unsafe {
         {
             let mut sum = _mm256_setzero_si256();
             for i in 0..REQUIRED_ITERS {
@@ -27,10 +27,10 @@ pub mod avx2 {
             }
             hadd_i32(sum)
         }
-    }
+    }}
 
     #[inline]
-    unsafe fn hadd_i32(sum: __m256i) -> i32 {
+    unsafe fn hadd_i32(sum: __m256i) -> i32 { unsafe {
         let upper_128 = _mm256_extracti128_si256::<1>(sum);
         let lower_128 = _mm256_castsi256_si128(sum);
         let sum_128 = _mm_add_epi32(upper_128, lower_128);
@@ -42,15 +42,15 @@ pub mod avx2 {
         let sum_32 = _mm_add_epi32(upper_32, sum_64);
 
         _mm_cvtsi128_si32(sum_32)
-    }
+    }}
 
     #[inline]
-    unsafe fn clipped_relu(i: __m256i) -> __m256i {
+    unsafe fn clipped_relu(i: __m256i) -> __m256i { unsafe {
         let min = _mm256_set1_epi16(RELU_MIN);
         let max = _mm256_set1_epi16(RELU_MAX);
 
         _mm256_min_epi16(_mm256_max_epi16(i, min), max)
-    }
+    }}
 }
 
 #[cfg(feature = "avx512")]

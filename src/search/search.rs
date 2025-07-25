@@ -207,9 +207,9 @@ fn negamax<const PV: bool>(
     }
 
     let entry = tt.get(board.hash(), td.ply);
-    if let Some(entry) = entry {
-        if let Some(score) = entry.search_score() {
-            if !PV
+    if let Some(entry) = entry
+        && let Some(score) = entry.search_score()
+            && !PV
                 && !singular_search
                 && depth <= entry.depth()
                 && match entry.flag() {
@@ -221,8 +221,6 @@ fn negamax<const PV: bool>(
             {
                 return score;
             }
-        }
-    }
     let tt_move = entry.and_then(TableEntry::best_move);
 
     let correction = td.pawn_corr_hist.get(board.stm(), board.pawn_hash());
@@ -245,8 +243,8 @@ fn negamax<const PV: bool>(
         static_eval = Score::draw_adjust(raw_eval, board) + correction;
         eval = static_eval;
 
-        if let Some(score) = entry.search_score() {
-            if match entry.flag() {
+        if let Some(score) = entry.search_score()
+            && match entry.flag() {
                 EntryFlag::None => false,
                 EntryFlag::AlphaUnchanged => score < static_eval,
                 EntryFlag::BetaCutOff => score > static_eval,
@@ -255,7 +253,6 @@ fn negamax<const PV: bool>(
                 assert!(Score::is_valid(score));
                 eval = score;
             }
-        }
     } else {
         raw_eval = td.accumulators.evaluate(board);
         tt.store(board.hash(), None, 0, EntryFlag::None, Score::NONE, td.ply, PV, raw_eval);
@@ -524,9 +521,9 @@ fn qsearch<const PV: bool>(
     td.nodes.increment();
 
     let entry = tt.get(board.hash(), td.ply);
-    if let Some(entry) = entry {
-        if let Some(score) = entry.search_score() {
-            if match entry.flag() {
+    if let Some(entry) = entry
+        && let Some(score) = entry.search_score()
+            && match entry.flag() {
                 EntryFlag::None => false,
                 EntryFlag::AlphaUnchanged => score <= alpha,
                 EntryFlag::BetaCutOff => score >= beta,
@@ -534,8 +531,6 @@ fn qsearch<const PV: bool>(
             } {
                 return score;
             }
-        }
-    }
     let tt_move = entry.and_then(TableEntry::best_move);
 
     let mut best_score = -Score::INFINITY;
@@ -551,9 +546,9 @@ fn qsearch<const PV: bool>(
         let static_eval = Score::draw_adjust(raw_eval, board) + td.pawn_corr_hist.get(board.stm(), board.pawn_hash());
         best_score = static_eval;
 
-        if let Some(entry) = entry {
-            if let Some(score) = entry.search_score() {
-                if match entry.flag() {
+        if let Some(entry) = entry
+            && let Some(score) = entry.search_score()
+                && match entry.flag() {
                     EntryFlag::None => false,
                     EntryFlag::AlphaUnchanged => score < static_eval,
                     EntryFlag::BetaCutOff => score > static_eval,
@@ -561,8 +556,6 @@ fn qsearch<const PV: bool>(
                 } {
                     best_score = score;
                 }
-            }
-        }
 
         if best_score >= beta {
             return best_score;
