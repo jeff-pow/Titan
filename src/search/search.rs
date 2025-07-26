@@ -8,7 +8,7 @@ use crate::search::SearchStack;
 use crate::thread::ThreadData;
 use crate::transposition::{EntryFlag, TableEntry, TranspositionTable};
 use crate::types::pieces::Piece;
-use crate::utils::boxed;
+use crate::utils::zeroed_box;
 use arrayvec::ArrayVec;
 
 pub const MAX_PLY: usize = 128;
@@ -64,7 +64,7 @@ impl Score {
 
 pub fn start_search(td: &mut ThreadData, print_uci: bool, board: Board, tt: &TranspositionTable) {
     td.search_start = Instant::now();
-    td.nodes_table = boxed();
+    td.nodes_table = zeroed_box();
     td.stack = SearchStack::default();
     td.pv.reset();
     td.accumulators.clear(board.new_accumulator());
@@ -208,19 +208,19 @@ fn negamax<const PV: bool>(
 
     let entry = tt.get(board.hash(), td.ply);
     if let Some(entry) = entry
-        && let Some(score) = entry.search_score()
-            && !PV
-                && !singular_search
-                && depth <= entry.depth()
-                && match entry.flag() {
-                    EntryFlag::None => false,
-                    EntryFlag::AlphaUnchanged => score <= alpha,
-                    EntryFlag::BetaCutOff => score >= beta,
-                    EntryFlag::Exact => true,
-                }
-            {
-                return score;
-            }
+        && let Some(tt_score) = entry.search_score()
+        && !PV
+        && !singular_search
+        && depth <= entry.depth()
+        && match entry.flag() {
+            EntryFlag::None => false,
+            EntryFlag::AlphaUnchanged => tt_score <= alpha,
+            EntryFlag::BetaCutOff => tt_score >= beta,
+            EntryFlag::Exact => true,
+        }
+    {
+        return tt_score;
+    }
     let tt_move = entry.and_then(TableEntry::best_move);
 
     let correction = td.pawn_corr_hist.get(board.stm(), board.pawn_hash());
@@ -249,10 +249,11 @@ fn negamax<const PV: bool>(
                 EntryFlag::AlphaUnchanged => score < static_eval,
                 EntryFlag::BetaCutOff => score > static_eval,
                 EntryFlag::Exact => true,
-            } {
-                assert!(Score::is_valid(score));
-                eval = score;
             }
+        {
+            assert!(Score::is_valid(score));
+            eval = score;
+        }
     } else {
         raw_eval = td.accumulators.evaluate(board);
         tt.store(board.hash(), None, 0, EntryFlag::None, Score::NONE, td.ply, PV, raw_eval);
@@ -354,7 +355,6 @@ fn negamax<const PV: bool>(
         }
 
         tt.prefetch(board.hash_after(Some(m)));
-        let prior_nodes = td.nodes.local_count();
 
         let extension = if !is_root
             && !singular_search
@@ -388,6 +388,7 @@ fn negamax<const PV: bool>(
         };
 
         let copy = board.make_move(m);
+        let prior_nodes = td.nodes.local_count();
 
         td.accumulators.push(m, board.piece_at(m.from()), board.piece_at(m.to()));
         td.hash_history.push(copy.hash());
@@ -523,14 +524,15 @@ fn qsearch<const PV: bool>(
     let entry = tt.get(board.hash(), td.ply);
     if let Some(entry) = entry
         && let Some(score) = entry.search_score()
-            && match entry.flag() {
-                EntryFlag::None => false,
-                EntryFlag::AlphaUnchanged => score <= alpha,
-                EntryFlag::BetaCutOff => score >= beta,
-                EntryFlag::Exact => true,
-            } {
-                return score;
-            }
+        && match entry.flag() {
+            EntryFlag::None => false,
+            EntryFlag::AlphaUnchanged => score <= alpha,
+            EntryFlag::BetaCutOff => score >= beta,
+            EntryFlag::Exact => true,
+        }
+    {
+        return score;
+    }
     let tt_move = entry.and_then(TableEntry::best_move);
 
     let mut best_score = -Score::INFINITY;
@@ -548,14 +550,15 @@ fn qsearch<const PV: bool>(
 
         if let Some(entry) = entry
             && let Some(score) = entry.search_score()
-                && match entry.flag() {
-                    EntryFlag::None => false,
-                    EntryFlag::AlphaUnchanged => score < static_eval,
-                    EntryFlag::BetaCutOff => score > static_eval,
-                    EntryFlag::Exact => true,
-                } {
-                    best_score = score;
-                }
+            && match entry.flag() {
+                EntryFlag::None => false,
+                EntryFlag::AlphaUnchanged => score < static_eval,
+                EntryFlag::BetaCutOff => score > static_eval,
+                EntryFlag::Exact => true,
+            }
+        {
+            best_score = score;
+        }
 
         if best_score >= beta {
             return best_score;

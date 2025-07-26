@@ -19,7 +19,7 @@ use crate::{
     },
     transposition::TranspositionTable,
     uci::{parse_time, PRETTY_PRINT},
-    utils::boxed,
+    utils::zeroed_box,
 };
 
 #[derive(Clone)]
@@ -63,7 +63,7 @@ impl<'a> ThreadData<'a> {
             iter_depth: 0,
             sel_depth: 0,
             nodes: AtomicCounter::new(global_nodes),
-            nodes_table: boxed(),
+            nodes_table: zeroed_box(),
             accumulators: AccumulatorStack::new(Accumulator::default()),
             quiet_hist: QuietHistory::default(),
             capt_hist: CaptureHistory::default(),
@@ -299,19 +299,21 @@ impl<'a> ThreadPool<'a> {
             match limit {
                 "depth" => {
                     if let Some(depth_str) = iter.next()
-                        && let Ok(depth) = depth_str.parse() {
-                            for t in &mut self.threads {
-                                t.search_types.push(SearchType::Depth(depth));
-                            }
+                        && let Ok(depth) = depth_str.parse()
+                    {
+                        for t in &mut self.threads {
+                            t.search_types.push(SearchType::Depth(depth));
                         }
+                    }
                 }
                 "nodes" => {
                     if let Some(nodes_str) = iter.next()
-                        && let Ok(nodes) = nodes_str.parse() {
-                            for t in &mut self.threads {
-                                t.search_types.push(SearchType::Nodes(nodes));
-                            }
+                        && let Ok(nodes) = nodes_str.parse()
+                    {
+                        for t in &mut self.threads {
+                            t.search_types.push(SearchType::Nodes(nodes));
                         }
+                    }
                 }
                 "wtime" | "btime" | "winc" | "binc" | "movestogo" => {
                     let mut clock = parse_time(buffer);
@@ -327,19 +329,21 @@ impl<'a> ThreadPool<'a> {
                 }
                 "mate" => {
                     if let Some(ply_str) = iter.next()
-                        && let Ok(ply) = ply_str.parse() {
-                            for t in &mut self.threads {
-                                t.search_types.push(SearchType::Mate(ply));
-                            }
+                        && let Ok(ply) = ply_str.parse()
+                    {
+                        for t in &mut self.threads {
+                            t.search_types.push(SearchType::Mate(ply));
                         }
+                    }
                 }
                 "movetime" => {
                     if let Some(time_str) = iter.next()
-                        && let Ok(ms) = time_str.parse() {
-                            for t in &mut self.threads {
-                                t.search_types.push(SearchType::MoveTime(Duration::from_millis(ms)));
-                            }
+                        && let Ok(ms) = time_str.parse()
+                    {
+                        for t in &mut self.threads {
+                            t.search_types.push(SearchType::MoveTime(Duration::from_millis(ms)));
                         }
+                    }
                 }
                 _ => {}
             }

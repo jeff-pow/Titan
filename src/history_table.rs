@@ -2,7 +2,7 @@ use crate::{board::Board, chess_move::Move, types::pieces::PieceName};
 
 use crate::search::SearchStack;
 use crate::types::pieces::{Color, Piece};
-use crate::utils::boxed;
+use crate::utils::zeroed_box;
 
 pub const MAX_HIST_VAL: i32 = 16384;
 
@@ -80,7 +80,7 @@ impl ContinuationHistory {
 
 impl Default for ContinuationHistory {
     fn default() -> Self {
-        Self(boxed())
+        Self(zeroed_box())
     }
 }
 
@@ -103,7 +103,7 @@ impl CorrectionHistory {
 
 impl Default for CorrectionHistory {
     fn default() -> Self {
-        Self(boxed())
+        Self(zeroed_box())
     }
 }
 
