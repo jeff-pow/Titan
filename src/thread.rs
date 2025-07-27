@@ -456,7 +456,7 @@ mod search_tests {
         let mut thread = ThreadData::new(&halt, Vec::new(), 0, &global_nodes);
 
         thread.search_types.push(SearchType::Mate(2));
-        thread.search_types.push(SearchType::Nodes(200_000));
+        thread.search_types.push(SearchType::Nodes(1_000_000));
 
         start_search(&mut thread, false, Board::from_fen("4k1K1/3n4/2N5/4N3/8/8/8/8 w - - 0 1"), &tt);
 
