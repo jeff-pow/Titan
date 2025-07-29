@@ -541,9 +541,9 @@ fn qsearch<const PV: bool>(
 
     if !in_check {
         raw_eval = entry.and_then(TableEntry::raw_eval).unwrap_or_else(|| {
-            let x = td.accumulators.evaluate(board);
-            tt.store(board.hash(), None, 0, EntryFlag::None, Score::NONE, td.ply, PV, x);
-            x
+            let eval = td.accumulators.evaluate(board);
+            tt.store(board.hash(), None, 0, EntryFlag::None, Score::NONE, td.ply, PV, eval);
+            eval
         });
         let static_eval = Score::draw_adjust(raw_eval, board) + td.pawn_corr_hist.get(board.stm(), board.pawn_hash());
         best_score = static_eval;
