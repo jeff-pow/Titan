@@ -381,7 +381,7 @@ fn negamax<const PV: bool>(
             } else if entry_score >= beta {
                 -2
             } else if cut_node {
-                -1
+                -2
             } else {
                 0
             }
