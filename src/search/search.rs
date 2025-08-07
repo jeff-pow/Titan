@@ -270,9 +270,9 @@ fn negamax<const PV: bool>(
         && !singular_search
         && depth < 9
         && eval >= beta
-        && static_eval - 93 * depth + i32::from(improving) * 30 * depth >= beta
+        && eval - 93 * depth + i32::from(improving) * 30 * depth >= beta
     {
-        return Score::clamp_score((static_eval + beta) / 2);
+        return Score::clamp_score((eval + beta) / 2);
     }
 
     if !in_check
@@ -287,7 +287,7 @@ fn negamax<const PV: bool>(
     {
         tt.prefetch(board.hash_after(Move::NULL));
 
-        let r = 4 + depth / 4 + ((static_eval - beta) / 173).min(4);
+        let r = 4 + depth / 4 + ((eval - beta) / 173).min(4);
         let copy = board.make_null_move();
 
         td.hash_history.push(board.hash());
