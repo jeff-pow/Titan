@@ -378,9 +378,7 @@ fn negamax<const PV: bool>(
 
             if score < ext_beta {
                 1 + i32::from(!PV && score < ext_beta - 18)
-            } else if entry_score >= beta {
-                -2
-            } else if cut_node {
+            } else if entry_score >= beta || cut_node {
                 -2
             } else {
                 0
