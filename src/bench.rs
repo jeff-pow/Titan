@@ -1,5 +1,8 @@
 use std::{
-    sync::atomic::{AtomicBool, AtomicU64, Ordering},
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc,
+    },
     time::Instant,
 };
 
@@ -14,10 +17,10 @@ pub fn bench() {
     let start = Instant::now();
 
     let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
-    let halt = AtomicBool::new(false);
-    let global_nodes = AtomicU64::new(0);
+    let halt = Arc::new(AtomicBool::new(false));
+    let global_nodes = Arc::new(AtomicU64::new(0));
 
-    let mut thread = ThreadData::new(&halt, Vec::new(), 0, &global_nodes);
+    let mut thread = ThreadData::new(halt.clone(), Vec::new(), 0, global_nodes);
 
     thread.search_types = vec![SearchType::Depth(12)];
 

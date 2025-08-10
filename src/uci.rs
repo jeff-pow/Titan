@@ -1,5 +1,5 @@
 use std::process::exit;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::{io, time::Duration};
 
 use crate::bench::bench;
@@ -8,6 +8,7 @@ use crate::chess_move::Move;
 use crate::thread::ThreadPool;
 use crate::transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB};
 use crate::{board::Board, search::game_time::Clock, types::pieces::Color};
+use std::sync::Arc;
 
 pub const ENGINE_NAME: &str = "Titan";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -15,13 +16,12 @@ pub static PRETTY_PRINT: AtomicBool = AtomicBool::new(true);
 
 /// Main loop that handles UCI communication with GUIs
 pub fn main_loop() -> ! {
-    let mut transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
+    let mut transpos_table = Arc::new(TranspositionTable::new(TARGET_TABLE_SIZE_MB));
     let mut board = Board::from_fen(STARTING_FEN);
     let mut msg: Option<String> = None;
     let mut hash_history = Vec::new();
     let halt = AtomicBool::new(false);
-    let global_nodes = AtomicU64::new(0);
-    let mut thread_pool = ThreadPool::new(&halt, Vec::new(), &global_nodes);
+    let mut thread_pool = ThreadPool::new(1);
     println!("{ENGINE_NAME} v{VERSION} by {}", env!("CARGO_PKG_AUTHORS"));
 
     loop {
@@ -46,7 +46,7 @@ pub fn main_loop() -> ! {
             "ucinewgame" => {
                 transpos_table.clear();
                 halt.store(false, Ordering::Relaxed);
-                thread_pool.reset(&halt, &global_nodes);
+                thread_pool.reset();
             }
             "eval" => {
                 let acc = board.new_accumulator();
@@ -62,7 +62,7 @@ pub fn main_loop() -> ! {
             }
             "bench" => bench(),
             "go" => {
-                thread_pool.handle_go(&input, &board, &halt, &mut msg, &hash_history, &transpos_table);
+                thread_pool.handle_go(&input, &board, &mut msg, &hash_history, &transpos_table);
             }
             "perft" => {
                 board.perft(input[1].parse().unwrap());
@@ -76,10 +76,10 @@ pub fn main_loop() -> ! {
             }
             "setoption" => match input[..] {
                 ["setoption", "name", "Hash", "value", x] => {
-                    transpos_table = TranspositionTable::new(x.parse().unwrap());
+                    transpos_table = Arc::new(TranspositionTable::new(x.parse().unwrap()));
                 }
                 ["setoption", "name", "Clear", "Hash"] => transpos_table.clear(),
-                ["setoption", "name", "Threads", "value", x] => thread_pool.add_workers(x.parse().unwrap()),
+                ["setoption", "name", "Threads", "value", x] => thread_pool = ThreadPool::new(x.parse().unwrap()),
                 _ => println!("Option not recognized"),
             },
             _ => (),

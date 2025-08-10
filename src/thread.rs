@@ -1,8 +1,11 @@
 use std::{
     io,
     process::exit,
-    sync::atomic::{AtomicBool, AtomicU64, Ordering},
-    thread,
+    sync::{
+        Arc, Barrier, Mutex,
+        atomic::{AtomicBool, AtomicU64, Ordering},
+    },
+    thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
 
@@ -12,18 +15,19 @@ use crate::{
     eval::accumulator::{Accumulator, AccumulatorStack},
     history_table::{CaptureHistory, ContinuationHistory, CorrectionHistory, QuietHistory},
     search::{
+        PVTable, SearchStack, SearchType,
         game_time::Clock,
         lmr_table::LmrTable,
-        search::{start_search, Score, MAX_PLY},
-        PVTable, SearchStack, SearchType,
+        search::{MAX_PLY, Score, start_search},
     },
     transposition::TranspositionTable,
-    uci::{parse_time, PRETTY_PRINT},
+    uci::{PRETTY_PRINT, parse_time},
     utils::zeroed_box,
 };
+use std::sync::RwLock;
 
 #[derive(Clone)]
-pub struct ThreadData<'a> {
+pub struct ThreadData {
     pub ply: usize,
     pub min_nmp_ply: usize,
     /// Max depth reached by search (include qsearch)
@@ -31,7 +35,7 @@ pub struct ThreadData<'a> {
     pub iter_depth: i32,
 
     pub nodes_table: Box<[[u64; 64]; 64]>,
-    pub nodes: AtomicCounter<'a>,
+    pub nodes: AtomicCounter,
     pub stack: SearchStack,
     pub hash_history: Vec<u64>,
     pub accumulators: AccumulatorStack,
@@ -45,16 +49,16 @@ pub struct ThreadData<'a> {
     pub search_start: Instant,
     thread_id: usize,
     pub search_types: Vec<SearchType>,
-    halt: &'a AtomicBool,
+    halt: Arc<AtomicBool>,
     pub lmr: LmrTable,
 }
 
-impl<'a> ThreadData<'a> {
+impl ThreadData {
     pub(crate) fn new(
-        halt: &'a AtomicBool,
+        halt: Arc<AtomicBool>,
         hash_history: Vec<u64>,
         thread_idx: usize,
-        global_nodes: &'a AtomicU64,
+        global_nodes: Arc<AtomicU64>,
     ) -> Self {
         Self {
             ply: 0,
@@ -250,49 +254,93 @@ impl<'a> ThreadData<'a> {
     }
 }
 
-pub struct ThreadPool<'a> {
-    pub threads: Vec<ThreadData<'a>>,
+struct SearchJob {
+    board: Board,
+    tt: Arc<TranspositionTable>,
 }
 
-impl<'a> ThreadPool<'a> {
-    pub fn new(halt: &'a AtomicBool, hash_history: Vec<u64>, global_nodes: &'a AtomicU64) -> Self {
-        Self { threads: vec![ThreadData::new(halt, hash_history, 0, global_nodes)] }
+pub struct ThreadPool {
+    threads_data: Arc<Vec<Mutex<ThreadData>>>,
+    _worker_handles: Vec<JoinHandle<()>>,
+    start_barrier: Arc<Barrier>,
+    end_barrier: Arc<Barrier>,
+    job: Arc<RwLock<Option<SearchJob>>>,
+    halt: Arc<AtomicBool>,
+    global_nodes: Arc<AtomicU64>,
+}
+
+impl ThreadPool {
+    pub fn new(num_threads: usize) -> Self {
+        assert!(num_threads > 0, "You can't search with zero threads bozo");
+        let start_barrier = Arc::new(Barrier::new(num_threads + 1));
+        let end_barrier = Arc::new(Barrier::new(num_threads + 1));
+        let job = Arc::new(RwLock::<Option<SearchJob>>::new(None));
+        let halt = Arc::new(AtomicBool::new(false));
+        let global_nodes = Arc::new(AtomicU64::new(0));
+        let threads_data: Arc<Vec<Mutex<ThreadData>>> = Arc::new(
+            (0..num_threads)
+                .map(|i| Mutex::new(ThreadData::new(halt.clone(), vec![], i, global_nodes.clone())))
+                .collect(),
+        );
+
+        let mut _worker_handles = Vec::with_capacity(num_threads);
+
+        for i in 0..num_threads {
+            let start_barrier_clone = start_barrier.clone();
+            let end_barrier_clone = end_barrier.clone();
+            let job_clone = job.clone();
+            let threads_data_clone = threads_data.clone();
+            let halt_clone = halt.clone();
+
+            let handle = thread::spawn(move || {
+                loop {
+                    start_barrier_clone.wait();
+                    if halt_clone.load(Ordering::Relaxed) {
+                        break;
+                    }
+
+                    let job_guard = job_clone.read().unwrap();
+                    if let Some(current_job) = &*job_guard {
+                        let mut thread_data = threads_data_clone[i].lock().unwrap();
+
+                        let main_thread = thread_data.main_thread();
+                        start_search(&mut thread_data, main_thread, current_job.board, &current_job.tt);
+
+                        if !thread_data.halt() {
+                            thread_data.set_halt(true);
+                        }
+
+                        if thread_data.main_thread() {
+                            println!("bestmove {}", thread_data.pv.best_move().unwrap().to_san());
+                        }
+                    }
+
+                    end_barrier_clone.wait();
+                }
+            });
+            _worker_handles.push(handle);
+        }
+
+        Self { threads_data, _worker_handles, start_barrier, end_barrier, job, halt, global_nodes }
     }
 
-    /// This thread creates a number of workers equal to threads - 1. If 4 threads are requested,
-    /// the main thread counts as one and then the remaining three are placed in the worker queue.
-    pub fn add_workers(&mut self, threads: usize) {
-        // Might as well use whatever history values the main thread has if any.
-        self.threads = vec![self.threads[0].clone(); threads];
-        for (idx, t) in self.threads.iter_mut().enumerate() {
-            t.thread_id = idx;
-        }
-    }
-
-    pub fn reset(&mut self, halt: &'a AtomicBool, global_nodes: &'a AtomicU64) {
-        let len = self.threads.len();
-        self.threads.clear();
-        for i in 0..len {
-            self.threads.push(ThreadData::new(halt, vec![], i, global_nodes));
-        }
+    pub fn reset(&mut self) {
+        todo!()
     }
 
     pub fn handle_go(
         &mut self,
         buffer: &[&str],
         board: &Board,
-        halt: &AtomicBool,
         msg: &mut Option<String>,
         hash_history: &[u64],
-        tt: &TranspositionTable,
+        tt: &Arc<TranspositionTable>,
     ) {
-        halt.store(false, Ordering::Relaxed);
+        self.halt.store(false, Ordering::Relaxed);
+        self.global_nodes.store(0, Ordering::Relaxed);
 
-        for t in &mut self.threads {
-            hash_history.clone_into(&mut t.hash_history);
-            t.search_types = vec![SearchType::Infinite];
-            t.nodes.reset();
-        }
+        let mut search_types = vec![SearchType::Infinite];
+        let mut main_thread_tc: Option<SearchType> = None;
 
         let mut iter = buffer.iter().skip(1).peekable();
         while let Some(&limit) = iter.next() {
@@ -301,27 +349,21 @@ impl<'a> ThreadPool<'a> {
                     if let Some(depth_str) = iter.next()
                         && let Ok(depth) = depth_str.parse()
                     {
-                        for t in &mut self.threads {
-                            t.search_types.push(SearchType::Depth(depth));
-                        }
+                        search_types.push(SearchType::Depth(depth));
                     }
                 }
                 "nodes" => {
                     if let Some(nodes_str) = iter.next()
                         && let Ok(nodes) = nodes_str.parse()
                     {
-                        for t in &mut self.threads {
-                            t.search_types.push(SearchType::Nodes(nodes));
-                        }
+                        search_types.push(SearchType::Nodes(nodes));
                     }
                 }
                 "wtime" | "btime" | "winc" | "binc" | "movestogo" => {
                     let mut clock = parse_time(buffer);
                     clock.recommended_time(board.stm());
-                    for t in &mut self.threads {
-                        t.search_types.push(SearchType::Infinite);
-                    }
-                    self.threads[0].search_types.push(SearchType::Time(clock));
+                    main_thread_tc = Some(SearchType::Time(clock));
+
                     while iter.peek().is_some_and(|t| matches!(**t, "wtime" | "btime" | "winc" | "binc" | "movestogo"))
                     {
                         iter.next();
@@ -331,65 +373,65 @@ impl<'a> ThreadPool<'a> {
                     if let Some(ply_str) = iter.next()
                         && let Ok(ply) = ply_str.parse()
                     {
-                        for t in &mut self.threads {
-                            t.search_types.push(SearchType::Mate(ply));
-                        }
+                        search_types.push(SearchType::Mate(ply));
                     }
                 }
                 "movetime" => {
                     if let Some(time_str) = iter.next()
                         && let Ok(ms) = time_str.parse()
                     {
-                        for t in &mut self.threads {
-                            t.search_types.push(SearchType::MoveTime(Duration::from_millis(ms)));
-                        }
+                        search_types.push(SearchType::MoveTime(Duration::from_millis(ms)));
                     }
                 }
                 _ => {}
             }
         }
 
-        thread::scope(|s| {
-            for t in &mut self.threads {
-                s.spawn(|| {
-                    start_search(t, t.main_thread(), *board, tt);
-                    halt.store(true, Ordering::Relaxed);
-                    if t.main_thread() {
-                        println!("bestmove {}", t.pv.best_move().unwrap().to_san());
-                    }
-                });
+        for mutex in &*self.threads_data {
+            let mut t = mutex.lock().unwrap();
+            hash_history.clone_into(&mut t.hash_history);
+            t.nodes.reset();
+            if t.main_thread()
+                && let Some(tc) = main_thread_tc
+            {
+                t.search_types.push(tc);
             }
+            t.search_types = search_types.clone();
+        }
 
-            let mut s = String::new();
-            let len_read = io::stdin().read_line(&mut s).unwrap();
-            if len_read == 0 {
-                // Stdin closed, exit for openbench
+        *self.job.write().unwrap() = Some(SearchJob { board: *board, tt: tt.clone() });
+        self.start_barrier.wait();
+
+        let mut s = String::new();
+        io::stdin().read_line(&mut s).unwrap();
+        match s.as_str().trim() {
+            "isready" => println!("readyok"),
+            "quit" => {
+                self.halt.store(true, Ordering::Relaxed); // Signal threads to exit
                 exit(0);
             }
-            match s.as_str().trim() {
-                "isready" => println!("readyok"),
-                "quit" => exit(0),
-                "stop" => halt.store(true, Ordering::Relaxed),
-                _ => {
-                    *msg = Some(s);
-                }
-            }
-        });
+            "stop" => self.halt.store(true, Ordering::Relaxed),
+            _ => *msg = Some(s),
+        }
+
+        self.end_barrier.wait();
+
+        *self.job.write().unwrap() = None;
         tt.age_up();
     }
 }
 
 #[derive(Clone)]
-pub struct AtomicCounter<'a> {
-    global_nodes: &'a AtomicU64,
+pub struct AtomicCounter {
+    global_nodes: Arc<AtomicU64>,
     local_nodes: u64,
     batch: u64,
 }
 
 const UPDATE_FREQ: u64 = 1024;
 
-impl<'a> AtomicCounter<'a> {
-    const fn new(global_nodes: &'a AtomicU64) -> Self {
+impl AtomicCounter {
+    const fn new(global_nodes: Arc<AtomicU64>) -> Self {
         Self { global_nodes, local_nodes: 0, batch: 0 }
     }
 
@@ -426,18 +468,21 @@ mod search_tests {
     use super::ThreadData;
     use crate::{
         board::Board,
-        search::{search::start_search, SearchType},
-        transposition::{TranspositionTable, TARGET_TABLE_SIZE_MB},
+        search::{SearchType, search::start_search},
+        transposition::{TARGET_TABLE_SIZE_MB, TranspositionTable},
     };
-    use std::sync::atomic::{AtomicBool, AtomicU64};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, AtomicU64},
+    };
 
     #[test]
     fn go_nodes() {
         let transpos_table = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
-        let halt = AtomicBool::new(false);
-        let global_nodes = AtomicU64::new(0);
+        let halt = Arc::new(AtomicBool::new(false));
+        let global_nodes = Arc::new(AtomicU64::new(0));
 
-        let mut thread = ThreadData::new(&halt, Vec::new(), 0, &global_nodes);
+        let mut thread = ThreadData::new(halt, Vec::new(), 0, global_nodes);
 
         thread.search_types.push(SearchType::Nodes(12345));
 
@@ -450,10 +495,10 @@ mod search_tests {
     #[test]
     fn go_mate() {
         let tt = TranspositionTable::new(TARGET_TABLE_SIZE_MB);
-        let halt = AtomicBool::new(false);
-        let global_nodes = AtomicU64::new(0);
+        let halt = Arc::new(AtomicBool::new(false));
+        let global_nodes = Arc::new(AtomicU64::new(0));
 
-        let mut thread = ThreadData::new(&halt, Vec::new(), 0, &global_nodes);
+        let mut thread = ThreadData::new(halt, Vec::new(), 0, global_nodes);
 
         thread.search_types.push(SearchType::Mate(2));
         thread.search_types.push(SearchType::Nodes(1_000_000));
