@@ -330,7 +330,7 @@ fn negamax<const PV: bool>(
     let mut best_score = -Score::INFINITY;
     let mut best_move = Move::NULL;
     let original_alpha = alpha;
-    let mut picker = MovePicker::new(tt_move, td.stack[td.ply].killer, -197, true);
+    let mut picker = MovePicker::new(tt_move, td.stack[td.ply].killer, -65, true);
     while let Some(m) = picker.next(board, td) {
         if Some(m) == excluded_move || !board.is_legal(m) {
             continue;
@@ -567,7 +567,7 @@ fn qsearch<const PV: bool>(
         futility = static_eval + 175;
     }
 
-    let mut picker = MovePicker::new(tt_move, td.stack[td.ply].killer, -197, in_check);
+    let mut picker = MovePicker::new(tt_move, td.stack[td.ply].killer, -75, in_check);
     let mut best_move = Move::NULL;
     let mut moves_searched = 0;
 
