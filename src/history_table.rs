@@ -10,17 +10,6 @@ const fn update_history(score: &mut i32, bonus: i32) {
     *score += bonus - *score * bonus.abs() / MAX_HIST_VAL;
 }
 
-pub fn capthist_capture(board: &Board, m: Move) -> PieceName {
-    if m.is_en_passant() || m.promotion().is_some() {
-        // Use Pawn for promotions here because pawns can't be in the back ranks anyways, so these
-        // spaces can't be occupied anyway
-        // Credit to viridithas
-        PieceName::Pawn
-    } else {
-        board.piece_at(m.to()).name()
-    }
-}
-
 #[derive(Clone)]
 pub struct QuietHistory(Box<[[i32; 64]; 12]>);
 
@@ -45,13 +34,24 @@ pub struct CaptureHistory(Box<[[[i32; 5]; 64]; 12]>);
 
 impl CaptureHistory {
     pub fn update(&mut self, m: Move, piece: Piece, board: &Board, bonus: i32) {
-        let capture = capthist_capture(board, m);
+        let capture = Self::map_capture(board, m);
         update_history(&mut self.0[piece][m.to()][capture], bonus);
     }
 
     pub fn get(&self, m: Move, piece: Piece, board: &Board) -> i32 {
-        let capture = capthist_capture(board, m);
+        let capture = Self::map_capture(board, m);
         self.0[piece][m.to()][capture]
+    }
+
+    fn map_capture(board: &Board, m: Move) -> PieceName {
+        if m.is_en_passant() || m.promotion().is_some() {
+            // Use Pawn for promotions here because pawns can't be in the back ranks anyways, so these
+            // spaces can't be occupied anyway
+            // Credit to viridithas
+            PieceName::Pawn
+        } else {
+            board.piece_at(m.to()).name()
+        }
     }
 }
 
@@ -73,8 +73,7 @@ impl ContinuationHistory {
     }
 
     pub fn get(&self, m: Move, piece: Piece, stack: &SearchStack, ply: usize) -> i32 {
-        let prev = stack.prev(ply);
-        prev.map_or(0, |(prev_m, prev_piece)| self.0[piece][m.to()][prev_piece][prev_m.to()])
+        stack.prev(ply).map_or(0, |(prev_m, prev_piece)| self.0[piece][m.to()][prev_piece][prev_m.to()])
     }
 }
 

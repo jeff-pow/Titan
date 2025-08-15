@@ -396,7 +396,7 @@ fn negamax<const PV: bool>(
         td.stack[td.ply].moved_piece = board.piece_at(m.from());
         td.ply += 1;
 
-        let new_depth = depth + extension - 1;
+        let mut new_depth = depth + extension - 1;
 
         let mut score = -Score::INFINITY;
 
@@ -406,6 +406,13 @@ fn negamax<const PV: bool>(
             let d = (new_depth - base_reduction).clamp(1, new_depth);
 
             score = -negamax::<false>(td, tt, &copy, -alpha - 1, -alpha, d, true);
+            if eval > alpha && d < new_depth {
+                new_depth += i32::from(score > best_score + 40);
+                new_depth -= i32::from(score < best_score + new_depth);
+                if new_depth > d  {
+                    score = -negamax::<false>(td, tt, &copy, -alpha - 1, -alpha, new_depth, !cut_node);
+                }
+            }
         } else if !PV || moves_searched > 0 {
             score = -negamax::<false>(td, tt, &copy, -alpha - 1, -alpha, new_depth, !cut_node);
         }

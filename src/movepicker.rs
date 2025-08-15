@@ -29,7 +29,7 @@ pub struct MovePicker {
     bad_captures: MoveList,
 
     tt_move: Option<Move>,
-    killer_move: Option<Move>,
+    killer: Option<Move>,
 }
 
 impl MovePicker {
@@ -41,7 +41,7 @@ impl MovePicker {
             phase: Phase::TTMove,
             margin,
             tt_move,
-            killer_move: killer,
+            killer,
             return_quiets,
         }
     }
@@ -91,9 +91,9 @@ impl MovePicker {
         if self.phase == Phase::Killer {
             if self.return_quiets {
                 self.phase = Phase::QuietsInit;
-                if let Some(killer) = self.killer_move
+                if let Some(killer) = self.killer
                     && board.is_pseudo_legal(killer)
-                    && self.killer_move != self.tt_move
+                    && self.killer != self.tt_move
                 {
                     return Some(killer);
                 }
@@ -139,7 +139,7 @@ impl MovePicker {
 
     /// Determines if a move is stored as a special move by the move picker
     fn is_cached(&self, m: Move) -> bool {
-        Some(m) == self.tt_move || Some(m) == self.killer_move
+        Some(m) == self.tt_move || Some(m) == self.killer
     }
 }
 
