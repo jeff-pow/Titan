@@ -406,6 +406,10 @@ fn negamax<const PV: bool>(
             let d = (new_depth - base_reduction).clamp(1, new_depth);
 
             score = -negamax::<false>(td, tt, &copy, -alpha - 1, -alpha, d, true);
+
+            if !PV && score > alpha && d < new_depth {
+                score = -negamax::<false>(td, tt, &copy, -alpha - 1, -alpha, new_depth, !cut_node);
+            }
         } else if !PV || moves_searched > 0 {
             score = -negamax::<false>(td, tt, &copy, -alpha - 1, -alpha, new_depth, !cut_node);
         }
