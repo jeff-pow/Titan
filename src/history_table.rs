@@ -92,7 +92,7 @@ impl CorrectionHistory {
     const LIMIT: i32 = 16384;
 
     pub fn update(&mut self, stm: Color, key: u64, diff: i32, depth: i32) {
-        let bonus = (diff * depth).clamp(-Self::LIMIT / 4, Self::LIMIT / 4);
+        let bonus = (diff * depth / 8).clamp(-Self::LIMIT / 4, Self::LIMIT / 4);
         update_history(&mut self.0[stm][key as usize % Self::SIZE], bonus);
     }
 
