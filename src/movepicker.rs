@@ -2,7 +2,7 @@ use super::{
     chess_move::Move,
     movelist::{MoveList, MoveListEntry},
 };
-use crate::{board::Board, movegen::MGT, thread::ThreadData};
+use crate::{board::Board, movegen::MGT, thread::ThreadData, types::pieces::PieceName};
 
 #[derive(PartialEq, PartialOrd, Eq)]
 pub enum Phase {
@@ -154,6 +154,18 @@ fn score_quiets(board: &Board, td: &ThreadData, moves: &mut [MoveListEntry]) {
 
 fn score_captures(td: &ThreadData, board: &Board, moves: &mut [MoveListEntry]) {
     for MoveListEntry { m, score } in moves {
-        *score = td.capt_hist.get(*m, board.piece_at(m.from()), board);
+        // Most valuable victim first, with the (noisy) capture history only fine tuning the
+        // order. A quiet promotion has no victim, so only its promotion gain applies.
+        let captured = if m.is_en_passant() {
+            PieceName::Pawn
+        } else if board.occupancies().occupied(m.to()) {
+            board.piece_at(m.to()).name()
+        } else {
+            PieceName::None
+        };
+        let victim = if captured == PieceName::None { 0 } else { captured.value() };
+        let promotion = m.promotion().map_or(0, |p| p.value() - PieceName::Pawn.value());
+
+        *score = td.capt_hist.get(*m, board.piece_at(m.from()), board) / 8 + victim + promotion;
     }
 }
