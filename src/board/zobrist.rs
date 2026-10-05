@@ -1,7 +1,7 @@
 use crate::{
     board::Board,
     const_array,
-    types::pieces::{Color, PieceName},
+    types::pieces::{Color, Piece, PieceName},
 };
 
 const fn rand_u64(mut prev: u64) -> u64 {
@@ -67,8 +67,48 @@ impl Board {
         hash
     }
 
-    pub fn pawn_hash(&self) -> u64 {
+    pub const fn pawn_hash(&self) -> u64 {
+        self.pawn_hash
+    }
+
+    pub const fn non_pawn_hash(&self, color: Color) -> u64 {
+        match color {
+            Color::White => self.non_pawn_hash[0],
+            Color::Black => self.non_pawn_hash[1],
+        }
+    }
+
+    pub const fn major_hash(&self) -> u64 {
+        self.major_hash
+    }
+
+    pub(crate) fn recompute_pawn_hash(&self) -> u64 {
         self.piece(PieceName::Pawn).into_iter().fold(0, |hash, sq| hash ^ ZOBRIST.piece[self.piece_at(sq)][sq])
+    }
+
+    pub(crate) fn recompute_non_pawn_hash(&self, color: Color) -> u64 {
+        let mut hash = 0;
+        for name in PieceName::iter() {
+            if name == PieceName::Pawn {
+                continue;
+            }
+            for sq in self.piece_color(color, name) {
+                hash ^= ZOBRIST.piece[Piece::new(name, color)][sq];
+            }
+        }
+        hash
+    }
+
+    pub(crate) fn recompute_major_hash(&self) -> u64 {
+        let mut hash = 0;
+        for color in Color::iter() {
+            for name in [PieceName::Rook, PieceName::Queen] {
+                for sq in self.piece_color(color, name) {
+                    hash ^= ZOBRIST.piece[Piece::new(name, color)][sq];
+                }
+            }
+        }
+        hash
     }
 
     pub fn is_repetition(&self, hash_history: &[u64]) -> bool {

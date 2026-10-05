@@ -36,6 +36,8 @@ pub struct Board {
     half_moves: u16,
     zobrist_hash: u64,
     pawn_hash: u64,
+    non_pawn_hash: [u64; 2],
+    major_hash: u64,
     threats: Bitboard,
     checkers: Bitboard,
     pinned: Bitboard,
@@ -153,14 +155,24 @@ impl Board {
         }
     }
 
+    fn xor_piece_keys(&mut self, piece: Piece, sq: Square) {
+        let key = ZOBRIST.piece[piece][sq];
+        self.zobrist_hash ^= key;
+        if piece.name() == PieceName::Pawn {
+            self.pawn_hash ^= key;
+        } else {
+            self.non_pawn_hash[piece.color()] ^= key;
+        }
+        if matches!(piece.name(), PieceName::Rook | PieceName::Queen) {
+            self.major_hash ^= key;
+        }
+    }
+
     pub fn place_piece(&mut self, piece: Piece, sq: Square) {
         self.mailbox[sq] = piece;
         self.bitboards[piece.name()] ^= sq.bitboard();
         self.color_occupancies[piece.color()] ^= sq.bitboard();
-        self.zobrist_hash ^= ZOBRIST.piece[piece][sq];
-        if piece.name() == PieceName::Pawn {
-            self.pawn_hash ^= ZOBRIST.piece[piece][sq];
-        }
+        self.xor_piece_keys(piece, sq);
     }
 
     fn remove_piece(&mut self, sq: Square) {
@@ -169,10 +181,7 @@ impl Board {
             self.mailbox[sq] = Piece::None;
             self.bitboards[piece.name()] ^= sq.bitboard();
             self.color_occupancies[piece.color()] ^= sq.bitboard();
-            self.zobrist_hash ^= ZOBRIST.piece[piece][sq];
-            if piece.name() == PieceName::Pawn {
-                self.pawn_hash ^= ZOBRIST.piece[piece][sq];
-            }
+            self.xor_piece_keys(piece, sq);
         }
     }
 
@@ -517,6 +526,8 @@ impl Board {
             en_passant_square: None,
             num_moves: 0,
             pawn_hash: 0,
+            non_pawn_hash: [0; 2],
+            major_hash: 0,
             half_moves: 0,
             zobrist_hash: 0,
             threats: Bitboard::EMPTY,
