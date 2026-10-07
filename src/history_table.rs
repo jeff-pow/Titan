@@ -97,7 +97,7 @@ impl CorrectionHistory {
     const SCALE: i32 = 400;
 
     pub fn update(&mut self, stm: Color, board: &Board, diff: i32, depth: i32) {
-        let bonus = (diff * depth).clamp(-Self::LIMIT / 4, Self::LIMIT / 4);
+        let bonus = (diff * depth / 8).clamp(-Self::LIMIT / 4, Self::LIMIT / 4);
         let idx = |key: u64| key as usize % Self::SIZE;
 
         update_history(&mut self.pawn[stm][idx(board.pawn_hash())], bonus);
