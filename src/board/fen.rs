@@ -46,7 +46,10 @@ impl Board {
             _ => panic!("Invalid turn"),
         };
         board.zobrist_hash = board.generate_hash();
-        board.pawn_hash = board.pawn_hash();
+        board.pawn_hash = board.recompute_pawn_hash();
+        board.non_pawn_hash =
+            [board.recompute_non_pawn_hash(Color::White), board.recompute_non_pawn_hash(Color::Black)];
+        board.major_hash = board.recompute_major_hash();
         board.calculate_threats();
         board.pinned_and_checkers();
 
@@ -62,7 +65,10 @@ impl Board {
             board.en_passant_square = Some(Square(idx));
         }
         board.zobrist_hash = board.generate_hash();
-        board.pawn_hash = board.pawn_hash();
+        board.pawn_hash = board.recompute_pawn_hash();
+        board.non_pawn_hash =
+            [board.recompute_non_pawn_hash(Color::White), board.recompute_non_pawn_hash(Color::Black)];
+        board.major_hash = board.recompute_major_hash();
 
         let half_moves = iter.next();
         if let Some(half_moves) = half_moves

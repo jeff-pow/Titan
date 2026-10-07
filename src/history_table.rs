@@ -85,25 +85,41 @@ impl Default for ContinuationHistory {
 }
 
 #[derive(Clone)]
-pub struct CorrectionHistory(Box<[[i32; Self::SIZE]; 2]>);
+pub struct CorrectionHistory {
+    pawn: Box<[[i32; Self::SIZE]; 2]>,
+    non_pawn: [Box<[[i32; Self::SIZE]; 2]>; 2],
+    major: Box<[[i32; Self::SIZE]; 2]>,
+}
 
 impl CorrectionHistory {
     const SIZE: usize = 16384;
     const LIMIT: i32 = 16384;
+    const SCALE: i32 = 400;
 
-    pub fn update(&mut self, stm: Color, key: u64, diff: i32, depth: i32) {
+    pub fn update(&mut self, stm: Color, board: &Board, diff: i32, depth: i32) {
         let bonus = (diff * depth / 8).clamp(-Self::LIMIT / 4, Self::LIMIT / 4);
-        update_history(&mut self.0[stm][key as usize % Self::SIZE], bonus);
+        let idx = |key: u64| key as usize % Self::SIZE;
+
+        update_history(&mut self.pawn[stm][idx(board.pawn_hash())], bonus);
+        update_history(&mut self.non_pawn[Color::White][stm][idx(board.non_pawn_hash(Color::White))], bonus);
+        update_history(&mut self.non_pawn[Color::Black][stm][idx(board.non_pawn_hash(Color::Black))], bonus);
+        update_history(&mut self.major[stm][idx(board.major_hash())], bonus);
     }
 
-    pub fn get(&self, stm: Color, key: u64) -> i32 {
-        self.0[stm][key as usize % Self::SIZE] / 100
+    pub fn get(&self, stm: Color, board: &Board) -> i32 {
+        let idx = |key: u64| key as usize % Self::SIZE;
+
+        (self.pawn[stm][idx(board.pawn_hash())]
+            + self.non_pawn[0][stm][idx(board.non_pawn_hash(Color::White))]
+            + self.non_pawn[1][stm][idx(board.non_pawn_hash(Color::Black))]
+            + self.major[stm][idx(board.major_hash())])
+            / Self::SCALE
     }
 }
 
 impl Default for CorrectionHistory {
     fn default() -> Self {
-        Self(zeroed_box())
+        Self { pawn: zeroed_box(), non_pawn: [zeroed_box(), zeroed_box()], major: zeroed_box() }
     }
 }
 

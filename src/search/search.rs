@@ -223,7 +223,7 @@ fn negamax<const PV: bool>(
     }
     let tt_move = entry.and_then(TableEntry::best_move);
 
-    let correction = td.pawn_corr_hist.get(board.stm(), board.pawn_hash());
+    let correction = td.corr_hist.get(board.stm(), board);
 
     let raw_eval;
     let static_eval;
@@ -488,7 +488,7 @@ fn negamax<const PV: bool>(
         || (flag == EntryFlag::AlphaUnchanged && best_score >= static_eval)
         || (flag == EntryFlag::BetaCutOff && best_score <= static_eval))
     {
-        td.pawn_corr_hist.update(board.stm(), board.pawn_hash(), best_score - static_eval, depth);
+        td.corr_hist.update(board.stm(), board, best_score - static_eval, depth);
     }
 
     best_score
@@ -549,7 +549,7 @@ fn qsearch<const PV: bool>(
             tt.store(board.hash(), None, 0, EntryFlag::None, Score::NONE, td.ply, PV, eval);
             eval
         });
-        let static_eval = Score::draw_adjust(raw_eval, board) + td.pawn_corr_hist.get(board.stm(), board.pawn_hash());
+        let static_eval = Score::draw_adjust(raw_eval, board) + td.corr_hist.get(board.stm(), board);
         best_score = static_eval;
 
         if let Some(entry) = entry

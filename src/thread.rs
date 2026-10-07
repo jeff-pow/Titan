@@ -40,7 +40,7 @@ pub struct ThreadData<'a> {
     pub quiet_hist: QuietHistory,
     pub capt_hist: CaptureHistory,
     pub cont_hist: ContinuationHistory,
-    pub pawn_corr_hist: CorrectionHistory,
+    pub corr_hist: CorrectionHistory,
 
     pub search_start: Instant,
     thread_id: usize,
@@ -68,7 +68,7 @@ impl<'a> ThreadData<'a> {
             quiet_hist: QuietHistory::default(),
             capt_hist: CaptureHistory::default(),
             cont_hist: ContinuationHistory::default(),
-            pawn_corr_hist: CorrectionHistory::default(),
+            corr_hist: CorrectionHistory::default(),
             halt,
             search_types: vec![SearchType::default()],
             hash_history,
