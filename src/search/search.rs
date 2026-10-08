@@ -126,6 +126,7 @@ pub fn aspiration_windows(
     let mut alpha = -Score::INFINITY;
     let mut beta = Score::INFINITY;
     let mut delta = 10;
+    let mut search_depth = depth;
 
     if depth >= 4 {
         alpha = (prev_score - delta).max(-Score::CHECKMATE);
@@ -134,7 +135,7 @@ pub fn aspiration_windows(
 
     loop {
         assert_eq!(0, td.ply);
-        let score = negamax::<true>(td, tt, board, alpha, beta, depth, false);
+        let score = negamax::<true>(td, tt, board, alpha, beta, search_depth, false);
 
         if td.halt() {
             return score;
@@ -143,8 +144,12 @@ pub fn aspiration_windows(
         if score <= alpha {
             beta = i32::midpoint(alpha, beta);
             alpha = (score - delta).max(-Score::INFINITY);
+
+            search_depth = depth;
         } else if score >= beta {
             beta = (score + delta).min(Score::INFINITY);
+
+            search_depth = (search_depth - 1).max(1);
         } else {
             return score;
         }
