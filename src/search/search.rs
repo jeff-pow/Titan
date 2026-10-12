@@ -159,7 +159,7 @@ fn negamax<const PV: bool>(
     board: &Board,
     mut alpha: i32,
     beta: i32,
-    depth: i32,
+    mut depth: i32,
     cut_node: bool,
 ) -> i32 {
     let is_root = td.ply == 0;
@@ -318,6 +318,10 @@ fn negamax<const PV: bool>(
 
             return score;
         }
+    }
+
+    if (PV || cut_node) && !singular_search && depth >= 6 && tt_move.is_none() {
+        depth -= 1;
     }
 
     td.stack[td.ply + 1].killer = None;
