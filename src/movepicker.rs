@@ -57,6 +57,7 @@ impl MovePicker {
 
             if let Some(tt_move) = self.tt_move
                 && board.is_pseudo_legal(tt_move)
+                && (self.return_quiets || !tt_move.is_quiet(board))
             {
                 return Some(tt_move);
             }
