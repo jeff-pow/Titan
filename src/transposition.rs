@@ -1,11 +1,22 @@
 use crate::{chess_move::Move, search::search::Score};
 use std::{
-    mem::{size_of, transmute},
+    mem::size_of,
     num::NonZeroU16,
     sync::atomic::{AtomicI16, AtomicU16, AtomicU64, AtomicU8, Ordering},
 };
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum EntryFlag {
+    #[default]
+    None,
+    /// Upper bound on the possible score at a position
+    AlphaUnchanged,
+    /// Lower bound on the possible score at a position
+    BetaCutOff,
+    Exact,
+}
+
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 /// Storing a 32 bit move in the transposition table is a waste of space, as 16 bits contains all
 /// you need. However, 32 bits is nice for extra information such as what piece moved, so moves are
@@ -21,6 +32,20 @@ pub struct TableEntry {
 }
 
 impl TableEntry {
+    pub const EMPTY: Self = Self {
+        depth: 0,
+        age_pv_bound: 0,
+        key: 0,
+        search_score: Score::NONE as i16,
+        best_move: 0,
+        raw_eval: Score::NONE as i16,
+    };
+
+    /// An entry is unoccupied while it still holds the initial `EMPTY` value: no key and no score.
+    pub const fn is_unoccupied(self) -> bool {
+        self.key == 0 && self.search_score == Score::NONE as i16
+    }
+
     pub fn raw_eval(self) -> Option<i32> {
         (i32::from(self.raw_eval) != Score::NONE).then_some(i32::from(self.raw_eval))
     }
@@ -59,29 +84,33 @@ impl TableEntry {
     pub fn best_move(self) -> Option<Move> {
         (self.best_move != 0).then(|| Move(NonZeroU16::new(self.best_move).unwrap()))
     }
-}
 
-impl From<TableEntry> for InternalEntry {
-    fn from(value: TableEntry) -> Self {
-        unsafe { transmute(value) }
+    #[allow(clippy::wrong_self_convention)]
+    pub fn from_storage(mut self, ply: usize) -> Self {
+        if let Some(score) = self.search_score() {
+            self.search_score = if Score::is_win(score) {
+                (score - ply as i32) as i16
+            } else if Score::is_loss(score) {
+                (score + ply as i32) as i16
+            } else {
+                score as i16
+            };
+        }
+        self
     }
-}
 
-impl From<InternalEntry> for TableEntry {
-    fn from(value: InternalEntry) -> Self {
-        unsafe { transmute(value) }
+    pub fn to_storage(mut self, ply: usize) -> Self {
+        if let Some(score) = self.search_score() {
+            self.search_score = if Score::is_win(score) {
+                (score + ply as i32) as i16
+            } else if Score::is_loss(score) {
+                (score - ply as i32) as i16
+            } else {
+                score as i16
+            }
+        }
+        self
     }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum EntryFlag {
-    #[default]
-    None,
-    /// Upper bound on the possible score at a position
-    AlphaUnchanged,
-    /// Lower bound on the possible score at a position
-    BetaCutOff,
-    Exact,
 }
 
 #[derive(Default)]
@@ -128,15 +157,57 @@ impl Clone for InternalEntry {
     }
 }
 
+impl InternalEntry {
+    fn read(&self) -> TableEntry {
+        TableEntry {
+            depth: self.depth.load(Ordering::Relaxed),
+            age_pv_bound: self.age_pv_bound.load(Ordering::Relaxed),
+            key: self.key.load(Ordering::Relaxed),
+            search_score: self.search_score.load(Ordering::Relaxed),
+            best_move: self.best_move.load(Ordering::Relaxed),
+            raw_eval: self.raw_eval.load(Ordering::Relaxed),
+        }
+    }
+
+    fn write(&self, entry: TableEntry) {
+        self.depth.store(entry.depth, Ordering::Relaxed);
+        self.age_pv_bound.store(entry.age_pv_bound, Ordering::Relaxed);
+        self.key.store(entry.key, Ordering::Relaxed);
+        self.search_score.store(entry.search_score, Ordering::Relaxed);
+        self.best_move.store(entry.best_move, Ordering::Relaxed);
+        self.raw_eval.store(entry.raw_eval, Ordering::Relaxed);
+    }
+
+    fn depth(&self) -> i32 {
+        i32::from(self.depth.load(Ordering::Relaxed))
+    }
+
+    fn age(&self) -> u64 {
+        u64::from(self.age_pv_bound.load(Ordering::Relaxed)) >> 3
+    }
+}
+
+#[repr(C, align(32))]
+#[derive(Clone)]
+struct InternalTTBucket {
+    data: [InternalEntry; 3],
+}
+
+impl Default for InternalTTBucket {
+    fn default() -> Self {
+        Self { data: std::array::from_fn(|_| InternalEntry::default()) }
+    }
+}
+
 #[derive(Clone)]
 pub struct TranspositionTable {
-    vec: Box<[InternalEntry]>,
+    vec: Box<[InternalTTBucket]>,
     age: U64Wrapper,
 }
 
 pub const TARGET_TABLE_SIZE_MB: usize = 16;
 const BYTES_PER_MB: usize = 1024 * 1024;
-const ENTRY_SIZE: usize = size_of::<TableEntry>();
+const ENTRY_SIZE: usize = size_of::<InternalTTBucket>();
 const MAX_AGE: u64 = (1 << 5) - 1;
 
 impl TranspositionTable {
@@ -146,24 +217,21 @@ impl TranspositionTable {
         unsafe {
             let index = index(hash, self.vec.len());
             let entry = self.vec.get_unchecked(index);
-            _mm_prefetch::<_MM_HINT_T0>(std::ptr::from_ref::<InternalEntry>(entry).cast());
+            _mm_prefetch::<_MM_HINT_T0>(std::ptr::from_ref::<InternalTTBucket>(entry).cast());
         }
     }
 
     pub fn new(mb: usize) -> Self {
         let target_size = mb * BYTES_PER_MB;
-        let table_capacity = target_size / ENTRY_SIZE;
-        Self { vec: vec![InternalEntry::default(); table_capacity].into_boxed_slice(), age: U64Wrapper::default() }
+        let table_capacity = (target_size / ENTRY_SIZE).max(1);
+        Self { vec: vec![InternalTTBucket::default(); table_capacity].into_boxed_slice(), age: U64Wrapper::default() }
     }
 
     pub fn clear(&self) {
-        self.vec.iter().for_each(|x| {
-            x.depth.store(0, Ordering::Relaxed);
-            x.age_pv_bound.store(0, Ordering::Relaxed);
-            x.key.store(0, Ordering::Relaxed);
-            x.search_score.store(Score::NONE as i16, Ordering::Relaxed);
-            x.best_move.store(0, Ordering::Relaxed);
-            x.raw_eval.store(Score::NONE as i16, Ordering::Relaxed);
+        self.vec.iter().for_each(|bucket| {
+            for entry in &bucket.data {
+                entry.write(TableEntry::EMPTY);
+            }
         });
         self.age.0.store(0, Ordering::Relaxed);
     }
@@ -184,83 +252,97 @@ impl TranspositionTable {
         m: Option<Move>,
         depth: i32,
         flag: EntryFlag,
-        mut search_score: i32,
+        search_score: i32,
         ply: usize,
         is_pv: bool,
         raw_eval: i32,
     ) {
         let idx = index(hash, self.vec.len());
         let key = hash as u16;
+        let age = self.age();
+        let age_pv_bound = (age << 3) as u8 | u8::from(is_pv) << 2 | flag as u8;
 
-        let old_entry = unsafe { TableEntry::from(self.vec.get_unchecked(idx).clone()) };
+        let bucket = unsafe { self.vec.get_unchecked(idx) };
+        let data = [bucket.data[0].read(), bucket.data[1].read(), bucket.data[2].read()];
 
-        // Conditions from Alexandria
-        if old_entry.age() != self.age()
-            || old_entry.key() != key
-            || flag == EntryFlag::Exact
-            || depth as usize + 5 + 2 * usize::from(is_pv) > old_entry.depth as usize
+        // First, try to find unoccupied entry. Next, prefer a slot for the same position, and finally, least valuable entry.
+        let victim = data
+            .iter()
+            .position(|e| e.is_unoccupied())
+            .or_else(|| data.iter().position(|e| e.key() == key))
+            .unwrap_or_else(|| {
+                data.iter()
+                    .enumerate()
+                    .min_by_key(|(_, e)| e.depth() - 2 * relative_age(e.age(), age))
+                    .map(|(i, _)| i)
+                    .unwrap()
+            });
+
+        let old = data[victim];
+
+        // Overwrite less valuable entries: a same-position entry from the current search is only
+        // replaced by an exact entry or by something at least as deep.
+        if old.age() == age
+            && old.key() == key
+            && flag != EntryFlag::Exact
+            && depth.max(0) + 5 + 2 * i32::from(is_pv) <= old.depth()
         {
-            // Don't overwrite a best move with a null move
-            let best_m = if m.is_none() && key == old_entry.key { old_entry.best_move } else { m.map_or(0, u16::from) };
-
-            assert!(Score::is_valid(search_score));
-            if search_score != Score::NONE {
-                assert!(Score::is_some(search_score));
-                if Score::is_win(search_score) {
-                    search_score += ply as i32;
-                } else if Score::is_loss(search_score) {
-                    search_score -= ply as i32;
-                }
-            }
-
-            let age_pv_bound = (self.age() << 3) as u8 | u8::from(is_pv) << 2 | flag as u8;
-            unsafe {
-                self.vec.get_unchecked(idx).key.store(key, Ordering::Relaxed);
-                self.vec.get_unchecked(idx).depth.store(depth as u8, Ordering::Relaxed);
-                self.vec.get_unchecked(idx).age_pv_bound.store(age_pv_bound, Ordering::Relaxed);
-                self.vec.get_unchecked(idx).search_score.store(search_score as i16, Ordering::Relaxed);
-                self.vec.get_unchecked(idx).best_move.store(best_m, Ordering::Relaxed);
-                self.vec.get_unchecked(idx).raw_eval.store(raw_eval as i16, Ordering::Relaxed);
-            }
+            return;
         }
+
+        // Don't overwrite a best move with a null move
+        let best_move = if m.is_none() && old.key() == key { old.best_move } else { m.map_or(0, u16::from) };
+
+        bucket.data[victim].write(
+            TableEntry {
+                depth: depth.max(0) as u8,
+                age_pv_bound,
+                key,
+                search_score: search_score as i16,
+                best_move,
+                raw_eval: raw_eval as i16,
+            }
+            .to_storage(ply),
+        );
     }
 
     pub fn get(&self, hash: u64, ply: usize) -> Option<TableEntry> {
         let idx = index(hash, self.vec.len());
         let key = hash as u16;
 
-        let mut entry = unsafe { TableEntry::from(self.vec.get_unchecked(idx).clone()) };
-
-        if entry.key != key {
-            return None;
-        }
-
-        if entry.search_score().is_some() {
-            if Score::is_win(entry.search_score().unwrap()) {
-                entry.search_score -= ply as i16;
-            } else if Score::is_loss(entry.search_score().unwrap()) {
-                entry.search_score += ply as i16;
+        let bucket = unsafe { self.vec.get_unchecked(idx) };
+        for internal in &bucket.data {
+            let entry = internal.read();
+            if entry.key() != key {
+                continue;
+            }
+            if !entry.is_unoccupied() {
+                return Some(entry.from_storage(ply));
             }
         }
-        assert!(Score::is_valid(i32::from(entry.search_score)));
-
-        Some(entry)
+        None
     }
 
     pub(crate) fn permille_usage(&self) -> usize {
-        self.vec
-            .iter()
-            .take(1000)
-            .map(|e| TableEntry::from(e.clone()))
-            // We only consider entries meaningful if their age is current (due to age based overwrites)
-            // and their depth is > 0. 0 depth entries are from qsearch and should not be counted.
-            .filter(|e| e.depth() > 0 && e.age() == self.age())
-            .count()
+        let mut used = 0;
+        for bucket in self.vec.iter().take(1000) {
+            // We only consider entries meaningful if their age is current
+            // and their depth is > 0. 0 depth entries are from qsearch and should not
+            // be counted.
+            used += bucket.data.iter().filter(|e| e.depth() > 0 && e.age() == self.age()).count();
+        }
+        // 1000 sampled buckets hold 3000 entries. Normalize to permille.
+        used / 3
     }
 }
 
 fn index(hash: u64, table_capacity: usize) -> usize {
     ((u128::from(hash) * (table_capacity as u128)) >> 64) as usize
+}
+
+/// Generations since `entry_age`; 0 means the entry was stored by the current search.
+const fn relative_age(entry_age: u64, current_age: u64) -> i32 {
+    ((current_age + MAX_AGE + 1 - entry_age) & MAX_AGE) as i32
 }
 
 #[cfg(test)]
@@ -310,5 +392,32 @@ mod transpos_tests {
         table.store(0, Some(m), 0, EntryFlag::Exact, found_mate, ply, false, 25);
         let entry = table.get(0, 4);
         assert_eq!(Score::CHECKMATE - 4, entry.unwrap().search_score().unwrap());
+    }
+
+    /// Hashes that all map to the same bucket of a 1 MiB table (index = hash >> 49).
+    fn same_bucket(i: u64) -> u64 {
+        0x1000_0000_0000_2000 + i
+    }
+
+    #[test]
+    fn bucket_retention() {
+        let table = TranspositionTable::new(1);
+        let m = Move::new(Square(12), Square(28), MoveType::Normal);
+
+        // Three different positions hashing to the same bucket must all be stored.
+        for (i, depth) in [10, 5, 3].into_iter().enumerate() {
+            let d = depth;
+            table.store(same_bucket(i as u64), Some(m), d, EntryFlag::AlphaUnchanged, d, 0, false, d);
+        }
+        for (i, depth) in [10, 5, 3].into_iter().enumerate() {
+            assert_eq!(depth, table.get(same_bucket(i as u64), 0).unwrap().depth());
+        }
+
+        // A fourth store must evict the shallowest entry, not the first slot.
+        table.store(same_bucket(3), Some(m), 12, EntryFlag::AlphaUnchanged, 12, 0, false, 12);
+        assert_eq!(12, table.get(same_bucket(3), 0).unwrap().depth());
+        assert_eq!(10, table.get(same_bucket(0), 0).unwrap().depth());
+        assert_eq!(5, table.get(same_bucket(1), 0).unwrap().depth());
+        assert!(table.get(same_bucket(2), 0).is_none());
     }
 }
