@@ -22,6 +22,7 @@ impl Score {
 
     pub const MATE_IN_MAX_PLY: i32 = Self::CHECKMATE - MAX_PLY as i32;
 
+    #[expect(unused)]
     pub fn is_some(score: i32) -> bool {
         Self::is_valid(score) && score != Self::NONE
     }
